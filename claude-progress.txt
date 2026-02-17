@@ -6,6 +6,38 @@
 
 ---
 
+## Sessão: 2026-02-17 PM — Correção: autoload path no script de verificação SEO Killer
+
+### Problema Identificado
+Script `scripts/verify_seo_killer_final.php` falhava com erro fatal ao tentar carregar autoload do caminho incorreto.
+
+### Causa Raiz
+Paths relativos incorretos:
+- ❌ `require_once __DIR__ . '/vendor/autoload.php';` (busca em `scripts/vendor/`)
+- ❌ `require_once __DIR__ . '/autoload.php';` (busca em `scripts/autoload.php`)
+
+Ambos os arquivos estão na raiz do projeto, não dentro de `scripts/`.
+
+### Implementação
+Corrigido paths para subir um nível:
+```php
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../autoload.php';
+```
+
+### Validação
+✅ Script agora executa com sucesso  
+✅ Diagnostica corretamente componentes do SEO Killer  
+✅ Mostra status visual de saúde do sistema  
+
+### Arquivos Modificados
+- `scripts/verify_seo_killer_final.php` — paths corrigidos (linhas 7-8)
+
+### Impacto
+Script de smoke test do SEO Killer voltou a funcionar, permitindo validação rápida do sistema.
+
+---
+
 ## Sessão: 2026-02-17 — Correção CRÍTICA: bug de mapeamento no health ML-AI
 
 ### Problema Identificado
