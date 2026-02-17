@@ -6,6 +6,34 @@
 
 ---
 
+## Sessão: 2026-02-17 — Integração HTTP direta com API do Mercado Livre (X-ML-Access-Token)
+
+### Objetivo
+Facilitar integração server-to-server com a API do Mercado Livre sem depender de DB/sessão/.env, permitindo enviar token via header (opt-in) e melhorando diagnósticos do health.
+
+### Implementação
+
+#### 1) MercadoLivreClient: seleção de conta em contexto HTTP
+- Quando instanciado sem `accountId`, o client agora tenta (somente em contexto HTTP):
+  - `X-ML-Account-Id`
+  - `?ml_account_id` / `account_id` (GET/POST)
+
+#### 2) Token via header (opt-in)
+- Suporte a `X-ML-Access-Token` quando `ML_ALLOW_TOKEN_HEADER=true` e não há `accountId`/`ML_ACCESS_TOKEN`.
+- Fonte do token rastreada em `token_source` (`db|env|header|env_fallback_db_error`).
+
+#### 3) Health mais observável
+- `diagnose()` e `/api/ml-ai/health` agora expõem `token_source`, `db_unavailable`, `seller_id` e `checks`.
+
+### Testes
+- Adicionado teste unitário garantindo que `X-ML-Access-Token` só é aceito quando `ML_ALLOW_TOKEN_HEADER=true`.
+
+### Arquivos Modificados
+- `app/Services/MercadoLivreClient.php`
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php`
+- `app/Controllers/MLAIIntegrationController.php`
+- `tests/Unit/Services/MercadoLivreClientHeaderTokenTest.php`
+
 ## Sessão: 2026-02-17 — Correção Completa do "não funciona" ML-AI (modo degradado + resolução de conta)
 
 ### Objetivo
