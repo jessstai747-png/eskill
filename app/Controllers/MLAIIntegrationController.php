@@ -33,11 +33,16 @@ class MLAIIntegrationController extends BaseController
             // Degraded mode: allow single-token operation when ML_ACCESS_TOKEN is configured.
             // This keeps ML-AI endpoints usable even if the DB/session-based multi-account layer is unavailable.
             $envToken = (string)($_ENV['ML_ACCESS_TOKEN'] ?? getenv('ML_ACCESS_TOKEN') ?? '');
-            if ($envToken !== '') {
+            $allowTokenHeaderRaw = $_ENV['ML_ALLOW_TOKEN_HEADER'] ?? getenv('ML_ALLOW_TOKEN_HEADER') ?? null;
+            $allowTokenHeader = filter_var($allowTokenHeaderRaw, FILTER_VALIDATE_BOOLEAN);
+            $headerToken = $allowTokenHeader ? (string)($_SERVER['HTTP_X_ML_ACCESS_TOKEN'] ?? '') : '';
+            if ($envToken !== '' || ($allowTokenHeader && $headerToken !== '')) {
                 $accountId = 0; // sentinel for env-token mode
             } else {
                 $this->jsonError(
-                    'No active ML account. Select an account first or send X-ML-Account-Id / ?ml_account_id. Alternatively configure ML_ACCESS_TOKEN for single-token mode.',
+                    $allowTokenHeader
+                        ? 'No active ML account. Select an account first or send X-ML-Account-Id / ?ml_account_id. Alternatively configure ML_ACCESS_TOKEN or send X-ML-Access-Token (ML_ALLOW_TOKEN_HEADER=true) for single-token mode.'
+                        : 'No active ML account. Select an account first or send X-ML-Account-Id / ?ml_account_id. Alternatively configure ML_ACCESS_TOKEN for single-token mode.',
                     401
                 );
             }

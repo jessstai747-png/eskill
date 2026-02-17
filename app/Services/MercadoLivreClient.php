@@ -27,6 +27,11 @@ class MercadoLivreClient
     private bool $dbUnavailable = false;
     private string $tokenSource = 'none';
 
+    private function isHttpContext(): bool
+    {
+        return isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== '';
+    }
+
     public function __construct(?int $accountId = null, ?MercadoLivreAuthService $authService = null)
     {
         $this->accountId = $accountId;
@@ -47,10 +52,40 @@ class MercadoLivreClient
             }
         }
 
+        // Fallback HTTP: permitir selecionar conta por header/query quando o client é instanciado sem accountId.
+        // Importante: só faz sentido em contexto HTTP; evita efeitos colaterais em CLI/tests.
+        if ($this->accountId === null && $this->isHttpContext()) {
+            $headerAccountId = (int)($_SERVER['HTTP_X_ML_ACCOUNT_ID'] ?? 0);
+            if ($headerAccountId > 0) {
+                $this->accountId = $headerAccountId;
+            }
+
+            if ($this->accountId === null) {
+                $fromGet = (int)($_GET['ml_account_id'] ?? $_GET['account_id'] ?? 0);
+                $fromPost = (int)($_POST['ml_account_id'] ?? $_POST['account_id'] ?? 0);
+                $candidate = $fromGet > 0 ? $fromGet : $fromPost;
+                if ($candidate > 0) {
+                    $this->accountId = $candidate;
+                }
+            }
+        }
+
         // Tokens
         // - Quando accountId está definido (multi-account), preferimos sempre os tokens vinculados no banco.
         // - ML_ACCESS_TOKEN (ambiente) fica como fallback para modo simples/single-account ou quando a conta não existe.
         $envAccessToken = (string)($_ENV['ML_ACCESS_TOKEN'] ?? getenv('ML_ACCESS_TOKEN') ?? '');
+
+        // Token via header (opt-in): útil para integração server-to-server sem gravar token em DB/.env.
+        // Para reduzir risco, exige ML_ALLOW_TOKEN_HEADER=true.
+        $headerAccessToken = '';
+        $allowTokenHeaderRaw = $_ENV['ML_ALLOW_TOKEN_HEADER'] ?? getenv('ML_ALLOW_TOKEN_HEADER') ?? null;
+        $allowTokenHeader = filter_var($allowTokenHeaderRaw, FILTER_VALIDATE_BOOLEAN);
+        if ($this->accountId === null && $envAccessToken === '' && $allowTokenHeader && $this->isHttpContext()) {
+            $headerAccessToken = (string)($_SERVER['HTTP_X_ML_ACCESS_TOKEN'] ?? '');
+            if (stripos($headerAccessToken, 'Bearer ') === 0) {
+                $headerAccessToken = trim(substr($headerAccessToken, strlen('Bearer ')));
+            }
+        }
 
         $accountLoaded = false;
         $loadAccountError = null;
@@ -71,9 +106,14 @@ class MercadoLivreClient
         // Se accountId foi informado mas loadAccount() falhou (tokens vazios/expirados),
         // NÃO devemos usar o token do ambiente — isso mascararia a conta desconectada.
         if (!$accountLoaded && $this->accountId === null) {
-            $this->accessToken = $envAccessToken;
+            // Prioridade: header token (opt-in) > env token
+            $this->accessToken = $headerAccessToken !== '' ? $headerAccessToken : $envAccessToken;
             $this->hasAccessToken = $this->accessToken !== '';
-            $this->tokenSource = $this->hasAccessToken ? 'env' : 'none';
+            if ($this->hasAccessToken) {
+                $this->tokenSource = $headerAccessToken !== '' ? 'header' : 'env';
+            } else {
+                $this->tokenSource = 'none';
+            }
         }
 
         // Fallback controlado: quando accountId foi informado, mas o DB está indisponível,
@@ -97,7 +137,7 @@ class MercadoLivreClient
         if (!$this->hasAccessToken && !self::$missingTokenLogged) {
             log_warning('Sem token configurado para ML API', [
                 'account_id' => $this->accountId,
-                'hint' => 'ML_ACCESS_TOKEN no ambiente ou conta vinculada em ml_accounts',
+                'hint' => 'ML_ACCESS_TOKEN no ambiente, X-ML-Access-Token (se ML_ALLOW_TOKEN_HEADER=true), ou conta vinculada em ml_accounts',
             ]);
             self::$missingTokenLogged = true;
         }
@@ -315,6 +355,9 @@ class MercadoLivreClient
 
     protected function missingTokenError(string $endpoint): array
     {
+        $allowTokenHeaderRaw = $_ENV['ML_ALLOW_TOKEN_HEADER'] ?? getenv('ML_ALLOW_TOKEN_HEADER') ?? null;
+        $allowTokenHeader = filter_var($allowTokenHeaderRaw, FILTER_VALIDATE_BOOLEAN);
+
         return [
             'error' => 'missing_access_token',
             'message' => 'Mercado Livre access token not configured.',
@@ -324,7 +367,9 @@ class MercadoLivreClient
             'db_unavailable' => $this->dbUnavailable,
             'hint' => $this->dbUnavailable
                 ? 'DB indisponível; configure MySQL ou defina ML_ACCESS_TOKEN para modo degradado.'
-                : 'Configure ML_ACCESS_TOKEN ou conecte uma conta em ml_accounts via OAuth.',
+                : ($allowTokenHeader
+                    ? 'Configure ML_ACCESS_TOKEN, envie X-ML-Access-Token, ou conecte uma conta em ml_accounts via OAuth.'
+                    : 'Configure ML_ACCESS_TOKEN ou conecte uma conta em ml_accounts via OAuth.'),
         ];
     }
 
@@ -1272,6 +1317,8 @@ class MercadoLivreClient
             'connected' => false,
             'has_token' => $this->hasAccessToken,
             'account_id' => $this->accountId,
+            'token_source' => $this->tokenSource,
+            'db_unavailable' => $this->dbUnavailable,
             'seller_id' => null,
             'user_info' => null,
             'token_status' => 'unknown',

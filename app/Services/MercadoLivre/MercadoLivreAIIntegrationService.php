@@ -126,6 +126,10 @@ class MercadoLivreAIIntegrationService
                 'public_api' => $diagnosis['public_api'] ?? false,
                 'auth_ok' => $diagnosis['auth_ok'] ?? false,
                 'items_count' => $diagnosis['items_count'] ?? 0,
+                'seller_id' => $diagnosis['seller_id'] ?? null,
+                'token_source' => $diagnosis['token_source'] ?? 'unknown',
+                'db_unavailable' => (bool)($diagnosis['db_unavailable'] ?? false),
+                'checks' => $diagnosis['checks'] ?? [],
                 'account_id' => $this->accountId,
                 'mode' => $this->mode,
             ];
