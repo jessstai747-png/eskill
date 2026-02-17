@@ -6,6 +6,45 @@
 
 ---
 
+## Sessão: 2026-02-17 — ML ↔ AI Integration Pipeline (commit df8083b)
+
+### Objetivo
+Integrar o circuit breaker de provedores AI com a API do Mercado Livre, criando um pipeline end-to-end: fetch ML data → enrich com contexto de mercado → otimizar com IA (ou fallback template) → aplicar de volta no ML.
+
+### Arquivos Criados
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php` (~750 linhas):
+  - Pipeline completo: getEnrichedItemData → optimizeWithContext → applyOptimizations → fullPipeline → batchPipeline
+  - Auto-fallback para template optimization quando AI está circuit-broken
+  - Contexto de mercado: trends, concorrentes, pricing, atributos de categoria
+  - Batch processing com health monitoring e rate limiting (200ms entre items)
+  - Prompts ricos com regras SEO de marketplace (60 chars, keywords no início)
+- `app/Controllers/MLAIIntegrationController.php` (167 linhas):
+  - 6 endpoints REST: health, enrich, optimize, apply, pipeline, batch
+  - Lazy-loading do service, validação de accountId e itemId
+  - Batch limit de 50 items
+
+### Arquivos Modificados
+- `app/Services/AI/Core/AIProviderManager.php`:
+  - Circuit breaker path: `/tmp/` (read-only) → `storage/cache/` (writable)
+- `app/Services/AI/Core/AIOptimizationEngine.php`:
+  - Adicionado `declare(strict_types=1)`
+  - Shared MercadoLivreClient instance (evita criar novo client por chamada)
+  - `isAvailable()` agora circuit breaker-aware via `getProviderStats()['available_count']`
+- `app/Routes/api.php`:
+  - 6 novas rotas sob "ML ↔ AI Integration Pipeline"
+
+### Decisões Técnicas
+- Template fallback é feature-level: se AI falha para título mas funciona para descrição, usa template só para título
+- Category cache in-memory para evitar chamadas repetidas à API do ML
+- Usado `MercadoLivreClient` existente (com seu próprio CircuitBreakerService) ao invés de criar novo HTTP client
+- Batch monitoring: verifica health a cada 5 items e aborta se ML ou AI estiver degradado
+
+### Validação
+- `php -l` em todos os 5 arquivos: sem erros de sintaxe
+- PHPUnit não rodou (DB não disponível no sandbox)
+
+---
+
 ## Sessão: 2026-02-17 — Circuit Breaker AI + strict_types + Logging
 
 ### Problema Identificado

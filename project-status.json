@@ -786,6 +786,20 @@
             ],
             "passes": true,
             "last_tested": "2026-02-17"
+        },
+        {
+            "id": "AI-008",
+            "category": "ai_integration",
+            "description": "ML-AI Integration Pipeline — bridge entre API do Mercado Livre e provedores IA com circuit breaker, fallback template, e batch processing",
+            "files": [
+                "app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php",
+                "app/Controllers/MLAIIntegrationController.php",
+                "app/Services/AI/Core/AIProviderManager.php",
+                "app/Services/AI/Core/AIOptimizationEngine.php",
+                "app/Routes/api.php"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-17"
         }
     ]
 }
