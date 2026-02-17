@@ -6,6 +6,65 @@
 
 ---
 
+## Sessão: 2026-02-17 PM — Integração SEO Killer + API Mercado Livre
+
+### Objetivo
+Integrar o script de verificação do SEO Killer (`scripts/verify_seo_killer_final.php`) com diagnóstico completo da API do Mercado Livre.
+
+### Implementação
+
+#### 1) Verificação ML API no script de verificação
+Adicionada nova seção (#7) que chama `MercadoLivreClient::diagnose()` para verificar:
+- **API Pública** — Se consegue acessar endpoints públicos (`/sites/MLB`)
+- **Token Status** — Se há token e se está válido
+- **Token Source** — Origem do token (db, env, header)
+- **Autenticação** — Se consegue chamar `/users/me` com sucesso
+- **Seller Info** — ID e nickname do vendedor
+- **Items Count** — Total de anúncios na conta
+
+#### 2) Seção de diagnóstico ML detalhada
+Após a tabela de componentes, exibe painel dedicado:
+```
+╔════════════════════════════════════════════════════════════════╗
+║              🔌 MERCADO LIVRE API DIAGNOSIS                    ║
+╠════════════════════════════════════════════════════════════════╣
+║  API Pública:      ✅ Acessível                                ║
+║  Token:            ✅ Válido (db)                              ║
+║  Autenticação:     ✅ Conectado                                ║
+║  Seller ID:        123456789                                   ║
+║  Total Anúncios:   1500                                        ║
+╠════════════════════════════════════════════════════════════════╣
+║  Checks detalhados:                                            ║
+║    ✅ token       : ok                                         ║
+║    ✅ public_api  : ok                                         ║
+║    ✅ auth        : ok                                         ║
+║    ✅ items       : ok (1500 items)                            ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
+#### 3) Dica de reconexão
+Se ML não estiver conectado, exibe dica no final:
+```
+║  💡 Dica: Execute 'php bin/mcp-ml-auth.php --open' para       ║
+║     reconectar sua conta do Mercado Livre                     ║
+```
+
+### Arquivos Modificados
+- `scripts/verify_seo_killer_final.php` — Integração completa com ML API diagnosis
+
+### Validação
+✅ `php -l` — Sem erros de sintaxe  
+✅ `phpunit --filter SEO` — 32 testes (6 passed, 26 skipped)  
+✅ Script executa e mostra diagnóstico ML  
+
+### Impacto
+Script de smoke test do SEO Killer agora verifica:
+- Componentes internos (Autoloader, Guzzle, Database, Engine, Controller)
+- Integração com API do Mercado Livre (token, auth, seller, items)
+- Endpoints HTTP do SEO Killer
+
+---
+
 ## Sessão: 2026-02-17 PM — Correção: autoload path no script de verificação SEO Killer
 
 ### Problema Identificado
