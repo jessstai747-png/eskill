@@ -6,6 +6,37 @@
 
 ---
 
+## Sessão: 2026-02-17 (cont.) — Version Comparison, Impact Tracking & Snapshot Cleanup
+
+### Objetivo
+Completar a integração do VersioningService com a pipeline ML-AI, expondo os 3 métodos restantes (compareVersions, updateImpact, cleanOldSnapshots) via REST endpoints.
+
+### Implementação
+
+#### Novos métodos — MercadoLivreAIIntegrationService
+- `compareVersions(versionId1, versionId2)` — compara duas versões de otimização via VersioningService::compareVersions()
+- `trackImpact(versionId, impactData)` — registra impacto real (views, sales, conversion, position) via VersioningService::updateImpact()
+- `cleanupSnapshots(daysToKeep)` — limpeza de snapshots antigos via VersioningService::cleanOldSnapshots()
+
+#### Novos endpoints REST — MLAIIntegrationController
+- `GET  /api/ml-ai/compare?v1=X&v2=Y` — comparação entre duas versões de otimização
+- `POST /api/ml-ai/impact/{versionId}` — registro de impacto real com sanitização de campos permitidos
+- `POST /api/ml-ai/cleanup` — limpeza de snapshots antigos (days_to_keep: 1-365, default 90)
+
+#### Limpeza do workspace
+- Removidos 27 arquivos-lixo gerados por falhas de terminal em sessões anteriores
+
+### Arquivos Modificados
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php` — 3 novos métodos
+- `app/Controllers/MLAIIntegrationController.php` — 3 novos endpoints
+- `app/Routes/api.php` — 3 novas rotas
+
+### Status
+- Pipeline ML-AI completa: 15 endpoints REST totais
+- Todos os métodos públicos do VersioningService agora acessíveis via API
+
+---
+
 ## Sessão: 2026-02-17 — Integração Histórico de Otimização + Rollback na Pipeline ML-AI
 
 ### Objetivo

@@ -4,7 +4,7 @@
         "company": "AWA Motos — Distribuidora de peças para motos",
         "stack": "PHP 8.0+ | MySQL/PDO | Guzzle 7 | Monolog 3 | Redis",
         "last_updated": "2026-02-17",
-        "updated_by": "session-init",
+        "updated_by": "copilot-implementador",
         "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps."
     },
     "features": [
@@ -796,6 +796,19 @@
                 "app/Controllers/MLAIIntegrationController.php",
                 "app/Services/AI/Core/AIProviderManager.php",
                 "app/Services/AI/Core/AIOptimizationEngine.php",
+                "app/Routes/api.php"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-17"
+        },
+        {
+            "id": "AI-009",
+            "category": "ai_integration",
+            "description": "ML-AI Version Management — comparação de versões, tracking de impacto real, e limpeza de snapshots antigos via VersioningService",
+            "files": [
+                "app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php",
+                "app/Controllers/MLAIIntegrationController.php",
+                "app/Services/SEO/VersioningService.php",
                 "app/Routes/api.php"
             ],
             "passes": true,

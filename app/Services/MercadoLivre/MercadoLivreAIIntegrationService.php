@@ -1026,6 +1026,147 @@ class MercadoLivreAIIntegrationService
         }
     }
 
+    /**
+     * Compare two optimization versions side by side.
+     *
+     * Uses VersioningService::compareVersions() to show before/after
+     * diffs between any two version snapshots of the same item.
+     *
+     * @param int $versionId1 First version ID
+     * @param int $versionId2 Second version ID
+     * @return array{success: bool, comparison?: array, error?: string}
+     */
+    public function compareVersions(int $versionId1, int $versionId2): array
+    {
+        if ($this->versioningService === null) {
+            return [
+                'success' => false,
+                'error' => 'Versioning service unavailable',
+            ];
+        }
+
+        try {
+            $comparison = $this->versioningService->compareVersions($versionId1, $versionId2);
+
+            $this->logger->info('Version comparison performed', [
+                'version_1' => $versionId1,
+                'version_2' => $versionId2,
+                'item_id' => $comparison['item_id'] ?? 'unknown',
+            ]);
+
+            return [
+                'success' => true,
+                'comparison' => $comparison,
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Version comparison failed', [
+                'version_1' => $versionId1,
+                'version_2' => $versionId2,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Update impact tracking for an optimization version.
+     *
+     * Called after some time post-optimization to record measured results
+     * (views change, sales change, conversion delta, etc.).
+     *
+     * @param int $versionId Version ID to update
+     * @param array $impactData Measured impact metrics
+     * @return array{success: bool, message: string, version_id: int}
+     */
+    public function trackImpact(int $versionId, array $impactData): array
+    {
+        if ($this->versioningService === null) {
+            return [
+                'success' => false,
+                'message' => 'Versioning service unavailable',
+                'version_id' => $versionId,
+            ];
+        }
+
+        try {
+            $this->versioningService->updateImpact($versionId, $impactData);
+
+            $this->logger->info('Optimization impact tracked', [
+                'version_id' => $versionId,
+                'impact_keys' => array_keys($impactData),
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Impact data recorded successfully',
+                'version_id' => $versionId,
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Impact tracking failed', [
+                'version_id' => $versionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'version_id' => $versionId,
+            ];
+        }
+    }
+
+    /**
+     * Clean old optimization snapshots based on retention policy.
+     *
+     * Removes snapshot files and marks old versions as non-rollbackable.
+     *
+     * @param int $daysToKeep Number of days to retain snapshots (default: 90)
+     * @return array{success: bool, cleaned: int, days_to_keep: int}
+     */
+    public function cleanupSnapshots(int $daysToKeep = 90): array
+    {
+        if ($this->versioningService === null) {
+            return [
+                'success' => false,
+                'cleaned' => 0,
+                'days_to_keep' => $daysToKeep,
+                'error' => 'Versioning service unavailable',
+            ];
+        }
+
+        try {
+            $cleaned = $this->versioningService->cleanOldSnapshots($daysToKeep);
+
+            $this->logger->info('Snapshot cleanup completed', [
+                'cleaned' => $cleaned,
+                'days_to_keep' => $daysToKeep,
+                'account_id' => $this->accountId,
+            ]);
+
+            return [
+                'success' => true,
+                'cleaned' => $cleaned,
+                'days_to_keep' => $daysToKeep,
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Snapshot cleanup failed', [
+                'error' => $e->getMessage(),
+                'days_to_keep' => $daysToKeep,
+            ]);
+
+            return [
+                'success' => false,
+                'cleaned' => 0,
+                'days_to_keep' => $daysToKeep,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
     // ─── Items Management ───────────────────────────────────────────
 
     /**

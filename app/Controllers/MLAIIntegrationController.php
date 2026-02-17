@@ -285,4 +285,101 @@ class MLAIIntegrationController extends BaseController
         $result = $this->getService()->getOptimizationStats();
         $this->jsonSuccess($result);
     }
+
+    /**
+     * GET /api/ml-ai/compare
+     * Compare two optimization versions side by side.
+     *
+     * Query: ?v1=123&v2=456
+     */
+    public function compare(): void
+    {
+        $v1 = (int)($_GET['v1'] ?? 0);
+        $v2 = (int)($_GET['v2'] ?? 0);
+
+        if ($v1 <= 0 || $v2 <= 0) {
+            $this->jsonError('Both v1 and v2 query params are required (positive integers)', 400);
+        }
+
+        if ($v1 === $v2) {
+            $this->jsonError('v1 and v2 must be different version IDs', 400);
+        }
+
+        $result = $this->getService()->compareVersions($v1, $v2);
+
+        if (!$result['success']) {
+            $this->jsonError($result['error'] ?? 'Comparison failed', 404);
+        }
+
+        $this->jsonSuccess($result);
+    }
+
+    /**
+     * POST /api/ml-ai/impact/{versionId}
+     * Track measured impact for an optimization version.
+     *
+     * Body: { views_delta?: float, sales_delta?: float, conversion_delta?: float, notes?: string, ... }
+     */
+    public function impact(string $versionId): void
+    {
+        $id = (int)$versionId;
+        if ($id <= 0) {
+            $this->jsonError('version_id must be a positive integer', 400);
+        }
+
+        $body = $this->request->json() ?? [];
+        if (empty($body)) {
+            $this->jsonError('Impact data body is required', 400);
+        }
+
+        // Sanitize — only allow known metric keys + arbitrary extras
+        $allowed = ['views_delta', 'sales_delta', 'conversion_delta', 'position_delta', 'notes', 'measured_at'];
+        $impactData = [];
+        foreach ($body as $key => $value) {
+            if (in_array($key, $allowed, true) || is_numeric($value)) {
+                $impactData[$key] = $value;
+            }
+        }
+
+        if (empty($impactData)) {
+            $this->jsonError('No valid impact metrics provided', 400);
+        }
+
+        // Add measurement timestamp if not provided
+        if (!isset($impactData['measured_at'])) {
+            $impactData['measured_at'] = date('Y-m-d H:i:s');
+        }
+
+        $result = $this->getService()->trackImpact($id, $impactData);
+
+        if (!$result['success']) {
+            $this->jsonError($result['message'] ?? 'Impact tracking failed', 500);
+        }
+
+        $this->jsonSuccess($result);
+    }
+
+    /**
+     * POST /api/ml-ai/cleanup
+     * Clean old optimization snapshots (retention policy).
+     *
+     * Body: { days_to_keep?: int } (default: 90)
+     */
+    public function cleanup(): void
+    {
+        $body = $this->request->json() ?? [];
+        $daysToKeep = (int)($body['days_to_keep'] ?? 90);
+
+        if ($daysToKeep < 1 || $daysToKeep > 365) {
+            $this->jsonError('days_to_keep must be between 1 and 365', 400);
+        }
+
+        $result = $this->getService()->cleanupSnapshots($daysToKeep);
+
+        if (!$result['success']) {
+            $this->jsonError($result['error'] ?? 'Cleanup failed', 500);
+        }
+
+        $this->jsonSuccess($result);
+    }
 }

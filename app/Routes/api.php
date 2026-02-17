@@ -220,6 +220,9 @@ $router->post('api/ml-ai/batch', \App\Controllers\MLAIIntegrationController::cla
 $router->get('api/ml-ai/history/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'history');
 $router->post('api/ml-ai/rollback/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'rollback');
 $router->get('api/ml-ai/stats', \App\Controllers\MLAIIntegrationController::class, 'stats');
+$router->get('api/ml-ai/compare', \App\Controllers\MLAIIntegrationController::class, 'compare');
+$router->post('api/ml-ai/impact/{versionId}', \App\Controllers\MLAIIntegrationController::class, 'impact');
+$router->post('api/ml-ai/cleanup', \App\Controllers\MLAIIntegrationController::class, 'cleanup');
 
 // ========================================
 // 🔥 SEO KILLER - Sistema Matador
