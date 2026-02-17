@@ -1,8 +1,54 @@
 # Claude Progress — eskill.com.br
 
-> Este arquivo é atualizado automaticamente por agentes IA ao final de cada sessão.
+> Este arquivo é atualizado automaticamente por agentes IA ao final de cada sessã o.
 > NUNCA delete entradas anteriores. Apenas adicione novas no topo.
 > Formato: mais recente primeiro (ordem cronológica reversa).
+
+---
+
+## Sessão: 2026-02-17 — Correção CRÍTICA: bug de mapeamento no health ML-AI
+
+### Problema Identificado
+O método `getMercadoLivreHealth()` no `MercadoLivreAIIntegrationService` tentava ler campos (`token_valid`, `public_api`, `auth_ok`) que **NÃO EXISTIAM** no retorno de `diagnose()`, resultando em:
+- Health sempre retornando `connected: false` mesmo com token válido
+- Diagnóstico da API do ML não sendo refletido no endpoint `/api/ml-ai/health`
+
+### Causa Raiz
+Mismatch entre estrutura de retorno:
+- `diagnose()` retorna: `connected`, `api_accessible`, `token_status` (string)
+- `getMercadoLivreHealth()` esperava: `token_valid` (bool), `public_api` (bool), `auth_ok` (bool)
+
+### Implementação
+
+#### 1) Adicionar campos derivados no `diagnose()`
+- `token_valid` = `$token_status === 'valid'`
+- `public_api` = `$api_accessible`
+- `auth_ok` = `$connected`
+
+#### 2) Corrigir `getMercadoLivreHealth()` para usar campos corretos
+- Prioriza campos primários (`connected`, `api_accessible`)
+- Usa campos derivados como fallback (compatibilidade)
+
+#### 3) Ferramentas de validação
+- **`bin/validate-ml-health-fix.php`** — valida que campos derivados estão presentes
+- **`bin/test-ml-integration.php`** — CLI completo para testar integração ML ↔ AI com diagnóstico detalhado
+
+### Testes
+- Adicionado `MercadoLivreAIIntegrationHealthTest.php` com 2 testes:
+  - Validação de estrutura do health
+  - Mock de `diagnose()` para verificar mapeamento correto
+
+### Arquivos Modificados
+- `app/Services/MercadoLivreClient.php` — `diagnose()` agora retorna campos derivados
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php` — `getMercadoLivreHealth()` corrigido
+- `tests/Unit/Services/MercadoLivre/MercadoLivreAIIntegrationHealthTest.php` (novo)
+- `bin/test-ml-integration.php` (novo)
+- `bin/validate-ml-health-fix.php` (novo)
+
+### Impacto
+✅ Health agora reflete corretamente o status real da integração ML  
+✅ Diagnóstico da API do ML (`/users/me`, `/sites/MLB`, etc.) visível via `checks`  
+✅ Campos `seller_id`, `token_source`, `db_unavailable` expostos no health  
 
 ---
 
