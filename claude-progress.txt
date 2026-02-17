@@ -6,6 +6,53 @@
 
 ---
 
+## Sessão: 2026-02-17 — Fix Completo: Description array/string mismatch (comprehensive)
+
+### Problema
+A sessão anterior identificou que `MercadoLivreClient::getItemDetails()` armazenava a description como array (response da API) ao invés de string. O quick-fix adicionou `extractDescriptionText()` em 2 services, mas 6+ consumidores downstream continuavam vulneráveis.
+
+### Correção Completa (6 arquivos)
+
+#### 1. Root Cause Fix — `MercadoLivreClient::getItemDetails()`
+- `$item['description']` agora = string (`plain_text ?? text ?? ''`)
+- `$item['description_data']` = array completo da API (para serviços que precisam)
+
+#### 2. Trait DRY — `app/Traits/NormalizesMLItems.php` (NOVO)
+- `normalizeMLItem(array)` — normalização completa de item ML
+- `extractDescriptionText(mixed)` — **public static**, trata string/array/null
+- `extractMLAttribute(array, string)` — **public static**, extrai BRAND, MODEL, etc.
+- Eliminou ~160 linhas duplicadas entre IntegrationService e OptimizationEngine
+
+#### 3. Refatoração — `MercadoLivreAIIntegrationService`
+- Agora usa `use NormalizesMLItems;`
+- Removido `normalizeMLItem()`, `extractAttribute()`, `extractDescriptionText()` duplicados
+
+#### 4. Refatoração — `AIOptimizationEngine`
+- Agora usa `use NormalizesMLItems;`
+- Removido `normalizeMLItem()`, `extractAttribute()`, `extractDescriptionText()` duplicados
+
+#### 5. Bug Fix — `SEOAuditService::auditDescription()`  
+- `strip_tags()` recebia array → TypeError
+- Agora usa `NormalizesMLItems::extractDescriptionText()` antes de strip_tags
+
+#### 6. Bug Fix — `RealMarketDataService::analyzeListingQuality()`
+- `scoreDescription()` espera array com `plain_text`/`text`
+- Agora usa `$item['description_data']` com fallback para string
+
+### Arquivos Modificados
+- `app/Traits/NormalizesMLItems.php` (+120, NOVO)
+- `app/Services/MercadoLivreClient.php` (+3, -1)
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php` (+2, -100)
+- `app/Services/AI/Core/AIOptimizationEngine.php` (+2, -60)
+- `app/Services/SEO/SEOAuditService.php` (+2, -1)
+- `app/Services/RealMarketDataService.php` (+7, -1)
+
+### Validação
+- `php -l` 6/6 arquivos — ZERO erros de sintaxe
+- `SEOStrategiesEngine` verificado — não precisa fix (array_merge com default string funciona)
+
+---
+
 ## Sessão: 2026-02-17 — Bug Fix: Description stored as array (commit 5fd6837)
 
 ### Bugs Encontrados e Corrigidos

@@ -12,6 +12,7 @@ use App\Services\AI\Analyzers\KeywordResearchService;
 use App\Services\AI\Analyzers\CompetitiveAnalysisService;
 use App\Services\ItemService;
 use App\Services\MercadoLivreClient;
+use App\Traits\NormalizesMLItems;
 
 /**
  * Main AI Optimization Engine
@@ -19,6 +20,8 @@ use App\Services\MercadoLivreClient;
  */
 class AIOptimizationEngine
 {
+    use NormalizesMLItems;
+
     private AIProviderManager $providerManager;
     private TitleOptimizer $titleOptimizer;
     private DescriptionOptimizer $descriptionOptimizer;
@@ -367,75 +370,8 @@ class AIOptimizationEngine
         }
     }
 
-    /**
-     * Normalize Mercado Livre item data to internal format
-     * 
-     * @param array $mlItem Raw ML API response
-     * @return array Normalized item data
-     */
-    private function normalizeMLItem(array $mlItem): array
-    {
-        return [
-            'id' => $mlItem['id'] ?? '',
-            'title' => $mlItem['title'] ?? '',
-            'description' => $this->extractDescriptionText($mlItem['description'] ?? null, $mlItem['id'] ?? ''),
-            'category' => $mlItem['category_id'] ?? '',
-            'category_id' => $mlItem['category_id'] ?? '',
-            'brand' => $this->extractAttribute($mlItem, 'BRAND') ?? '',
-            'model' => $this->extractAttribute($mlItem, 'MODEL') ?? '',
-            'price' => floatval($mlItem['price'] ?? 0),
-            'original_price' => floatval($mlItem['original_price'] ?? $mlItem['price'] ?? 0),
-            'currency_id' => $mlItem['currency_id'] ?? 'BRL',
-            'available_quantity' => intval($mlItem['available_quantity'] ?? 0),
-            'sold_quantity' => intval($mlItem['sold_quantity'] ?? 0),
-            'images' => array_map(fn($img) => [
-                'url' => $img['url'] ?? $img['secure_url'] ?? '',
-                'id' => $img['id'] ?? ''
-            ], $mlItem['pictures'] ?? []),
-            'attributes' => array_map(fn($attr) => [
-                'id' => $attr['id'] ?? '',
-                'name' => $attr['name'] ?? '',
-                'value' => $attr['value_name'] ?? ''
-            ], $mlItem['attributes'] ?? []),
-            'free_shipping' => $mlItem['shipping']['free_shipping'] ?? false,
-            'status' => $mlItem['status'] ?? 'unknown',
-            'permalink' => $mlItem['permalink'] ?? '',
-            'health' => $mlItem['health'] ?? null,
-        ];
-    }
-
-    /**
-     * Extract specific attribute from ML item
-     */
-    private function extractAttribute(array $mlItem, string $attrId): ?string
-    {
-        foreach ($mlItem['attributes'] ?? [] as $attr) {
-            if (($attr['id'] ?? '') === $attrId) {
-                return $attr['value_name'] ?? null;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Extract description text from ML API response.
-     *
-     * MercadoLivreClient::getItemDetails() stores the description as an array
-     * (the raw /items/{id}/description response: {plain_text, text, ...}).
-     * This method safely extracts the text string.
-     */
-    private function extractDescriptionText(mixed $description, string $itemId): string
-    {
-        if (is_string($description)) {
-            return $description;
-        }
-
-        if (is_array($description)) {
-            return $description['plain_text'] ?? $description['text'] ?? '';
-        }
-
-        return $this->fetchDescription($itemId);
-    }
+    // normalizeMLItem() and extractMLAttribute() provided by NormalizesMLItems trait.
+    // fetchDescription() is local since it needs $this->mlClient with session fallback.
 
     /**
      * Fetch description separately (ML API returns description in separate endpoint)

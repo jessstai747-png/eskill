@@ -7,6 +7,7 @@ namespace App\Services\MercadoLivre;
 use App\Services\MercadoLivreClient;
 use App\Services\AI\Core\AIProviderManager;
 use App\Services\ItemService;
+use App\Traits\NormalizesMLItems;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
@@ -23,6 +24,8 @@ use Monolog\Handler\StreamHandler;
  */
 class MercadoLivreAIIntegrationService
 {
+    use NormalizesMLItems;
+
     private MercadoLivreClient $mlClient;
     private AIProviderManager $aiProviderManager;
     private ?ItemService $itemService = null;
@@ -951,78 +954,13 @@ class MercadoLivreAIIntegrationService
     }
 
     // ─── Item Normalization ─────────────────────────────────────────
-
-    /**
-     * Normalize ML API item response to internal format.
-     */
-    private function normalizeMLItem(array $mlItem): array
-    {
-        return [
-            'id' => $mlItem['id'] ?? '',
-            'title' => $mlItem['title'] ?? '',
-            'description' => $this->extractDescriptionText($mlItem['description'] ?? null, $mlItem['id'] ?? ''),
-            'category_id' => $mlItem['category_id'] ?? '',
-            'brand' => $this->extractAttribute($mlItem, 'BRAND') ?? '',
-            'model' => $this->extractAttribute($mlItem, 'MODEL') ?? '',
-            'price' => floatval($mlItem['price'] ?? 0),
-            'original_price' => floatval($mlItem['original_price'] ?? $mlItem['price'] ?? 0),
-            'currency_id' => $mlItem['currency_id'] ?? 'BRL',
-            'available_quantity' => intval($mlItem['available_quantity'] ?? 0),
-            'sold_quantity' => intval($mlItem['sold_quantity'] ?? 0),
-            'images' => array_map(fn(array $img): array => [
-                'url' => $img['url'] ?? $img['secure_url'] ?? '',
-                'id' => $img['id'] ?? '',
-            ], $mlItem['pictures'] ?? []),
-            'attributes' => array_map(fn(array $attr): array => [
-                'id' => $attr['id'] ?? '',
-                'name' => $attr['name'] ?? '',
-                'value' => $attr['value_name'] ?? '',
-            ], $mlItem['attributes'] ?? []),
-            'free_shipping' => $mlItem['shipping']['free_shipping'] ?? false,
-            'status' => $mlItem['status'] ?? 'unknown',
-            'permalink' => $mlItem['permalink'] ?? '',
-            'health' => $mlItem['health'] ?? null,
-        ];
-    }
-
-    /**
-     * Extract a specific attribute value from ML item.
-     */
-    private function extractAttribute(array $mlItem, string $attrId): ?string
-    {
-        foreach ($mlItem['attributes'] ?? [] as $attr) {
-            if (($attr['id'] ?? '') === $attrId) {
-                return $attr['value_name'] ?? null;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Extract description text from ML API response.
-     *
-     * MercadoLivreClient::getItemDetails() stores the description as an array
-     * (the raw /items/{id}/description response: {plain_text, text, ...}).
-     * This method safely extracts the text string.
-     */
-    private function extractDescriptionText(mixed $description, string $itemId): string
-    {
-        // Already a string (from some code paths)
-        if (is_string($description)) {
-            return $description;
-        }
-
-        // Array from getItemDetails() — extract plain_text or text
-        if (is_array($description)) {
-            return $description['plain_text'] ?? $description['text'] ?? '';
-        }
-
-        // Null or missing — fetch from API
-        return $this->fetchDescription($itemId);
-    }
+    // Uses NormalizesMLItems trait for normalizeMLItem(), extractDescriptionText(),
+    // and extractMLAttribute(). Only fetchDescription() is local since it needs $this->mlClient.
 
     /**
      * Fetch item description from ML API (separate endpoint).
+     *
+     * Called as fallback when normalizeMLItem() encounters a null description.
      */
     private function fetchDescription(string $itemId): string
     {
