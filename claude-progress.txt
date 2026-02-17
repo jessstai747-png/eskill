@@ -6,6 +6,51 @@
 
 ---
 
+## Sessão: 2026-02-17 — Circuit Breaker AI + strict_types + Logging
+
+### Problema Identificado
+- Todos os 3 provedores AI (OpenAI, Anthropic, Gemini) com chaves inválidas/demo
+- `isAvailable()` checava apenas `!empty($apiKey)`, então chaves inválidas passavam
+- `executeWithFallback()` tentava TODOS os providers em cada request → 6+ erros de log por request
+- Log flooding: 401 Unauthorized (OpenAI), 400 credit_balance_too_low (Anthropic), 400 API key not valid (Gemini)
+
+### Implementação: Circuit Breaker Pattern
+- Adicionado circuit breaker em `AIProviderManager` com TTL de 300s
+- Após erro de autenticação/chave/crédito, provider é "tripped" e pulado por 5 minutos
+- Persistência em arquivo (`/tmp/ai_provider_circuit_breaker.json`) para cross-request
+- Detecção de padrões: 'Unauthorized', 'API key', 'credit balance', 'authentication', etc.
+- Métodos públicos: `getCircuitBrokenProviders()`, `resetCircuit()`, `resetAllCircuits()`
+
+### Melhorias de Código
+- `declare(strict_types=1)` adicionado em 8 arquivos:
+  - `AIProviderManager.php`, `AbstractAIProvider.php`
+  - `OpenAIProvider.php`, `ClaudeProvider.php`, `GeminiProvider.php`
+  - `GapHunterService.php`, `CompetitorService.php`, `CompetitorAnalysisService.php`
+- `GapHunterService`: 3 catch blocks silenciosos substituídos por logging estruturado via StructuredLogService
+- `CompetitorService` e `CompetitorAnalysisService`: revisados — código sólido com PDO prepared statements
+
+### Arquivos Modificados
+- `app/Services/AI/Core/AIProviderManager.php` — Circuit breaker + strict_types
+- `app/Services/AI/Providers/AbstractAIProvider.php` — strict_types
+- `app/Services/AI/Providers/OpenAIProvider.php` — strict_types
+- `app/Services/AI/Providers/ClaudeProvider.php` — strict_types
+- `app/Services/AI/Providers/GeminiProvider.php` — strict_types
+- `app/Services/GapHunterService.php` — strict_types + logging
+- `app/Services/CompetitorService.php` — strict_types
+- `app/Services/CompetitorAnalysisService.php` — strict_types
+
+### Validação
+- `php -l` — Sem erros de sintaxe em todos os 8 arquivos
+- Revisão de CompetitorService (551 linhas) — PDO seguro, rate limiting OK, schema idempotente
+
+### Próximos Passos
+1. Validar features COMP-001, AI-001 no project-status.json
+2. Revisar CompetitorAnalysisController (raw SQL, auth em constructor)
+3. Testar Clone features (CLONE-003 a CLONE-008)
+4. Implementar Pricing avançado (PRICE-002 a PRICE-005)
+
+---
+
 ## Sessão: 2026-02-17 — Correção de 4 Bugs (Segurança + Schema Drift + Info Leak)
 
 ### Bugs Corrigidos
