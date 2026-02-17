@@ -6,6 +6,27 @@
 
 ---
 
+## Sessão: 2026-02-17 — Bug Fix: Description stored as array (commit 5fd6837)
+
+### Bugs Encontrados e Corrigidos
+
+#### BUG 1 (Crítico): Description como array ao invés de string
+- **Causa raiz**: `MercadoLivreClient::getItemDetails()` faz `$item['description'] = $desc` onde `$desc` é o response ARRAY de `/items/{id}/description` (contém `plain_text`, `text`, `date_created`, etc.)
+- **Impacto**: `normalizeMLItem()` em AMBOS os arquivos (`MercadoLivreAIIntegrationService` e `AIOptimizationEngine`) armazenava esse array como se fosse string
+- **Consequência**: Corrupção silenciosa de dados — toda description downstream recebia um array ao invés de texto
+- **Correção**: Criado `extractDescriptionText()` que trata os 3 cenários: string, array, e null
+
+#### BUG 2 (Médio): AIOptimizationEngine instanciado mas nunca usado
+- **Causa raiz**: `MercadoLivreAIIntegrationService` criava `new AIOptimizationEngine(null, $accountId)` no construtor mas NUNCA chamava nenhum método dele
+- **Impacto**: Desperdício de memória — AIOptimizationEngine inicializa 6+ sub-services (KeywordResearchService, CompetitiveAnalysisService, TitleOptimizer, etc.)
+- **Correção**: Removido property, import, e instanciação
+
+### Arquivos Modificados
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php` (+28, -5)
+- `app/Services/AI/Core/AIOptimizationEngine.php` (+22, -1)
+
+---
+
 ## Sessão: 2026-02-17 — ML ↔ AI Integration Pipeline (commit df8083b)
 
 ### Objetivo
