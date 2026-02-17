@@ -120,11 +120,17 @@ class MercadoLivreAIIntegrationService
         try {
             $diagnosis = $this->mlClient->diagnose();
 
+            // Map diagnose() output to health structure
+            // Primary field: 'connected' = successfully called /users/me
+            // Fallback: public API is accessible (for non-authenticated scenarios)
+            $isConnected = $diagnosis['connected'] ?? false;
+            $publicApiOk = $diagnosis['api_accessible'] ?? false;
+
             return [
-                'connected' => ($diagnosis['token_valid'] ?? false) || ($diagnosis['public_api'] ?? false),
-                'token_valid' => $diagnosis['token_valid'] ?? false,
-                'public_api' => $diagnosis['public_api'] ?? false,
-                'auth_ok' => $diagnosis['auth_ok'] ?? false,
+                'connected' => $isConnected || $publicApiOk,
+                'token_valid' => $diagnosis['token_valid'] ?? ($diagnosis['token_status'] === 'valid'),
+                'public_api' => $diagnosis['public_api'] ?? $publicApiOk,
+                'auth_ok' => $diagnosis['auth_ok'] ?? $isConnected,
                 'items_count' => $diagnosis['items_count'] ?? 0,
                 'seller_id' => $diagnosis['seller_id'] ?? null,
                 'token_source' => $diagnosis['token_source'] ?? 'unknown',

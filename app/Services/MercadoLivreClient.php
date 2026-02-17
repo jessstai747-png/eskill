@@ -1383,6 +1383,11 @@ class MercadoLivreClient
             }
         }
 
+        // Derived/computed fields for easier consumption
+        $result['token_valid'] = $result['token_status'] === 'valid';
+        $result['public_api'] = $result['api_accessible'];
+        $result['auth_ok'] = $result['connected'];
+
         return $result;
     }
 }
