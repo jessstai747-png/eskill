@@ -40,17 +40,17 @@ echo "\nTest 2: MercadoLivreAIIntegrationService health mapping...\n";
 try {
     $service = new \App\Services\MercadoLivre\MercadoLivreAIIntegrationService(0);
     $health = $service->getHealthStatus();
-    
+
     $mlHealth = $health['ml'] ?? [];
     $requiredMLFields = ['connected', 'token_valid', 'public_api', 'auth_ok', 'items_count', 'seller_id', 'token_source', 'db_unavailable', 'checks', 'account_id', 'mode'];
-    
+
     $missingML = [];
     foreach ($requiredMLFields as $field) {
         if (!array_key_exists($field, $mlHealth)) {
             $missingML[] = $field;
         }
     }
-    
+
     if (empty($missingML)) {
         echo "  ✅ All health fields present\n";
         echo "     - connected: " . var_export($mlHealth['connected'], true) . "\n";
