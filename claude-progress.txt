@@ -6,6 +6,47 @@
 
 ---
 
+## Sessão: 2026-02-17 — Correção Completa do "não funciona" ML-AI (modo degradado + resolução de conta)
+
+### Objetivo
+Eliminar o bloqueio da integração ML-AI quando o ambiente está sem MySQL/sessão ativa, mantendo os endpoints `/api/ml-ai/*` utilizáveis via token do ambiente e/ou accountId via header/query.
+
+### Implementação
+
+#### 1) Resolução de conta ativa sem depender de sessão
+- `BaseController::getActiveAccountId()` agora suporta:
+  - Sessão (`active_ml_account_id` / `account_id`)
+  - Header `X-ML-Account-Id`
+  - Query/body/json `ml_account_id` (fallback `account_id`)
+
+#### 2) ML-AI Controller com fallback para modo single-token
+- `MLAIIntegrationController` passa a permitir modo degradado quando `ML_ACCESS_TOKEN` está configurado e não há conta ativa.
+
+#### 3) Service ML-AI com dependências de DB opcionais
+- `MercadoLivreAIIntegrationService` aceita `accountId <= 0` como modo `env_token`:
+  - Instancia `MercadoLivreClient(null)` (token via ambiente)
+  - `ItemService` e `VersioningService` ficam opcionais (non-fatal)
+  - Corrigido path do log para `storage/logs/ml_ai_integration.log`
+
+#### 4) Client do Mercado Livre resiliente a indisponibilidade do DB
+- `MercadoLivreClient` faz fallback controlado para `ML_ACCESS_TOKEN` quando o erro ao carregar conta indica DB indisponível.
+- Erros de token ausente agora retornam metadados: `token_source` e `db_unavailable`.
+
+#### 5) Smoke test de DB corrigido
+- `bin/init.sh` agora testa MySQL usando `DB_HOST/DB_PORT/DB_DATABASE/DB_USERNAME/DB_PASSWORD` (evita socket via localhost).
+
+### Testes
+- Adicionado teste unitário cobrindo resolução de `getActiveAccountId()` via sessão/header/query.
+
+### Arquivos Modificados
+- `app/Controllers/BaseController.php`
+- `app/Controllers/MLAIIntegrationController.php`
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php`
+- `app/Services/MercadoLivreClient.php`
+- `app/Database.php`
+- `bin/init.sh`
+- `tests/Unit/Controllers/BaseControllerActiveAccountIdTest.php`
+
 ## Sessão: 2026-02-17 (cont.) — Version Comparison, Impact Tracking & Snapshot Cleanup
 
 ### Objetivo

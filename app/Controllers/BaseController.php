@@ -72,8 +72,34 @@ abstract class BaseController
      */
     protected function getActiveAccountId(): ?int
     {
+        // 1) Sessão (fluxo web)
         $id = $_SESSION['active_ml_account_id'] ?? ($_SESSION['account_id'] ?? null);
-        return $id !== null ? (int) $id : null;
+        if ($id !== null) {
+            $id = (int)$id;
+            return $id > 0 ? $id : null;
+        }
+
+        // 2) Header (fluxo API/CLI): X-ML-Account-Id
+        $header = $this->request->header('X-ML-Account-Id');
+        if (is_string($header) && $header !== '') {
+            $candidate = (int)$header;
+            if ($candidate > 0) {
+                return $candidate;
+            }
+        }
+
+        // 3) Query/Body/JSON: ml_account_id (fallback compat: account_id)
+        $candidate = $this->request->inputInt('ml_account_id', 0);
+        if ($candidate > 0) {
+            return $candidate;
+        }
+
+        $candidate = $this->request->inputInt('account_id', 0);
+        if ($candidate > 0) {
+            return $candidate;
+        }
+
+        return null;
     }
 
     /**

@@ -24,6 +24,8 @@ class MercadoLivreClient
     private ?CacheService $cacheService = null;
     private ?CircuitBreakerService $circuitBreaker = null;
     private static bool $circuitBreakerEnabled = true;
+    private bool $dbUnavailable = false;
+    private string $tokenSource = 'none';
 
     public function __construct(?int $accountId = null, ?MercadoLivreAuthService $authService = null)
     {
@@ -51,11 +53,17 @@ class MercadoLivreClient
         $envAccessToken = (string)($_ENV['ML_ACCESS_TOKEN'] ?? getenv('ML_ACCESS_TOKEN') ?? '');
 
         $accountLoaded = false;
+        $loadAccountError = null;
         if ($this->accountId !== null) {
             try {
                 $accountLoaded = $this->loadAccount();
+                if ($accountLoaded) {
+                    $this->tokenSource = 'db';
+                }
             } catch (\Throwable $e) {
-                // best-effort; se falhar, tenta token do ambiente abaixo
+                // best-effort; se falhar, podemos fazer fallback para token do ambiente SOMENTE
+                // quando o erro for de infraestrutura (DB indisponível).
+                $loadAccountError = $e;
             }
         }
 
@@ -65,6 +73,24 @@ class MercadoLivreClient
         if (!$accountLoaded && $this->accountId === null) {
             $this->accessToken = $envAccessToken;
             $this->hasAccessToken = $this->accessToken !== '';
+            $this->tokenSource = $this->hasAccessToken ? 'env' : 'none';
+        }
+
+        // Fallback controlado: quando accountId foi informado, mas o DB está indisponível,
+        // permitimos usar ML_ACCESS_TOKEN para não derrubar toda a integração.
+        if (!$accountLoaded && $this->accountId !== null && $envAccessToken !== '' && $this->isDbUnavailableError($loadAccountError)) {
+            $this->dbUnavailable = true;
+            $this->accessToken = $envAccessToken;
+            $this->hasAccessToken = true;
+            $this->tokenSource = 'env_fallback_db_error';
+
+            // Evitar tentativas de refresh via DB durante requisições (ensureValidAccessToken)
+            $this->accountId = null;
+            $this->refreshHttpClient();
+
+            log_warning('DB indisponível ao carregar conta ML — usando ML_ACCESS_TOKEN como fallback (modo degradado)', [
+                'hint' => 'Suba/configure o MySQL para reativar multi-conta e refresh automático',
+            ]);
         }
 
         // 3) Aviso único quando não há token disponível de nenhuma fonte
@@ -202,6 +228,9 @@ class MercadoLivreClient
         $this->refreshToken = (string) $refreshToken;
         $this->tokenExpiresAt = $row['token_expires_at'] ?? null;
         $this->hasAccessToken = $this->accessToken !== '';
+        if ($this->hasAccessToken) {
+            $this->tokenSource = 'db';
+        }
         $this->refreshHttpClient();
 
         return $this->hasAccessToken;
@@ -244,6 +273,36 @@ class MercadoLivreClient
         return $this->loadAccount();
     }
 
+    private function isDbUnavailableError(?\Throwable $e): bool
+    {
+        if ($e === null) {
+            return false;
+        }
+
+        $msg = $e->getMessage();
+        if (!is_string($msg) || $msg === '') {
+            return false;
+        }
+
+        // Database.php encapsula PDOException e lança \Exception com esta mensagem.
+        if (stripos($msg, 'Database connection failed') !== false) {
+            return true;
+        }
+
+        // Outros padrões comuns de indisponibilidade
+        if (stripos($msg, 'SQLSTATE[HY000]') !== false) {
+            return true;
+        }
+        if (stripos($msg, 'Connection refused') !== false) {
+            return true;
+        }
+        if (stripos($msg, 'No such file or directory') !== false) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function getAccessToken(): string
     {
         return $this->accessToken;
@@ -260,7 +319,12 @@ class MercadoLivreClient
             'error' => 'missing_access_token',
             'message' => 'Mercado Livre access token not configured.',
             'endpoint' => $endpoint,
-            'status' => 401
+            'status' => 401,
+            'token_source' => $this->tokenSource,
+            'db_unavailable' => $this->dbUnavailable,
+            'hint' => $this->dbUnavailable
+                ? 'DB indisponível; configure MySQL ou defina ML_ACCESS_TOKEN para modo degradado.'
+                : 'Configure ML_ACCESS_TOKEN ou conecte uma conta em ml_accounts via OAuth.',
         ];
     }
 

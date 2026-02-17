@@ -33,6 +33,7 @@ class MercadoLivreAIIntegrationService
     private ?VersioningService $versioningService = null;
     private Logger $logger;
     private int $accountId;
+    private string $mode;
 
     /** @var array<string, mixed> Cached category data to avoid repeated API calls */
     private array $categoryCache = [];
@@ -40,19 +41,38 @@ class MercadoLivreAIIntegrationService
     public function __construct(int $accountId)
     {
         $this->accountId = $accountId;
-        $this->mlClient = new MercadoLivreClient($accountId);
-        $this->aiProviderManager = new AIProviderManager();
-        $this->itemService = new ItemService($accountId);
+        $mlAccountId = $accountId > 0 ? $accountId : null;
+        $this->mode = $mlAccountId === null ? 'env_token' : 'multi_account';
 
-        try {
-            $this->versioningService = new VersioningService($accountId);
-        } catch (\Throwable $e) {
-            // VersioningService may fail if DB/snapshot dir unavailable — non-fatal
+        // When $accountId <= 0 we operate in single-token mode (ML_ACCESS_TOKEN).
+        // This avoids hard dependency on DB/session for basic ML API operations.
+        $this->mlClient = new MercadoLivreClient($mlAccountId);
+        $this->aiProviderManager = new AIProviderManager();
+
+        if ($mlAccountId !== null) {
+            try {
+                $this->itemService = new ItemService($accountId);
+            } catch (\Throwable $e) {
+                // ItemService may fail if DB is unavailable — non-fatal for ML API operations.
+                $this->itemService = null;
+            }
+        } else {
+            $this->itemService = null;
+        }
+
+        if ($mlAccountId !== null) {
+            try {
+                $this->versioningService = new VersioningService($accountId);
+            } catch (\Throwable $e) {
+                // VersioningService may fail if DB/snapshot dir unavailable — non-fatal
+                $this->versioningService = null;
+            }
+        } else {
             $this->versioningService = null;
         }
 
         $this->logger = new Logger('ml_ai_integration');
-        $logPath = dirname(__DIR__, 2) . '/storage/logs/ml_ai_integration.log';
+        $logPath = dirname(__DIR__, 4) . '/storage/logs/ml_ai_integration.log';
         if (is_dir(dirname($logPath))) {
             $this->logger->pushHandler(new StreamHandler($logPath, Logger::INFO));
         }
@@ -107,6 +127,7 @@ class MercadoLivreAIIntegrationService
                 'auth_ok' => $diagnosis['auth_ok'] ?? false,
                 'items_count' => $diagnosis['items_count'] ?? 0,
                 'account_id' => $this->accountId,
+                'mode' => $this->mode,
             ];
         } catch (\Throwable $e) {
             $this->logger->error('ML health check failed', [
@@ -121,6 +142,7 @@ class MercadoLivreAIIntegrationService
                 'auth_ok' => false,
                 'items_count' => 0,
                 'account_id' => $this->accountId,
+                'mode' => $this->mode,
                 'error' => $e->getMessage(),
             ];
         }

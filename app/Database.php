@@ -14,7 +14,8 @@ class Database
     private function __construct()
     {
         // The connection details come from environment variables
-        $host = $_ENV['DB_HOST'] ?? 'localhost';
+        // Prefer TCP default to avoid implicit unix socket behavior (common source of failures in containers/WSL).
+        $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
         $port = $_ENV['DB_PORT'] ?? '3306';
         $dbname = $_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? 'meli';
         $username = $_ENV['DB_USERNAME'] ?? $_ENV['DB_USER'] ?? 'root';
@@ -22,7 +23,7 @@ class Database
 
         // Validate required environment variables
         if (empty($_ENV['DB_HOST']) && empty(getenv('DB_HOST'))) {
-            log_warning('DB_HOST não definido, usando default: localhost');
+            log_warning('DB_HOST não definido, usando default: 127.0.0.1');
         }
         if (empty($_ENV['DB_DATABASE']) && empty(getenv('DB_DATABASE'))) {
             log_warning('DB_DATABASE não definido, usando default: meli');
