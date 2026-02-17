@@ -972,7 +972,142 @@ class MercadoLivreClient
     }
 
     /**
-     * Get search results for a keyword in a category
+     * Update item description via dedicated ML endpoint.
+     *
+     * ML API requires PUT /items/{id}/description — updating description
+     * via the main item endpoint is not supported.
+     *
+     * @param string $itemId ML item ID (e.g. MLB1234567890)
+     * @param string $plainText New description text
+     * @return array{success: bool, item_id: string, message: string}
+     */
+    public function updateDescription(string $itemId, string $plainText): array
+    {
+        $result = $this->requestWithRetry('PUT', "/items/{$itemId}/description", [
+            'json' => ['plain_text' => $plainText],
+        ]);
+
+        $hasError = isset($result['error']);
+
+        return [
+            'success' => !$hasError,
+            'item_id' => $itemId,
+            'response' => $result,
+            'message' => $hasError
+                ? ($result['message'] ?? 'Erro ao atualizar descrição')
+                : 'Descrição atualizada com sucesso',
+        ];
+    }
+
+    /**
+     * Get listing quality health for a specific item.
+     *
+     * ML API: GET /items/{id}/health
+     * Returns quality score, warnings, and recommendations.
+     *
+     * @return array Item health data from ML
+     */
+    public function getItemHealth(string $itemId): array
+    {
+        try {
+            return $this->get("/items/{$itemId}/health");
+        } catch (\Exception $e) {
+            log_error('Erro ao obter saúde do item', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get seller's listing quality rankings.
+     *
+     * ML API: GET /users/{sellerId}/items/search with quality filters.
+     * Useful for finding items that need SEO optimization.
+     *
+     * @param array $filters Filters: status, category, sort, offset, limit
+     * @return array{items: array, paging: array}
+     */
+    public function getSellerItemsForOptimization(array $filters = []): array
+    {
+        $sellerId = $this->getSellerId();
+        if (empty($sellerId)) {
+            return ['items' => [], 'paging' => ['total' => 0]];
+        }
+
+        $params = [
+            'status' => $filters['status'] ?? 'active',
+            'offset' => $filters['offset'] ?? 0,
+            'limit' => min($filters['limit'] ?? 50, 100),
+        ];
+
+        if (!empty($filters['category'])) {
+            $params['category'] = $filters['category'];
+        }
+
+        if (!empty($filters['sort'])) {
+            $params['sort'] = $filters['sort'];
+        }
+
+        try {
+            $data = $this->get("/users/{$sellerId}/items/search", $params);
+
+            if (isset($data['error'])) {
+                return ['items' => [], 'paging' => ['total' => 0]];
+            }
+
+            $itemIds = $data['results'] ?? [];
+            $paging = $data['paging'] ?? ['total' => 0, 'offset' => 0, 'limit' => 50];
+
+            // Fetch basic details for each item (multi-get)
+            $items = [];
+            if (!empty($itemIds)) {
+                $idsChunk = array_slice($itemIds, 0, 20); // Max 20 per multi-get
+                $multiGet = $this->get('/items', ['ids' => implode(',', $idsChunk)], 120, true);
+
+                if (is_array($multiGet)) {
+                    foreach ($multiGet as $entry) {
+                        $body = $entry['body'] ?? $entry;
+                        if (isset($body['id'])) {
+                            $items[] = [
+                                'id' => $body['id'],
+                                'title' => $body['title'] ?? '',
+                                'price' => $body['price'] ?? 0,
+                                'status' => $body['status'] ?? '',
+                                'category_id' => $body['category_id'] ?? '',
+                                'permalink' => $body['permalink'] ?? '',
+                                'sold_quantity' => $body['sold_quantity'] ?? 0,
+                                'available_quantity' => $body['available_quantity'] ?? 0,
+                                'thumbnail' => $body['thumbnail'] ?? '',
+                                'listing_type_id' => $body['listing_type_id'] ?? '',
+                                'health' => $body['health'] ?? null,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            return [
+                'items' => $items,
+                'paging' => $paging,
+            ];
+        } catch (\Exception $e) {
+            log_error('Erro ao buscar itens para otimização', [
+                'seller_id' => $sellerId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['items' => [], 'paging' => ['total' => 0]];
+        }
+    }
+
+    /**
+     * Get search results for a keyword in a category.
+     *
+     * Returns the full paged response including 'results' and 'paging' keys,
+     * so callers can access total counts and iterate pages.
+     *
+     * @return array{results: array, paging: array}
      */
     public function searchByKeyword(string $keyword, string $categoryId, int $limit = 20): array
     {
@@ -985,30 +1120,31 @@ class MercadoLivreClient
             ], 300, true);
 
             if (isset($data['error'])) {
-                return [];
+                return ['results' => [], 'paging' => ['total' => 0]];
             }
 
-            $results = [];
-            if (isset($data['results'])) {
-                foreach ($data['results'] as $item) {
-                    $results[] = [
-                        'id' => $item['id'] ?? '',
-                        'title' => $item['title'] ?? '',
-                        'price' => $item['price'] ?? 0,
-                        'sold_quantity' => $item['sold_quantity'] ?? 0,
-                        'permalink' => $item['permalink'] ?? ''
-                    ];
-                }
+            $items = [];
+            foreach ($data['results'] ?? [] as $item) {
+                $items[] = [
+                    'id' => $item['id'] ?? '',
+                    'title' => $item['title'] ?? '',
+                    'price' => $item['price'] ?? 0,
+                    'sold_quantity' => $item['sold_quantity'] ?? 0,
+                    'permalink' => $item['permalink'] ?? '',
+                ];
             }
 
-            return $results;
+            return [
+                'results' => $items,
+                'paging' => $data['paging'] ?? ['total' => count($items)],
+            ];
         } catch (\Exception $e) {
             log_error('Erro ao buscar por keyword na ML API', [
                 'keyword' => $keyword,
                 'category_id' => $categoryId,
                 'error' => $e->getMessage(),
             ]);
-            return [];
+            return ['results' => [], 'paging' => ['total' => 0]];
         }
     }
 
@@ -1018,8 +1154,9 @@ class MercadoLivreClient
     public function getCompetitorAnalysis(string $keyword, string $categoryId): array
     {
         try {
-            // Get search results to analyze competitors
-            $results = $this->searchByKeyword($keyword, $categoryId, 50);
+            // searchByKeyword now returns {results: [...], paging: {...}}
+            $searchData = $this->searchByKeyword($keyword, $categoryId, 50);
+            $results = $searchData['results'] ?? [];
 
             // Analyze pricing and performance
             $prices = array_column($results, 'price');
@@ -1039,12 +1176,12 @@ class MercadoLivreClient
                 'price_analysis' => [
                     'min' => $minPrice,
                     'max' => $maxPrice,
-                    'avg' => $avgPrice
+                    'avg' => $avgPrice,
                 ],
                 'market_insights' => [
-                    'total_results' => count($results),
-                    'competitor_density' => count($results) > 20 ? 'high' : (count($results) > 5 ? 'medium' : 'low')
-                ]
+                    'total_results' => $searchData['paging']['total'] ?? count($results),
+                    'competitor_density' => count($results) > 20 ? 'high' : (count($results) > 5 ? 'medium' : 'low'),
+                ],
             ];
         } catch (\Exception $e) {
             log_error('Erro ao obter análise de concorrência da ML API', [

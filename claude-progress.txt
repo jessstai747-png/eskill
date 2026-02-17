@@ -6,6 +6,65 @@
 
 ---
 
+## Sessão: 2026-02-17 — Integração Completa ML ↔ AI com API do Mercado Livre
+
+### Objetivo
+Integrar a implementação de normalização (trait + fixes) com a API do Mercado Livre end-to-end — corrigir bugs de integração, adicionar endpoints faltantes, e criar worker de background.
+
+### Bugs Corrigidos
+
+#### BUG 1: searchByKeyword() retornava array flat
+- `MercadoLivreClient::searchByKeyword()` retornava `[{id,title,...}]` (array flat)
+- `getCompetitorContext()` no IntegrationService esperava `{results: [...], paging: {total: N}}`
+- Resultado: competidores sempre vazios em todas as otimizações
+- **Fix**: searchByKeyword agora retorna `{results: [...], paging: {...}}`
+- **Fix**: getCompetitorAnalysis() atualizado para usar nova estrutura
+
+#### BUG 2: applyOptimizations() com erro de detecção
+- Usava `$this->itemService->updateItem()` que retorna response ML raw
+- Verificava `isset($apiResult['error'])` — frágil e inconsistente
+- Descrição era enviada via `$this->mlClient->put()` sem verificação de resposta
+- **Fix**: Usa `$this->mlClient->updateItem()` que retorna `{success: bool}` com detecção confiável
+- **Fix**: Descrição via novo `$this->mlClient->updateDescription()` com tratamento completo
+- **Fix**: Sync local DB via `ItemService::syncItem()` após update bem-sucedido
+
+### Novos Métodos — MercadoLivreClient
+- `updateDescription(string $itemId, string $plainText): array` — PUT /items/{id}/description
+- `getItemHealth(string $itemId): array` — GET /items/{id}/health
+- `getSellerItemsForOptimization(array $filters): array` — GET /users/{seller}/items/search + multi-get
+
+### Novos Métodos — MercadoLivreAIIntegrationService
+- `getItemsForOptimization(array $filters): array` — lista itens com SEO score para triage
+- `getItemStatus(string $itemId): ?array` — status detalhado + SEO score + health
+- `updateDescription(string $itemId, string $description): array` — atualiza descrição com validação
+- `quickSeoScore(array $item): array` — scoring heurístico (titulo/desc/imgs/attrs = 100pts)
+
+### Novos Endpoints REST
+- `GET  /api/ml-ai/items` — listar itens para otimização
+- `GET  /api/ml-ai/status/{itemId}` — status + SEO score de item
+- `PUT  /api/ml-ai/description/{itemId}` — atualizar descrição
+
+### Worker de Background
+- `bin/ml-ai-optimization-worker.php` — CLI worker com:
+  - `--account=ID` (obrigatório), `--item=MLB...`, `--limit=N`
+  - `--auto-apply`, `--dry-run`, `--verbose`, `--category=ID`
+  - Health check → listing → batch optimization → summary
+  - Rate limiting (500ms entre calls)
+  - Cron-compatible output
+
+### Arquivos Modificados/Criados
+- `app/Services/MercadoLivreClient.php` — 3 novos métodos + 2 bug fixes
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php` — 4 novos métodos + 1 bug fix
+- `app/Controllers/MLAIIntegrationController.php` — 3 novos endpoints
+- `app/Routes/api.php` — 3 novas rotas
+- `bin/ml-ai-optimization-worker.php` — NOVO worker completo
+
+### Validação
+- `php -l` 5/5 arquivos — ZERO erros de sintaxe
+- IDE errors: 0 em todos os arquivos
+
+---
+
 ## Sessão: 2026-02-17 — Fix Completo: Description array/string mismatch (comprehensive)
 
 ### Problema

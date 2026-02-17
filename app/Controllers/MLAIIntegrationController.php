@@ -164,4 +164,68 @@ class MLAIIntegrationController extends BaseController
 
         $this->jsonSuccess($result);
     }
+
+    /**
+     * GET /api/ml-ai/items
+     * List seller items with SEO scores for optimization triage.
+     *
+     * Query: ?category=MLB...&offset=0&limit=20
+     */
+    public function listItems(): void
+    {
+        $filters = [
+            'category' => $_GET['category'] ?? null,
+            'offset' => (int)($_GET['offset'] ?? 0),
+            'limit' => min((int)($_GET['limit'] ?? 20), 50),
+        ];
+
+        $result = $this->getService()->getItemsForOptimization(array_filter($filters));
+        $this->jsonSuccess($result);
+    }
+
+    /**
+     * GET /api/ml-ai/status/{itemId}
+     * Get detailed optimization status for a specific item.
+     */
+    public function itemStatus(string $itemId): void
+    {
+        if (empty($itemId)) {
+            $this->jsonError('Item ID is required', 400);
+        }
+
+        $status = $this->getService()->getItemStatus($itemId);
+        if ($status === null) {
+            $this->jsonError('Item not found or failed to fetch', 404);
+        }
+
+        $this->jsonSuccess(['item' => $status]);
+    }
+
+    /**
+     * PUT /api/ml-ai/description/{itemId}
+     * Update item description directly.
+     *
+     * Body: { description: "..." }
+     */
+    public function updateDescription(string $itemId): void
+    {
+        if (empty($itemId)) {
+            $this->jsonError('Item ID is required', 400);
+        }
+
+        $body = $this->request->json() ?? [];
+        $description = $body['description'] ?? '';
+
+        if (empty(trim($description))) {
+            $this->jsonError('Description text is required', 400);
+        }
+
+        $result = $this->getService()->updateDescription($itemId, $description);
+
+        if (!$result['success']) {
+            $this->jsonError($result['message'] ?? 'Failed to update description', 500);
+        }
+
+        $this->jsonSuccess($result);
+    }
 }

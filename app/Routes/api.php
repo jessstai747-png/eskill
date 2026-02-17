@@ -209,9 +209,12 @@ $router->post('api/seo/longtail/generate', \App\Controllers\SeoDescriptionContro
 // 🤖 ML ↔ AI Integration Pipeline
 // ========================================
 $router->get('api/ml-ai/health', \App\Controllers\MLAIIntegrationController::class, 'health');
+$router->get('api/ml-ai/items', \App\Controllers\MLAIIntegrationController::class, 'listItems');
+$router->get('api/ml-ai/status/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'itemStatus');
 $router->get('api/ml-ai/enrich/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'enrich');
 $router->post('api/ml-ai/optimize/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'optimize');
 $router->post('api/ml-ai/apply/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'apply');
+$router->put('api/ml-ai/description/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'updateDescription');
 $router->post('api/ml-ai/pipeline/{itemId}', \App\Controllers\MLAIIntegrationController::class, 'pipeline');
 $router->post('api/ml-ai/batch', \App\Controllers\MLAIIntegrationController::class, 'batch');
 

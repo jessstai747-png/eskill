@@ -541,24 +541,28 @@ class MercadoLivreAIIntegrationService
         ];
 
         try {
+            // --- Title & Attributes via MercadoLivreClient::updateItem() ---
+            // Uses the client directly for proper error detection (returns {success, message}).
             $updateData = [];
 
-            // Title
             if (isset($optimizations['title']['optimized_title'])) {
                 $updateData['title'] = $optimizations['title']['optimized_title'];
             }
 
-            // Attributes
             if (!empty($optimizations['attributes']['completed_attributes'])) {
                 $updateData['attributes'] = $optimizations['attributes']['completed_attributes'];
             }
 
-            // Update main item data
             if (!empty($updateData)) {
-                $apiResult = $this->itemService->updateItem($itemId, $updateData);
+                $apiResult = $this->mlClient->updateItem($itemId, $updateData);
 
-                if (isset($apiResult['error'])) {
-                    $result['errors'][] = 'Item update failed: ' . ($apiResult['error'] ?? 'unknown');
+                if (!($apiResult['success'] ?? false)) {
+                    $result['errors'][] = 'Item update failed: ' . ($apiResult['message'] ?? 'unknown error');
+                    $this->logger->error('ML item update failed', [
+                        'item_id' => $itemId,
+                        'fields' => array_keys($updateData),
+                        'response' => $apiResult['response'] ?? [],
+                    ]);
                 } else {
                     if (isset($updateData['title'])) {
                         $result['applied'][] = 'title';
@@ -566,18 +570,37 @@ class MercadoLivreAIIntegrationService
                     if (isset($updateData['attributes'])) {
                         $result['applied'][] = 'attributes';
                     }
+
+                    // Sync to local DB if ItemService available
+                    if ($this->itemService !== null) {
+                        try {
+                            $this->itemService->syncItem($itemId);
+                        } catch (\Throwable $e) {
+                            $this->logger->warning('Failed to sync item to DB after update', [
+                                'item_id' => $itemId,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
                 }
             }
 
-            // Description (separate endpoint)
+            // --- Description via dedicated ML endpoint ---
+            // ML API requires PUT /items/{id}/description separately.
             if (isset($optimizations['description']['description'])) {
-                try {
-                    $this->mlClient->put("/items/{$itemId}/description", [
-                        'plain_text' => $optimizations['description']['description'],
-                    ]);
+                $descResult = $this->mlClient->updateDescription(
+                    $itemId,
+                    $optimizations['description']['description']
+                );
+
+                if ($descResult['success']) {
                     $result['applied'][] = 'description';
-                } catch (\Throwable $e) {
-                    $result['errors'][] = 'Description update failed: ' . $e->getMessage();
+                } else {
+                    $result['errors'][] = 'Description update failed: ' . ($descResult['message'] ?? 'unknown');
+                    $this->logger->error('ML description update failed', [
+                        'item_id' => $itemId,
+                        'response' => $descResult['response'] ?? [],
+                    ]);
                 }
             }
 
@@ -742,6 +765,247 @@ class MercadoLivreAIIntegrationService
                     ? round($duration / count($itemIds), 3)
                     : 0,
             ],
+        ];
+    }
+
+    // ─── Items Management ───────────────────────────────────────────
+
+    /**
+     * List seller's active items that may benefit from SEO optimization.
+     *
+     * Uses ML API /users/{sellerId}/items/search to get active listings,
+     * then enriches each with basic quality indicators.
+     *
+     * @param array $filters {category?: string, offset?: int, limit?: int}
+     * @return array{items: array, paging: array, optimization_summary: array}
+     */
+    public function getItemsForOptimization(array $filters = []): array
+    {
+        try {
+            $data = $this->mlClient->getSellerItemsForOptimization($filters);
+            $items = $data['items'] ?? [];
+            $paging = $data['paging'] ?? ['total' => 0];
+
+            // Produce quick SEO score for each item
+            $scored = [];
+            $needsWork = 0;
+            $good = 0;
+
+            foreach ($items as $item) {
+                $score = $this->quickSeoScore($item);
+                $item['seo_score'] = $score;
+                $item['needs_optimization'] = $score['total'] < 70;
+
+                if ($item['needs_optimization']) {
+                    $needsWork++;
+                } else {
+                    $good++;
+                }
+
+                $scored[] = $item;
+            }
+
+            // Sort: items needing work first
+            usort($scored, fn(array $a, array $b): int =>
+                ($a['seo_score']['total'] ?? 100) <=> ($b['seo_score']['total'] ?? 100)
+            );
+
+            $this->logger->info('Items listed for optimization', [
+                'total' => count($scored),
+                'needs_work' => $needsWork,
+                'good' => $good,
+            ]);
+
+            return [
+                'items' => $scored,
+                'paging' => $paging,
+                'optimization_summary' => [
+                    'total_items' => count($scored),
+                    'needs_optimization' => $needsWork,
+                    'good_seo' => $good,
+                    'avg_score' => count($scored) > 0
+                        ? round(array_sum(array_column(array_column($scored, 'seo_score'), 'total')) / count($scored), 1)
+                        : 0,
+                ],
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to list items for optimization', [
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'items' => [],
+                'paging' => ['total' => 0],
+                'optimization_summary' => [
+                    'total_items' => 0,
+                    'needs_optimization' => 0,
+                    'good_seo' => 0,
+                    'avg_score' => 0,
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Get optimization status and quality for a specific item.
+     *
+     * Returns current item data + SEO score + ML health data.
+     *
+     * @param string $itemId ML item ID
+     * @return array|null Item status or null on failure
+     */
+    public function getItemStatus(string $itemId): ?array
+    {
+        try {
+            $item = $this->mlClient->getItemDetails($itemId);
+            if (empty($item) || isset($item['error'])) {
+                return null;
+            }
+
+            $normalized = $this->normalizeMLItem($item);
+            $seoScore = $this->quickSeoScore($normalized);
+
+            // Fetch health data from ML
+            $health = $this->mlClient->getItemHealth($itemId);
+
+            return [
+                'item_id' => $itemId,
+                'title' => $normalized['title'] ?? '',
+                'price' => $normalized['price'] ?? 0,
+                'status' => $normalized['status'] ?? '',
+                'category_id' => $normalized['category_id'] ?? '',
+                'brand' => $normalized['brand'] ?? '',
+                'model' => $normalized['model'] ?? '',
+                'description_length' => mb_strlen($normalized['description'] ?? ''),
+                'images_count' => count($normalized['images'] ?? []),
+                'attributes_count' => count($normalized['attributes'] ?? []),
+                'sold_quantity' => $normalized['sold_quantity'] ?? 0,
+                'available_quantity' => $normalized['available_quantity'] ?? 0,
+                'seo_score' => $seoScore,
+                'health' => $health,
+                'needs_optimization' => $seoScore['total'] < 70,
+                'permalink' => $normalized['permalink'] ?? '',
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to get item status', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Update only the description of a listing, with validation.
+     *
+     * @param string $itemId ML item ID
+     * @param string $description New description text
+     * @return array{success: bool, message: string}
+     */
+    public function updateDescription(string $itemId, string $description): array
+    {
+        $description = trim($description);
+        if (empty($description)) {
+            return ['success' => false, 'message' => 'Description cannot be empty'];
+        }
+
+        if (mb_strlen($description) < 50) {
+            return ['success' => false, 'message' => 'Description must be at least 50 characters'];
+        }
+
+        $result = $this->mlClient->updateDescription($itemId, $description);
+
+        $this->logger->info('Description update attempt', [
+            'item_id' => $itemId,
+            'success' => $result['success'],
+            'description_length' => mb_strlen($description),
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Quick SEO score heuristic based on item data alone (no API calls).
+     *
+     * Scores: title (40pts), description (20pts), images (20pts), attributes (20pts).
+     *
+     * @param array $item Normalized or raw item data
+     * @return array{total: int, title: int, description: int, images: int, attributes: int, issues: string[]}
+     */
+    private function quickSeoScore(array $item): array
+    {
+        $issues = [];
+
+        // Title score (max 40)
+        $title = $item['title'] ?? '';
+        $titleLen = mb_strlen($title);
+        $titleScore = 0;
+        if ($titleLen >= 40 && $titleLen <= 60) {
+            $titleScore = 40;
+        } elseif ($titleLen >= 30) {
+            $titleScore = 30;
+        } elseif ($titleLen >= 20) {
+            $titleScore = 20;
+        } elseif ($titleLen > 0) {
+            $titleScore = 10;
+        }
+
+        if ($titleLen < 30) {
+            $issues[] = 'Título muito curto (menos de 30 caracteres)';
+        }
+        if ($titleLen > 60) {
+            $issues[] = 'Título ultrapassa limite de 60 caracteres';
+        }
+        if (mb_strtoupper($title) === $title && $titleLen > 5) {
+            $titleScore -= 10;
+            $issues[] = 'Título em CAPS LOCK — prejudica legibilidade';
+        }
+
+        // Description score (max 20)
+        $descLen = mb_strlen($item['description'] ?? '');
+        $descScore = 0;
+        if ($descLen >= 500) {
+            $descScore = 20;
+        } elseif ($descLen >= 200) {
+            $descScore = 15;
+        } elseif ($descLen >= 50) {
+            $descScore = 10;
+        } elseif ($descLen > 0) {
+            $descScore = 5;
+        }
+
+        if ($descLen === 0) {
+            $issues[] = 'Sem descrição';
+        } elseif ($descLen < 200) {
+            $issues[] = 'Descrição curta (menos de 200 caracteres)';
+        }
+
+        // Images score (max 20)
+        $imageCount = count($item['images'] ?? $item['pictures'] ?? []);
+        $imageScore = min($imageCount * 4, 20);
+
+        if ($imageCount === 0) {
+            $issues[] = 'Sem imagens';
+        } elseif ($imageCount < 3) {
+            $issues[] = 'Poucas imagens (menos de 3)';
+        }
+
+        // Attributes score (max 20)
+        $attrCount = count($item['attributes'] ?? []);
+        $attrScore = min($attrCount * 2, 20);
+
+        if ($attrCount < 5) {
+            $issues[] = 'Poucos atributos preenchidos (menos de 5)';
+        }
+
+        $total = max(0, $titleScore) + $descScore + $imageScore + $attrScore;
+
+        return [
+            'total' => min($total, 100),
+            'title' => max(0, $titleScore),
+            'description' => $descScore,
+            'images' => $imageScore,
+            'attributes' => $attrScore,
+            'issues' => $issues,
         ];
     }
 
