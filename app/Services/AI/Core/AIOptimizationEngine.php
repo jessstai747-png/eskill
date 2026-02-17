@@ -378,7 +378,7 @@ class AIOptimizationEngine
         return [
             'id' => $mlItem['id'] ?? '',
             'title' => $mlItem['title'] ?? '',
-            'description' => $mlItem['description'] ?? $this->fetchDescription($mlItem['id'] ?? ''),
+            'description' => $this->extractDescriptionText($mlItem['description'] ?? null, $mlItem['id'] ?? ''),
             'category' => $mlItem['category_id'] ?? '',
             'category_id' => $mlItem['category_id'] ?? '',
             'brand' => $this->extractAttribute($mlItem, 'BRAND') ?? '',
@@ -415,6 +415,26 @@ class AIOptimizationEngine
             }
         }
         return null;
+    }
+
+    /**
+     * Extract description text from ML API response.
+     *
+     * MercadoLivreClient::getItemDetails() stores the description as an array
+     * (the raw /items/{id}/description response: {plain_text, text, ...}).
+     * This method safely extracts the text string.
+     */
+    private function extractDescriptionText(mixed $description, string $itemId): string
+    {
+        if (is_string($description)) {
+            return $description;
+        }
+
+        if (is_array($description)) {
+            return $description['plain_text'] ?? $description['text'] ?? '';
+        }
+
+        return $this->fetchDescription($itemId);
     }
 
     /**

@@ -6,7 +6,6 @@ namespace App\Services\MercadoLivre;
 
 use App\Services\MercadoLivreClient;
 use App\Services\AI\Core\AIProviderManager;
-use App\Services\AI\Core\AIOptimizationEngine;
 use App\Services\ItemService;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -26,7 +25,6 @@ class MercadoLivreAIIntegrationService
 {
     private MercadoLivreClient $mlClient;
     private AIProviderManager $aiProviderManager;
-    private AIOptimizationEngine $optimizationEngine;
     private ?ItemService $itemService = null;
     private Logger $logger;
     private int $accountId;
@@ -39,7 +37,6 @@ class MercadoLivreAIIntegrationService
         $this->accountId = $accountId;
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->aiProviderManager = new AIProviderManager();
-        $this->optimizationEngine = new AIOptimizationEngine(null, $accountId);
         $this->itemService = new ItemService($accountId);
 
         $this->logger = new Logger('ml_ai_integration');
@@ -963,7 +960,7 @@ class MercadoLivreAIIntegrationService
         return [
             'id' => $mlItem['id'] ?? '',
             'title' => $mlItem['title'] ?? '',
-            'description' => $mlItem['description'] ?? $this->fetchDescription($mlItem['id'] ?? ''),
+            'description' => $this->extractDescriptionText($mlItem['description'] ?? null, $mlItem['id'] ?? ''),
             'category_id' => $mlItem['category_id'] ?? '',
             'brand' => $this->extractAttribute($mlItem, 'BRAND') ?? '',
             'model' => $this->extractAttribute($mlItem, 'MODEL') ?? '',
@@ -999,6 +996,29 @@ class MercadoLivreAIIntegrationService
             }
         }
         return null;
+    }
+
+    /**
+     * Extract description text from ML API response.
+     *
+     * MercadoLivreClient::getItemDetails() stores the description as an array
+     * (the raw /items/{id}/description response: {plain_text, text, ...}).
+     * This method safely extracts the text string.
+     */
+    private function extractDescriptionText(mixed $description, string $itemId): string
+    {
+        // Already a string (from some code paths)
+        if (is_string($description)) {
+            return $description;
+        }
+
+        // Array from getItemDetails() — extract plain_text or text
+        if (is_array($description)) {
+            return $description['plain_text'] ?? $description['text'] ?? '';
+        }
+
+        // Null or missing — fetch from API
+        return $this->fetchDescription($itemId);
     }
 
     /**
