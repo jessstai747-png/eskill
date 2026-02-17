@@ -7,6 +7,7 @@ namespace App\Services\MercadoLivre;
 use App\Services\MercadoLivreClient;
 use App\Services\AI\Core\AIProviderManager;
 use App\Services\ItemService;
+use App\Services\SEO\VersioningService;
 use App\Traits\NormalizesMLItems;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -29,6 +30,7 @@ class MercadoLivreAIIntegrationService
     private MercadoLivreClient $mlClient;
     private AIProviderManager $aiProviderManager;
     private ?ItemService $itemService = null;
+    private ?VersioningService $versioningService = null;
     private Logger $logger;
     private int $accountId;
 
@@ -41,6 +43,13 @@ class MercadoLivreAIIntegrationService
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->aiProviderManager = new AIProviderManager();
         $this->itemService = new ItemService($accountId);
+
+        try {
+            $this->versioningService = new VersioningService($accountId);
+        } catch (\Throwable $e) {
+            // VersioningService may fail if DB/snapshot dir unavailable — non-fatal
+            $this->versioningService = null;
+        }
 
         $this->logger = new Logger('ml_ai_integration');
         $logPath = dirname(__DIR__, 2) . '/storage/logs/ml_ai_integration.log';
@@ -606,10 +615,20 @@ class MercadoLivreAIIntegrationService
 
             $result['success'] = count($result['applied']) > 0 && count($result['errors']) === 0;
 
+            // Record optimization history for rollback support
+            if ($result['success'] && $this->versioningService !== null) {
+                $result['version_ids'] = $this->recordOptimizationHistory(
+                    $itemId,
+                    $optimizations,
+                    $result['applied']
+                );
+            }
+
             $this->logger->info('Optimizations applied to ML', [
                 'item_id' => $itemId,
                 'applied' => $result['applied'],
                 'errors' => $result['errors'],
+                'version_ids' => $result['version_ids'] ?? [],
             ]);
         } catch (\Throwable $e) {
             $result['errors'][] = $e->getMessage();
@@ -768,6 +787,245 @@ class MercadoLivreAIIntegrationService
         ];
     }
 
+    // ─── Optimization History & Rollback ─────────────────────────────
+
+    /**
+     * Record optimization snapshots (before/after) in seo_optimization_history.
+     *
+     * Creates one snapshot per change type (title, description, attributes)
+     * so each can be rolled back independently.
+     *
+     * @param string $itemId ML item ID
+     * @param array $optimizations The optimizations that were applied
+     * @param array $appliedTypes List of applied change types (e.g. ['title', 'description'])
+     * @return array<string, int> Map of change type => version ID
+     */
+    private function recordOptimizationHistory(
+        string $itemId,
+        array $optimizations,
+        array $appliedTypes
+    ): array {
+        $versionIds = [];
+
+        foreach ($appliedTypes as $changeType) {
+            try {
+                $beforeData = $this->buildBeforeData($changeType, $optimizations);
+                $afterData = $this->buildAfterData($changeType, $optimizations);
+
+                $versionId = $this->versioningService->createSnapshot(
+                    $itemId,
+                    $changeType,
+                    $beforeData,
+                    $afterData,
+                    'ai'
+                );
+
+                $versionIds[$changeType] = $versionId;
+
+                $this->logger->info('Optimization snapshot recorded', [
+                    'item_id' => $itemId,
+                    'change_type' => $changeType,
+                    'version_id' => $versionId,
+                ]);
+            } catch (\Throwable $e) {
+                $this->logger->warning('Failed to record optimization snapshot', [
+                    'item_id' => $itemId,
+                    'change_type' => $changeType,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $versionIds;
+    }
+
+    /**
+     * Build the "before" state data from optimization results.
+     */
+    private function buildBeforeData(string $changeType, array $optimizations): array
+    {
+        return match ($changeType) {
+            'title' => [
+                'title' => $optimizations['title']['original_title'] ?? '',
+            ],
+            'description' => [
+                'description' => $optimizations['description']['original_description'] ?? '',
+            ],
+            'attributes' => [
+                'attributes' => [],
+            ],
+            default => [],
+        };
+    }
+
+    /**
+     * Build the "after" state data from optimization results.
+     */
+    private function buildAfterData(string $changeType, array $optimizations): array
+    {
+        return match ($changeType) {
+            'title' => [
+                'title' => $optimizations['title']['optimized_title'] ?? '',
+            ],
+            'description' => [
+                'description' => $optimizations['description']['description'] ?? '',
+            ],
+            'attributes' => [
+                'attributes' => $optimizations['attributes']['completed_attributes'] ?? [],
+            ],
+            default => [],
+        };
+    }
+
+    /**
+     * Get optimization history for a specific item.
+     *
+     * @param string $itemId ML item ID
+     * @param int $limit Max records to return
+     * @return array{history: array, item_id: string, total: int}
+     */
+    public function getOptimizationHistory(string $itemId, int $limit = 50): array
+    {
+        if ($this->versioningService === null) {
+            return [
+                'history' => [],
+                'item_id' => $itemId,
+                'total' => 0,
+                'error' => 'Versioning service unavailable',
+            ];
+        }
+
+        try {
+            $history = $this->versioningService->getHistory($itemId, $limit);
+
+            return [
+                'history' => $history,
+                'item_id' => $itemId,
+                'total' => count($history),
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to fetch optimization history', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'history' => [],
+                'item_id' => $itemId,
+                'total' => 0,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Rollback a specific optimization version.
+     *
+     * Reverts the item to its state before the specified version was applied.
+     *
+     * @param string $itemId ML item ID
+     * @param int $versionId Version ID to rollback
+     * @param string $reason Reason for rollback
+     * @return array{success: bool, message: string, item_id: string}
+     */
+    public function rollbackOptimization(
+        string $itemId,
+        int $versionId,
+        string $reason = ''
+    ): array {
+        if ($this->versioningService === null) {
+            return [
+                'success' => false,
+                'message' => 'Versioning service unavailable',
+                'item_id' => $itemId,
+            ];
+        }
+
+        try {
+            $success = $this->versioningService->rollback(
+                $itemId,
+                $versionId,
+                $reason,
+                null,
+                'ai'
+            );
+
+            // Sync local DB after rollback
+            if ($success && $this->itemService !== null) {
+                try {
+                    $this->itemService->syncItem($itemId);
+                } catch (\Throwable $e) {
+                    $this->logger->warning('Failed to sync item after rollback', [
+                        'item_id' => $itemId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $this->logger->info('Optimization rollback', [
+                'item_id' => $itemId,
+                'version_id' => $versionId,
+                'success' => $success,
+                'reason' => $reason,
+            ]);
+
+            return [
+                'success' => $success,
+                'message' => $success
+                    ? 'Rollback applied successfully'
+                    : 'Rollback failed — ML API may have rejected the change',
+                'item_id' => $itemId,
+                'version_id' => $versionId,
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Rollback failed', [
+                'item_id' => $itemId,
+                'version_id' => $versionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'item_id' => $itemId,
+                'version_id' => $versionId,
+            ];
+        }
+    }
+
+    /**
+     * Get optimization statistics for the current account.
+     *
+     * @return array{stats: array, account_id: int}
+     */
+    public function getOptimizationStats(): array
+    {
+        if ($this->versioningService === null) {
+            return [
+                'stats' => [],
+                'account_id' => $this->accountId,
+                'error' => 'Versioning service unavailable',
+            ];
+        }
+
+        try {
+            $stats = $this->versioningService->getStatistics($this->accountId);
+
+            return [
+                'stats' => $stats,
+                'account_id' => $this->accountId,
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to fetch optimization stats', [
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'stats' => [],
+                'account_id' => $this->accountId,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
     // ─── Items Management ───────────────────────────────────────────
 
     /**
@@ -806,8 +1064,9 @@ class MercadoLivreAIIntegrationService
             }
 
             // Sort: items needing work first
-            usort($scored, fn(array $a, array $b): int =>
-                ($a['seo_score']['total'] ?? 100) <=> ($b['seo_score']['total'] ?? 100)
+            usort(
+                $scored,
+                fn(array $a, array $b): int => ($a['seo_score']['total'] ?? 100) <=> ($b['seo_score']['total'] ?? 100)
             );
 
             $this->logger->info('Items listed for optimization', [

@@ -6,6 +6,38 @@
 
 ---
 
+## Sessão: 2026-02-17 — Integração Histórico de Otimização + Rollback na Pipeline ML-AI
+
+### Objetivo
+Complementar a integração ML-AI com rastreabilidade de otimizações: cada mudança aplicada via `applyOptimizations()` agora é registrada no `seo_optimization_history` com snapshots before/after, possibilitando rollback independente por tipo de mudança.
+
+### Implementação
+
+#### VersioningService integrado ao MercadoLivreAIIntegrationService
+- Adicionado `VersioningService` como dependência (inicialização non-fatal — graceful degradation se DB/snapshot dir indisponível)
+- `applyOptimizations()` agora chama `recordOptimizationHistory()` após aplicar com sucesso
+- Cada change type (title, description, attributes) gera snapshot independente
+
+#### Novos métodos — MercadoLivreAIIntegrationService
+- `recordOptimizationHistory(itemId, optimizations, appliedTypes)` — registra snapshots por tipo
+- `buildBeforeData(changeType, optimizations)` — extrai estado anterior
+- `buildAfterData(changeType, optimizations)` — extrai estado novo
+- `getOptimizationHistory(itemId, limit)` — busca histórico de versões
+- `rollbackOptimization(itemId, versionId, reason)` — reverte mudança via VersioningService + sync DB
+- `getOptimizationStats()` — estatísticas de otimização da conta
+
+#### Novos endpoints REST — MLAIIntegrationController
+- `GET  /api/ml-ai/history/{itemId}` — histórico de otimizações (com ?limit)
+- `POST /api/ml-ai/rollback/{itemId}` — rollback (body: {version_id, reason?})
+- `GET  /api/ml-ai/stats` — estatísticas de otimização
+
+### Arquivos Modificados
+- `app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php` — 6 novos métodos + import VersioningService
+- `app/Controllers/MLAIIntegrationController.php` — 3 novos endpoints
+- `app/Routes/api.php` — 3 novas rotas
+
+---
+
 ## Sessão: 2026-02-17 — Integração Completa ML ↔ AI com API do Mercado Livre
 
 ### Objetivo

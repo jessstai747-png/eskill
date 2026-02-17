@@ -228,4 +228,61 @@ class MLAIIntegrationController extends BaseController
 
         $this->jsonSuccess($result);
     }
+
+    /**
+     * GET /api/ml-ai/history/{itemId}
+     * Get optimization history for an item.
+     *
+     * Query: ?limit=50
+     */
+    public function history(string $itemId): void
+    {
+        if (empty($itemId)) {
+            $this->jsonError('Item ID is required', 400);
+        }
+
+        $limit = min((int)($_GET['limit'] ?? 50), 200);
+        $result = $this->getService()->getOptimizationHistory($itemId, $limit);
+
+        $this->jsonSuccess($result);
+    }
+
+    /**
+     * POST /api/ml-ai/rollback/{itemId}
+     * Rollback a specific optimization version.
+     *
+     * Body: { version_id: int, reason?: string }
+     */
+    public function rollback(string $itemId): void
+    {
+        if (empty($itemId)) {
+            $this->jsonError('Item ID is required', 400);
+        }
+
+        $body = $this->request->json() ?? [];
+        $versionId = (int)($body['version_id'] ?? 0);
+        $reason = trim((string)($body['reason'] ?? ''));
+
+        if ($versionId <= 0) {
+            $this->jsonError('version_id is required and must be a positive integer', 400);
+        }
+
+        $result = $this->getService()->rollbackOptimization($itemId, $versionId, $reason);
+
+        if (!$result['success']) {
+            $this->jsonError($result['message'] ?? 'Rollback failed', 500);
+        }
+
+        $this->jsonSuccess($result);
+    }
+
+    /**
+     * GET /api/ml-ai/stats
+     * Get optimization statistics for the current account.
+     */
+    public function stats(): void
+    {
+        $result = $this->getService()->getOptimizationStats();
+        $this->jsonSuccess($result);
+    }
 }
