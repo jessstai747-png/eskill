@@ -18,7 +18,7 @@ class SEOAuditService
     private \PDO $db;
     private MercadoLivreClient $mlClient;
     private CacheService $cache;
-    
+
     // Score weights for overall calculation
     private const WEIGHTS = [
         'title' => 0.25,
@@ -28,14 +28,14 @@ class SEOAuditService
         'pricing' => 0.10,
         'category' => 0.05,
     ];
-    
+
     public function __construct(?int $accountId = null)
     {
         $this->db = Database::getInstance();
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->cache = new CacheService();
     }
-    
+
     /**
      * Audit a listing and generate SEO score
      * 
@@ -46,7 +46,7 @@ class SEOAuditService
     public function auditListing(string $itemId, bool $forceRefresh = false): array
     {
         $startTime = microtime(true);
-        
+
         // Check cache
         if (!$forceRefresh) {
             $cached = $this->getCachedAudit($itemId);
@@ -54,20 +54,20 @@ class SEOAuditService
                 return $cached;
             }
         }
-        
+
         // Get item data from ML API
         $item = $this->mlClient->getItemDetails($itemId);
-        
+
         if (!$item) {
             throw new Exception("Item not found: {$itemId}");
         }
-        
+
         // Get category attributes for completeness check
         $categoryAttributes = [];
         if (!empty($item['category_id'])) {
             $categoryAttributes = $this->mlClient->getCategoryAttributes($item['category_id']);
         }
-        
+
         // Perform individual audits
         $titleScore = $this->auditTitle($item);
         $descriptionScore = $this->auditDescription($item);
@@ -75,7 +75,7 @@ class SEOAuditService
         $imagesScore = $this->auditImages($item);
         $pricingScore = $this->auditPricing($item);
         $categoryScore = $this->auditCategory($item);
-        
+
         // Calculate overall score
         $overallScore = $this->calculateOverallScore([
             'title' => $titleScore['score'],
@@ -85,7 +85,7 @@ class SEOAuditService
             'pricing' => $pricingScore['score'],
             'category' => $categoryScore['score'],
         ]);
-        
+
         // Collect all recommendations
         $hiddenRecommendations = $this->buildHiddenRecommendations($itemId, $item);
 
@@ -98,15 +98,15 @@ class SEOAuditService
             $categoryScore['recommendations'],
             $hiddenRecommendations
         );
-        
+
         // Sort by priority
-        usort($recommendations, function($a, $b) {
+        usort($recommendations, function ($a, $b) {
             $priority = ['high' => 0, 'medium' => 1, 'low' => 2];
             return ($priority[$a['priority']] ?? 99) <=> ($priority[$b['priority']] ?? 99);
         });
-        
+
         $processingTime = round((microtime(true) - $startTime) * 1000);
-        
+
         $hiddenCompleteness = $this->calculateHiddenAttributesCompleteness($itemId, $item);
 
         $audit = [
@@ -130,13 +130,13 @@ class SEOAuditService
             'recommendations' => $recommendations,
             'processing_time_ms' => $processingTime,
         ];
-        
+
         // Save to database
         $this->saveAudit($audit);
-        
+
         return $audit;
     }
-    
+
     /**
      * Audit title quality
      */
@@ -145,9 +145,9 @@ class SEOAuditService
         $title = $item['title'] ?? '';
         $score = 100;
         $recommendations = [];
-        
+
         $length = mb_strlen($title);
-        
+
         // Length check (optimal: 40-60 chars)
         if ($length < 30) {
             $score -= 20;
@@ -174,7 +174,7 @@ class SEOAuditService
                 'impact' => 'Considere reduzir para 50-60 caracteres',
             ];
         }
-        
+
         // Check for brand (common brands in Brazil)
         $brands = ['Samsung', 'LG', 'Sony', 'Apple', 'Xiaomi', 'Motorola', 'Nike', 'Adidas'];
         $hasBrand = false;
@@ -184,7 +184,7 @@ class SEOAuditService
                 break;
             }
         }
-        
+
         if (!$hasBrand && !empty($item['attributes'])) {
             // Check if brand is in attributes
             foreach ($item['attributes'] as $attr) {
@@ -203,7 +203,7 @@ class SEOAuditService
                 }
             }
         }
-        
+
         // Check for special characters that might hurt SEO
         if (preg_match('/[★☆♥♦►◄]/', $title)) {
             $score -= 10;
@@ -214,7 +214,7 @@ class SEOAuditService
                 'impact' => 'Pode afetar negativamente o ranking de busca',
             ];
         }
-        
+
         // Check for all caps
         if ($title === mb_strtoupper($title) && $length > 10) {
             $score -= 5;
@@ -225,13 +225,13 @@ class SEOAuditService
                 'impact' => 'Dificulta a leitura e pode parecer spam',
             ];
         }
-        
+
         return [
             'score' => max(0, $score),
             'recommendations' => $recommendations,
         ];
     }
-    
+
     /**
      * Audit description quality
      */
@@ -242,9 +242,9 @@ class SEOAuditService
         $plainText = strip_tags($description);
         $score = 100;
         $recommendations = [];
-        
+
         $length = mb_strlen($plainText);
-        
+
         // Length check
         if ($length < 100) {
             $score -= 30;
@@ -263,7 +263,7 @@ class SEOAuditService
                 'impact' => 'Adicione especificações técnicas e benefícios',
             ];
         }
-        
+
         // Check for HTML formatting
         $hasHtml = $description !== $plainText;
         if (!$hasHtml && $length > 200) {
@@ -275,7 +275,7 @@ class SEOAuditService
                 'impact' => 'Listas e negrito aumentam o engajamento',
             ];
         }
-        
+
         // Check for call-to-action
         $cta_keywords = ['compre', 'garanta', 'aproveite', 'oferta', 'promoção'];
         $hasCta = false;
@@ -285,7 +285,7 @@ class SEOAuditService
                 break;
             }
         }
-        
+
         if (!$hasCta) {
             $score -= 5;
             $recommendations[] = [
@@ -295,13 +295,13 @@ class SEOAuditService
                 'impact' => 'Incentiva a compra imediata',
             ];
         }
-        
+
         return [
             'score' => max(0, $score),
             'recommendations' => $recommendations,
         ];
     }
-    
+
     /**
      * Audit attributes completeness
      */
@@ -310,26 +310,26 @@ class SEOAuditService
         $itemAttributes = $item['attributes'] ?? [];
         $score = 100;
         $recommendations = [];
-        
+
         // Count filled attributes
         $filledCount = count($itemAttributes);
-        
+
         // Analyze category attributes
         $requiredCount = 0;
         $optionalCount = 0;
         $filledRequired = 0;
         $filledOptional = 0;
-        
+
         if (!empty($categoryAttributes)) {
             foreach ($categoryAttributes as $catAttr) {
                 $isRequired = ($catAttr['tags']['required'] ?? false);
-                
+
                 if ($isRequired) {
                     $requiredCount++;
                 } else {
                     $optionalCount++;
                 }
-                
+
                 // Check if filled in item
                 $isFilled = false;
                 foreach ($itemAttributes as $itemAttr) {
@@ -342,7 +342,7 @@ class SEOAuditService
                         break;
                     }
                 }
-                
+
                 if ($isFilled) {
                     if ($isRequired) {
                         $filledRequired++;
@@ -352,11 +352,11 @@ class SEOAuditService
                 }
             }
         }
-        
+
         // Calculate percentages
         $requiredPct = $requiredCount > 0 ? round(($filledRequired / $requiredCount) * 100) : 100;
         $optionalPct = $optionalCount > 0 ? round(($filledOptional / $optionalCount) * 100) : 0;
-        
+
         // Score based on required attributes
         if ($requiredPct < 100) {
             $score -= (100 - $requiredPct);
@@ -368,7 +368,7 @@ class SEOAuditService
                 'impact' => 'Atributos obrigatórios são essenciais para visibilidade',
             ];
         }
-        
+
         // Bonus for optional attributes
         if ($optionalPct < 50) {
             $score -= 10;
@@ -379,7 +379,7 @@ class SEOAuditService
                 'impact' => 'Cada atributo adicional melhora a relevância',
             ];
         }
-        
+
         return [
             'score' => max(0, $score),
             'required_pct' => $requiredPct,
@@ -387,7 +387,7 @@ class SEOAuditService
             'recommendations' => $recommendations,
         ];
     }
-    
+
     /**
      * Audit images quality
      */
@@ -396,9 +396,9 @@ class SEOAuditService
         $pictures = $item['pictures'] ?? [];
         $score = 100;
         $recommendations = [];
-        
+
         $count = count($pictures);
-        
+
         // Image count check
         if ($count === 0) {
             $score = 0;
@@ -425,7 +425,7 @@ class SEOAuditService
                 'impact' => 'Mais ângulos aumentam a confiança do comprador',
             ];
         }
-        
+
         // Check image quality (resolution)
         $lowQualityCount = 0;
         foreach ($pictures as $picture) {
@@ -436,7 +436,7 @@ class SEOAuditService
                 $lowQualityCount++;
             }
         }
-        
+
         if ($lowQualityCount > 0) {
             $score -= 15;
             $recommendations[] = [
@@ -446,13 +446,13 @@ class SEOAuditService
                 'impact' => 'Use imagens de alta qualidade (mínimo 800x800px)',
             ];
         }
-        
+
         return [
             'score' => max(0, $score),
             'recommendations' => $recommendations,
         ];
     }
-    
+
     /**
      * Audit pricing strategy
      */
@@ -460,11 +460,11 @@ class SEOAuditService
     {
         $score = 100;
         $recommendations = [];
-        
+
         $price = $item['price'] ?? 0;
         $originalPrice = $item['original_price'] ?? null;
         $shipping = $item['shipping'] ?? [];
-        
+
         // Check for free shipping
         $hasFreeShipping = ($shipping['free_shipping'] ?? false);
         if (!$hasFreeShipping && $price > 79) {
@@ -476,7 +476,7 @@ class SEOAuditService
                 'impact' => 'Frete grátis pode aumentar vendas em 30%',
             ];
         }
-        
+
         // Check for discount
         $hasDiscount = !empty($originalPrice) && $originalPrice > $price;
         if (!$hasDiscount) {
@@ -488,13 +488,13 @@ class SEOAuditService
                 'impact' => 'Descontos visíveis atraem mais cliques',
             ];
         }
-        
+
         return [
             'score' => max(0, $score),
             'recommendations' => $recommendations,
         ];
     }
-    
+
     /**
      * Audit category placement
      */
@@ -502,9 +502,9 @@ class SEOAuditService
     {
         $score = 100;
         $recommendations = [];
-        
+
         $categoryId = $item['category_id'] ?? '';
-        
+
         if (empty($categoryId)) {
             $score = 0;
             $recommendations[] = [
@@ -514,26 +514,26 @@ class SEOAuditService
                 'impact' => 'Categoria correta é essencial para visibilidade',
             ];
         }
-        
+
         // Additional category-specific checks could be added here
-        
+
         return [
             'score' => max(0, $score),
             'recommendations' => $recommendations,
         ];
     }
-    
+
     /**
      * Calculate overall score from component scores
      */
     private function calculateOverallScore(array $scores): int
     {
         $weighted = 0;
-        
+
         foreach (self::WEIGHTS as $component => $weight) {
             $weighted += ($scores[$component] ?? 0) * $weight;
         }
-        
+
         return round($weighted);
     }
 
@@ -657,7 +657,7 @@ class SEOAuditService
 
         return $map;
     }
-    
+
     /**
      * Save audit to database
      */
@@ -709,7 +709,7 @@ class SEOAuditService
             'processing_time_ms' => $audit['processing_time_ms'],
         ]);
     }
-    
+
     /**
      * Get cached audit if available and fresh
      */
@@ -724,13 +724,13 @@ class SEOAuditService
         );
         $stmt->execute(['item_id' => $itemId]);
         $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         if (!$result) {
             return null;
         }
-        
+
         $audit = $result;
-        
+
         return [
             'item_id' => $audit['item_id'],
             'account_id' => $audit['account_id'],
@@ -754,7 +754,7 @@ class SEOAuditService
             'cached' => true,
         ];
     }
-    
+
     /**
      * Get audit history for an item
      */
@@ -773,7 +773,7 @@ class SEOAuditService
         );
         $stmt->bindValue(':item_id', $itemId);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

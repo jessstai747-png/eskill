@@ -21,7 +21,7 @@ class RealMarketDataService
     private MercadoLivreClient $mlClient;
     private ?int $accountId;
     private CacheService $cache;
-    
+
     private const CACHE_TTL_SHORT = 300;      // 5 minutos
     private const CACHE_TTL_MEDIUM = 1800;    // 30 minutos  
     private const CACHE_TTL_LONG = 86400;     // 24 horas
@@ -40,7 +40,7 @@ class RealMarketDataService
     public function analyzeMarket(string $categoryId, ?string $keyword = null): array
     {
         $cacheKey = "market_analysis:{$categoryId}:" . md5($keyword ?? '');
-        
+
         if ($this->cache->has($cacheKey)) {
             $cached = $this->cache->get($cacheKey);
             if (is_array($cached)) {
@@ -57,21 +57,21 @@ class RealMarketDataService
 
         // 1. Dados da categoria
         $result['category'] = $this->getCategoryDetails($categoryId);
-        
+
         // 2. Análise de preços do mercado
         $result['pricing'] = $this->analyzePricing($categoryId, $keyword);
-        
+
         // 3. Top sellers e tendências
         $result['trends'] = $this->getTrends($categoryId);
-        
+
         // 4. Análise de concorrentes
         $result['competitors'] = $this->analyzeCompetitors($categoryId, $keyword);
-        
+
         // 5. Filtros disponíveis (para entender o mercado)
         $result['filters'] = $this->getAvailableFilters($categoryId, $keyword);
 
         $this->cache->set($cacheKey, $result, self::CACHE_TTL_MEDIUM);
-        
+
         return $result;
     }
 
@@ -81,7 +81,7 @@ class RealMarketDataService
     public function getCategoryDetails(string $categoryId): array
     {
         $cacheKey = "category_details:{$categoryId}";
-        
+
         if ($this->cache->has($cacheKey)) {
             $cached = $this->cache->get($cacheKey);
             if (is_array($cached)) {
@@ -90,33 +90,35 @@ class RealMarketDataService
         }
 
         $category = $this->mlClient->getCategory($categoryId);
-        
+
         if (empty($category)) {
             return ['error' => 'Categoria não encontrada'];
         }
 
         $attributes = $this->mlClient->getCategoryAttributes($categoryId);
-        
+
         $result = [
             'id' => $category['id'] ?? $categoryId,
             'name' => $category['name'] ?? '',
-            'path_from_root' => array_map(function($p) {
+            'path_from_root' => array_map(function ($p) {
                 return ['id' => $p['id'] ?? '', 'name' => $p['name'] ?? ''];
             }, $category['path_from_root'] ?? []),
             'total_items_in_this_category' => $category['total_items_in_this_category'] ?? null,
             'attribute_count' => count($attributes),
-            'required_attributes' => array_filter($attributes, fn($a) => 
-                ($a['tags']['required'] ?? false) || 
-                in_array('required', $a['tags'] ?? [])
+            'required_attributes' => array_filter(
+                $attributes,
+                fn($a) => ($a['tags']['required'] ?? false) ||
+                    in_array('required', $a['tags'] ?? [])
             ),
-            'filter_attributes' => array_filter($attributes, fn($a) => 
-                ($a['tags']['allow_variations'] ?? false) || 
-                ($a['tags']['defines_picture'] ?? false)
+            'filter_attributes' => array_filter(
+                $attributes,
+                fn($a) => ($a['tags']['allow_variations'] ?? false) ||
+                    ($a['tags']['defines_picture'] ?? false)
             ),
         ];
 
         $this->cache->set($cacheKey, $result, self::CACHE_TTL_LONG);
-        
+
         return $result;
     }
 
@@ -132,13 +134,13 @@ class RealMarketDataService
             'limit' => $sampleSize,
             'sort' => 'relevance',
         ];
-        
+
         if ($keyword) {
             $params['q'] = $keyword;
         }
 
         $searchResult = $this->mlClient->searchItems($params, self::CACHE_TTL_SHORT);
-        
+
         // Se a API retornou erro (ex: forbidden), usar dados locais
         if (isset($searchResult['error']) || empty($searchResult['results'])) {
             return $this->analyzePricingFromLocalData($categoryId, $keyword, $sampleSize);
@@ -158,16 +160,16 @@ class RealMarketDataService
             ':category_id' => $categoryId,
             ':status' => 'active',
         ];
-        
+
         if ($keyword) {
             $where[] = 'i.title LIKE :keyword';
             $params[':keyword'] = '%' . $keyword . '%';
         }
-        
+
         $whereSql = implode(' AND ', $where);
 
         $limitSql = max(1, min((int)$limit, 500));
-        
+
         $stmt = $this->db->prepare("
             SELECT i.price, i.data
             FROM items i
@@ -175,14 +177,14 @@ class RealMarketDataService
             ORDER BY i.updated_at DESC
             LIMIT {$limitSql}
         ");
-        
+
         foreach ($params as $k => $v) {
             $stmt->bindValue($k, $v);
         }
         $stmt->execute();
-        
+
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (empty($rows)) {
             return [
                 'sample_size' => 0,
@@ -196,10 +198,10 @@ class RealMarketDataService
             $data = json_decode($row['data'] ?? '{}', true) ?: [];
             $items[] = array_merge($data, ['price' => (float)$row['price']]);
         }
-        
+
         $result = $this->processPricingData($items, ['total' => count($items)]);
         $result['source'] = 'local_db';
-        
+
         return $result;
     }
 
@@ -213,29 +215,29 @@ class RealMarketDataService
         $fullItems = 0;
         $officialStores = 0;
         $catalogProducts = 0;
-        
+
         foreach ($items as $item) {
             $price = (float)($item['price'] ?? 0);
             if ($price > 0) {
                 $prices[] = $price;
             }
-            
+
             // Frete grátis
             if (($item['shipping']['free_shipping'] ?? false) === true) {
                 $shippingFree++;
             }
-            
+
             // Full (fulfillment)
             $tags = $item['shipping']['tags'] ?? [];
             if (in_array('fulfillment', $tags) || in_array('self_service_in', $tags)) {
                 $fullItems++;
             }
-            
+
             // Loja oficial
             if (!empty($item['official_store_id'])) {
                 $officialStores++;
             }
-            
+
             // Catálogo
             if (!empty($item['catalog_product_id'])) {
                 $catalogProducts++;
@@ -243,7 +245,7 @@ class RealMarketDataService
         }
 
         $totalItems = count($items);
-        
+
         if (empty($prices)) {
             return [
                 'sample_size' => $totalItems,
@@ -253,7 +255,7 @@ class RealMarketDataService
 
         sort($prices);
         $count = count($prices);
-        
+
         return [
             'sample_size' => $totalItems,
             'paging' => $paging,
@@ -261,9 +263,9 @@ class RealMarketDataService
                 'min' => min($prices),
                 'max' => max($prices),
                 'avg' => round(array_sum($prices) / $count, 2),
-                'median' => $count % 2 === 0 
-                    ? ($prices[$count/2 - 1] + $prices[$count/2]) / 2 
-                    : $prices[floor($count/2)],
+                'median' => $count % 2 === 0
+                    ? ($prices[$count / 2 - 1] + $prices[$count / 2]) / 2
+                    : $prices[floor($count / 2)],
                 'p10' => $prices[(int)floor($count * 0.1)] ?? $prices[0],
                 'p25' => $prices[(int)floor($count * 0.25)] ?? $prices[0],
                 'p75' => $prices[(int)floor($count * 0.75)] ?? end($prices),
@@ -275,8 +277,8 @@ class RealMarketDataService
                 'official_stores_percent' => $totalItems > 0 ? round(($officialStores / $totalItems) * 100, 1) : 0,
                 'catalog_percent' => $totalItems > 0 ? round(($catalogProducts / $totalItems) * 100, 1) : 0,
             ],
-            'recommendations' => $totalItems > 0 
-                ? $this->generatePricingRecommendations($prices, $shippingFree, $fullItems, $totalItems) 
+            'recommendations' => $totalItems > 0
+                ? $this->generatePricingRecommendations($prices, $shippingFree, $fullItems, $totalItems)
                 : [],
         ];
     }
@@ -289,42 +291,42 @@ class RealMarketDataService
         $recommendations = [];
         $avg = array_sum($prices) / count($prices);
         $median = $prices[floor(count($prices) / 2)];
-        
+
         // Recomendação de preço competitivo
         $recommendations['competitive_price'] = [
             'value' => round($median * 0.95, 2),
             'description' => 'Preço 5% abaixo da mediana para ganhar destaque',
         ];
-        
+
         // Recomendação de preço premium
         $recommendations['premium_price'] = [
             'value' => round($prices[(int)floor(count($prices) * 0.75)], 2),
             'description' => 'Preço no percentil 75 para posicionamento premium',
         ];
-        
+
         // Frete grátis
         $freeShippingPercent = ($freeShipping / $total) * 100;
         if ($freeShippingPercent > 70) {
             $recommendations['shipping'] = [
                 'action' => 'REQUIRED',
-                'description' => 'Frete grátis é padrão nesta categoria ('. round($freeShippingPercent) .'%)',
+                'description' => 'Frete grátis é padrão nesta categoria (' . round($freeShippingPercent) . '%)',
             ];
         } elseif ($freeShippingPercent > 40) {
             $recommendations['shipping'] = [
                 'action' => 'RECOMMENDED',
-                'description' => 'Frete grátis é comum nesta categoria ('. round($freeShippingPercent) .'%)',
+                'description' => 'Frete grátis é comum nesta categoria (' . round($freeShippingPercent) . '%)',
             ];
         }
-        
+
         // Full
         $fullPercent = ($fullItems / $total) * 100;
         if ($fullPercent > 50) {
             $recommendations['fulfillment'] = [
                 'action' => 'RECOMMENDED',
-                'description' => 'Full/Fulfillment usado por '. round($fullPercent) .'% dos anúncios',
+                'description' => 'Full/Fulfillment usado por ' . round($fullPercent) . '% dos anúncios',
             ];
         }
-        
+
         return $recommendations;
     }
 
@@ -336,7 +338,7 @@ class RealMarketDataService
     {
         // Tentar API de trends primeiro
         $trends = $this->mlClient->getTrends($categoryId);
-        
+
         if (!empty($trends)) {
             return [
                 'keywords' => array_slice($trends, 0, 20),
@@ -348,7 +350,7 @@ class RealMarketDataService
         // Fallback: usar domain_discovery para descobrir categorias relacionadas
         $categoryInfo = $this->mlClient->getCategory($categoryId);
         $categoryName = $categoryInfo['name'] ?? '';
-        
+
         if ($categoryName) {
             $domains = $this->discoverRelatedDomains($categoryName);
             if (!empty($domains)) {
@@ -364,7 +366,7 @@ class RealMarketDataService
         // Fallback final: extrair keywords dos atributos da categoria
         $attributes = $this->mlClient->getCategoryAttributes($categoryId);
         $keywords = $this->extractKeywordsFromAttributes($attributes);
-        
+
         return [
             'keywords' => array_slice($keywords, 0, 20),
             'total' => count($keywords),
@@ -379,7 +381,7 @@ class RealMarketDataService
     public function discoverRelatedDomains(string $query): array
     {
         $cacheKey = "domain_discovery:" . md5($query);
-        
+
         if ($this->cache->has($cacheKey)) {
             $cached = $this->cache->get($cacheKey);
             if (is_array($cached)) {
@@ -388,7 +390,7 @@ class RealMarketDataService
         }
 
         $result = $this->mlClient->get('/sites/MLB/domain_discovery/search', ['q' => $query], self::CACHE_TTL_MEDIUM, true);
-        
+
         if (isset($result['error']) || !is_array($result)) {
             return [];
         }
@@ -396,7 +398,7 @@ class RealMarketDataService
         $domains = [];
         foreach ($result as $domain) {
             if (!is_array($domain)) continue;
-            
+
             $domains[] = [
                 'domain_id' => $domain['domain_id'] ?? '',
                 'domain_name' => $domain['domain_name'] ?? '',
@@ -406,7 +408,7 @@ class RealMarketDataService
         }
 
         $this->cache->set($cacheKey, $domains, self::CACHE_TTL_MEDIUM);
-        
+
         return $domains;
     }
 
@@ -416,14 +418,14 @@ class RealMarketDataService
     private function extractKeywordsFromAttributes(array $attributes): array
     {
         $keywords = [];
-        
+
         foreach ($attributes as $attr) {
             // Nome do atributo
             $name = $attr['name'] ?? '';
             if ($name && strlen($name) >= 3) {
                 $keywords[] = $name;
             }
-            
+
             // Valores dos atributos (marcas, modelos, etc)
             foreach (($attr['values'] ?? []) as $value) {
                 $valueName = $value['name'] ?? '';
@@ -447,23 +449,23 @@ class RealMarketDataService
             'limit' => $limit,
             'sort' => 'sold_quantity_desc', // Mais vendidos primeiro
         ];
-        
+
         if ($keyword) {
             $params['q'] = $keyword;
         }
 
         $searchResult = $this->mlClient->searchItems($params, self::CACHE_TTL_SHORT);
-        
+
         if (isset($searchResult['error']) || empty($searchResult['results'])) {
             return ['competitors' => [], 'error' => 'Não foi possível analisar concorrentes'];
         }
 
         $competitors = [];
         $sellerIds = [];
-        
+
         foreach ($searchResult['results'] as $item) {
             $sellerId = $item['seller']['id'] ?? null;
-            
+
             // Evitar duplicar sellers
             if ($sellerId && in_array($sellerId, $sellerIds)) {
                 continue;
@@ -471,14 +473,14 @@ class RealMarketDataService
             if ($sellerId) {
                 $sellerIds[] = $sellerId;
             }
-            
+
             $competitors[] = [
                 'item_id' => $item['id'] ?? '',
                 'title' => $item['title'] ?? '',
                 'price' => $item['price'] ?? 0,
                 'original_price' => $item['original_price'] ?? null,
-                'discount_percent' => $item['original_price'] 
-                    ? round((1 - $item['price'] / $item['original_price']) * 100) 
+                'discount_percent' => $item['original_price']
+                    ? round((1 - $item['price'] / $item['original_price']) * 100)
                     : 0,
                 'sold_quantity' => $item['sold_quantity'] ?? 0,
                 'condition' => $item['condition'] ?? 'new',
@@ -498,7 +500,7 @@ class RealMarketDataService
                 'official_store' => !empty($item['official_store_id']),
                 'permalink' => $item['permalink'] ?? '',
             ];
-            
+
             if (count($competitors) >= 10) {
                 break; // Top 10 competitors
             }
@@ -521,26 +523,26 @@ class RealMarketDataService
         }
 
         $insights = [];
-        
+
         // Preço médio dos top sellers
         $prices = array_column($competitors, 'price');
         $insights['avg_top_seller_price'] = round(array_sum($prices) / count($prices), 2);
-        
+
         // % com frete grátis
         $freeShipping = count(array_filter($competitors, fn($c) => $c['shipping']['free'] ?? false));
         $insights['free_shipping_rate'] = round(($freeShipping / count($competitors)) * 100);
-        
+
         // % com desconto
         $withDiscount = count(array_filter($competitors, fn($c) => ($c['discount_percent'] ?? 0) > 0));
         $insights['discount_rate'] = round(($withDiscount / count($competitors)) * 100);
-        
+
         // % Full
-        $fullCount = count(array_filter($competitors, function($c) {
+        $fullCount = count(array_filter($competitors, function ($c) {
             $tags = $c['shipping']['tags'] ?? [];
             return in_array('fulfillment', $tags) || in_array('self_service_in', $tags);
         }));
         $insights['full_rate'] = round(($fullCount / count($competitors)) * 100);
-        
+
         // % no catálogo
         $catalogCount = count(array_filter($competitors, fn($c) => !empty($c['catalog_product_id'])));
         $insights['catalog_rate'] = round(($catalogCount / count($competitors)) * 100);
@@ -549,7 +551,7 @@ class RealMarketDataService
         $sales = array_column($competitors, 'sold_quantity');
         $insights['avg_sales'] = round(array_sum($sales) / count($sales));
         $insights['max_sales'] = max($sales);
-        
+
         return $insights;
     }
 
@@ -562,13 +564,13 @@ class RealMarketDataService
             'category' => $categoryId,
             'limit' => 1, // Apenas para pegar os filtros
         ];
-        
+
         if ($keyword) {
             $params['q'] = $keyword;
         }
 
         $searchResult = $this->mlClient->searchItems($params, self::CACHE_TTL_MEDIUM);
-        
+
         if (isset($searchResult['error'])) {
             return ['filters' => [], 'error' => 'Não foi possível obter filtros'];
         }
@@ -577,7 +579,7 @@ class RealMarketDataService
         foreach (($searchResult['available_filters'] ?? []) as $filter) {
             $filterId = $filter['id'] ?? '';
             $filterName = $filter['name'] ?? '';
-            
+
             $values = [];
             foreach (($filter['values'] ?? []) as $value) {
                 $values[] = [
@@ -586,10 +588,10 @@ class RealMarketDataService
                     'results' => $value['results'] ?? 0,
                 ];
             }
-            
+
             // Ordenar valores por quantidade de resultados
             usort($values, fn($a, $b) => $b['results'] <=> $a['results']);
-            
+
             $filters[] = [
                 'id' => $filterId,
                 'name' => $filterName,
@@ -611,7 +613,7 @@ class RealMarketDataService
     {
         // Extrair keywords do título
         $keywords = $this->extractKeywordsFromTitle($title);
-        
+
         $params = [
             'category' => $categoryId,
             'q' => implode(' ', array_slice($keywords, 0, 5)), // Top 5 keywords
@@ -620,7 +622,7 @@ class RealMarketDataService
         ];
 
         $searchResult = $this->mlClient->searchItems($params, self::CACHE_TTL_SHORT);
-        
+
         if (isset($searchResult['error']) || empty($searchResult['results'])) {
             return ['products' => [], 'error' => 'Nenhum produto similar encontrado'];
         }
@@ -628,7 +630,7 @@ class RealMarketDataService
         $similar = [];
         foreach ($searchResult['results'] as $item) {
             $similarity = $this->calculateTitleSimilarity($title, $item['title'] ?? '');
-            
+
             $similar[] = [
                 'item_id' => $item['id'] ?? '',
                 'title' => $item['title'] ?? '',
@@ -645,7 +647,7 @@ class RealMarketDataService
 
         // Ordenar por similaridade
         usort($similar, fn($a, $b) => $b['similarity_score'] <=> $a['similarity_score']);
-        
+
         return [
             'products' => array_slice($similar, 0, 10),
             'keywords_used' => array_slice($keywords, 0, 5),
@@ -658,20 +660,56 @@ class RealMarketDataService
     private function extractKeywordsFromTitle(string $title): array
     {
         // Stopwords em português
-        $stopwords = ['de', 'da', 'do', 'das', 'dos', 'para', 'com', 'sem', 'por', 'em', 'na', 'no', 'nas', 'nos', 
-                      'um', 'uma', 'uns', 'umas', 'o', 'a', 'os', 'as', 'e', 'ou', 'que', 'é', 'ao', 'aos',
-                      'kit', 'jogo', 'par', 'pcs', 'unid', 'un', 'und', 'peça', 'peças'];
-        
+        $stopwords = [
+            'de',
+            'da',
+            'do',
+            'das',
+            'dos',
+            'para',
+            'com',
+            'sem',
+            'por',
+            'em',
+            'na',
+            'no',
+            'nas',
+            'nos',
+            'um',
+            'uma',
+            'uns',
+            'umas',
+            'o',
+            'a',
+            'os',
+            'as',
+            'e',
+            'ou',
+            'que',
+            'é',
+            'ao',
+            'aos',
+            'kit',
+            'jogo',
+            'par',
+            'pcs',
+            'unid',
+            'un',
+            'und',
+            'peça',
+            'peças'
+        ];
+
         // Normalizar e separar
         $title = mb_strtolower($title);
         $title = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $title);
         $words = preg_split('/\s+/', $title, -1, PREG_SPLIT_NO_EMPTY);
-        
+
         // Filtrar stopwords e palavras curtas
-        $keywords = array_filter($words, function($word) use ($stopwords) {
+        $keywords = array_filter($words, function ($word) use ($stopwords) {
             return mb_strlen($word) >= 3 && !in_array($word, $stopwords);
         });
-        
+
         return array_values(array_unique($keywords));
     }
 
@@ -682,14 +720,14 @@ class RealMarketDataService
     {
         $words1 = $this->extractKeywordsFromTitle($title1);
         $words2 = $this->extractKeywordsFromTitle($title2);
-        
+
         if (empty($words1) || empty($words2)) {
             return 0;
         }
-        
+
         $intersection = array_intersect($words1, $words2);
         $union = array_unique(array_merge($words1, $words2));
-        
+
         return count($union) > 0 ? round(count($intersection) / count($union) * 100, 1) : 0;
     }
 
@@ -700,11 +738,11 @@ class RealMarketDataService
     {
         // Buscar item da API
         $item = $this->mlClient->getItemDetails($itemId);
-        
+
         // Fallback para dados locais se API falhar
         if (empty($item) || isset($item['error'])) {
             $item = $this->getItemFromLocalDb($itemId);
-            
+
             if (!$item) {
                 return ['success' => false, 'error' => 'Item não encontrado'];
             }
@@ -713,7 +751,7 @@ class RealMarketDataService
         $scores = [];
         $issues = [];
         $recommendations = [];
-        
+
         // 1. Título (max 30 pontos)
         $titleScore = $this->scoreTitle($item['title'] ?? '');
         $scores['title'] = $titleScore['score'];
@@ -727,7 +765,7 @@ class RealMarketDataService
                 }
             }
         }
-        
+
         // 2. Descrição (max 20 pontos)
         // scoreDescription() expects the full description_data array from ML API
         // (with plain_text, text keys). After getItemDetails() fix, raw array
@@ -749,7 +787,7 @@ class RealMarketDataService
                 }
             }
         }
-        
+
         // 3. Imagens (max 20 pontos)
         $imageScore = $this->scoreImages($item['pictures'] ?? []);
         $scores['images'] = $imageScore['score'];
@@ -763,7 +801,7 @@ class RealMarketDataService
                 }
             }
         }
-        
+
         // 4. Atributos (max 15 pontos)
         $attrScore = $this->scoreAttributes($item);
         $scores['attributes'] = $attrScore['score'];
@@ -777,7 +815,7 @@ class RealMarketDataService
                 }
             }
         }
-        
+
         // 5. Frete (max 10 pontos)
         $shippingScore = $this->scoreShipping($item['shipping'] ?? []);
         $scores['shipping'] = $shippingScore['score'];
@@ -791,15 +829,15 @@ class RealMarketDataService
                 }
             }
         }
-        
+
         // 6. Preço/Promoção (max 5 pontos)
         $priceScore = $this->scorePricing($item);
         $scores['pricing'] = $priceScore['score'];
-        
+
         // Calcular total (normalizado para 100)
         $totalRaw = array_sum($scores);
         $totalScore = round($totalRaw);
-        
+
         // Definir overall score como média ponderada normalizada
         $overallScore = $totalScore;
 
@@ -817,7 +855,7 @@ class RealMarketDataService
             'source' => isset($item['_source']) ? $item['_source'] : 'api',
         ];
     }
-    
+
     /**
      * Busca item do banco de dados local
      */
@@ -837,14 +875,14 @@ class RealMarketDataService
         ");
         $stmt->execute(['item_id' => $itemId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         if (!$row) {
             return null;
         }
-        
+
         // Decodificar dados JSON adicionais
         $data = json_decode($row['data'] ?? '{}', true) ?: [];
-        
+
         return array_merge($row, $data, ['_source' => 'local_db']);
     }
 
@@ -853,7 +891,7 @@ class RealMarketDataService
         $length = mb_strlen($title);
         $score = 0;
         $issues = [];
-        
+
         // Comprimento ideal: 50-60 caracteres
         if ($length >= 50 && $length <= 60) {
             $score += 15;
@@ -866,7 +904,7 @@ class RealMarketDataService
         } else {
             $issues[] = 'Título muito curto (<30 caracteres)';
         }
-        
+
         // Palavras-chave relevantes (não só genéricas)
         $wordCount = count(explode(' ', trim($title)));
         if ($wordCount >= 5) {
@@ -875,7 +913,7 @@ class RealMarketDataService
             $score += 5;
             $issues[] = 'Adicione mais palavras-chave ao título';
         }
-        
+
         // Evitar caracteres especiais excessivos
         $specialChars = preg_match_all('/[!@#$%^&*()]/', $title);
         if ($specialChars === 0) {
@@ -885,7 +923,7 @@ class RealMarketDataService
         } else {
             $issues[] = 'Remova caracteres especiais desnecessários';
         }
-        
+
         return [
             'score' => min(30, $score),
             'max' => 30,
@@ -900,7 +938,7 @@ class RealMarketDataService
         $length = mb_strlen($plainText);
         $score = 0;
         $issues = [];
-        
+
         // Comprimento mínimo 500 caracteres
         if ($length >= 1000) {
             $score += 10;
@@ -913,19 +951,19 @@ class RealMarketDataService
         } else {
             $issues[] = 'Descrição insuficiente (<200 caracteres)';
         }
-        
+
         // Estruturação (parágrafos, bullets)
         if (strpos($plainText, "\n") !== false) {
             $score += 5;
         } else {
             $issues[] = 'Estruture a descrição com parágrafos';
         }
-        
+
         // HTML presente
         if (!empty($description['text'])) {
             $score += 5;
         }
-        
+
         return [
             'score' => min(20, $score),
             'max' => 20,
@@ -939,7 +977,7 @@ class RealMarketDataService
         $count = count($pictures);
         $score = 0;
         $issues = [];
-        
+
         // Quantidade de imagens (ideal 6+)
         if ($count >= 6) {
             $score += 15;
@@ -952,7 +990,7 @@ class RealMarketDataService
         } else {
             $issues[] = 'Imagens insuficientes';
         }
-        
+
         // Verificar resolução (se disponível)
         $hasHighRes = false;
         foreach ($pictures as $pic) {
@@ -964,13 +1002,13 @@ class RealMarketDataService
                 }
             }
         }
-        
+
         if ($hasHighRes) {
             $score += 5;
         } else if ($count > 0) {
             $issues[] = 'Use imagens em alta resolução (1200x1200+)';
         }
-        
+
         return [
             'score' => min(20, $score),
             'max' => 20,
@@ -985,7 +1023,7 @@ class RealMarketDataService
         $count = count($attributes);
         $score = 0;
         $issues = [];
-        
+
         // Quantidade de atributos preenchidos
         if ($count >= 15) {
             $score += 10;
@@ -998,27 +1036,27 @@ class RealMarketDataService
         } else {
             $issues[] = 'Preencha os atributos da ficha técnica';
         }
-        
+
         // Verificar atributos importantes
         $hasBrand = false;
         $hasModel = false;
         $hasGtin = false;
-        
+
         foreach ($attributes as $attr) {
             $id = strtoupper($attr['id'] ?? '');
             if ($id === 'BRAND') $hasBrand = true;
             if ($id === 'MODEL') $hasModel = true;
             if (in_array($id, ['GTIN', 'EAN', 'UPC'])) $hasGtin = true;
         }
-        
+
         if ($hasBrand) $score += 2;
         else $issues[] = 'Adicione a marca (BRAND)';
-        
+
         if ($hasModel) $score += 2;
         else $issues[] = 'Adicione o modelo (MODEL)';
-        
+
         if ($hasGtin) $score += 1;
-        
+
         return [
             'score' => min(15, $score),
             'max' => 15,
@@ -1031,14 +1069,14 @@ class RealMarketDataService
     {
         $score = 0;
         $issues = [];
-        
+
         // Frete grátis
         if ($shipping['free_shipping'] ?? false) {
             $score += 5;
         } else {
             $issues[] = 'Considere oferecer frete grátis';
         }
-        
+
         // Full/Fulfillment
         $tags = $shipping['tags'] ?? [];
         if (in_array('fulfillment', $tags) || in_array('self_service_in', $tags)) {
@@ -1049,7 +1087,7 @@ class RealMarketDataService
         } else {
             $issues[] = 'Use Mercado Envios para melhor visibilidade';
         }
-        
+
         return [
             'score' => min(10, $score),
             'max' => 10,
@@ -1061,12 +1099,12 @@ class RealMarketDataService
     private function scorePricing(array $item): array
     {
         $score = 0;
-        
+
         // Tem preço original (desconto)
         if (!empty($item['original_price']) && $item['original_price'] > ($item['price'] ?? 0)) {
             $score += 3;
         }
-        
+
         // Listing type (gold_special = melhor exposição)
         $listingType = $item['listing_type_id'] ?? '';
         if ($listingType === 'gold_special') {
@@ -1074,7 +1112,7 @@ class RealMarketDataService
         } elseif ($listingType === 'gold_pro') {
             $score += 1;
         }
-        
+
         return [
             'score' => min(5, $score),
             'max' => 5,
@@ -1101,11 +1139,11 @@ class RealMarketDataService
     {
         // Buscar produtos similares
         $similar = $this->findSimilarProducts($title, $categoryId);
-        
+
         if (empty($similar['products'])) {
             // Fallback: análise geral da categoria
             $pricing = $this->analyzePricing($categoryId, $keyword);
-            
+
             return [
                 'success' => true,
                 'method' => 'category_average',
@@ -1122,7 +1160,7 @@ class RealMarketDataService
         // Calcular preço baseado em produtos similares
         $prices = array_column($similar['products'], 'price');
         $avgPrice = array_sum($prices) / count($prices);
-        
+
         // Ponderar por similaridade
         $weightedSum = 0;
         $weightSum = 0;
@@ -1131,9 +1169,9 @@ class RealMarketDataService
             $weightedSum += ($p['price'] ?? 0) * $weight;
             $weightSum += $weight;
         }
-        
+
         $weightedAvg = $weightSum > 0 ? $weightedSum / $weightSum : $avgPrice;
-        
+
         return [
             'success' => true,
             'method' => 'similar_products',
@@ -1153,7 +1191,7 @@ class RealMarketDataService
     // =========================================================================
     // AUTOCOMPLETE & SEARCH HELPERS
     // =========================================================================
-    
+
     /**
      * Autocomplete de busca usando API do ML
      */
@@ -1161,9 +1199,9 @@ class RealMarketDataService
     {
         // Usar método existente do MercadoLivreClient
         $suggestions = $this->mlClient->getAutocompleteSuggestions($query, $categoryId);
-        
+
         $results = [];
-        
+
         if (!isset($suggestions['error']) && !empty($suggestions['suggested_queries'])) {
             foreach ($suggestions['suggested_queries'] as $suggestion) {
                 $text = is_array($suggestion) ? ($suggestion['q'] ?? '') : $suggestion;
@@ -1175,7 +1213,7 @@ class RealMarketDataService
                 }
             }
         }
-        
+
         // Complementar com domain_discovery
         $domains = $this->discoverRelatedDomains($query);
         if (!empty($domains['domains'])) {
@@ -1187,14 +1225,14 @@ class RealMarketDataService
                 ];
             }
         }
-        
+
         return [
             'success' => true,
             'query' => $query,
             'suggestions' => $results,
         ];
     }
-    
+
     /**
      * Buscar estatísticas gerais do mercado
      */
@@ -1206,7 +1244,7 @@ class RealMarketDataService
         if ($categoryId) {
             $params['category_id'] = $categoryId;
         }
-        
+
         // Total de itens
         $stmt = $this->db->prepare("
             SELECT 
@@ -1222,7 +1260,7 @@ class RealMarketDataService
         ");
         $stmt->execute($params);
         $stats = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         // Top categorias
         $stmt = $this->db->prepare("
             SELECT 
@@ -1238,7 +1276,7 @@ class RealMarketDataService
         ");
         $stmt->execute($params);
         $topCategories = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        
+
         return [
             'success' => true,
             'stats' => [
@@ -1256,27 +1294,27 @@ class RealMarketDataService
             'generated_at' => date('Y-m-d H:i:s'),
         ];
     }
-    
+
     /**
      * Obter atributos obrigatórios e recomendados de uma categoria
      */
     public function getCategoryRequirements(string $categoryId): array
     {
         $details = $this->getCategoryDetails($categoryId);
-        
+
         if (isset($details['error'])) {
             return ['success' => false, 'error' => $details['error']];
         }
-        
+
         $required = [];
         $recommended = [];
         $optional = [];
-        
+
         $allAttrs = array_merge(
             $details['required_attributes'] ?? [],
             $details['other_attributes'] ?? []
         );
-        
+
         foreach ($allAttrs as $attr) {
             $tags = $attr['tags'] ?? [];
             $attrInfo = [
@@ -1286,7 +1324,7 @@ class RealMarketDataService
                 'hint' => $attr['hint'] ?? $attr['tooltip'] ?? null,
                 'allowed_values' => isset($attr['values']) ? array_column($attr['values'], 'name', 'id') : null,
             ];
-            
+
             if (!empty($tags['required']) || !empty($tags['catalog_required'])) {
                 $required[] = $attrInfo;
             } elseif (!empty($tags['hidden'])) {
@@ -1295,7 +1333,7 @@ class RealMarketDataService
                 $recommended[] = $attrInfo;
             }
         }
-        
+
         return [
             'success' => true,
             'category_id' => $categoryId,

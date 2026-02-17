@@ -41,7 +41,7 @@ $warnings = [];
 
 try {
     $db = Database::getInstance();
-    
+
     // 1. Verificar jobs travados
     $stmt = $db->query("
         SELECT COUNT(*) as count
@@ -50,12 +50,12 @@ try {
         AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
     ");
     $stuckJobs = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
-    
+
     if ($stuckJobs > 0) {
         $healthScore -= 20;
         $issues[] = "⚠️  $stuckJobs job(s) travado(s) (>30 min sem update)";
     }
-    
+
     // 2. Verificar taxa de falha recente (últimas 24h)
     $stmt = $db->query("
         SELECT 
@@ -65,10 +65,10 @@ try {
         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
     ");
     $recent = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($recent['total'] > 0) {
         $failureRate = ($recent['failed'] / $recent['total']) * 100;
-        
+
         if ($failureRate > 50) {
             $healthScore -= 30;
             $issues[] = "🔴 Taxa de falha crítica: " . number_format($failureRate, 1) . "% (últimas 24h)";
@@ -77,7 +77,7 @@ try {
             $warnings[] = "🟡 Taxa de falha alta: " . number_format($failureRate, 1) . "% (últimas 24h)";
         }
     }
-    
+
     // 3. Verificar workers inativos (nenhum job processado nas últimas 2 horas)
     $stmt = $db->query("
         SELECT MAX(updated_at) as last_update
@@ -85,17 +85,17 @@ try {
         WHERE status IN ('completed', 'failed')
     ");
     $lastUpdate = $stmt->fetch(PDO::FETCH_ASSOC)['last_update'];
-    
+
     if ($lastUpdate) {
         $lastUpdateTime = strtotime($lastUpdate);
         $hoursSinceUpdate = (time() - $lastUpdateTime) / 3600;
-        
+
         if ($hoursSinceUpdate > 2) {
             $healthScore -= 10;
             $warnings[] = "⚠️  Worker pode estar inativo (sem updates há " . number_format($hoursSinceUpdate, 1) . " horas)";
         }
     }
-    
+
     // 4. Verificar acúmulo de jobs pendentes
     $stmt = $db->query("
         SELECT COUNT(*) as count
@@ -103,7 +103,7 @@ try {
         WHERE status = 'pending'
     ");
     $pendingJobs = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
-    
+
     if ($pendingJobs > 50) {
         $healthScore -= 15;
         $warnings[] = "🟡 Alto acúmulo de jobs pendentes: $pendingJobs";
@@ -111,7 +111,7 @@ try {
         $healthScore -= 25;
         $issues[] = "🔴 Acúmulo crítico de jobs pendentes: $pendingJobs";
     }
-    
+
     // 5. Verificar erros recorrentes
     $stmt = $db->query("
         SELECT error_message, COUNT(*) as count
@@ -124,17 +124,17 @@ try {
         LIMIT 1
     ");
     $recurringError = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($recurringError) {
         $healthScore -= 10;
         $warnings[] = "⚠️  Erro recorrente: " . substr($recurringError['error_message'], 0, 50) . " ({$recurringError['count']}x na última hora)";
     }
-    
+
     // 6. Verificar espaço em disco (logs)
     $logsDir = __DIR__ . '/../storage/logs';
     $diskSpace = disk_free_space($logsDir);
     $diskSpaceGB = $diskSpace / (1024 * 1024 * 1024);
-    
+
     if ($diskSpaceGB < 1) {
         $healthScore -= 20;
         $issues[] = "🔴 Espaço em disco crítico: " . number_format($diskSpaceGB, 2) . " GB livres";
@@ -142,7 +142,7 @@ try {
         $healthScore -= 10;
         $warnings[] = "🟡 Espaço em disco baixo: " . number_format($diskSpaceGB, 2) . " GB livres";
     }
-    
+
     // Determinar status de saúde
     $healthStatus = '🟢 SAUDÁVEL';
     if ($healthScore < 50) {
@@ -150,7 +150,7 @@ try {
     } elseif ($healthScore < 70) {
         $healthStatus = '🟡 ATENÇÃO';
     }
-    
+
     // Gerar relatório
     echo "\n";
     echo "╔═══════════════════════════════════════════════════════════════╗\n";
@@ -163,7 +163,7 @@ try {
     echo "Status: $healthStatus\n";
     echo "Pontuação: $healthScore/100\n";
     echo "\n";
-    
+
     if (!empty($issues)) {
         echo "┌───────────────────────────────────────────────────────────────┐\n";
         echo "│  PROBLEMAS CRÍTICOS                                           │\n";
@@ -174,7 +174,7 @@ try {
         }
         echo "\n";
     }
-    
+
     if (!empty($warnings)) {
         echo "┌───────────────────────────────────────────────────────────────┐\n";
         echo "│  AVISOS                                                       │\n";
@@ -185,12 +185,12 @@ try {
         }
         echo "\n";
     }
-    
+
     if (empty($issues) && empty($warnings)) {
         echo "✅ Sistema funcionando normalmente. Nenhum problema detectado.\n";
         echo "\n";
     }
-    
+
     // Métricas rápidas
     echo "┌───────────────────────────────────────────────────────────────┐\n";
     echo "│  MÉTRICAS RÁPIDAS                                             │\n";
@@ -203,7 +203,7 @@ try {
     }
     echo "Espaço Livre:         " . number_format($diskSpaceGB, 2) . " GB\n";
     echo "\n";
-    
+
     // Salvar em log de saúde
     $healthLog = [
         'timestamp' => date('Y-m-d H:i:s'),
@@ -218,7 +218,7 @@ try {
             'disk_space_gb' => $diskSpaceGB,
         ],
     ];
-    
+
     // Salvar em tabela de health metrics (se existir)
     try {
         $stmt = $db->prepare("
@@ -237,25 +237,25 @@ try {
     } catch (Exception $e) {
         // Tabela pode não existir ainda, ignorar
     }
-    
+
     // Gerar alertas se solicitado
     if ($generateAlerts && ($healthScore < 70 || !empty($issues))) {
         try {
             require_once __DIR__ . '/../app/Services/EmailService.php';
             $emailService = new \App\Services\EmailService();
-            
+
             if ($emailService->isEnabled()) {
                 $severity = $healthScore < 50 ? 'CRÍTICO' : ($healthScore < 70 ? 'ALERTA' : 'AVISO');
                 $severityColor = $healthScore < 50 ? '#dc3545' : ($healthScore < 70 ? '#ffc107' : '#28a745');
-                
+
                 $subject = "🚨 [$severity] Monitor de Saúde - Clonagem de Anúncios";
-                
+
                 $issuesHtml = "";
                 foreach ($issues as $issue) {
                     $icon = $issue['severity'] === 'critical' ? '🔴' : ($issue['severity'] === 'warning' ? '🟡' : '🟢');
                     $issuesHtml .= "<li>{$icon} <strong>{$issue['component']}:</strong> {$issue['message']}</li>";
                 }
-                
+
                 $emailBody = "
                 <html>
                 <body style='font-family: Arial, sans-serif; margin: 20px;'>
@@ -307,13 +307,13 @@ try {
                     </p>
                 </body>
                 </html>";
-                
+
                 // Enviar para emails de alerta configurados
                 $alertEmails = array_filter(array_map('trim', explode(',', $_ENV['ALERT_EMAILS'] ?? '')));
                 if (empty($alertEmails)) {
                     $alertEmails = [$_ENV['EMAIL_REPLY_TO'] ?? 'admin@eskill.com.br'];
                 }
-                
+
                 $successCount = 0;
                 foreach ($alertEmails as $email) {
                     if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -322,18 +322,17 @@ try {
                         }
                     }
                 }
-                
+
                 if ($successCount > 0) {
                     echo "✅ Alertas enviados por email para $successCount destinatário(s)\n";
                 } else {
                     echo "❌ Falha ao enviar alertas por email\n";
                 }
-                
+
                 // Tentar enviar alerta via Telegram se configurado
                 if (($_ENV['TELEGRAM_ENABLED'] ?? false) && !empty($_ENV['TELEGRAM_BOT_TOKEN'])) {
                     sendTelegramAlert($healthScore, $issues);
                 }
-                
             } else {
                 echo "⚠️ Email não configurado. Use EMAIL_ENABLED=true e configure as variáveis SMTP.\n";
             }
@@ -341,10 +340,9 @@ try {
             echo "❌ Erro ao enviar alertas: " . $e->getMessage() . "\n";
         }
     }
-    
+
     // Exit code baseado na saúde
     exit($healthScore < 50 ? 1 : 0);
-    
 } catch (Exception $e) {
     echo "ERRO ao verificar saúde: " . $e->getMessage() . "\n";
     exit(1);
@@ -358,32 +356,32 @@ function sendTelegramAlert(float $healthScore, array $issues): void
     try {
         $botToken = $_ENV['TELEGRAM_BOT_TOKEN'] ?? '';
         $chatId = $_ENV['TELEGRAM_CHAT_ID'] ?? '';
-        
+
         if (empty($botToken) || empty($chatId)) {
             return;
         }
-        
+
         $severity = $healthScore < 50 ? '🔴 CRÍTICO' : ($healthScore < 70 ? '🟡 ALERTA' : '🟢 AVISO');
-        
+
         $message = "*🚨 ALERTA DE SAÚDE DO SISTEMA*\n\n";
         $message .= "*Nível:* $severity\n";
         $message .= "*Pontuação:* " . number_format($healthScore, 1) . "/100\n";
         $message .= "*Data:* " . date('d/m/Y H:i:s') . "\n\n";
-        
+
         if (!empty($issues)) {
             $message .= "*Problemas Detectados:*\n";
             foreach (array_slice($issues, 0, 5) as $issue) {
                 $icon = $issue['severity'] === 'critical' ? '🔴' : ($issue['severity'] === 'warning' ? '🟡' : '🟢');
                 $message .= "$icon {$issue['component']}: {$issue['message']}\n";
             }
-            
+
             if (count($issues) > 5) {
                 $message .= "... e mais " . (count($issues) - 5) . " problemas\n";
             }
         }
-        
+
         $message .= "\n*Ações:* Verificar logs do sistema";
-        
+
         $url = "https://api.telegram.org/bot$botToken/sendMessage";
         $data = [
             'chat_id' => $chatId,
@@ -391,7 +389,7 @@ function sendTelegramAlert(float $healthScore, array $issues): void
             'parse_mode' => 'Markdown',
             'disable_web_page_preview' => true
         ];
-        
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -399,11 +397,11 @@ function sendTelegramAlert(float $healthScore, array $issues): void
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
+
         if ($httpCode === 200) {
             echo "✅ Alerta enviado via Telegram\n";
         } else {

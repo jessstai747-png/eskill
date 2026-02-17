@@ -233,6 +233,9 @@ class StructuredLogService
     /**
      * Buscar logs com filtros
      */
+    /**
+     * Buscar logs com filtros (Otimizado para leitura reversa sem carregar arquivo todo)
+     */
     public function search(array $filters = []): array
     {
         $logFile = $this->logPath;
@@ -242,59 +245,82 @@ class StructuredLogService
             return [];
         }
 
-        $handle = fopen($logFile, 'r');
-        if (!$handle) {
-            return [];
-        }
-
         $limit = $filters['limit'] ?? 100;
         $level = $filters['level'] ?? null;
         $search = $filters['search'] ?? null;
         $startDate = $filters['start_date'] ?? null;
         $endDate = $filters['end_date'] ?? null;
 
-        $count = 0;
-        
-        // Ler de trás para frente (logs mais recentes primeiro)
-        $lines = [];
-        while (($line = fgets($handle)) !== false) {
-            $lines[] = $line;
+        // Implementação de leitura reversa eficiente
+        $handle = fopen($logFile, 'rb');
+        if ($handle === false) return [];
+
+        $fileSize = filesize($logFile);
+        $chunkSize = 4096;
+        $pos = $fileSize;
+        $buffer = '';
+        $foundParams = 0;
+
+        // Ensure we handle valid query logic
+        while ($pos > 0 && $foundParams < $limit) {
+            $readSize = ($pos < $chunkSize) ? $pos : $chunkSize;
+            $pos -= $readSize;
+            
+            fseek($handle, $pos);
+            $chunk = fread($handle, $readSize);
+            
+            $buffer = $chunk . $buffer;
+            $lines = explode("\n", $buffer);
+            
+            // The first element of $lines (index 0) is likely incomplete until we reach start of file,
+            // so we keep it in buffer and process the rest reversed.
+            // If pos == 0, process all.
+            if ($pos > 0) {
+                $buffer = array_shift($lines); // Keep remainder for next read
+            } else {
+                $buffer = ''; // Process everything
+            }
+
+            // Process lines in reverse order (newest first)
+            for ($i = count($lines) - 1; $i >= 0; $i--) {
+                $line = trim($lines[$i]);
+                if (empty($line)) continue;
+
+                // Stop if we have enough
+                if ($foundParams >= $limit) break;
+
+                // Parse JSON
+                $log = json_decode($line, true);
+                if (!$log) continue;
+
+                // Apply Filters
+                if ($level && strtolower($log['level_name'] ?? '') !== strtolower($level)) {
+                    continue;
+                }
+
+                if ($search && stripos($line, $search) === false) { // Fast string search on raw line
+                    continue;
+                }
+
+                if ($startDate && ($log['datetime'] ?? '') < $startDate) {
+                    continue; // Log is older than start date? Valid. But if file is sorted, we can stop?
+                              // Logs are appended, so if we read backwards and hit a date < start_date, we can theoretically stop if monotonic.
+                              // Assuming valid timestamps:
+                    // If we find a log OLDER than usage start, we can stop reading?
+                    // Yes, optimizing:
+                     break 2; // Stop outer loop
+                }
+
+                if ($endDate && ($log['datetime'] ?? '') > $endDate) {
+                    continue; 
+                }
+
+                $results[] = $log;
+                $foundParams++;
+            }
         }
+        
         fclose($handle);
-        
-        $lines = array_reverse($lines);
-
-        foreach ($lines as $line) {
-            if ($count >= $limit) {
-                break;
-            }
-
-            $log = json_decode($line, true);
-            if (!$log) {
-                continue;
-            }
-
-            // Aplicar filtros
-            if ($level && strtolower($log['level_name'] ?? '') !== strtolower($level)) {
-                continue;
-            }
-
-            if ($search && stripos(json_encode($log), $search) === false) {
-                continue;
-            }
-
-            if ($startDate && ($log['datetime'] ?? '') < $startDate) {
-                continue;
-            }
-
-            if ($endDate && ($log['datetime'] ?? '') > $endDate) {
-                continue;
-            }
-
-            $results[] = $log;
-            $count++;
-        }
-
         return $results;
     }
 

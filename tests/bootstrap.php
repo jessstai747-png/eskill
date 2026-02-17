@@ -40,6 +40,31 @@ if (!isset($_SESSION)) {
     $_SESSION = [];
 }
 
+// Detect PHPUnit testsuite from CLI args. Unit tests should not require DB connectivity.
+$argv = $_SERVER['argv'] ?? [];
+$isUnitSuite = false;
+for ($i = 0; $i < count($argv); $i++) {
+    // Supports: --testsuite Unit
+    if ($argv[$i] === '--testsuite' && isset($argv[$i + 1]) && strcasecmp((string) $argv[$i + 1], 'Unit') === 0) {
+        $isUnitSuite = true;
+        break;
+    }
+
+    // Supports: --testsuite=Unit
+    if (is_string($argv[$i]) && str_starts_with($argv[$i], '--testsuite=')) {
+        $value = substr($argv[$i], strlen('--testsuite='));
+        if (strcasecmp((string) $value, 'Unit') === 0) {
+            $isUnitSuite = true;
+            break;
+        }
+    }
+}
+
+if ($isUnitSuite) {
+    error_log('[phpunit-bootstrap] Unit testsuite detected; skipping DB connectivity enforcement.');
+    return;
+}
+
 // --- Enforce MySQL usage during tests -----------------------------------
 // Log resolved DB env and ensure tests run against MySQL (abort if not)
 $dbConn = trim((string)($_ENV['DB_CONNECTION'] ?? getenv('DB_CONNECTION') ?? ''));

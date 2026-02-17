@@ -12,10 +12,16 @@ class RefreshTokenService
     private \PDO $db;
     private int $defaultDays = 30;
 
+    private static bool $tableVerified = false;
+
     public function __construct()
     {
         $this->db = Database::getInstance();
-        $this->ensureTable();
+        // Verificar tabela apenas uma vez por request (não em cada instanciação)
+        if (!self::$tableVerified) {
+            $this->ensureTable();
+            self::$tableVerified = true;
+        }
     }
 
     private function ensureTable(): void

@@ -27,7 +27,7 @@ abstract class BaseController
         }
         throw new \RuntimeException("Container not set in controller");
     }
-    
+
     /**
      * Helper para JSON response
      */

@@ -8,13 +8,13 @@ use PDO;
 class MonitoringService
 {
     private \PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
         $this->ensureMonitoringTable();
     }
-    
+
     /**
      * Cria tabela de monitoramento se não existir e garante que colunas existam
      */
@@ -49,7 +49,7 @@ class MonitoringService
             log_error('Erro ao criar tabela de monitoramento', ['service' => 'MonitoringService', 'error' => $e->getMessage()]);
         }
     }
-    
+
     /**
      * Registra uma métrica do sistema
      */
@@ -60,7 +60,7 @@ class MonitoringService
                 INSERT INTO system_monitoring (metric_name, metric_value, metric_unit, status, metadata)
                 VALUES (:metric_name, :metric_value, :metric_unit, :status, :metadata)
             ");
-            
+
             $stmt->execute([
                 ':metric_name' => $metricName,
                 ':metric_value' => $value,
@@ -72,7 +72,7 @@ class MonitoringService
             log_error('Erro ao registrar métrica', ['service' => 'MonitoringService', 'error' => $e->getMessage()]);
         }
     }
-    
+
     /**
      * Monitora saúde do sistema
      */
@@ -83,7 +83,7 @@ class MonitoringService
             'checks' => [],
             'timestamp' => date('Y-m-d H:i:s'),
         ];
-        
+
         // Verificar conexão com banco de dados
         try {
             $this->db->query("SELECT 1");
@@ -92,28 +92,28 @@ class MonitoringService
             $health['checks']['database'] = ['status' => 'critical', 'message' => $e->getMessage()];
             $health['status'] = 'critical';
         }
-        
+
         // Verificar espaço em disco
         $diskFree = disk_free_space(__DIR__ . '/../../');
         $diskTotal = disk_total_space(__DIR__ . '/../../');
         $diskUsagePercent = (1 - ($diskFree / $diskTotal)) * 100;
-        
+
         $health['checks']['disk'] = [
             'status' => $diskUsagePercent > 90 ? 'critical' : ($diskUsagePercent > 75 ? 'warning' : 'ok'),
             'usage_percent' => round($diskUsagePercent, 2),
             'free_gb' => round($diskFree / 1024 / 1024 / 1024, 2),
             'total_gb' => round($diskTotal / 1024 / 1024 / 1024, 2),
         ];
-        
+
         if ($health['checks']['disk']['status'] !== 'ok') {
             $health['status'] = $health['checks']['disk']['status'];
         }
-        
+
         // Verificar contas ML ativas
         try {
             $stmt = $this->db->query("SELECT COUNT(*) as total FROM ml_accounts WHERE status = 'active'");
             $activeAccounts = $stmt->fetch()['total'] ?? 0;
-            
+
             $health['checks']['ml_accounts'] = [
                 'status' => 'ok',
                 'active_accounts' => (int)$activeAccounts,
@@ -121,7 +121,7 @@ class MonitoringService
         } catch (\Exception $e) {
             $health['checks']['ml_accounts'] = ['status' => 'warning', 'message' => $e->getMessage()];
         }
-        
+
         // Verificar tokens expirando
         try {
             $stmt = $this->db->query("
@@ -132,29 +132,29 @@ class MonitoringService
                 AND token_expires_at > NOW()
             ");
             $expiringTokens = $stmt->fetch()['total'] ?? 0;
-            
+
             $health['checks']['tokens'] = [
                 'status' => $expiringTokens > 0 ? 'warning' : 'ok',
                 'expiring_count' => (int)$expiringTokens,
             ];
-            
+
             if ($expiringTokens > 0) {
                 $health['status'] = 'warning';
             }
         } catch (\Exception $e) {
             $health['checks']['tokens'] = ['status' => 'warning', 'message' => $e->getMessage()];
         }
-        
+
         // Verificar jobs pendentes
         try {
             $stmt = $this->db->query("SELECT COUNT(*) as total FROM jobs WHERE status = 'pending'");
             $pendingJobs = $stmt->fetch()['total'] ?? 0;
-            
+
             $health['checks']['jobs'] = [
                 'status' => $pendingJobs > 100 ? 'warning' : 'ok',
                 'pending_count' => (int)$pendingJobs,
             ];
-            
+
             if ($pendingJobs > 100) {
                 $health['status'] = 'warning';
             }
@@ -162,15 +162,15 @@ class MonitoringService
             // Tabela jobs pode não existir
             $health['checks']['jobs'] = ['status' => 'ok', 'message' => 'Tabela jobs não encontrada'];
         }
-        
+
         // Registrar métricas
         $this->recordMetric('disk_usage_percent', $diskUsagePercent, '%', $health['checks']['disk']['status']);
         $this->recordMetric('active_accounts', $activeAccounts, 'count', 'ok');
         $this->recordMetric('expiring_tokens', $expiringTokens, 'count', $expiringTokens > 0 ? 'warning' : 'ok');
-        
+
         return $health;
     }
-    
+
     /**
      * Obtém métricas recentes
      */
@@ -181,34 +181,34 @@ class MonitoringService
             WHERE recorded_at >= DATE_SUB(NOW(), INTERVAL :hours HOUR)
         ";
         $params = [':hours' => $hours];
-        
+
         if ($metricName) {
             $sql .= " AND metric_name = :metric_name";
             $params[':metric_name'] = $metricName;
         }
-        
+
         $sql .= " ORDER BY recorded_at DESC";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        
+
         $metrics = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Decodificar JSON metadata
         foreach ($metrics as &$metric) {
             $metric['metadata'] = json_decode($metric['metadata'], true);
         }
-        
+
         return $metrics;
     }
-    
+
     /**
      * Obtém estatísticas de métricas
      */
     public function getMetricStats(string $metricName, int $hours = 24): array
     {
         $metrics = $this->getRecentMetrics($metricName, $hours);
-        
+
         if (empty($metrics)) {
             return [
                 'metric_name' => $metricName,
@@ -218,9 +218,9 @@ class MonitoringService
                 'max' => 0,
             ];
         }
-        
+
         $values = array_column($metrics, 'metric_value');
-        
+
         return [
             'metric_name' => $metricName,
             'count' => count($values),
@@ -230,7 +230,7 @@ class MonitoringService
             'latest' => $values[0] ?? 0,
         ];
     }
-    
+
     /**
      * Limpa métricas antigas
      */
@@ -240,9 +240,9 @@ class MonitoringService
             DELETE FROM system_monitoring
             WHERE recorded_at < DATE_SUB(NOW(), INTERVAL :days DAY)
         ");
-        
+
         $stmt->execute([':days' => $days]);
-        
+
         return $stmt->rowCount();
     }
 }
