@@ -31,7 +31,7 @@ class AIProviderManager
     private const CIRCUIT_BREAKER_TTL = 300;
 
     /** File path for cross-request circuit breaker persistence */
-    private const CIRCUIT_BREAKER_FILE = '/tmp/ai_provider_circuit_breaker.json';
+    private const CIRCUIT_BREAKER_FILE = __DIR__ . '/../../../../storage/cache/ai_provider_circuit_breaker.json';
 
     public function __construct(array $config = [])
     {
