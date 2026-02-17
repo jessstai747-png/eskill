@@ -6,6 +6,33 @@
 
 ---
 
+## Sessão: 2026-02-17 PM2 — Dashboard SEO Killer: Integração ML API + Resiliência DB
+
+### Objetivo
+Fazer o dashboard SEO Killer funcionar com a API do Mercado Livre mesmo quando MySQL está offline. Dashboard mostrava 0 anúncios, 0 otimizados, 0 pendentes apesar da conta PANTERAMOTOPEÇAS estar conectada.
+
+### Bugs Corrigidos
+
+1. **SEOKiller.syncItems() não existia** — Botão "Sincronizar Anúncios" chamava método inexistente no JS. Criado novo método que chama `POST /api/seo-killer/sync` com loading spinner e auto-refresh.
+2. **SEOKillerEngine crashava sem DB** — Constructor chamava `Database::getInstance()` que fazia throw quando MySQL offline. Agora usa `?\PDO` nullable com try/catch.
+3. **ItemService crashava sem DB** — Mesmo problema. Corrigido constructor + 7 métodos com null guards: `getMlUserId`, `saveItemToDatabase`, `listItemsFromLocalCache`, `getLocalItemsStats`, `getItem` (2 seções), `getAccountSiteId`.
+4. **Botão inline errado** — Botão "Sincronizar Agora" nos resultados do diagnóstico chamava `SEOKiller.techSheet.syncItems()` ao invés de `SEOKiller.syncItems()`.
+
+### Arquivos Modificados
+- `public/assets/js/seo-killer.js` — Novo método `syncItems()`, correção referência botão
+- `app/Services/AI/SEO/SEOKillerEngine.php` — Constructor nullable PDO
+- `app/Services/ItemService.php` — Constructor nullable PDO + 7 métodos com null guards
+
+### Validação
+- `php -l` — Sem erros de sintaxe em todos os arquivos
+- PHPUnit — 261 testes passando, 523 assertivas, 33 skipped (DB-dependent)
+- Commit: `9f52122`
+
+### Nota
+MySQL ainda está offline (`SQLSTATE[HY000] [2002] Connection refused`). As correções permitem que o sistema degrade graciosamente — dados da ML API fluem mesmo sem banco. Quando MySQL voltar, funcionalidade completa se restaura automaticamente.
+
+---
+
 ## Sessão: 2026-02-17 PM — Integração SEO Killer + API Mercado Livre
 
 ### Objetivo
