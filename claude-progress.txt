@@ -6,6 +6,40 @@
 
 ---
 
+## Sessão: 2026-02-17 PM4 — Refatoração de Qualidade (Codacy) no SEOKillerEngine
+
+### Objetivo
+Análise de qualidade de código com Codacy CLI e correção de issues de complexidade.
+
+### Codacy Analysis
+- **ItemService.php**: 0 issues ✅
+- **diagnose_infra.php**: 0 issues ✅
+- **fix-infrastructure.sh**: 0 issues ✅
+- **SEOKillerEngine.php**: 8 issues encontrados → todos resolvidos
+
+### Refatoração Realizada (SEOKillerEngine.php)
+1. **Extração de Trait**: Métodos de Strategies delegação movidos para `SEOStrategiesIntegrationTrait`
+2. **diagnoseAccount()**: Decomposto em `collectAnalysisResults()` + `assembleDiagnosis()` + `resolveHealthStatus()`
+3. **analyzeTitles()**: Extraídos `collectTitleStats()` + `classifyTitle()` + `evaluateTitleStats()`
+4. **analyzeDescriptions()**: Extraídos `collectDescriptionStats()` + `classifyItemDescription()` + `resolveDescriptionText()`
+5. **analyzeAttributes()**: Extraídos `collectAttributeStats()` + `analyzeItemAttributes()` + `countMissing*Attrs()`
+6. **analyzeVisibility()**: Extraído `countVisibilityIssues()`
+7. **generateDiagnosisSummary()**: Convertido para `match()` expression
+8. **generatePriorityActions()**: Compactado
+- **Resultado final**: 0 issues Codacy (Lizard/Semgrep/Trivy)
+
+### Codebase Health
+- TODOs/FIXMEs: Apenas 1 TODO legítimo (tech-sheet version history — feature planejada)
+- PHPUnit: Não pode rodar em sandbox (MySQL offline)
+- PHP lint: 0 erros em todos os arquivos editados
+- Git status: Limpo, commit `6c8ce64`
+
+### Arquivos Criados/Modificados
+- `app/Traits/SEOStrategiesIntegrationTrait.php` (NOVO — 136 linhas)
+- `app/Services/AI/SEO/SEOKillerEngine.php` (REFATORADO — CC reduzida, NLOC < 500)
+
+---
+
 ## Sessão: 2026-02-17 PM3 — Diagnóstico Infraestrutura ML API + Scripts de Correção
 
 ### Objetivo
