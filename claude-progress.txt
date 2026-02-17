@@ -6,6 +6,64 @@
 
 ---
 
+## Sessão: 2026-02-17 PM3 — Diagnóstico Infraestrutura ML API + Scripts de Correção
+
+### Objetivo
+Diagnosticar por que a integração com a API do Mercado Livre não retorna dados no dashboard SEO Killer (0 items) e corrigir a infraestrutura.
+
+### Diagnóstico Completo
+Identificadas **3 falhas simultâneas de infraestrutura** impedindo qualquer dado de chegar ao dashboard:
+
+1. **DNS totalmente offline** — systemd-resolved não está rodando, /etc/resolv.conf aponta para 127.0.0.53 (stub resolver parado). `gethostbyname('api.mercadolibre.com')` falha. Rede completamente inacessível (ping 8.8.8.8 → "Network is unreachable").
+2. **MySQL totalmente offline** — `/var/lib/mysql/` não existe no sandbox, socket existe em `/var/run/mysqld/mysqld.sock` mas criação de Unix socket bloqueada pelo sandbox. PDO retorna "Failed to create unix socket". TCP na porta 3306 retorna "Connection refused".
+3. **Redis totalmente offline** — Porta 6379 connection refused, mesmas restrições do sandbox.
+
+### Token ML API
+- Token no `.env` é placeholder: `APP_USR-1234567890...` (74 chars) — NÃO é token real
+- App ID: `3085263900711757`, Site: `MLB`
+- Token real requer autenticação OAuth no servidor host
+
+### Fluxo de Dados Rastreado
+```
+SEOKillerController::diagnose()
+  → SEOKillerEngine::diagnoseAccount()
+    → getAllItems()
+      → ItemService::listItems()
+        → Strategy 1: getSellerIdFromAccount() → getMlUserId() → DB query (FAIL: no MySQL)
+        → Strategy 2: getSellerId() → API /users/me (FAIL: no DNS)
+        → Strategy 3: listItemsFromLocalCache() → DB query (FAIL: no MySQL)
+  → Resultado: 0 itens carregados
+```
+
+### Scripts Criados
+- `bin/fix-infrastructure.sh` — Script one-click para restaurar infraestrutura no servidor host. Verifica e corrige DNS, MySQL, Redis, token ML, app PHP, web server. Modos: `--check-only` ou `--fix`.
+- `scripts/diagnose_infra.php` — Script PHP de diagnóstico de infraestrutura (MySQL socket+TCP, Redis, DNS, ML API).
+
+### Limitação do Sandbox
+O ambiente sandbox (Docker com overlay filesystem read-only) impede:
+- Criação de sockets (UNIX e TCP)
+- Acesso à rede (completamente isolado)
+- Escrita em /tmp, /etc, /var (read-only)
+- Inicialização de MySQL, Redis ou qualquer serviço de rede
+
+### Ação Necessária (no servidor host)
+```bash
+sudo bash bin/fix-infrastructure.sh --fix    # Restaura tudo automaticamente
+php bin/mcp-ml-auth.php --open               # Renova token OAuth do ML
+```
+
+### Arquivos Criados
+- `bin/fix-infrastructure.sh` (525 linhas) — Script de restauração automática
+- `scripts/diagnose_infra.php` (129 linhas) — Diagnóstico PHP
+
+### Validação
+- PHPUnit: 261 testes passando (sem regressões)
+- Bash syntax check: OK
+- PHP lint: OK
+- Commit: `38407db`
+
+---
+
 ## Sessão: 2026-02-17 PM2 — Dashboard SEO Killer: Integração ML API + Resiliência DB
 
 ### Objetivo
