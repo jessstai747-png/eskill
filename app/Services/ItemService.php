@@ -1,0 +1,1489 @@
+<?php
+
+namespace App\Services;
+
+use App\Services\MercadoLivreClient;
+use App\Database;
+use PDO;
+
+class ItemService
+{
+    private MercadoLivreClient $client;
+    private ?\PDO $db;
+    private ?int $accountId;
+
+    public function __construct(?int $accountId = null)
+    {
+        $this->accountId = $accountId;
+        $this->client = new MercadoLivreClient($accountId);
+        try {
+            $this->db = Database::getInstance();
+        } catch (\Exception $e) {
+            log_warning('ItemService: DB indisponível, operando em modo API-only', [
+                'service' => 'ItemService',
+                'error' => $e->getMessage(),
+            ]);
+            $this->db = null;
+        }
+    }
+
+    /**
+     * Lista anúncios do usuário autenticado
+     */
+    public function listItems(array $filters = []): array
+    {
+        $limit = max(1, min(50, (int)($filters['limit'] ?? 50)));
+        $page = max(1, (int)($filters['page'] ?? 1));
+
+        if (isset($filters['offset'])) {
+            $offset = max(0, (int)$filters['offset']);
+            $page = (int)floor($offset / $limit) + 1;
+        } else {
+            $offset = ($page - 1) * $limit;
+        }
+
+        $sellerId = $this->getSellerIdFromAccount();
+        if (!$sellerId) {
+            // Como fallback, tenta /users/me (exige token). Se não houver token, continuará null.
+            $sellerId = $this->client->getSellerId();
+        }
+
+        if (!$sellerId) {
+            if ($this->shouldAllowLocalFallback($filters)) {
+                return $this->listItemsFromLocalCache($filters, $limit, $page, $offset, [
+                    'reason' => 'missing_seller_id'
+                ]);
+            }
+
+            return [
+                'success' => false,
+                'error' => 'missing_seller_id',
+                'message' => 'Conta Mercado Livre não vinculada (ml_user_id ausente). Conecte a conta para puxar anúncios reais.',
+                'items' => [],
+                'page' => $page,
+                'pages' => 1,
+                'limit' => $limit,
+                'total' => 0,
+                'has_more' => false,
+            ];
+        }
+
+        $params = [];
+
+        // Status do anúncio
+        if (isset($filters['status'])) {
+            $params['status'] = $filters['status']; // active, paused, closed
+        }
+
+        // Busca por texto
+        if (isset($filters['q'])) {
+            $params['q'] = $filters['q'];
+        }
+
+        if (isset($filters['search'])) {
+            $params['q'] = $filters['search'];
+        }
+
+        // Categoria específica
+        if (isset($filters['category'])) {
+            $params['category'] = $filters['category'];
+        }
+
+        // Ordenação
+        if (isset($filters['order'])) {
+            $params['order'] = $filters['order']; // price_asc, price_desc, date_created_desc, etc
+        }
+
+        $params['limit'] = $limit;
+        $params['offset'] = $offset;
+
+        $siteId = $this->getAccountSiteId() ?? ($_ENV['ML_SITE_ID'] ?? 'MLB');
+        $hasToken = $this->client->getAccessToken() !== '';
+
+        // For custom filters like low_stock and high_sales, we must use local cache
+        $hasCustomFilters = !empty($filters['low_stock']) || !empty($filters['high_sales']);
+
+        // For custom filters like low_stock and high_sales, we must use local cache
+        $hasCustomFilters = !empty($filters['low_stock']) || !empty($filters['high_sales']);
+
+        // If we have custom filters, go directly to local cache
+        if ($hasCustomFilters) {
+            return $this->listItemsFromLocalCache($filters, $limit, $page, $offset, [
+                'reason' => 'custom_filters_required'
+            ]);
+        }
+
+        // 1) Preferir endpoint autenticado quando há token (permite filtros como status de forma mais fiel)
+        if ($hasToken) {
+            // Endpoint de usuário exige autenticação.
+            $response = $this->client->get("/users/{$sellerId}/items/search", $params, false);
+
+            if (isset($response['error'])) {
+                if ($this->shouldAllowLocalFallback($filters)) {
+                    return $this->listItemsFromLocalCache($filters, $limit, $page, $offset, $response);
+                }
+
+                // Se o endpoint autenticado falhou, ainda dá para listar itens reais via busca pública por seller_id.
+                // Isso resolve cenários comuns: token inválido/expirado, refresh falhando, ou permissões insuficientes.
+                $publicParams = [
+                    'seller_id' => $sellerId,
+                    'limit' => $limit,
+                    'offset' => $offset,
+                ];
+                if (isset($params['q'])) {
+                    $publicParams['q'] = $params['q'];
+                }
+                if (isset($params['category'])) {
+                    $publicParams['category'] = $params['category'];
+                }
+
+                $statusRequested = $filters['status'] ?? null;
+                $publicResponse = $this->client->get("/sites/{$siteId}/search", $publicParams, 60, true);
+
+                if (!isset($publicResponse['error'])) {
+                    $payload = $this->buildPublicSearchListPayload($publicResponse, $limit, $page, $offset);
+                    $payload['source'] = 'ml_public';
+                    $payload['fallback_from'] = 'ml_api';
+                    $payload['warning'] = 'Endpoint autenticado falhou; usando busca pública por seller_id. Motivo: '
+                        . $this->formatMlApiErrorMessage($response, 'Falha ao buscar anúncios na API do Mercado Livre');
+
+                    if ($statusRequested) {
+                        $payload['warning'] .= ' | Filtro "status" ignorado na busca pública.';
+                    }
+
+                    return $payload;
+                }
+
+                return [
+                    'success' => false,
+                    'error' => 'ml_api_error',
+                    'message' => $this->formatMlApiErrorMessage($response, 'Falha ao buscar anúncios na API do Mercado Livre'),
+                    'api_error' => $response,
+                    'api_error_public' => $publicResponse,
+                    'items' => [],
+                    'page' => $page,
+                    'pages' => 1,
+                    'limit' => $limit,
+                    'total' => 0,
+                    'has_more' => false,
+                ];
+            }
+
+            // Se retornou IDs, buscar detalhes de cada item
+            $items = [];
+            $itemIds = [];
+            if (isset($response['results']) && is_array($response['results'])) {
+                foreach ($response['results'] as $itemId) {
+                    if (!is_string($itemId) || $itemId === '') {
+                        continue;
+                    }
+                    $itemIds[] = $itemId;
+                    $item = $this->getItem($itemId);
+                    if (!isset($item['error']) && is_array($item)) {
+                        $items[] = $this->formatItemForList($item);
+                    }
+                }
+
+                // Apply custom filters (low_stock, high_sales)
+                $items = $this->filterItemsByCustomCriteria($items, $filters);
+            }
+
+            $total = $response['paging']['total'] ?? count($items);
+            $pages = max(1, (int)ceil($total / $limit));
+
+            $response['items'] = $items;
+            $response['results'] = $itemIds;
+            $response['page'] = $page;
+            $response['pages'] = $pages;
+            $response['limit'] = $limit;
+            $response['total'] = $total;
+            $response['has_more'] = ($offset + $limit) < $total;
+            $response['success'] = true;
+            $response['source'] = 'ml_api';
+
+            return $response;
+        }
+
+        // 2) Sem token: usar endpoint público de busca por seller_id (dados reais, sem autenticação)
+        $publicParams = [
+            'seller_id' => $sellerId,
+            'limit' => $limit,
+            'offset' => $offset,
+        ];
+
+        if (isset($params['q'])) {
+            $publicParams['q'] = $params['q'];
+        }
+        if (isset($params['category'])) {
+            $publicParams['category'] = $params['category'];
+        }
+
+        // Observação: filtro de status não é suportado consistentemente em busca pública.
+        $statusRequested = $filters['status'] ?? null;
+
+        $response = $this->client->get("/sites/{$siteId}/search", $publicParams, 60, true);
+
+        if (isset($response['error'])) {
+            if ($this->shouldAllowLocalFallback($filters)) {
+                return $this->listItemsFromLocalCache($filters, $limit, $page, $offset, $response);
+            }
+
+            return [
+                'success' => false,
+                'error' => 'ml_api_error',
+                'message' => $this->formatMlApiErrorMessage($response, 'Falha ao buscar anúncios (endpoint público) na API do Mercado Livre'),
+                'api_error' => $response,
+                'items' => [],
+                'page' => $page,
+                'pages' => 1,
+                'limit' => $limit,
+                'total' => 0,
+                'has_more' => false,
+            ];
+        }
+
+        $payload = $this->buildPublicSearchListPayload($response, $limit, $page, $offset, $filters);
+        $payload['source'] = 'ml_public';
+
+        if ($statusRequested) {
+            $payload['warning'] = 'Filtro "status" ignorado: busca pública por seller_id não suporta status de forma consistente sem autenticação.';
+        }
+
+        return $payload;
+    }
+
+    private function buildPublicSearchListPayload(array $response, int $limit, int $page, int $offset, array $filters = []): array
+    {
+        $items = [];
+        $itemIds = [];
+        foreach (($response['results'] ?? []) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = $row['id'] ?? null;
+            if (is_string($id) && $id !== '') {
+                $itemIds[] = $id;
+            }
+            $items[] = $this->formatItemForList($row);
+        }
+
+        // Apply custom filters (low_stock, high_sales)
+        $items = $this->filterItemsByCustomCriteria($items, $filters);
+
+        $total = $response['paging']['total'] ?? count($items);
+        $pages = max(1, (int)ceil($total / $limit));
+
+        $payload = $response;
+        $payload['items'] = $items;
+        $payload['results'] = $itemIds;
+        $payload['page'] = $page;
+        $payload['pages'] = $pages;
+        $payload['limit'] = $limit;
+        $payload['total'] = $total;
+        $payload['has_more'] = ($offset + $limit) < $total;
+        $payload['success'] = true;
+
+        return $payload;
+    }
+
+    private function formatMlApiErrorMessage(array $error, string $prefix): string
+    {
+        $message = $prefix;
+
+        $detail = $error['message'] ?? ($error['error'] ?? null);
+        if (is_string($detail) && $detail !== '') {
+            $message .= ': ' . $detail;
+        }
+
+        $status = $error['status'] ?? null;
+        if (is_int($status) && $status > 0) {
+            $message .= ' (HTTP ' . $status . ')';
+        }
+
+        $endpoint = $error['endpoint'] ?? null;
+        if (is_string($endpoint) && $endpoint !== '') {
+            $message .= ' [' . $endpoint . ']';
+        }
+
+        return $message;
+    }
+
+    private function shouldAllowLocalFallback(array $filters): bool
+    {
+        if (!empty($filters['allow_local_cache']) && filter_var($filters['allow_local_cache'], FILTER_VALIDATE_BOOLEAN)) {
+            return true;
+        }
+
+        if (!empty($filters['source']) && $filters['source'] === 'local') {
+            return true;
+        }
+
+        $envAllow = $_ENV['ML_ALLOW_LOCAL_CACHE_FALLBACK'] ?? getenv('ML_ALLOW_LOCAL_CACHE_FALLBACK') ?? null;
+        return filter_var($envAllow, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function filterItemsByCustomCriteria(array $items, array $filters): array
+    {
+        if (!empty($filters['low_stock']) && $filters['low_stock'] === true) {
+            $items = array_filter($items, function ($item) {
+                $stock = $item['available_quantity'] ?? 0;
+                return $stock < 5 && $stock >= 0;
+            });
+        }
+
+        if (!empty($filters['high_sales']) && $filters['high_sales'] === true) {
+            $items = array_filter($items, function ($item) {
+                // sold_quantity can come from direct field or from data JSON
+                $sold = $item['sold_quantity'] ??
+                    ($item['data']['sold_quantity'] ??
+                        ($item['metrics']['sold_quantity'] ?? 0));
+                return $sold > 0;
+            });
+        }
+
+        return array_values($items); // Re-index array
+    }
+
+    private function listItemsFromLocalCache(array $filters, int $limit, int $page, int $offset, array $context = []): array
+    {
+        if ($this->db === null) {
+            return [
+                'success' => false,
+                'error' => 'db_unavailable',
+                'message' => 'Banco de dados indisponível e cache local não acessível. Tente sincronizar quando o banco estiver online.',
+                'items' => [],
+                'page' => $page,
+                'pages' => 1,
+                'limit' => $limit,
+                'total' => 0,
+                'has_more' => false,
+                'source' => 'none',
+            ];
+        }
+
+        $where = [];
+        $params = [];
+
+        if ($this->accountId) {
+            $where[] = 'account_id = :account_id';
+            $params['account_id'] = $this->accountId;
+        }
+
+        if (!empty($filters['status'])) {
+            $where[] = 'status = :status';
+            $params['status'] = $filters['status'];
+        }
+
+        if (!empty($filters['category'])) {
+            $where[] = 'category_id = :category';
+            $params['category'] = $filters['category'];
+        }
+
+        $searchTerm = $filters['search'] ?? ($filters['q'] ?? null);
+        if ($searchTerm) {
+            $where[] = '(title LIKE :search OR JSON_UNQUOTE(JSON_EXTRACT(data, "$.seller_custom_field")) LIKE :search_sku)';
+            $params['search'] = '%' . $searchTerm . '%';
+            $params['search_sku'] = '%' . $searchTerm . '%';
+        }
+
+        if (!empty($filters['low_stock']) && $filters['low_stock'] === true) {
+            $where[] = 'available_quantity < 5';
+        }
+
+        if (!empty($filters['high_sales']) && $filters['high_sales'] === true) {
+            $where[] = 'sold_quantity > 0';
+        }
+
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $countStmt = $this->db->prepare("SELECT COUNT(*) FROM ml_items {$whereSql}");
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        $orderSql = $this->resolveLocalItemsOrder($filters['order'] ?? null);
+
+        $selectSql = "SELECT id, ml_item_id, title, price, available_quantity, status, category_id, currency_id, data, updated_at "
+            . "FROM ml_items {$whereSql} {$orderSql} LIMIT {$limit} OFFSET {$offset}";
+
+        $stmt = $this->db->prepare($selectSql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $items = [];
+        foreach ($rows as $row) {
+            $rawData = json_decode($row['data'] ?? '[]', true);
+            if (!is_array($rawData)) {
+                $rawData = [];
+            }
+
+            $itemData = array_merge($rawData, [
+                'id' => $row['id'],
+                'title' => $row['title'],
+                'price' => isset($row['price']) ? (float)$row['price'] : null,
+                'available_quantity' => isset($row['available_quantity']) ? (int)$row['available_quantity'] : 0,
+                'status' => $row['status'],
+                'category_id' => $row['category_id'],
+                'currency_id' => $row['currency_id'],
+                'seller_custom_field' => $rawData['seller_custom_field'] ?? null,
+                'sku' => $rawData['seller_custom_field'] ?? null,
+            ]);
+
+            if (!isset($itemData['pictures']) && isset($rawData['thumbnail'])) {
+                $itemData['pictures'] = [['url' => $rawData['thumbnail']]];
+            }
+
+            $items[] = $this->formatItemForList($itemData);
+        }
+
+        $pages = $total > 0 ? (int)ceil($total / $limit) : 1;
+
+        $payload = [
+            'success' => true,
+            'source' => 'local',
+            'items' => $items,
+            'page' => $page,
+            'pages' => $pages,
+            'limit' => $limit,
+            'total' => $total,
+            'has_more' => ($offset + $limit) < $total,
+        ];
+
+        if (!empty($context)) {
+            $payload['warning'] = $this->buildLocalFallbackWarning($context);
+        }
+
+        return $payload;
+    }
+
+    private function resolveLocalItemsOrder(?string $order): string
+    {
+        return match ($order) {
+            'price_asc' => 'ORDER BY price ASC',
+            'price_desc' => 'ORDER BY price DESC',
+            'date_created_asc' => 'ORDER BY created_at ASC',
+            'date_created_desc' => 'ORDER BY created_at DESC',
+            default => 'ORDER BY updated_at DESC',
+        };
+    }
+
+    private function buildLocalFallbackWarning(array $context): string
+    {
+        if (($context['reason'] ?? null) === 'missing_seller_id') {
+            return 'Conta Mercado Livre não configurada; exibindo dados sincronizados localmente.';
+        }
+
+        $message = $context['message'] ?? $context['error'] ?? null;
+        if ($message) {
+            return 'Dados retornados do cache local (fallback da API Mercado Livre: ' . $message . ').';
+        }
+
+        return 'Dados retornados do cache local por indisponibilidade da API Mercado Livre.';
+    }
+
+    /**
+     * Obtém detalhes de um anúncio específico
+     */
+    public function getItem(string $itemId): array
+    {
+        $item = [];
+        try {
+            $response = $this->client->get("/items/{$itemId}");
+            if (isset($response['success']) && $response['success']) {
+                $item = $response['body'] ?? [];
+            } else {
+                $item = ['error' => $response['error'] ?? 'API Error'];
+            }
+        } catch (\Exception $e) {
+            // API failed/Item not found in ML
+            $item = ['error' => $e->getMessage()];
+        }
+
+        // Try fallback to local DB if API failed or returned error
+        if (isset($item['error'])) {
+            if (!$this->shouldAllowLocalFallback([]) || $this->db === null) {
+                // Real-only: sem fallback silencioso para cache local
+                return $item;
+            }
+
+            try {
+                $stmt = $this->db->prepare("SELECT * FROM ml_items WHERE id = :id");
+                $stmt->execute([':id' => $itemId]);
+                $local = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($local) {
+                    $data = json_decode($local['data'] ?? '{}', true);
+                    // Usar permalink salvo ou construir URL real do ML
+                    $permalink = $local['permalink'] ?? $data['permalink'] ?? null;
+                    if (!$permalink) {
+                        // Construir URL real do ML Brasil
+                        $permalink = "https://produto.mercadolivre.com.br/MLB-{$local['ml_item_id']}";
+                    }
+                    return array_merge($data, [
+                        'id' => $local['ml_item_id'],
+                        'title' => $local['title'],
+                        'price' => (float)$local['price'],
+                        'available_quantity' => (int)$local['available_quantity'],
+                        'status' => $local['status'],
+                        'permalink' => $permalink,
+                        'attributes' => $data['attributes'] ?? [],
+                        'pictures' => $data['pictures'] ?? [],
+                        '_source' => 'local_cache', // Indicar que dados vieram do cache
+                    ]);
+                }
+                // If not in DB either, return the API error
+                return $item;
+            } catch (\Exception $e) {
+                return $item;
+            }
+        }
+
+        if (!isset($item['error'])) {
+            try {
+                $description = $this->client->get("/items/{$itemId}/description");
+                if (is_array($description) && !isset($description['error'])) {
+                    $item['description'] = $description['plain_text'] ?? $description['text'] ?? ($item['description'] ?? '');
+                }
+            } catch (\Exception $e) {
+            }
+        }
+
+        // Merge com dados locais (Custo, Taxa, Health) se API retornou ok e DB disponível
+        if ($this->db !== null) {
+            try {
+                // Buscar dados de custo/taxa na tabela items (que possui essas colunas)
+                $stmt = $this->db->prepare("SELECT cost_price, tax_rate FROM items WHERE ml_item_id = :ml_item_id AND account_id = :account_id LIMIT 1");
+                $stmt->execute([':ml_item_id' => $itemId, ':account_id' => $this->accountId]);
+                $costData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($costData) {
+                    $item['cost_price'] = $costData['cost_price'];
+                    $item['tax_rate'] = $costData['tax_rate'];
+                }
+
+                // Buscar dados de health/description do JSON em ml_items
+                $stmt2 = $this->db->prepare("SELECT data FROM ml_items WHERE ml_item_id = :ml_item_id AND account_id = :account_id LIMIT 1");
+                $stmt2->execute([':ml_item_id' => $itemId, ':account_id' => $this->accountId]);
+                $localData = $stmt2->fetch(PDO::FETCH_ASSOC);
+
+                if ($localData) {
+                    // Merge health se não vier na API (as vezes vem em metrics)
+                    if (!isset($item['health'])) {
+                        $jsonData = json_decode($localData['data'] ?? '{}', true);
+                        $item['health'] = $jsonData['health'] ?? null;
+                    }
+                    if (!isset($item['description'])) {
+                        $jsonData = $jsonData ?? json_decode($localData['data'] ?? '{}', true);
+                        $item['description'] = $jsonData['description'] ?? $jsonData['plain_text'] ?? $jsonData['text'] ?? null;
+                    }
+                }
+            } catch (\Exception $e) {
+                // Ignorar erro de DB, retornar dados da API
+            }
+        }
+
+        return $item;
+    }
+
+    /**
+     * Atualiza dados financeiros do item (Local apenas)
+     */
+    /**
+     * Atualiza configurações de precificação do item
+     */
+    public function updateItemPricing(string $itemId, array $data): bool
+    {
+        try {
+            $fields = [];
+            $params = [];
+
+            if (array_key_exists('pricing_strategy', $data)) {
+                $fields[] = "pricing_strategy = ?";
+                $params[] = $data['pricing_strategy'];
+            }
+            if (array_key_exists('min_price', $data)) {
+                $fields[] = "min_price = ?";
+                $params[] = $data['min_price'];
+            }
+            if (array_key_exists('max_price', $data)) {
+                $fields[] = "max_price = ?";
+                $params[] = $data['max_price'];
+            }
+            if (array_key_exists('auto_reprice', $data)) {
+                $fields[] = "auto_reprice = ?";
+                $params[] = $data['auto_reprice'];
+            }
+            if (array_key_exists('auto_negotiate', $data)) {
+                $fields[] = "auto_negotiate = ?";
+                $params[] = $data['auto_negotiate'];
+            }
+
+            if (empty($fields)) {
+                return false;
+            }
+
+            // Append ID for WHERE clause
+            $params[] = $itemId; // ml_item_id or internal id? Usually ml_id for consistency in routes
+
+            // Check if item exists by ml_id first
+            $check = $this->db->prepare("SELECT id FROM ml_items WHERE id = ?");
+            $check->execute([$itemId]);
+            if (!$check->fetch()) {
+                // Try by internal id if passed
+                $params[count($params) - 1] = $itemId;
+                $where = "id = ?";
+            } else {
+                $where = "ml_item_id = ?";
+            }
+
+            // Re-bind correctly implies strict logic. Let's assume we pass what we have.
+            // If the route passes ml_id (e.g. MTB...), we use that.
+
+            $sql = "UPDATE items SET " . implode(', ', $fields) . " WHERE " . $where;
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute($params);
+        } catch (\PDOException $e) {
+            log_error('Erro ao atualizar precificação do item', [
+                'item_id' => $itemId ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    public function updateItemCost(string $itemId, ?float $cost, ?float $tax): bool
+    {
+        try {
+            $stmt = $this->db->prepare("
+                UPDATE items 
+                SET cost_price = :cost, tax_rate = :tax, updated_at = NOW()
+                WHERE ml_item_id = :id
+            ");
+            return $stmt->execute([
+                ':cost' => $cost,
+                ':tax' => $tax,
+                ':id' => $itemId
+            ]);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Cria um novo anúncio
+     */
+    public function createItem(array $data): array
+    {
+        // Validar dados obrigatórios básicos
+        $required = ['title', 'category_id', 'price', 'currency_id', 'available_quantity', 'buying_mode', 'listing_type_id', 'condition', 'description'];
+
+        foreach ($required as $field) {
+            if (!isset($data[$field])) {
+                return [
+                    'error' => true,
+                    'message' => "Campo obrigatório ausente: {$field}",
+                ];
+            }
+        }
+
+        // Validar atributos obrigatórios da categoria
+        if (isset($data['category_id'])) {
+            $categoryService = new CategoryService($this->accountId);
+            $attributes = $data['attributes'] ?? [];
+
+            // Converter formato se necessário
+            $formattedAttributes = [];
+            foreach ($attributes as $key => $value) {
+                if (is_array($value)) {
+                    $formattedAttributes[] = $value;
+                } else {
+                    $formattedAttributes[] = [
+                        'id' => is_numeric($key) ? $value : $key,
+                        'value' => is_numeric($key) ? null : $value,
+                        'value_name' => is_numeric($key) ? null : $value,
+                    ];
+                }
+            }
+
+            $validation = $categoryService->validateRequiredAttributes($data['category_id'], $formattedAttributes);
+
+            if (!$validation['valid']) {
+                return [
+                    'error' => true,
+                    'message' => 'Erros de validação nos atributos obrigatórios',
+                    'validation_errors' => $validation['errors'],
+                ];
+            }
+        }
+
+        // Preparar dados do anúncio
+        $itemData = [
+            'title' => $data['title'],
+            'category_id' => $data['category_id'],
+            'price' => (float)$data['price'],
+            'currency_id' => $data['currency_id'] ?? 'BRL',
+            'available_quantity' => (int)$data['available_quantity'],
+            'buying_mode' => $data['buying_mode'] ?? 'buy_it_now',
+            'listing_type_id' => $data['listing_type_id'],
+            'condition' => $data['condition'],
+            'description' => $data['description'],
+        ];
+
+        // Atributos específicos da categoria
+        if (isset($data['attributes']) && is_array($data['attributes'])) {
+            $itemData['attributes'] = $data['attributes'];
+        }
+
+        // Imagens
+        if (isset($data['pictures']) && is_array($data['pictures'])) {
+            $itemData['pictures'] = array_map(function ($url) {
+                return ['source' => $url];
+            }, $data['pictures']);
+        }
+
+        // Variações (para produtos com variações)
+        if (isset($data['variations']) && is_array($data['variations'])) {
+            $itemData['variations'] = $data['variations'];
+        }
+
+        // Produto do catálogo
+        if (isset($data['catalog_product_id'])) {
+            $itemData['catalog_product_id'] = $data['catalog_product_id'];
+        }
+
+        // Frete
+        if (isset($data['shipping'])) {
+            $itemData['shipping'] = $data['shipping'];
+        } else {
+            // Frete grátis padrão
+            $itemData['shipping'] = [
+                'mode' => 'me2',
+                'free_shipping' => true,
+            ];
+        }
+
+        $response = $this->client->post('/items', $itemData);
+
+        // Registrar no banco de dados se criado com sucesso
+        if (!isset($response['error']) && isset($response['id'])) {
+            $this->saveItemToDatabase($response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Atualiza um anúncio existente
+     */
+    public function updateItem(string $itemId, array $data): array
+    {
+        // Obter anúncio atual primeiro
+        $currentItem = $this->getItem($itemId);
+
+        if (isset($currentItem['error'])) {
+            return $currentItem;
+        }
+
+        // Preparar dados para atualização (apenas campos permitidos)
+        $updateData = [];
+
+        $allowedFields = [
+            'title',
+            'price',
+            'available_quantity',
+            'description',
+            'pictures',
+            'attributes',
+            'variations',
+            'shipping',
+            'seller_custom_field'
+        ];
+
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+
+        // Formatar imagens se necessário
+        if (isset($updateData['pictures']) && is_array($updateData['pictures'])) {
+            $updateData['pictures'] = array_map(function ($url) {
+                return is_array($url) ? $url : ['source' => $url];
+            }, $updateData['pictures']);
+        }
+
+        $response = $this->client->put("/items/{$itemId}", $updateData);
+
+        // Atualizar no banco de dados se atualizado com sucesso
+        if (!isset($response['error'])) {
+            $this->saveItemToDatabase($response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Pausa um anúncio
+     */
+    public function pauseItem(string $itemId): array
+    {
+        return $this->client->put("/items/{$itemId}", ['status' => 'paused']);
+    }
+
+    /**
+     * Reativa um anúncio pausado
+     */
+    public function activateItem(string $itemId): array
+    {
+        return $this->client->put("/items/{$itemId}", ['status' => 'active']);
+    }
+
+    /**
+     * Fecha um anúncio
+     */
+    public function closeItem(string $itemId): array
+    {
+        return $this->client->put("/items/{$itemId}", ['status' => 'closed']);
+    }
+
+    /**
+     * Deleta um anúncio (apenas se estiver fechado)
+     */
+    public function deleteItem(string $itemId): array
+    {
+        // Primeiro fechar o anúncio se necessário
+        $item = $this->getItem($itemId);
+
+        if (isset($item['error'])) {
+            return $item;
+        }
+
+        if ($item['status'] !== 'closed') {
+            $closeResponse = $this->closeItem($itemId);
+            if (isset($closeResponse['error'])) {
+                return [
+                    'error' => true,
+                    'message' => 'Não foi possível fechar o anúncio antes de deletar',
+                ];
+            }
+        }
+
+        return $this->client->delete("/items/{$itemId}");
+    }
+
+    /**
+     * Atualiza preço de um anúncio
+     */
+    public function updatePrice(string $itemId, float $newPrice): array
+    {
+        return $this->updateItem($itemId, ['price' => $newPrice]);
+    }
+
+    /**
+     * Atualiza estoque de um anúncio
+     */
+    public function updateStock(string $itemId, int $newQuantity): array
+    {
+        return $this->updateItem($itemId, ['available_quantity' => $newQuantity]);
+    }
+
+    /**
+     * Lista anúncios por status
+     */
+    public function getItemsByStatus(string $status): array
+    {
+        return $this->listItems(['status' => $status]);
+    }
+
+    /**
+     * Busca anúncios por categoria
+     */
+    public function getItemsByCategory(string $categoryId): array
+    {
+        $items = $this->listItems();
+
+        if (isset($items['error'])) {
+            return $items;
+        }
+
+        // Filtrar por categoria
+        if (isset($items['items'])) {
+            $items['items'] = array_filter($items['items'], function ($item) use ($categoryId) {
+                return isset($item['category_id']) && $item['category_id'] === $categoryId;
+            });
+            $items['items'] = array_values($items['items']); // Reindexar
+        }
+
+        return $items;
+    }
+
+    /**
+     * Obtém estatísticas dos anúncios
+     */
+    public function getItemsStats(): array
+    {
+        $sellerId = $this->getSellerIdFromAccount();
+        if (!$sellerId) {
+            $sellerId = $this->client->getSellerId();
+        }
+
+        if (!$sellerId) {
+            if ($this->shouldAllowLocalFallback([])) {
+                return $this->getLocalItemsStats();
+            }
+
+            return [
+                'success' => false,
+                'error' => 'missing_seller_id',
+                'message' => 'Conta Mercado Livre não vinculada (ml_user_id ausente). Conecte a conta para puxar estatísticas reais.',
+            ];
+        }
+
+        $allItems = $this->listItems(['limit' => 1000]);
+        if (isset($allItems['error'])) {
+            if ($this->shouldAllowLocalFallback([])) {
+                return $this->getLocalItemsStats();
+            }
+            return $allItems;
+        }
+
+        $stats = [
+            'total' => 0,
+            'active' => 0,
+            'paused' => 0,
+            'closed' => 0,
+            'catalog' => 0,
+            'common' => 0,
+            'total_revenue' => 0,
+            'total_quantity' => 0,
+            'total_views' => 0,
+            'total_sold' => 0,
+            'low_stock' => 0,
+        ];
+
+        if (isset($allItems['items'])) {
+            foreach ($allItems['items'] as $item) {
+                $stats['total']++;
+
+                // Status
+                $status = $item['status'] ?? 'unknown';
+                if (isset($stats[$status])) {
+                    $stats[$status]++;
+                }
+
+                // Tipo (catálogo vs comum)
+                if (!empty($item['catalog_product_id'])) {
+                    $stats['catalog']++;
+                } else {
+                    $stats['common']++;
+                }
+
+                // Receita e quantidade
+                if (isset($item['price'])) {
+                    $quantity = $item['available_quantity'] ?? 0;
+                    $stats['total_revenue'] += $item['price'] * $quantity;
+                    $stats['total_quantity'] += $quantity;
+                }
+
+                $stats['total_views'] += (int)($item['visits'] ?? $item['metrics']['visits'] ?? 0);
+                $stats['total_sold'] += (int)($item['sold_quantity'] ?? $item['metrics']['sold_quantity'] ?? 0);
+
+                if (($item['available_quantity'] ?? 0) < 5) {
+                    $stats['low_stock']++;
+                }
+            }
+        }
+
+        return array_merge(['success' => true], $stats);
+    }
+
+    private function getLocalItemsStats(): array
+    {
+        if ($this->db === null) {
+            return [
+                'success' => false,
+                'error' => 'db_unavailable',
+                'message' => 'Banco de dados indisponível para estatísticas locais.',
+            ];
+        }
+
+        $where = [];
+        $params = [];
+
+        if ($this->accountId) {
+            $where[] = 'account_id = :account_id';
+            $params['account_id'] = $this->accountId;
+        }
+
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $stmt = $this->db->prepare("SELECT status, COUNT(*) AS count FROM ml_items {$whereSql} GROUP BY status");
+        $stmt->execute($params);
+        $statusCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $stmt = $this->db->prepare("
+            SELECT 
+                COUNT(*) AS total,
+                SUM(CASE WHEN catalog_product_id IS NOT NULL THEN 1 ELSE 0 END) AS catalog,
+                SUM(CASE WHEN catalog_product_id IS NULL THEN 1 ELSE 0 END) AS common,
+                SUM(price * available_quantity) AS total_revenue,
+                SUM(available_quantity) AS total_quantity,
+                SUM(CASE WHEN available_quantity < 5 THEN 1 ELSE 0 END) AS low_stock
+            FROM ml_items {$whereSql}
+        ");
+        $stmt->execute($params);
+        $aggregates = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $stats = [
+            'success' => true,
+            'source' => 'local',
+            'total' => (int)($aggregates['total'] ?? 0),
+            'active' => (int)($statusCounts['active'] ?? 0),
+            'paused' => (int)($statusCounts['paused'] ?? 0),
+            'closed' => (int)($statusCounts['closed'] ?? 0),
+            'catalog' => (int)($aggregates['catalog'] ?? 0),
+            'common' => (int)($aggregates['common'] ?? 0),
+            'total_revenue' => (float)($aggregates['total_revenue'] ?? 0),
+            'total_quantity' => (int)($aggregates['total_quantity'] ?? 0),
+            'total_views' => 0,
+            'total_sold' => 0,
+            'low_stock' => (int)($aggregates['low_stock'] ?? 0),
+        ];
+
+        return $stats;
+    }
+
+    /**
+     * Sincroniza um único item do ML para o banco de dados
+     */
+    public function syncItem(string $itemId): array
+    {
+        // 1. Fetch from API (bypass cache)
+        $response = $this->client->get("/items/{$itemId}");
+
+        if (isset($response['error'])) {
+            return ['error' => $response['message'] ?? 'API Error'];
+        }
+
+        // 2. Save to DB
+        $this->saveItemToDatabase($response);
+
+        return $response;
+    }
+
+    /**
+     * Sincroniza todos os anúncios da conta com o banco de dados local
+     * 
+     * @param int $limit Máximo de itens por página
+     * @return array Resultado da sincronização
+     */
+    public function syncItems(int $limit = 50): array
+    {
+        $synced = 0;
+        $errors = 0;
+        $offset = 0;
+        $allItemIds = [];
+
+        // Obter ml_user_id da conta (necessário para CLI sem sessão)
+        $mlUserId = $this->getMlUserId();
+        if (!$mlUserId) {
+            return [
+                'success' => false,
+                'error' => 'Conta não encontrada ou sem ml_user_id',
+                'synced' => 0,
+                'errors' => 1,
+            ];
+        }
+
+        // Buscar todos os IDs de itens do usuário
+        do {
+            $response = $this->client->get("/users/{$mlUserId}/items/search", [
+                'limit' => min($limit, 50), // ML limita a 50
+                'offset' => $offset,
+            ]);
+
+            if (isset($response['error'])) {
+                return [
+                    'success' => false,
+                    'error' => $response['message'] ?? 'Erro ao buscar itens',
+                    'synced' => $synced,
+                    'errors' => $errors,
+                ];
+            }
+
+            $itemIds = $response['results'] ?? [];
+            $allItemIds = array_merge($allItemIds, $itemIds);
+
+            $offset += count($itemIds);
+            $total = $response['paging']['total'] ?? 0;
+        } while ($offset < $total && count($itemIds) > 0);
+
+        // Buscar detalhes e salvar cada item
+        // Processar em lotes de 20 para evitar sobrecarga
+        $chunks = array_chunk($allItemIds, 20);
+
+        foreach ($chunks as $chunk) {
+            // Usar multiget para buscar múltiplos itens de uma vez
+            $ids = implode(',', $chunk);
+            $items = $this->client->get("/items?ids={$ids}");
+
+            if (!is_array($items)) {
+                $errors += count($chunk);
+                continue;
+            }
+
+            foreach ($items as $itemData) {
+                if (isset($itemData['body']) && !isset($itemData['body']['error'])) {
+                    try {
+                        $this->saveItemToDatabase($itemData['body']);
+                        $synced++;
+                    } catch (\Exception $e) {
+                        log_error('Erro ao sincronizar item', [
+                            'item_id' => $itemData['body']['id'] ?? 'unknown',
+                            'error' => $e->getMessage(),
+                        ]);
+                        $errors++;
+                    }
+                } else {
+                    $errors++;
+                }
+            }
+
+            // Pequena pausa para não sobrecarregar a API
+            usleep(100000); // 100ms
+        }
+
+        return [
+            'success' => true,
+            'synced' => $synced,
+            'errors' => $errors,
+            'total_found' => count($allItemIds),
+        ];
+    }
+
+    /**
+     * Obtém o ml_user_id da conta do banco de dados
+     */
+    private function getMlUserId(): ?string
+    {
+        if (!$this->accountId) {
+            return null;
+        }
+
+        // Tentar buscar do banco de dados
+        if ($this->db !== null) {
+            try {
+                $stmt = $this->db->prepare("SELECT ml_user_id FROM ml_accounts WHERE id = :id");
+                $stmt->execute([':id' => $this->accountId]);
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+                $mlUserId = $result['ml_user_id'] ?? null;
+                if ($mlUserId) {
+                    return $mlUserId;
+                }
+            } catch (\Throwable $e) {
+                log_warning('getMlUserId: falha ao consultar DB, tentando API', [
+                    'account_id' => $this->accountId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Fallback: tentar obter via API com token e persistir
+        $sellerId = $this->client->getSellerId();
+        if (!$sellerId) {
+            return null;
+        }
+
+        if ($this->db !== null) {
+            try {
+                $update = $this->db->prepare("UPDATE ml_accounts SET ml_user_id = :ml_user_id WHERE id = :id");
+                $update->execute([':ml_user_id' => $sellerId, ':id' => $this->accountId]);
+            } catch (\Throwable $e) {
+                log_warning('Falha ao persistir ml_user_id', [
+                    'account_id' => $this->accountId,
+                    'seller_id' => $sellerId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $sellerId;
+    }
+
+    /**
+     * Salva anúncio no banco de dados para cache/local
+     */
+    private function saveItemToDatabase(array $item): void
+    {
+        if ($this->db === null) {
+            log_warning('saveItemToDatabase: DB indisponível, item não persistido', [
+                'item_id' => $item['id'] ?? 'unknown',
+            ]);
+            return;
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO items (
+                    ml_item_id, account_id, title, category_id, price,
+                    currency_id, available_quantity, status, condition_type,
+                    catalog_product_id, sku, data, created_at, updated_at
+                ) VALUES (
+                    :ml_item_id, :account_id, :title, :category_id, :price,
+                    :currency_id, :available_quantity, :status, :condition_type,
+                    :catalog_product_id, :sku, :data, NOW(), NOW()
+                )
+                ON DUPLICATE KEY UPDATE
+                    title = VALUES(title),
+                    category_id = VALUES(category_id),
+                    price = VALUES(price),
+                    available_quantity = VALUES(available_quantity),
+                    status = VALUES(status),
+                    condition_type = VALUES(condition_type),
+                    catalog_product_id = VALUES(catalog_product_id),
+                    sku = VALUES(sku),
+                    data = VALUES(data),
+                    updated_at = NOW()
+            ");
+
+            $stmt->execute([
+                ':ml_item_id' => $item['id'] ?? null,
+                ':account_id' => $this->accountId,
+                ':title' => $item['title'] ?? null,
+                ':category_id' => $item['category_id'] ?? null,
+                ':price' => $item['price'] ?? null,
+                ':currency_id' => $item['currency_id'] ?? 'BRL',
+                ':available_quantity' => $item['available_quantity'] ?? 0,
+                ':status' => $item['status'] ?? 'unknown',
+                ':condition_type' => $item['condition'] ?? null,
+                ':catalog_product_id' => $item['catalog_product_id'] ?? null,
+                ':sku' => $item['seller_custom_field'] ?? ($this->extractSku($item) ?? null),
+                ':data' => json_encode($this->ensureHealthScore($item)), // Ensure health
+            ]);
+        } catch (\Exception $e) {
+            log_error('Erro ao salvar item no banco', [
+                'item_id' => $item['id'] ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Helper to ensure item has health score
+     */
+    private function ensureHealthScore(array $item): array
+    {
+        if (!isset($item['health']) || $item['health'] === null) {
+            $seoService = new \App\Services\AISEOOptimizerService();
+            $item['health'] = $seoService->calculateLegacyHealth($item);
+        }
+        return $item;
+    }
+
+    /**
+     * Extrai SKU do item (atributo SELLER_SKU ou campo seller_custom_field)
+     */
+    private function extractSku(array $item): ?string
+    {
+        if (!empty($item['seller_custom_field'])) {
+            return (string)$item['seller_custom_field'];
+        }
+
+        if (isset($item['attributes']) && is_array($item['attributes'])) {
+            foreach ($item['attributes'] as $attr) {
+                if (($attr['id'] ?? '') === 'SELLER_SKU' && !empty($attr['value_name'])) {
+                    return (string)$attr['value_name'];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Obtém lista de categorias utilizadas pelo vendedor
+     */
+    public function getSellerCategories(): array
+    {
+        $sellerId = $this->getSellerIdFromAccount();
+        if (!$sellerId) {
+            $sellerId = $this->client->getSellerId();
+        }
+
+        if (!$sellerId) {
+            if ($this->shouldAllowLocalFallback([])) {
+                return $this->getLocalCategoriesFallback(['reason' => 'missing_seller_id']);
+            }
+
+            return [
+                'success' => false,
+                'error' => 'missing_seller_id',
+                'message' => 'Conta Mercado Livre não vinculada (ml_user_id ausente). Conecte a conta para puxar categorias reais.',
+                'categories' => [],
+            ];
+        }
+
+        $siteId = $this->getAccountSiteId() ?? ($_ENV['ML_SITE_ID'] ?? 'MLB');
+
+        $response = $this->client->get("/sites/{$siteId}/search", [
+            'seller_id' => $sellerId,
+            'limit' => 1,
+            'offset' => 0,
+        ], 60, true);
+
+        if (isset($response['error'])) {
+            if ($this->shouldAllowLocalFallback([])) {
+                return $this->getLocalCategoriesFallback($response);
+            }
+
+            return [
+                'success' => false,
+                'error' => 'ml_api_error',
+                'message' => 'Falha ao buscar categorias (endpoint público) na API do Mercado Livre.',
+                'api_error' => $response,
+                'categories' => [],
+            ];
+        }
+
+        $categories = [];
+        $filters = $response['available_filters'] ?? [];
+
+        foreach ($filters as $filter) {
+            if (($filter['id'] ?? '') !== 'category') {
+                continue;
+            }
+
+            foreach ($filter['values'] ?? [] as $value) {
+                $categories[] = [
+                    'id' => $value['id'],
+                    'name' => $value['name'],
+                    'results' => $value['results'] ?? 0,
+                ];
+            }
+            break;
+        }
+
+        return [
+            'success' => true,
+            'categories' => $categories,
+        ];
+    }
+
+    private function getLocalCategoriesFallback(array $context = []): array
+    {
+        $where = [];
+        $params = [];
+
+        if ($this->accountId) {
+            $where[] = 'account_id = :account_id';
+            $params['account_id'] = $this->accountId;
+        }
+
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT category_id, COUNT(*) AS total, "
+            . "MAX(JSON_UNQUOTE(JSON_EXTRACT(data, '\$.category_name'))) AS category_name "
+            . "FROM ml_items {$whereSql} "
+            . "GROUP BY category_id "
+            . "HAVING category_id IS NOT NULL "
+            . "ORDER BY total DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $categories = array_map(function (array $row) {
+            return [
+                'id' => $row['category_id'],
+                'name' => $row['category_name'] ?: $row['category_id'],
+                'results' => (int)($row['total'] ?? 0),
+            ];
+        }, array_filter($rows, fn($row) => !empty($row['category_id'])));
+
+        return [
+            'success' => true,
+            'source' => 'local',
+            'warning' => $this->buildLocalFallbackWarning($context),
+            'categories' => $categories,
+        ];
+    }
+
+    private function getAccountSiteId(): ?string
+    {
+        if (!$this->accountId) {
+            return null;
+        }
+
+        if ($this->db === null) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->db->prepare("SELECT site_id FROM ml_accounts WHERE id = :id");
+            $stmt->execute([':id' => $this->accountId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return $result['site_id'] ?? null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function getSellerIdFromAccount(): ?string
+    {
+        // seller_id no contexto de anúncios equivale ao ml_user_id da conta
+        return $this->getMlUserId();
+    }
+
+    private function formatItemForList(array $item): array
+    {
+        $item['ml_id'] = $item['id'] ?? null;
+        $item['thumbnail'] = $item['thumbnail']
+            ?? ($item['pictures'][0]['url'] ?? $item['pictures'][0]['secure_url'] ?? null);
+        $item['permalink'] = $item['permalink'] ?? ($item['link'] ?? null);
+        $item['visits'] = $item['visits'] ?? ($item['metrics']['visits'] ?? 0);
+        $item['sold_quantity'] = $item['sold_quantity'] ?? ($item['metrics']['sold_quantity'] ?? 0);
+
+        return $item;
+    }
+    public function getCatalogDetails(string $catalogId): array
+    {
+        // Real API Implementation
+        try {
+            // GET /products/{id}
+            $product = $this->client->get("/products/{$catalogId}");
+
+            // Should contain buy_box_winner
+            $winner = $product['buy_box_winner'] ?? null;
+
+            $myPrice = 0; // Need to fetch my item linked to this catalog_id separately if not known
+            // Ideally we pass my_item_price as arg, but for now we look up db or trust caller
+
+            $sellerId = $this->getSellerIdFromAccount();
+            if (!$sellerId) {
+                $sellerId = $this->client->getSellerId();
+            }
+
+            return [
+                'id' => $catalogId,
+                'title' => $product['name'] ?? 'Unknown',
+                'buy_box_winner' => [
+                    'price' => $winner['price'] ?? 0,
+                    'seller_id' => $winner['seller_id'] ?? 0
+                ],
+                'is_winner' => $sellerId ? ((string)($winner['seller_id'] ?? '') === (string)$sellerId) : false,
+                'price_to_win' => isset($winner['price']) ? $winner['price'] - 0.01 : 0
+            ];
+        } catch (\Exception $e) {
+            // Fallback for demo or if scope missing
+            if (strpos($e->getMessage(), '403') !== false) {
+                return ['error' => 'missing_scope', 'message' => 'Permissão catalog.read necessária'];
+            }
+            return [
+                'id' => $catalogId,
+                'error' => 'ml_api_error',
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+}
