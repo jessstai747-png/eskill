@@ -1,0 +1,76 @@
+# Claude Progress — eskill.com.br
+
+> Este arquivo é atualizado automaticamente por agentes IA ao final de cada sessão.
+> NUNCA delete entradas anteriores. Apenas adicione novas no topo.
+> Formato: mais recente primeiro (ordem cronológica reversa).
+
+---
+
+## Sessão: 2026-02-17 — Correção de 4 Bugs (Segurança + Schema Drift + Info Leak)
+
+### Bugs Corrigidos
+
+#### BUG-1: NotificationService — Data truncated for column 'type'
+- **Causa raiz**: Tabela `notifications` criada pelo `scripts/migrate_notifications.php` com schema diferente do que o `NotificationService` espera. Coluna `type` no DB real era ENUM ou VARCHAR curto, e o valor `order_new` não cabia.
+- **Fix**: Adicionado auto-repair em `ensureNotificationsTable()` que verifica se colunas existem e se `type` é VARCHAR(50). Se não for, executa ALTER TABLE automaticamente.
+- **Arquivo**: `app/Services/NotificationService.php`
+
+#### BUG-2: MonitoringService — Unknown column 'status'
+- **Causa raiz**: Tabela `system_monitoring` criada anteriormente sem coluna `status`. O `CREATE TABLE IF NOT EXISTS` não recria tabelas existentes, então a nova coluna nunca foi adicionada.
+- **Fix**: Adicionado `SHOW COLUMNS` check + `ALTER TABLE ADD COLUMN status` se coluna não existir.
+- **Arquivo**: `app/Services/MonitoringService.php`
+
+#### BUG-3: BaseController — Mensagem de erro exposta em produção
+- **Causa raiz**: `withErrorHandling()` concatenava `$e->getMessage()` na resposta JSON para qualquer exceção Throwable, expondo informações internas (paths, queries, nomes de tabelas) em produção.
+- **Fix**: Adicionado check de `APP_ENV` — em produção retorna mensagem genérica "Erro interno do servidor".
+- **Arquivo**: `app/Controllers/BaseController.php`
+
+#### BUG-4: Database.php — SQL Injection em identifiers
+- **Causa raiz**: Métodos `insert()`, `update()`, `delete()`, `select()`, `exists()`, `count()` interpolavam nomes de tabela e coluna diretamente no SQL sem sanitização.
+- **Fix**: Adicionado método `sanitizeIdentifier()` com regex whitelist + backtick escaping. Aplicado em todos os 6 métodos CRUD.
+- **Arquivo**: `app/Database.php`
+
+### Arquivos modificados
+- `app/Services/MonitoringService.php` — Schema drift fix
+- `app/Services/NotificationService.php` — Schema drift fix
+- `app/Controllers/BaseController.php` — Info leak fix
+- `app/Database.php` — SQL injection fix
+
+### Validação
+- `php -l` — Sem erros de sintaxe em todos os 4 arquivos
+- PHPUnit — Não executável no sandbox (DB de teste indisponível)
+
+---
+
+## Sessão: 2026-02-17 — Implementação do Harness para Long-Running Agents
+
+### O que foi feito
+- Criado `project-status.json` — lista de 70+ features com status pass/fail
+- Criado `claude-progress.txt` (este arquivo) — log de progresso entre sessões
+- Criado `bin/init.sh` — script de inicialização com smoke tests
+- Atualizados 6 agents (`.github/agents/`) — protocolo de início de sessão Anthropic
+- Atualizados 10 prompts (`.github/prompts/`) — referência ao harness
+- Baseado no artigo: anthropic.com/engineering/effective-harnesses-for-long-running-agents
+
+### Arquivos modificados
+- `project-status.json` — NOVO
+- `claude-progress.txt` — NOVO
+- `bin/init.sh` — NOVO
+- `.github/agents/implementador.agent.md` — Adicionado protocolo de sessão
+- `.github/agents/arquiteto.agent.md` — Adicionado protocolo de sessão
+- `.github/agents/debugger.agent.md` — Adicionado protocolo de sessão
+- `.github/agents/mercadolivre.agent.md` — Adicionado protocolo de sessão
+- `.github/agents/revisor.agent.md` — Adicionado protocolo de sessão
+- `.github/agents/jesse-agent.agent.md` — Adicionado protocolo de sessão
+
+### Estado do projeto
+- Features passando: ~22/70
+- Features falhando: ~48/70
+- Áreas mais maduras: Auth, SEO core, Dashboard, Items, Shipping, Webhooks
+- Áreas em desenvolvimento: Clone avançado, Pricing avançado, AI center, Competitor, Reports
+
+### Próximos passos sugeridos
+1. Testar e marcar features de Clone (CLONE-003 a CLONE-008) como passando
+2. Implementar features de Pricing avançado (PRICE-002 a PRICE-005)
+3. Finalizar AI Center e Deep Research (AI-002, AI-006)
+4. Implementar Stock Sync end-to-end (STOCK-001)
