@@ -7,23 +7,16 @@ use App\Services\MercadoLivreClient;
 use App\Services\ItemService;
 use App\Services\CategoryService;
 use App\Services\AI\Core\AIProviderManager;
+use App\Traits\SEOStrategiesIntegrationTrait;
 use PDO;
 
 /**
- * 🔥 SEO KILLER ENGINE - Sistema Matador para Mercado Livre
- * 
- * Diagnóstico completo de conta + estratégias matadoras de SEO:
- * - Semântica avançada
- * - Cauda longa (long-tail)
- * - Preenchimento total de lacunas
- * - Atributos ocultos
- * - Descrições persuasivas
- * 
- * @author AI Development Team
- * @version 1.0.0
+ * SEO Killer Engine - Diagnóstico completo de conta e otimização SEO para Mercado Livre
  */
 class SEOKillerEngine
 {
+    use SEOStrategiesIntegrationTrait;
+
     private ?\PDO $db;
     private ?int $accountId;
     private ?MercadoLivreClient $mlClient = null;
@@ -69,14 +62,13 @@ class SEOKillerEngine
             'account_id' => $this->accountId,
             'diagnosis_date' => date('Y-m-d H:i:s'),
             'health_score' => 0,
-            'status' => 'critical', // critical, warning, healthy
+            'status' => 'critical',
             'problems' => [],
             'opportunities' => [],
             'priority_actions' => [],
             'summary' => '',
         ];
 
-        // 1. Buscar todos os anúncios
         $items = $this->getAllItems();
 
         if (empty($items)) {
@@ -92,57 +84,49 @@ class SEOKillerEngine
 
         $diagnosis['total_items'] = count($items);
 
-        // 2. Analisar cada dimensão
+        [$problems, $opportunities] = $this->collectAnalysisResults($items);
+
+        return $this->assembleDiagnosis($diagnosis, $problems, $opportunities);
+    }
+
+    /**
+     * Coleta resultados de todas as análises dimensionais
+     * @return array{0: array, 1: array} [problems, opportunities]
+     */
+    private function collectAnalysisResults(array $items): array
+    {
         $problems = [];
         $opportunities = [];
 
-        // A. Análise de Títulos
-        $titleAnalysis = $this->analyzeTitles($items);
-        $problems = array_merge($problems, $titleAnalysis['problems']);
-        $opportunities = array_merge($opportunities, $titleAnalysis['opportunities']);
+        $analyzers = [
+            'analyzeTitles',
+            'analyzeDescriptions',
+            'analyzeAttributes',
+            'analyzeImages',
+            'analyzePricing',
+            'analyzeVisibility',
+        ];
 
-        // B. Análise de Descrições
-        $descAnalysis = $this->analyzeDescriptions($items);
-        $problems = array_merge($problems, $descAnalysis['problems']);
-        $opportunities = array_merge($opportunities, $descAnalysis['opportunities']);
+        foreach ($analyzers as $method) {
+            $result = $this->{$method}($items);
+            $problems = array_merge($problems, $result['problems']);
+            $opportunities = array_merge($opportunities, $result['opportunities']);
+        }
 
-        // C. Análise de Atributos (Visíveis + Ocultos)
-        $attrAnalysis = $this->analyzeAttributes($items);
-        $problems = array_merge($problems, $attrAnalysis['problems']);
-        $opportunities = array_merge($opportunities, $attrAnalysis['opportunities']);
+        return [$problems, $opportunities];
+    }
 
-        // D. Análise de Imagens
-        $imageAnalysis = $this->analyzeImages($items);
-        $problems = array_merge($problems, $imageAnalysis['problems']);
-        $opportunities = array_merge($opportunities, $imageAnalysis['opportunities']);
-
-        // E. Análise de Preços
-        $priceAnalysis = $this->analyzePricing($items);
-        $problems = array_merge($problems, $priceAnalysis['problems']);
-        $opportunities = array_merge($opportunities, $priceAnalysis['opportunities']);
-
-        // F. Análise de Visibilidade
-        $visibilityAnalysis = $this->analyzeVisibility($items);
-        $problems = array_merge($problems, $visibilityAnalysis['problems']);
-        $opportunities = array_merge($opportunities, $visibilityAnalysis['opportunities']);
-
-        // Sort by severity/impact
+    /**
+     * Monta o diagnóstico final com scores e prioridades
+     */
+    private function assembleDiagnosis(array $diagnosis, array $problems, array $opportunities): array
+    {
         usort($problems, fn($a, $b) => $b['impact'] <=> $a['impact']);
         usort($opportunities, fn($a, $b) => $b['potential'] <=> $a['potential']);
 
-        // Calculate health score
         $totalImpact = array_sum(array_column($problems, 'impact'));
         $diagnosis['health_score'] = max(0, 100 + $totalImpact);
-
-        // Determine status
-        if ($diagnosis['health_score'] < 30) {
-            $diagnosis['status'] = 'critical';
-        } elseif ($diagnosis['health_score'] < 60) {
-            $diagnosis['status'] = 'warning';
-        } else {
-            $diagnosis['status'] = 'healthy';
-        }
-
+        $diagnosis['status'] = $this->resolveHealthStatus($diagnosis['health_score']);
         $diagnosis['problems'] = array_slice($problems, 0, 20);
         $diagnosis['opportunities'] = array_slice($opportunities, 0, 10);
         $diagnosis['priority_actions'] = $this->generatePriorityActions($problems, $opportunities);
@@ -152,57 +136,98 @@ class SEOKillerEngine
     }
 
     /**
+     * Resolve status textual a partir do health score
+     */
+    private function resolveHealthStatus(int $score): string
+    {
+        return match (true) {
+            $score < 30 => 'critical',
+            $score < 60 => 'warning',
+            default => 'healthy',
+        };
+    }
+
+    /**
      * 📊 Analisar Títulos
      */
     private function analyzeTitles(array $items): array
     {
-        $problems = [];
-        $opportunities = [];
+        $stats = $this->collectTitleStats($items);
+        $total = count($items);
 
-        $shortTitles = 0;
-        $longTitles = 0;
-        $noKeywords = 0;
-        $noNumbers = 0;
-        $allCaps = 0;
+        return $this->evaluateTitleStats($stats, $total);
+    }
+
+    /**
+     * Coleta estatísticas de títulos dos itens
+     */
+    private function collectTitleStats(array $items): array
+    {
+        $stats = ['shortTitles' => 0, 'longTitles' => 0, 'noNumbers' => 0, 'allCaps' => 0];
 
         foreach ($items as $item) {
             $title = $item['title'] ?? '';
-            $len = mb_strlen($title);
-
-            if ($len < 40) {
-                $shortTitles++;
-            } elseif ($len > 60) {
-                $longTitles++;
-            }
-
-            if (!preg_match('/\d/', $title)) {
-                $noNumbers++;
-            }
-
-            if ($title === mb_strtoupper($title) && $len > 10) {
-                $allCaps++;
-            }
+            $this->classifyTitle($title, $stats);
         }
 
-        $total = count($items);
+        return $stats;
+    }
 
-        if ($shortTitles > $total * 0.3) {
+    /**
+     * Classifica um título individual e incrementa contadores
+     */
+    private function classifyTitle(string $title, array &$stats): void
+    {
+        $len = mb_strlen($title);
+
+        if ($len < 40) {
+            $stats['shortTitles']++;
+        } elseif ($len > 60) {
+            $stats['longTitles']++;
+        }
+
+        if (!preg_match('/\d/', $title)) {
+            $stats['noNumbers']++;
+        }
+
+        if ($this->isTitleAllCaps($title, $len)) {
+            $stats['allCaps']++;
+        }
+    }
+
+    /**
+     * Verifica se um título está todo em maiúsculas
+     */
+    private function isTitleAllCaps(string $title, int $len): bool
+    {
+        return $len > 10 && $title === mb_strtoupper($title);
+    }
+
+    /**
+     * Avalia estatísticas de títulos e gera problemas/oportunidades
+     */
+    private function evaluateTitleStats(array $stats, int $total): array
+    {
+        $problems = [];
+        $opportunities = [];
+
+        if ($stats['shortTitles'] > $total * 0.3) {
             $problems[] = [
                 'severity' => 'high',
                 'category' => 'title',
-                'issue' => "Títulos curtos demais ({$shortTitles} de {$total})",
+                'issue' => "Títulos curtos demais ({$stats['shortTitles']} de {$total})",
                 'impact' => -15,
-                'affected_items' => $shortTitles,
+                'affected_items' => $stats['shortTitles'],
                 'solution' => 'Expandir títulos para 50-60 caracteres com keywords de cauda longa'
             ];
         }
 
-        if ($noNumbers > $total * 0.5) {
+        if ($stats['noNumbers'] > $total * 0.5) {
             $opportunities[] = [
                 'category' => 'title',
                 'opportunity' => 'Adicionar especificações numéricas nos títulos',
                 'potential' => 10,
-                'affected_items' => $noNumbers,
+                'affected_items' => $stats['noNumbers'],
                 'strategy' => 'Incluir tamanho, quantidade, capacidade, voltagem, etc.'
             ];
         }
@@ -215,64 +240,105 @@ class SEOKillerEngine
      */
     private function analyzeDescriptions(array $items): array
     {
+        $stats = $this->collectDescriptionStats($items);
+        $total = count($items);
+
+        return $this->evaluateDescriptionStats($stats, $total);
+    }
+
+    /**
+     * Coleta estatísticas de descrições dos itens via API
+     */
+    private function collectDescriptionStats(array $items): array
+    {
+        $stats = ['noDescription' => 0, 'shortDescriptions' => 0, 'noStructure' => 0];
+
+        foreach ($items as $item) {
+            $this->classifyItemDescription($item, $stats);
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Classificar descrição de um item e incrementar contadores
+     */
+    private function classifyItemDescription(array $item, array &$stats): void
+    {
+        $mlItemId = $item['id'] ?? $item['ml_item_id'] ?? null;
+        if ($mlItemId === null) {
+            return;
+        }
+
+        $desc = $this->resolveDescriptionText((string) $mlItemId);
+        $this->classifyDescriptionLength($desc, $stats);
+
+        if (!$this->hasStructuredContent($desc)) {
+            $stats['noStructure']++;
+        }
+    }
+
+    /**
+     * Classifica comprimento da descrição e atualiza contadores
+     */
+    private function classifyDescriptionLength(string $desc, array &$stats): void
+    {
+        $len = mb_strlen($desc);
+
+        if ($len < 100) {
+            $stats['noDescription']++;
+        } elseif ($len < 500) {
+            $stats['shortDescriptions']++;
+        }
+    }
+
+    /**
+     * Verifica se texto contém marcadores de estrutura (bullets, hífens)
+     */
+    private function hasStructuredContent(string $text): bool
+    {
+        return str_contains($text, '•') || str_contains($text, '-');
+    }
+
+    /**
+     * Resolve o texto da descrição de um item, normalizando para string
+     */
+    private function resolveDescriptionText(string $itemId): string
+    {
+        $desc = $this->getItemDescription($itemId);
+
+        if (is_array($desc)) {
+            return $desc['plain_text'] ?? json_encode($desc);
+        }
+
+        return is_string($desc) ? $desc : (string) $desc;
+    }
+
+    /**
+     * Avalia estatísticas de descrições e gera problemas/oportunidades
+     */
+    private function evaluateDescriptionStats(array $stats, int $total): array
+    {
         $problems = [];
         $opportunities = [];
 
-        $noDescription = 0;
-        $shortDescriptions = 0;
-        $noStructure = 0;
-        $noEmojis = 0;
-
-        foreach ($items as $item) {
-            // Get ML item ID (may be in 'id' or 'ml_item_id' field)
-            $mlItemId = $item['id'] ?? $item['ml_item_id'] ?? null;
-
-            if (!$mlItemId) {
-                continue; // Skip items without ML ID
-            }
-
-            $desc = $this->getItemDescription($mlItemId);
-
-            // Ensure $desc is a string
-            if (is_array($desc)) {
-                $desc = $desc['plain_text'] ?? json_encode($desc);
-            }
-            if (!is_string($desc)) {
-                $desc = (string) $desc;
-            }
-
-            $len = mb_strlen($desc);
-
-            if ($len < 100) {
-                $noDescription++;
-            } elseif ($len < 500) {
-                $shortDescriptions++;
-            }
-
-            if (strpos($desc, '•') === false && strpos($desc, '-') === false) {
-                $noStructure++;
-            }
-        }
-
-        $total = count($items);
-
-        if ($noDescription > 0) {
+        if ($stats['noDescription'] > 0) {
             $problems[] = [
                 'severity' => 'critical',
                 'category' => 'description',
-                'issue' => "{$noDescription} anúncios sem descrição adequada",
+                'issue' => "{$stats['noDescription']} anúncios sem descrição adequada",
                 'impact' => -20,
-                'affected_items' => $noDescription,
+                'affected_items' => $stats['noDescription'],
                 'solution' => 'Gerar descrições completas com IA usando template persuasivo'
             ];
         }
 
-        if ($noStructure > $total * 0.5) {
+        if ($stats['noStructure'] > $total * 0.5) {
             $opportunities[] = [
                 'category' => 'description',
                 'opportunity' => 'Estruturar descrições com bullet points',
                 'potential' => 15,
-                'affected_items' => $noStructure,
+                'affected_items' => $stats['noStructure'],
                 'strategy' => 'Usar emojis + bullets + seções claras'
             ];
         }
@@ -285,73 +351,109 @@ class SEOKillerEngine
      */
     private function analyzeAttributes(array $items): array
     {
-        $problems = [];
-        $opportunities = [];
+        $stats = $this->collectAttributeStats($items);
+        $total = count($items);
 
-        $incompleteItems = 0;
-        $missingRequired = 0;
-        $totalMissingAttrs = 0;
+        return $this->evaluateAttributeStats($stats, $total);
+    }
+
+    /**
+     * Coleta estatísticas de atributos faltantes por item
+     */
+    private function collectAttributeStats(array $items): array
+    {
+        $stats = ['incompleteItems' => 0, 'missingRequired' => 0, 'totalMissingOptional' => 0];
 
         foreach ($items as $item) {
             $categoryId = $item['category_id'] ?? '';
-            if (!$categoryId) continue;
+            if (!$categoryId) {
+                continue;
+            }
 
-            // Buscar atributos da categoria
             try {
-                $categoryAttrs = $this->categoryService->getCategoryAttributes($categoryId);
-                $itemAttrs = $item['attributes'] ?? [];
-                $itemAttrIds = array_column($itemAttrs, 'id');
-
-                $requiredAttrs = array_filter(
-                    $categoryAttrs['attributes'] ?? [],
-                    fn($a) => ($a['tags']['required'] ?? false) || ($a['tags']['catalog_required'] ?? false)
-                );
-
-                $missingCount = 0;
-                foreach ($requiredAttrs as $attr) {
-                    if (!in_array($attr['id'], $itemAttrIds)) {
-                        $missingCount++;
-                        $missingRequired++;
-                    }
-                }
-
-                // Check optional but important attributes
-                $optionalAttrs = array_filter(
-                    $categoryAttrs['attributes'] ?? [],
-                    fn($a) => !($a['tags']['required'] ?? false) && !($a['tags']['hidden'] ?? false)
-                );
-
-                foreach ($optionalAttrs as $attr) {
-                    if (!in_array($attr['id'], $itemAttrIds)) {
-                        $totalMissingAttrs++;
-                    }
-                }
-
-                if ($missingCount > 0) {
-                    $incompleteItems++;
+                $itemResult = $this->analyzeItemAttributes($item, $categoryId);
+                $stats['missingRequired'] += $itemResult['missingRequired'];
+                $stats['totalMissingOptional'] += $itemResult['missingOptional'];
+                if ($itemResult['missingRequired'] > 0) {
+                    $stats['incompleteItems']++;
                 }
             } catch (\Exception $e) {
                 continue;
             }
         }
 
-        $total = count($items);
+        return $stats;
+    }
 
-        if ($missingRequired > 0) {
+    /**
+     * Analisa atributos de um item específico contra sua categoria
+     * @return array{missingRequired: int, missingOptional: int}
+     */
+    private function analyzeItemAttributes(array $item, string $categoryId): array
+    {
+        $categoryAttrs = $this->categoryService->getCategoryAttributes($categoryId);
+        $itemAttrIds = array_column($item['attributes'] ?? [], 'id');
+        $allAttrs = $categoryAttrs['attributes'] ?? [];
+
+        return [
+            'missingRequired' => $this->countMissingRequiredAttrs($allAttrs, $itemAttrIds),
+            'missingOptional' => $this->countMissingOptionalAttrs($allAttrs, $itemAttrIds),
+        ];
+    }
+
+    /**
+     * Conta atributos OBRIGATÓRIOS faltantes
+     */
+    private function countMissingRequiredAttrs(array $allAttrs, array $itemAttrIds): int
+    {
+        $missing = 0;
+        foreach ($allAttrs as $attr) {
+            $isRequired = !empty($attr['tags']['required']) || !empty($attr['tags']['catalog_required']);
+            if ($isRequired && !in_array($attr['id'], $itemAttrIds)) {
+                $missing++;
+            }
+        }
+        return $missing;
+    }
+
+    /**
+     * Conta atributos opcionais visíveis faltantes
+     */
+    private function countMissingOptionalAttrs(array $allAttrs, array $itemAttrIds): int
+    {
+        $missing = 0;
+        foreach ($allAttrs as $attr) {
+            $isOptionalVisible = empty($attr['tags']['required']) && empty($attr['tags']['hidden']);
+            if ($isOptionalVisible && !in_array($attr['id'], $itemAttrIds)) {
+                $missing++;
+            }
+        }
+        return $missing;
+    }
+
+    /**
+     * Avalia estatísticas de atributos e gera problemas/oportunidades
+     */
+    private function evaluateAttributeStats(array $stats, int $total): array
+    {
+        $problems = [];
+        $opportunities = [];
+
+        if ($stats['missingRequired'] > 0) {
             $problems[] = [
                 'severity' => 'critical',
                 'category' => 'attributes',
-                'issue' => "{$incompleteItems} anúncios com atributos OBRIGATÓRIOS faltando",
+                'issue' => "{$stats['incompleteItems']} anúncios com atributos OBRIGATÓRIOS faltando",
                 'impact' => -25,
-                'affected_items' => $incompleteItems,
+                'affected_items' => $stats['incompleteItems'],
                 'solution' => 'Preencher TODOS os atributos obrigatórios imediatamente'
             ];
         }
 
-        if ($totalMissingAttrs > $total * 5) {
+        if ($stats['totalMissingOptional'] > $total * 5) {
             $opportunities[] = [
                 'category' => 'attributes',
-                'opportunity' => "~{$totalMissingAttrs} atributos opcionais podem ser preenchidos",
+                'opportunity' => "~{$stats['totalMissingOptional']} atributos opcionais podem ser preenchidos",
                 'potential' => 20,
                 'strategy' => 'Preencher 100% dos atributos aumenta visibilidade em filtros'
             ];
@@ -439,43 +541,33 @@ class SEOKillerEngine
         return ['problems' => $problems, 'opportunities' => $opportunities];
     }
 
+    private const LOW_LISTING_TYPES = ['bronze', 'free'];
+
     /**
-     * 👁️ Analisar Visibilidade
+     * Analisar Visibilidade
      */
     private function analyzeVisibility(array $items): array
     {
+        [$paused, $lowListing] = $this->countVisibilityIssues($items);
+
         $problems = [];
         $opportunities = [];
 
-        $pausedItems = 0;
-        $lowListingType = 0;
-
-        foreach ($items as $item) {
-            if (($item['status'] ?? '') === 'paused') {
-                $pausedItems++;
-            }
-
-            $listingType = $item['listing_type_id'] ?? '';
-            if (in_array($listingType, ['bronze', 'free'])) {
-                $lowListingType++;
-            }
-        }
-
-        if ($pausedItems > 0) {
+        if ($paused > 0) {
             $problems[] = [
                 'severity' => 'high',
                 'category' => 'visibility',
-                'issue' => "{$pausedItems} anúncios pausados",
+                'issue' => "{$paused} anúncios pausados",
                 'impact' => -15,
-                'affected_items' => $pausedItems,
+                'affected_items' => $paused,
                 'solution' => 'Reativar anúncios pausados após otimização'
             ];
         }
 
-        if ($lowListingType > 0) {
+        if ($lowListing > 0) {
             $opportunities[] = [
                 'category' => 'visibility',
-                'opportunity' => 'Upgrade de tipo de anúncio em ' . $lowListingType . ' itens',
+                'opportunity' => "Upgrade de tipo de anúncio em {$lowListing} itens",
                 'potential' => 20,
                 'strategy' => 'Clássico/Premium têm muito mais exposição que Grátis'
             ];
@@ -485,58 +577,62 @@ class SEOKillerEngine
     }
 
     /**
-     * 🎯 Gerar Ações Prioritárias
+     * Conta itens pausados e com listing type baixo
+     * @return array{0: int, 1: int} [paused, lowListing]
+     */
+    private function countVisibilityIssues(array $items): array
+    {
+        $paused = 0;
+        $lowListing = 0;
+
+        foreach ($items as $item) {
+            $status = $item['status'] ?? '';
+            $listingType = $item['listing_type_id'] ?? '';
+
+            if ($status === 'paused') {
+                $paused++;
+            }
+            if (in_array($listingType, self::LOW_LISTING_TYPES)) {
+                $lowListing++;
+            }
+        }
+
+        return [$paused, $lowListing];
+    }
+
+    /**
+     * Gerar Ações Prioritárias
      */
     private function generatePriorityActions(array $problems, array $opportunities): array
     {
         $actions = [];
+        $critical = array_filter($problems, fn($p) => $p['severity'] === 'critical');
 
-        // Top 5 critical problems
-        $criticalProblems = array_filter($problems, fn($p) => $p['severity'] === 'critical');
-        foreach (array_slice($criticalProblems, 0, 3) as $problem) {
-            $actions[] = [
-                'priority' => 1,
-                'type' => 'fix_problem',
-                'action' => $problem['solution'],
-                'category' => $problem['category'],
-                'impact' => 'Alto',
-                'affected' => $problem['affected_items'] ?? 0,
-            ];
+        foreach (array_slice($critical, 0, 3) as $p) {
+            $actions[] = ['priority' => 1, 'type' => 'fix_problem', 'action' => $p['solution'],
+                'category' => $p['category'], 'impact' => 'Alto', 'affected' => $p['affected_items'] ?? 0];
         }
-
-        // Top opportunities
-        foreach (array_slice($opportunities, 0, 2) as $opp) {
-            $actions[] = [
-                'priority' => 2,
-                'type' => 'opportunity',
-                'action' => $opp['strategy'],
-                'category' => $opp['category'],
-                'impact' => 'Médio-Alto',
-                'potential' => '+' . $opp['potential'] . '%',
-            ];
+        foreach (array_slice($opportunities, 0, 2) as $o) {
+            $actions[] = ['priority' => 2, 'type' => 'opportunity', 'action' => $o['strategy'],
+                'category' => $o['category'], 'impact' => 'Médio-Alto', 'potential' => '+' . $o['potential'] . '%'];
         }
 
         return $actions;
     }
 
     /**
-     * 📋 Gerar Resumo do Diagnóstico
+     * Gerar Resumo do Diagnóstico
      */
     private function generateDiagnosisSummary(array $diagnosis): string
     {
         $score = $diagnosis['health_score'];
-        $totalProblems = count($diagnosis['problems']);
+        $n = count($diagnosis['problems']);
 
-        if ($score < 30) {
-            return "🔴 CONTA CRÍTICA: Score {$score}/100. {$totalProblems} problemas graves identificados. " .
-                "A conta precisa de otimização urgente em títulos, descrições e atributos.";
-        } elseif ($score < 60) {
-            return "🟡 CONTA COM PROBLEMAS: Score {$score}/100. {$totalProblems} issues encontradas. " .
-                "Há potencial significativo de melhoria com SEO estratégico.";
-        } else {
-            return "🟢 CONTA SAUDÁVEL: Score {$score}/100. " .
-                "Foco em otimizações finas e oportunidades de crescimento.";
-        }
+        return match (true) {
+            $score < 30 => "🔴 CONTA CRÍTICA: Score {$score}/100. {$n} problemas graves. Otimização urgente necessária.",
+            $score < 60 => "🟡 CONTA COM PROBLEMAS: Score {$score}/100. {$n} issues. Potencial de melhoria com SEO.",
+            default => "🟢 CONTA SAUDÁVEL: Score {$score}/100. Foco em otimizações finas.",
+        };
     }
 
     /**
@@ -602,119 +698,5 @@ class SEOKillerEngine
         } catch (\Exception $e) {
             return '';
         }
-    }
-
-    // ========================================================================
-    // 🎯 SEO STRATEGIES ENGINE INTEGRATION
-    // ========================================================================
-
-    /**
-     * Run advanced SEO analysis using all 12 strategies
-     */
-    public function runStrategiesAnalysis(string $itemId): array
-    {
-        $engine = new Strategies\SEOStrategiesEngine($this->accountId);
-        return $engine->analyzeItem($itemId);
-    }
-
-    /**
-     * Get detailed SEO strategies score for an item
-     */
-    public function getStrategiesScore(string $itemId): array
-    {
-        $engine = new Strategies\SEOStrategiesEngine($this->accountId);
-        $analysis = $engine->analyzeItem($itemId);
-
-        return [
-            'item_id' => $itemId,
-            'overall_score' => $analysis['overall_score'] ?? 0,
-            'strategies' => $analysis['strategies'] ?? [],
-            'recommendations' => $analysis['recommendations'] ?? [],
-        ];
-    }
-
-    /**
-     * Optimize item using all 12 SEO strategies
-     */
-    public function optimizeWithStrategies(string $itemId): array
-    {
-        $engine = new Strategies\SEOStrategiesEngine($this->accountId);
-
-        // Run full optimization
-        $titleOpt = $engine->optimizeTitle($itemId);
-        $descOpt = $engine->optimizeDescription($itemId);
-        $keywords = $engine->generateKeywords($itemId);
-
-        return [
-            'item_id' => $itemId,
-            'title_optimization' => $titleOpt,
-            'description_optimization' => $descOpt,
-            'generated_keywords' => $keywords,
-            'strategies_applied' => 12,
-        ];
-    }
-
-    /**
-     * Batch analyze items with SEO strategies
-     */
-    public function batchStrategiesAnalysis(array $itemIds, int $limit = 10): array
-    {
-        $results = [];
-        $engine = new Strategies\SEOStrategiesEngine($this->accountId);
-        $cache = new Strategies\SEOAnalysisCacheService($this->accountId);
-
-        // Limit to prevent timeout
-        $itemIds = array_slice($itemIds, 0, $limit);
-
-        foreach ($itemIds as $itemId) {
-            try {
-                // Use cache when available
-                $cached = $cache->get($itemId);
-                if ($cached !== null) {
-                    $results[$itemId] = [
-                        'success' => true,
-                        'score' => $cached['overall_score'],
-                        'from_cache' => true,
-                    ];
-                    continue;
-                }
-
-                $analysis = $engine->analyzeItem($itemId);
-                $results[$itemId] = [
-                    'success' => true,
-                    'score' => $analysis['overall_score'] ?? 0,
-                    'from_cache' => false,
-                ];
-
-                // Save to cache
-                $cache->set($itemId, $analysis);
-            } catch (\Exception $e) {
-                $results[$itemId] = [
-                    'success' => false,
-                    'error' => $e->getMessage(),
-                ];
-            }
-        }
-
-        return [
-            'total' => count($itemIds),
-            'processed' => count($results),
-            'results' => $results,
-        ];
-    }
-
-    /**
-     * Get SEO strategies dashboard data
-     */
-    public function getStrategiesDashboard(): array
-    {
-        $cache = new Strategies\SEOAnalysisCacheService($this->accountId);
-
-        return [
-            'cache_stats' => $cache->getStats(),
-            'score_distribution' => $cache->getScoreDistribution(),
-            'low_score_items' => $cache->getLowScoreItems(10, 50),
-            'stale_items' => $cache->getStaleItems(20),
-        ];
     }
 }
