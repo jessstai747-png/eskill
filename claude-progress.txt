@@ -6,6 +6,92 @@
 
 ---
 
+## Sessão: 2026-02-17 PM7 — API-First Estrito no ItemService (Fallback local só por opt-in)
+
+### Objetivo
+Continuar a implementação real removendo fallback local implícito no fluxo de itens, para que produção opere com dados da API por padrão.
+
+### Implementação
+1. **Modo real estrito em listagem de itens** (`app/Services/ItemService.php`):
+   - Filtros `low_stock/high_sales` agora retornam erro explícito (`local_cache_required`) quando cache local não estiver autorizado.
+   - Removida duplicação de variável `hasCustomFilters`.
+2. **Regra de fallback endurecida** (`shouldAllowLocalFallback`):
+   - `allow_local_cache=true` e `source=local` continuam como opt-in explícito.
+   - `ML_ALLOW_LOCAL_CACHE_FALLBACK=true` em produção/staging não basta sozinho.
+   - Novo gate de emergência para produção: `ML_ALLOW_LOCAL_CACHE_FALLBACK_PRODUCTION=true`.
+3. **Correções adicionais de robustez**:
+   - Fallback local de item busca por `ml_item_id` ou `id` (`SELECT ... WHERE ml_item_id = :id OR id = :id`).
+   - `getLocalCategoriesFallback()` agora retorna erro claro quando DB indisponível (evita null dereference).
+4. **Controller**:
+   - `ItemController::index()` responde `422` para `local_cache_required`.
+
+### Validação
+- `php -l app/Services/ItemService.php` ✅
+- `php -l app/Controllers/ItemController.php` ✅
+- `php vendor/bin/phpunit` ❌ (bootstrap falha por DB indisponível: `127.0.0.1:3307/app_test`)
+
+---
+
+## Sessão: 2026-02-17 PM6 — Fix AI Insights (500) + Rate Limit Burst (429) + Key Handling (401)
+
+### Objetivo
+Corrigir erros reportados no console/API:
+- **500** em `POST /api/ai/insights/ab-tests` (assinatura incompatível)
+- Melhorar resposta quando **OPENAI_API_KEY** está ausente/ inválida (evitar chamada com key vazia)
+- Reduzir **429** em rotas do dashboard (burst limit insuficiente)
+
+### Implementação
+- `AIInsightsService::suggestABTests()` agora aceita `string $focusArea = 'all'` e aplica filtro + instruções de foco no prompt.
+- `AIInsightsService::callGPT4()` agora falha rápido quando `OPENAI_API_KEY` está vazia/ inválida e lança exceção clara com `code=503`.
+- `AIController` (endpoints de insights) agora captura `\Throwable` e retorna JSON consistente, mapeando `code=503` para HTTP 503.
+- `RateLimitMiddleware` aceita burst limit opcional no construtor.
+- `public/index.php` trata `/api/ai/*` e `/api/seo-killer/*` como dashboard APIs e usa burst limit maior.
+
+### Validação
+- `bash bin/init.sh` ✅ (MySQL indisponível no ambiente de execução)
+- `php -l` ✅ nos arquivos alterados
+- `php vendor/bin/phpunit --testsuite Unit` ✅ (261 testes; 33 skipped)
+
+### Arquivos Modificados
+- `app/Services/AI/SEO/AIInsightsService.php`
+- `app/Controllers/AIController.php`
+- `app/Middleware/RateLimitMiddleware.php`
+- `public/index.php`
+
+## Sessão: 2026-02-17 PM5 — Integração ML Real: Compatibilidade de Contrato de Resposta
+
+### Objetivo
+Corrigir inconsistências entre `MercadoLivreClient` e serviços consumidores que ainda esperavam formato legado (`success/body`), para garantir operação real com dados da API.
+
+### Implementação
+1. **`MercadoLivreClient`**:
+   - Adicionado envelope de compatibilidade para respostas associativas (`success` + `body`) sem alterar listas/multiget.
+   - Padronização de erros com `success=false` em todos os caminhos (inclusive early returns).
+   - Adicionado método `getMe()` para compatibilidade com consumidores legados.
+2. **`ItemService`**:
+   - `getItem()` corrigido para tratar payload real da API.
+   - `createItem()`, `updateItem()` e `syncItem()` ajustados para persistir payload normalizado (sem dependência rígida de `body`).
+   - Novo helper `unwrapMlResponse()` para unificar leitura de resposta.
+3. **`ListingAutoCreator`**:
+   - Publicação no ML ajustada para tratar erro real da API e validar `id` retornado.
+4. **`AIContentGeneratorService`**:
+   - `getCompetitiveInsights()` corrigido para ler payload real (`paging/results`) com fallback seguro.
+
+### Arquivos Modificados
+- `app/Services/MercadoLivreClient.php`
+- `app/Services/ItemService.php`
+- `app/Services/ListingAutoCreator.php`
+- `app/Services/AIContentGeneratorService.php`
+
+### Validação
+- `php -l app/Services/MercadoLivreClient.php` ✅
+- `php -l app/Services/ItemService.php` ✅
+- `php -l app/Services/ListingAutoCreator.php` ✅
+- `php -l app/Services/AIContentGeneratorService.php` ✅
+- `php vendor/bin/phpunit` ❌ (bootstrap falha por DB indisponível: `127.0.0.1:3307/app_test`)
+
+---
+
 ## Sessão: 2026-02-17 PM4 — Refatoração de Qualidade (Codacy) no SEOKillerEngine
 
 ### Objetivo
