@@ -114,8 +114,10 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Garantir que token CSRF existe na sessão e não está expirado (1 hora)
-if (!isset($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) || 
-    (time() - $_SESSION['csrf_token_time']) > 3600) {
+if (
+    !isset($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) ||
+    (time() - $_SESSION['csrf_token_time']) > 3600
+) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     $_SESSION['csrf_token_time'] = time();
 }
@@ -139,14 +141,18 @@ if (!$security->handle()) {
     exit;
 }
 
-// Forçar HTTPS em produção
-$appEnv = $_ENV['APP_ENV'] ?? 'production';
-$forceHttps = filter_var($_ENV['FORCE_HTTPS'] ?? ($appEnv === 'production' ? 'true' : 'false'), FILTER_VALIDATE_BOOLEAN);
+// Forçar HTTPS em produção (redundante com SecurityMiddleware, mas mantém como fallback)
+// Skip para localhost/dev server para permitir testes locais sem SSL
+$forceHttps = filter_var($_ENV['FORCE_HTTPS'] ?? getenv('FORCE_HTTPS') ?: 'false', FILTER_VALIDATE_BOOLEAN);
 if ($forceHttps && empty($_SERVER['HTTPS']) && ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') !== 'https') {
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $uri = $_SERVER['REQUEST_URI'] ?? '/';
-    header("Location: https://{$host}{$uri}", true, 301);
-    exit;
+    $hostWithoutPort = explode(':', $host)[0];
+    $isLocalhost = in_array($hostWithoutPort, ['localhost', '127.0.0.1', '::1'], true);
+    if (!$isLocalhost) {
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        header("Location: https://{$host}{$uri}", true, 301);
+        exit;
+    }
 }
 
 // Setup Router

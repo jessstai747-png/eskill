@@ -6,6 +6,135 @@
 
 ---
 
+## Sessão: 2026-02-18 PM — Security hardening + Full codebase audit
+
+### Objetivo
+Validar que todo o código é real (não mock/placeholder) e corrigir vulnerabilidades de segurança.
+
+### Auditoria Completa
+- **24.706 linhas auditadas** em 16 services críticos — TODOS contêm código real de produção
+- Services auditados: MercadoLivreClient (1.435 linhas), MercadoLivreAuthService (618), ItemService (1.537), OrderService (636), ShippingService (638), CatalogCloneService (2.720), DynamicPricingService (498), AccountHealthService (3.916), + 8 services em MercadoLivre/ subdirectory
+- **Zero mocks, zero placeholders, zero stubs** encontrados
+
+### Correções de Segurança
+1. **HTTPS redirect inconsistency (public/index.php + SecurityMiddleware.php)**:
+   - Bug: `Dotenv::createImmutable()->load()` popula `$_ENV` mas NÃO chama `putenv()`. SecurityMiddleware usava `getenv('FORCE_HTTPS')` (retornava false), enquanto index.php usava `$_ENV['FORCE_HTTPS']` (retornava 'true').
+   - Fix: Ambos agora usam `$_ENV['FORCE_HTTPS'] ?? getenv('FORCE_HTTPS') ?: 'false'` com `filter_var()`. Adicionado bypass para localhost/127.0.0.1/::1.
+2. **Router SSRF protection (router.php)**:
+   - Bug: URI do usuário usada diretamente em `file_exists()` / `readfile()` sem proteção contra directory traversal.
+   - Fix: Adicionado `realpath()` + validação de que o path resolvido começa com `$publicDir`.
+
+### Testes
+- PHPUnit Unit Suite: 261 testes ✅, 523 assertions, 33 skipped (requerem DB)
+- `php -l` em todos os 3 arquivos modificados: sem erros de sintaxe
+- Codacy CLI: 0 issues em todos os 3 arquivos modificados
+- Nenhuma regressão após as correções
+
+### Arquivos Modificados
+- `public/index.php`: HTTPS redirect logic (linhas 143-157)
+- `app/Middleware/SecurityMiddleware.php`: force_https config reading (linha 78) + localhost bypass (linhas 105-114)
+- `router.php`: SSRF protection via realpath() validation
+
+---
+
+## Sessão: 2026-02-18 AM3 — Worker de Sync real: remoção definitiva da tabela legada `questions`
+
+### Objetivo
+Continuar a implementação real removendo o último ponto de escrita em tabela legada `questions` no runtime (worker de refresh/sync).
+
+### Implementação
+1. **`bin/auto-token-refresh-worker.php`**:
+   - Corrigido endpoint de itens para o formato oficial: `/users/{seller_id}/items/search` (antes usava `/users/me/items/search`).
+   - Adicionado `unwrapMlResponse()` para tratar respostas decoradas (`success/body`) do `MercadoLivreClient`.
+   - `syncItems`, `syncOrders` e `syncQuestions` agora validam `seller_id` explicitamente e tratam payloads inválidos com segurança.
+2. **Persistência de pedidos migrada para tabela canônica**:
+   - `updateOrderInDatabase()` migrou de `orders` para `ml_orders`.
+   - Agora persiste também `order_data` JSON (payload bruto), além de `status`, `total_amount` e `synced_at`.
+3. **Persistência de perguntas migrada para tabela canônica**:
+   - `updateQuestionInDatabase()` migrou de `questions` para `ml_questions`.
+   - Persistência alinhada ao modelo atual: `question_text`, `answer_text`, `from_user_id`, `answer_date`, `seller_id`, `updated_at`.
+4. **Verificação de resíduos**:
+   - Busca por `FROM/INTO/UPDATE/DELETE/JOIN questions` em `app/`, `bin/`, `scripts/` sem resultados.
+
+### Validação
+- `php -l bin/auto-token-refresh-worker.php` ✅
+- Busca por SQL legado `questions` em runtime (`app|bin|scripts`) ✅ sem ocorrências
+- `php vendor/bin/phpunit` ❌ (bootstrap falha por DB indisponível: `127.0.0.1:3307/app_test`)
+
+---
+
+## Sessão: 2026-02-18 AM2 — Dashboard real: perguntas unificadas em `ml_questions` + degradação segura sem DB
+
+### Objetivo
+Continuar a implementação real removendo inconsistências no dashboard que ainda liam tabela `questions` e melhorar resiliência quando banco estiver indisponível.
+
+### Implementação
+1. **DashboardService endurecido** (`app/Services/DashboardService.php`):
+   - `getMetrics()` agora opera com proteção de falha de DB e retorna payload degradado consistente (sem fatal) quando MySQL cair.
+   - Métrica de `pending_questions` agora é **API-first** via `QuestionService` (com fallback local explícito) por conta.
+   - Fallback local consolidado em `ml_questions` (não `questions`).
+   - Removida duplicação de chave `pending_questions` no retorno.
+   - Ajustada leitura de reputação para respostas decoradas (`success/body`) via `unwrapMlResponse()`.
+2. **Dashboard API unificada para tabela correta** (`app/Controllers/DashboardApiController.php`):
+   - Consultas de perguntas migradas de `questions` para `ml_questions` em:
+     - estatísticas de perguntas,
+     - notificações de perguntas pendentes,
+     - satisfação do usuário,
+     - `teamStatus` (`pending_questions` por conta).
+3. **Diagnóstico de ML atualizado** (`scripts/ml_diagnostic.php`):
+   - Bloco de perguntas migrado para `ml_questions`.
+   - Última sincronização de perguntas passa a consultar `ml_questions`.
+4. **Métrica comportamental corrigida** (`app/Services/AIRecommendationEngineService.php`):
+   - Cálculo de tempo médio de resposta migrou de `questions` para `ml_questions`.
+   - Filtro corrigido de `seller_id = user_id` (inconsistente) para `account_id` resolvido no contexto do usuário.
+
+### Validação
+- `php -l app/Services/DashboardService.php` ✅
+- `php -l app/Controllers/DashboardApiController.php` ✅
+- `php -l scripts/ml_diagnostic.php` ✅
+- `php -l app/Services/AIRecommendationEngineService.php` ✅
+- `php -r` (execução de `DashboardService::getMetrics`) ✅ retorna payload degradado em ambiente sem DB
+- `php vendor/bin/phpunit` ❌ (bootstrap falha por DB indisponível: `127.0.0.1:3307/app_test`)
+
+---
+
+## Sessão: 2026-02-18 AM1 — API-First Real em Orders/Questions + Robustez Webhook
+
+### Objetivo
+Continuar a implementação real da integração Mercado Livre, removendo fallback local implícito em pedidos/perguntas e padronizando respostas de erro/sucesso para produção.
+
+### Implementação
+1. **QuestionService API-first** (`app/Services/QuestionService.php`):
+   - `getQuestions()` e `getQuestion()` agora consultam API primeiro e só usam cache local com opt-in explícito (`allow_local_cache`, `source=local`, flags de ambiente).
+   - Added `unwrapMlResponse()` para compatibilizar respostas decoradas (`success/body`) e payload bruto.
+   - Inicialização resiliente para `AnswerGeneratorService` e `QuestionAnalyzerService` (sem fatal quando dependências de DB/LLM não sobem).
+   - `syncSingleQuestion()` agora retorna payload da pergunta (não `bool`) e mantém persistência local resiliente.
+   - Implementados métodos usados pelo controller que estavam ausentes: `deleteQuestion()` e `getUnansweredCount()`.
+   - Tratamento explícito para `db_unavailable` e normalização de dados locais.
+2. **OrderService API-first** (`app/Services/OrderService.php`):
+   - `listOrders()` agora usa `/orders/search` como fonte primária, com cache local apenas por opt-in.
+   - `getOrder()` agora consulta API primeiro e faz fallback local somente quando autorizado.
+   - Persistência local resiliente (não quebra quando DB indisponível), payload de erro padronizado (`ml_api_error`, `missing_seller_id`, `db_unavailable`).
+   - Mantida compatibilidade com frontend (`results`, `orders`, paginação).
+3. **Controllers ajustados**:
+   - `app/Controllers/QuestionController.php` e `app/Controllers/OrderController.php` agora aceitam `allow_local_cache`/`source` e mapeiam erros para HTTP status coerentes (422/401/503/502/404).
+   - `app/Controllers/PdfController.php` agora permite repassar `allow_local_cache` em relatório de pedidos.
+4. **Webhook robusto** (`app/Services/MercadoLivreWebhookService.php`):
+   - `handleOrderEvent()` e `handleQuestionEvent()` validam payload de erro retornado pelos services e falham explicitamente quando necessário (sem assumir sucesso silencioso).
+5. **Segurança multi-conta**:
+   - Restrições por conta em fallback local de `getQuestionFromDatabase()` e `getOrderFromDatabase()` quando `accountId` está definido.
+
+### Validação
+- `php -l app/Services/QuestionService.php` ✅
+- `php -l app/Services/OrderService.php` ✅
+- `php -l app/Services/MercadoLivreWebhookService.php` ✅
+- `php -l app/Controllers/QuestionController.php` ✅
+- `php -l app/Controllers/OrderController.php` ✅
+- `php -l app/Controllers/PdfController.php` ✅
+- `php vendor/bin/phpunit` ❌ (bootstrap falha por DB indisponível: `127.0.0.1:3307/app_test`)
+
+---
+
 ## Sessão: 2026-02-17 PM7 — API-First Estrito no ItemService (Fallback local só por opt-in)
 
 ### Objetivo
@@ -24,6 +153,7 @@ Continuar a implementação real removendo fallback local implícito no fluxo de
    - `getLocalCategoriesFallback()` agora retorna erro claro quando DB indisponível (evita null dereference).
 4. **Controller**:
    - `ItemController::index()` responde `422` para `local_cache_required`.
+   - `ItemController::show()` agora aceita `allow_local_cache` e repassa para `ItemService::getItem()` (opt-in explícito também no detalhe).
 
 ### Validação
 - `php -l app/Services/ItemService.php` ✅
