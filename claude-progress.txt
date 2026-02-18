@@ -6,6 +6,46 @@
 
 ---
 
+## Sessão: 2026-02-18 PM3 — Correção de bugs críticos de segurança e runtime
+
+### Objetivo
+Corrigir 4 bugs críticos + 3 importantes encontrados na revisão automatizada.
+
+### Correções Críticas
+1. **SQL Injection — PriceRulesEngineService.php (L134):**
+   - `$filters['order_by']` era interpolado direto no SQL
+   - Fix: Whitelist com 6 opções válidas de ORDER BY
+
+2. **SQL Injection — CompetitorSpy.php (L665):**
+   - `$filters['order_by']` e `$filters['limit']` interpolados direto
+   - Fix: `in_array()` com whitelist + `max(1, min((int)$limit, 200))`
+
+3. **SQL Syntax Bug — BackupService.php (L91):**
+   - Backtick não fechado: `SHOW CREATE TABLE \`{$safeTable}"`
+   - Fix: Adicionado backtick final + substituído `addslashes()` por `PDO::quote()` + corrigido `$table` → `$safeTable` no INSERT
+
+4. **TypeError Fatal — CompetitorSpy.php (L1097):**
+   - `sendAlert($accountId, $alert)` chamava NotificationService com tipos errados
+   - NotificationService espera `(string $title, string $message, string $severity)`
+   - Fix: Extrair title/message/priority do array `$alert`
+
+### Correções Importantes
+5. **Empty catches corrigidos:**
+   - ItemService.php:570 — added `error_log()` para description fetch
+   - SEOAuditService.php:634 — added `error_log()` para hidden fields analysis
+
+6. **Rotas duplicadas removidas — api.php:**
+   - 3 rotas SEO Killer registradas duas vezes (score, autopilot, top-performers)
+   - Removidas as primeiras definições, mantidas as do bloco "SEO Score Calculator v2"
+
+### Validação
+- `php -l` em todos os 6 arquivos: sem erros de sintaxe
+- PHPUnit Unit Suite: 261 testes ✅, 523 assertions, 33 skipped
+- Codacy CLI: 0 issues em todos os 5 arquivos de service
+- Git commit: `d8e1032`
+
+---
+
 ## Sessão: 2026-02-18 PM2 — Broken routes fix + empty catch fix
 
 ### Objetivo
