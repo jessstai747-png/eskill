@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Middleware;
 
 /**
@@ -350,7 +352,7 @@ class SecurityMiddleware
             return false;
         }
 
-        file_put_contents($cacheFile, json_encode($data));
+        file_put_contents($cacheFile, json_encode($data), LOCK_EX);
 
         return true;
     }
@@ -383,6 +385,10 @@ class SecurityMiddleware
         }
 
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        // Prevent protocol-relative redirect (//evil.com)
+        if (!str_starts_with($uri, '/') || str_starts_with($uri, '//')) {
+            $uri = '/';
+        }
 
         header("Location: https://{$host}{$uri}", true, 301);
         exit;

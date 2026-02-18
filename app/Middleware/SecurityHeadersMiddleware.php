@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Middleware;
 
 /**
@@ -105,7 +107,13 @@ class SecurityHeadersMiddleware
                 $host = $trustedDomain;
             }
 
-            $redirect = 'https://' . $host . $_SERVER['REQUEST_URI'];
+            $uri = $_SERVER['REQUEST_URI'] ?? '/';
+            // Prevent protocol-relative redirect (//evil.com)
+            if (!str_starts_with($uri, '/') || str_starts_with($uri, '//')) {
+                $uri = '/';
+            }
+
+            $redirect = 'https://' . $host . $uri;
             header('HTTP/1.1 301 Moved Permanently');
             header('Location: ' . $redirect);
             exit;
