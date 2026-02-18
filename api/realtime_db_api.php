@@ -20,6 +20,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Database;
 use App\Services\JwtService;
+use App\Services\MercadoLivreAuthService;
 use App\Services\MercadoLivreClient;
 use App\Services\StructuredLogService;
 
@@ -37,6 +38,12 @@ class RealTimeDatabaseAPI
 
     /** @var int|null Active ML account resolved from header/query */
     private ?int $activeMLAccountId = null;
+
+    /** @var int Max ML proxy requests per account per hour */
+    private int $mlRateLimitMax = 600;
+
+    /** @var int ML proxy rate limit window in seconds */
+    private int $mlRateLimitWindow = 3600;
 
     /**
      * Table ACL — defines per-table access control.
@@ -985,6 +992,10 @@ class RealTimeDatabaseAPI
      *
      * Proxies requests to Mercado Livre API via MercadoLivreClient,
      * using the authenticated user's ML account for authorization.
+     * Implements:
+     *  - ML-specific rate limiting (separate from DB API)
+     *  - Automatic token refresh on 401
+     *  - Accounts listing endpoint (no external call)
      */
     private function routeMLRequest(string $method, array $segments, array $input, int $userId): void
     {
@@ -995,6 +1006,20 @@ class RealTimeDatabaseAPI
 
         if ($resource === '') {
             $this->sendResponse(['error' => 'ML resource required (e.g. /api/v1/ml/items)'], 400);
+            return;
+        }
+
+        // Handle 'accounts' locally — no MercadoLivreClient needed
+        if ($resource === 'accounts') {
+            $result = $this->handleMLAccounts($method, $userId, $resourceId, $input);
+            $this->sendResponse($result);
+            return;
+        }
+
+        // Handle 'notifications' locally — reads from local DB
+        if ($resource === 'notifications') {
+            $result = $this->handleMLNotifications($method, $resourceId, $input);
+            $this->sendResponse($result);
             return;
         }
 
@@ -1012,6 +1037,22 @@ class RealTimeDatabaseAPI
             return;
         }
 
+        // ML-specific rate limiting (separate from DB API limiter)
+        $mlRateResult = $this->checkMLRateLimit($userId, $accountId);
+        if (!$mlRateResult['allowed']) {
+            $this->sendResponse([
+                'error' => 'ML API rate limit exceeded',
+                'message' => 'Limite de requisições para a API do Mercado Livre atingido.',
+                'retry_after' => $mlRateResult['retry_after'] ?? 60,
+                'limit' => $this->mlRateLimitMax,
+                'remaining' => 0,
+            ], 429);
+            return;
+        }
+
+        // Ensure token is valid before making the call (auto-refresh if needed)
+        $this->ensureMLToken($accountId);
+
         try {
             $client = new MercadoLivreClient($accountId);
 
@@ -1025,11 +1066,47 @@ class RealTimeDatabaseAPI
             }
 
             $result = $this->dispatchMLRequest($client, $method, $resource, $resourceId, $subResource, $input);
+
+            // Add rate limit headers to response
+            header('X-ML-RateLimit-Limit: ' . $this->mlRateLimitMax);
+            header('X-ML-RateLimit-Remaining: ' . ($mlRateResult['remaining'] ?? 0));
+            header('X-ML-Account-Id: ' . $accountId);
+
             $this->sendResponse($result);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $response = $e->getResponse();
             $statusCode = $response ? $response->getStatusCode() : 500;
             $body = $response ? json_decode((string) $response->getBody(), true) : [];
+
+            // Auto-refresh on 401 and retry ONCE
+            if ($statusCode === 401) {
+                $this->logger->info('ML API 401 — attempting token refresh', [
+                    'account_id' => $accountId,
+                    'resource' => $resource,
+                ]);
+
+                $refreshed = $this->refreshMLToken($accountId);
+                if ($refreshed) {
+                    try {
+                        $retryClient = new MercadoLivreClient($accountId);
+                        if ($retryClient->getAccessToken() !== '') {
+                            $result = $this->dispatchMLRequest($retryClient, $method, $resource, $resourceId, $subResource, $input);
+                            $this->sendResponse($result);
+                            return;
+                        }
+                    } catch (\GuzzleHttp\Exception\ClientException $retryEx) {
+                        // Retry also failed — fall through to error response
+                        $response = $retryEx->getResponse();
+                        $statusCode = $response ? $response->getStatusCode() : 500;
+                        $body = $response ? json_decode((string) $response->getBody(), true) : [];
+                    } catch (Exception $retryEx) {
+                        $this->logger->error('ML API retry failed after token refresh', [
+                            'error' => $retryEx->getMessage(),
+                            'account_id' => $accountId,
+                        ]);
+                    }
+                }
+            }
 
             $this->logger->warning('ML API client error', [
                 'resource' => $resource,
@@ -1284,6 +1361,453 @@ class RealTimeDatabaseAPI
         }
 
         return $client->getCompetitorAnalysis($keyword, $category);
+    }
+
+    // =========================================================================
+    //  ML Account Management
+    // =========================================================================
+
+    /**
+     * Handle /api/v1/ml/accounts[/{id}]
+     *
+     * Lists user's ML accounts with token status, or returns details for one.
+     * No external ML API call — reads from local DB only.
+     *
+     * GET /accounts       → list all user's accounts
+     * GET /accounts/{id}  → single account detail
+     * PUT /accounts/{id}  → set as active account (session/preference)
+     */
+    private function handleMLAccounts(string $method, int $userId, ?string $accountIdStr, array $input): array
+    {
+        if ($method === 'GET') {
+            if ($accountIdStr !== null) {
+                return $this->getMLAccountDetail($userId, (int) $accountIdStr);
+            }
+            return $this->listMLAccounts($userId);
+        }
+
+        if (($method === 'PUT' || $method === 'PATCH') && $accountIdStr !== null) {
+            return $this->setActiveMLAccount($userId, (int) $accountIdStr);
+        }
+
+        throw new Exception("Method {$method} not supported for accounts");
+    }
+
+    /**
+     * List all ML accounts for the authenticated user.
+     *
+     * @return array{accounts: array, active_account_id: int|null, total: int}
+     */
+    private function listMLAccounts(int $userId): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT id, ml_user_id, nickname, email, site_id, status,
+                        token_expires_at, tokens_encrypted, created_at, updated_at
+                 FROM ml_accounts
+                 WHERE user_id = :user_id
+                 ORDER BY id'
+            );
+            $stmt->execute(['user_id' => $userId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $accounts = [];
+            $now = time();
+
+            foreach ($rows as $row) {
+                $expiresAt = $row['token_expires_at'] ? strtotime($row['token_expires_at']) : null;
+                $tokenStatus = 'unknown';
+
+                if ($row['status'] === 'disconnected' || $row['status'] === 'expired') {
+                    $tokenStatus = $row['status'];
+                } elseif ($expiresAt !== null) {
+                    $secondsLeft = $expiresAt - $now;
+                    if ($secondsLeft <= 0) {
+                        $tokenStatus = 'expired';
+                    } elseif ($secondsLeft <= 3600) {
+                        $tokenStatus = 'expiring_soon';
+                    } else {
+                        $tokenStatus = 'valid';
+                    }
+                }
+
+                $accounts[] = [
+                    'id' => (int) $row['id'],
+                    'ml_user_id' => $row['ml_user_id'],
+                    'nickname' => $row['nickname'],
+                    'email' => $row['email'],
+                    'site_id' => $row['site_id'],
+                    'status' => $row['status'],
+                    'token_status' => $tokenStatus,
+                    'token_expires_at' => $row['token_expires_at'],
+                    'is_active' => ($this->activeMLAccountId === (int) $row['id']),
+                    'created_at' => $row['created_at'],
+                    'updated_at' => $row['updated_at'],
+                ];
+            }
+
+            return [
+                'accounts' => $accounts,
+                'active_account_id' => $this->activeMLAccountId,
+                'total' => count($accounts),
+            ];
+        } catch (Exception $e) {
+            $this->logger->error('Failed to list ML accounts', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            throw new Exception('Failed to list ML accounts');
+        }
+    }
+
+    /**
+     * Get detailed info for a specific ML account (validates ownership).
+     */
+    private function getMLAccountDetail(int $userId, int $accountId): array
+    {
+        if (!in_array($accountId, $this->userMLAccountIds, true)) {
+            throw new Exception('ML account not found or access denied');
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT id, ml_user_id, nickname, email, site_id, status,
+                        token_expires_at, tokens_encrypted, created_at, updated_at
+                 FROM ml_accounts
+                 WHERE id = :id AND user_id = :user_id
+                 LIMIT 1'
+            );
+            $stmt->execute(['id' => $accountId, 'user_id' => $userId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                throw new Exception('ML account not found');
+            }
+
+            $expiresAt = $row['token_expires_at'] ? strtotime($row['token_expires_at']) : null;
+            $secondsLeft = $expiresAt !== null ? max(0, $expiresAt - time()) : null;
+
+            return [
+                'id' => (int) $row['id'],
+                'ml_user_id' => $row['ml_user_id'],
+                'nickname' => $row['nickname'],
+                'email' => $row['email'],
+                'site_id' => $row['site_id'],
+                'status' => $row['status'],
+                'token_expires_at' => $row['token_expires_at'],
+                'token_seconds_remaining' => $secondsLeft,
+                'is_active' => ($this->activeMLAccountId === $accountId),
+                'created_at' => $row['created_at'],
+                'updated_at' => $row['updated_at'],
+            ];
+        } catch (Exception $e) {
+            $this->logger->error('Failed to get ML account detail', [
+                'account_id' => $accountId,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Set a specific ML account as the "active" one (stored in session if available).
+     */
+    private function setActiveMLAccount(int $userId, int $accountId): array
+    {
+        if (!in_array($accountId, $this->userMLAccountIds, true)) {
+            throw new Exception('ML account not found or access denied');
+        }
+
+        // Store in session for subsequent requests within the same browser session
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['active_ml_account_id'] = $accountId;
+        }
+
+        $this->activeMLAccountId = $accountId;
+
+        $this->logger->info('ML active account changed', [
+            'user_id' => $userId,
+            'account_id' => $accountId,
+        ]);
+
+        return [
+            'success' => true,
+            'active_account_id' => $accountId,
+            'message' => 'Conta ML ativa alterada com sucesso.',
+        ];
+    }
+
+    // =========================================================================
+    //  ML Notifications (local webhook log)
+    // =========================================================================
+
+    /**
+     * Handle /api/v1/ml/notifications[/{id}]
+     *
+     * Lists recent ML webhook notifications stored locally.
+     * Only returns notifications for the user's ML accounts.
+     *
+     * GET /notifications        → list recent notifications
+     * GET /notifications/{id}   → single notification detail
+     */
+    private function handleMLNotifications(string $method, ?string $notificationId, array $input): array
+    {
+        if ($method !== 'GET') {
+            throw new Exception('Only GET is supported for notifications');
+        }
+
+        if (empty($this->userMLAccountIds)) {
+            return ['notifications' => [], 'total' => 0];
+        }
+
+        try {
+            if ($notificationId !== null) {
+                return $this->getMLNotificationDetail((int) $notificationId);
+            }
+            return $this->listMLNotifications($input);
+        } catch (Exception $e) {
+            $this->logger->warning('Failed to fetch ML notifications', [
+                'error' => $e->getMessage(),
+            ]);
+            return ['notifications' => [], 'total' => 0, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * List recent ML webhook notifications for the user's accounts.
+     */
+    private function listMLNotifications(array $input): array
+    {
+        $limit = min((int) ($input['limit'] ?? 50), 100);
+        $offset = (int) ($input['offset'] ?? 0);
+        $topic = $input['topic'] ?? null;
+
+        // Build IN clause for user's account IDs
+        $placeholders = [];
+        $params = [];
+        foreach ($this->userMLAccountIds as $i => $accId) {
+            $key = ':acc_' . $i;
+            $placeholders[] = $key;
+            $params[$key] = $accId;
+        }
+        $inClause = implode(', ', $placeholders);
+
+        // Check if the webhook_logs / ml_webhook_events table exists
+        // We try ml_webhook_events first (custom), then webhook_logs (generic)
+        $table = $this->detectNotificationTable();
+        if ($table === null) {
+            return ['notifications' => [], 'total' => 0, 'message' => 'No webhook log table found'];
+        }
+
+        $where = "account_id IN ({$inClause})";
+        if ($topic !== null && $topic !== '') {
+            $where .= ' AND topic = :topic';
+            $params[':topic'] = $topic;
+        }
+
+        $params[':limit'] = $limit;
+        $params[':offset'] = $offset;
+
+        $sql = "SELECT * FROM {$table} WHERE {$where} ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Count total
+        $countSql = "SELECT COUNT(*) FROM {$table} WHERE {$where}";
+        unset($params[':limit'], $params[':offset']);
+        $countStmt = $this->db->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        return [
+            'notifications' => $rows,
+            'total' => $total,
+            'limit' => $limit,
+            'offset' => $offset,
+        ];
+    }
+
+    /**
+     * Get a single notification detail.
+     */
+    private function getMLNotificationDetail(int $notificationId): array
+    {
+        $table = $this->detectNotificationTable();
+        if ($table === null) {
+            throw new Exception('No webhook log table found');
+        }
+
+        // Build IN clause for ownership validation
+        $placeholders = [];
+        $params = [':id' => $notificationId];
+        foreach ($this->userMLAccountIds as $i => $accId) {
+            $key = ':acc_' . $i;
+            $placeholders[] = $key;
+            $params[$key] = $accId;
+        }
+        $inClause = implode(', ', $placeholders);
+
+        $stmt = $this->db->prepare(
+            "SELECT * FROM {$table} WHERE id = :id AND account_id IN ({$inClause}) LIMIT 1"
+        );
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            throw new Exception('Notification not found');
+        }
+
+        return $row;
+    }
+
+    /**
+     * Detect which notification/webhook log table exists.
+     *
+     * @return string|null Table name or null if none found
+     */
+    private function detectNotificationTable(): ?string
+    {
+        $candidates = ['ml_webhook_events', 'webhook_logs'];
+
+        foreach ($candidates as $table) {
+            try {
+                $stmt = $this->db->query("SHOW TABLES LIKE '{$table}'");
+                if ($stmt->rowCount() > 0) {
+                    return $table;
+                }
+            } catch (Exception $e) {
+                // Table doesn't exist, try next
+            }
+        }
+
+        return null;
+    }
+
+    // =========================================================================
+    //  ML Rate Limiting
+    // =========================================================================
+
+    /**
+     * ML-specific rate limiting, separate from DB API rate limiter.
+     *
+     * - 600 requests/hour per ML account (≈10/min sustained)
+     * - Prevents hitting ML API limits (which would ban the access_token)
+     * - Tracked per account_id, not per user (a user with 3 accounts gets 3x budget)
+     *
+     * @return array{allowed: bool, remaining: int, retry_after: int}
+     */
+    private function checkMLRateLimit(int $userId, int $accountId): array
+    {
+        try {
+            $this->ensureRateLimitTable();
+
+            $cutoff = date('Y-m-d H:i:s', time() - $this->mlRateLimitWindow);
+            $identifier = 'ml_' . $accountId;
+
+            $stmt = $this->db->prepare(
+                "SELECT COUNT(*) as count FROM rate_limits WHERE ip_address = :identifier AND created_at > :cutoff"
+            );
+            $stmt->execute([
+                'identifier' => $identifier,
+                'cutoff' => $cutoff,
+            ]);
+
+            $count = (int) ($stmt->fetch(PDO::FETCH_ASSOC)['count'] ?? 0);
+
+            if ($count >= $this->mlRateLimitMax) {
+                $this->logger->warning('ML rate limit exceeded', [
+                    'user_id' => $userId,
+                    'account_id' => $accountId,
+                    'count' => $count,
+                    'max' => $this->mlRateLimitMax,
+                ]);
+
+                return [
+                    'allowed' => false,
+                    'remaining' => 0,
+                    'retry_after' => 60,
+                ];
+            }
+
+            // Record this ML API call
+            $insertStmt = $this->db->prepare(
+                "INSERT INTO rate_limits (ip_address, created_at) VALUES (:identifier, NOW())"
+            );
+            $insertStmt->execute(['identifier' => $identifier]);
+
+            return [
+                'allowed' => true,
+                'remaining' => max(0, $this->mlRateLimitMax - ($count + 1)),
+                'retry_after' => 0,
+            ];
+        } catch (Exception $e) {
+            // Fail open: if rate limit check fails, allow but log
+            $this->logger->warning('ML rate limit check failed', [
+                'error' => $e->getMessage(),
+                'account_id' => $accountId,
+            ]);
+            return ['allowed' => true, 'remaining' => 0, 'retry_after' => 0];
+        }
+    }
+
+    // =========================================================================
+    //  ML Token Management
+    // =========================================================================
+
+    /**
+     * Pre-flight token check: ensures the ML account token is valid.
+     *
+     * Calls MercadoLivreAuthService::ensureValidToken() which checks
+     * token_expires_at and auto-refreshes if within buffer window.
+     * This prevents unnecessary 401s from ML API.
+     */
+    private function ensureMLToken(int $accountId): void
+    {
+        try {
+            $authService = new MercadoLivreAuthService();
+            $authService->ensureValidToken($accountId, bufferMinutes: 30);
+        } catch (Exception $e) {
+            // Non-fatal: if pre-flight refresh fails, the actual request
+            // will catch the 401 and retry with refreshMLToken()
+            $this->logger->warning('ML token pre-flight check failed', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Force refresh ML token for an account.
+     *
+     * Used when the proxy gets a 401 from ML API — refreshes token and
+     * returns true if successful, allowing a retry.
+     */
+    private function refreshMLToken(int $accountId): bool
+    {
+        try {
+            $authService = new MercadoLivreAuthService();
+            $refreshed = $authService->refreshToken($accountId);
+
+            if ($refreshed) {
+                $this->logger->info('ML token refreshed successfully after 401', [
+                    'account_id' => $accountId,
+                ]);
+            } else {
+                $this->logger->warning('ML token refresh failed — account may need re-authorization', [
+                    'account_id' => $accountId,
+                ]);
+            }
+
+            return $refreshed;
+        } catch (Exception $e) {
+            $this->logger->error('ML token refresh exception', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 
     /**

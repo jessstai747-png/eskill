@@ -6,6 +6,56 @@
 
 ---
 
+## Sessão: 2026-02-18 — ML Integration Complementary: Rate Limiting, Token Refresh, Accounts, Notifications
+
+### Objetivo
+Complementar a integração ML API proxy com features críticas para operação em produção.
+
+### Features implementadas
+
+#### ✨ ML-specific Rate Limiting (separado do DB API)
+- `checkMLRateLimit(int $userId, int $accountId)` — bucket por account_id (`ml_{accountId}`)
+- 600 req/hora por conta ML (≈10/min sustentado)
+- Usa a mesma tabela `rate_limits` mas com identificador prefixado `ml_`
+- Headers de resposta: `X-ML-RateLimit-Limit`, `X-ML-RateLimit-Remaining`, `X-ML-Account-Id`
+- Resposta 429 com `retry_after` e mensagem em PT-BR
+
+#### ✨ Auto Token Refresh on 401
+- `ensureMLToken(int $accountId)` — pre-flight check via `MercadoLivreAuthService::ensureValidToken()` com buffer de 30min
+- `refreshMLToken(int $accountId)` — refresh forçado via `MercadoLivreAuthService::refreshToken()` quando ML retorna 401
+- Retry automático: cria novo `MercadoLivreClient`, re-executa `dispatchMLRequest()` UMA vez
+- Se retry falha novamente, retorna o erro original
+- Log estruturado em todas as etapas
+
+#### ✨ ML Accounts Management Endpoint
+- `GET /api/v1/ml/accounts` — lista todas as contas ML do user com token_status (valid, expiring_soon, expired, disconnected)
+- `GET /api/v1/ml/accounts/{id}` — detalhe com seconds_remaining, is_active
+- `PUT /api/v1/ml/accounts/{id}` — define conta ativa (salva em $_SESSION)
+- Validação de ownership (IDOR prevention): só mostra contas do user autenticado
+
+#### ✨ ML Notifications Endpoint
+- `GET /api/v1/ml/notifications` — lista eventos webhook recentes do DB local
+- `GET /api/v1/ml/notifications/{id}` — detalhe de um evento
+- Filtro por `?topic=` (ex: orders, items, questions)
+- Paginação: `?limit=&offset=`
+- Auto-detect tabela: `ml_webhook_events` ou `webhook_logs`
+- Ownership enforcement: só eventos das contas do user
+
+### Novos métodos (12)
+- `checkMLRateLimit`, `ensureMLToken`, `refreshMLToken`
+- `handleMLAccounts`, `listMLAccounts`, `getMLAccountDetail`, `setActiveMLAccount`
+- `handleMLNotifications`, `listMLNotifications`, `getMLNotificationDetail`, `detectNotificationTable`
+
+### Arquivos afetados
+- `api/realtime_db_api.php` — 1342→1865 linhas (+523 linhas)
+
+### Validação
+- `php -l` — 0 erros de sintaxe
+- `get_errors` — 0 erros de lint
+- Import adicionado: `use App\Services\MercadoLivreAuthService`
+
+---
+
 ## Sessão: 2026-02-19 (2) — Integração ML API: Proxy, Ownership Fix, ACL Extension
 
 ### Objetivo
