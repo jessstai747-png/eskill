@@ -6,6 +6,33 @@
 
 ---
 
+## Sessão: 2026-02-18 PM3b — SQL injection sweep completo
+
+### Objetivo
+Varredura completa de SQL injection por ORDER BY interpolado em todos os services.
+
+### Correções
+1. **CloneComplianceService.php**: `$filters['order_by']` → whitelist com 6 opções
+2. **ScheduledPriceService.php**: `$filters['order_by']` → whitelist com 8 opções
+3. **AuditLogService.php**: `$filters['limit']` sem cast → `max(1, min((int)$limit, 500))`
+
+### Varredura Final
+- Todos os 5 arquivos com `ORDER BY {$orderBy}` em `app/Services/` agora usam whitelist:
+  - CompetitorSpy: `in_array()` whitelist ✅
+  - PriceRulesEngineService: `$allowedOrders[]` whitelist ✅
+  - ScheduledPriceService: `in_array()` whitelist ✅
+  - CloneComplianceService: `in_array()` whitelist ✅
+  - CloneItemManagerService: `match()` expression (built-in whitelist) ✅
+- CustomerController usa `Request::getEnum()` (whitelist) + `Request::getSortDir()` (ASC/DESC only) ✅
+- Demais serviços usam ORDER BY com strings literais estáticas ✅
+
+### Validação
+- PHPUnit Unit Suite: 261 testes ✅
+- Codacy CLI: 0 issues nos 3 arquivos
+- Git commit: `d29a837`
+
+---
+
 ## Sessão: 2026-02-18 PM3 — Correção de bugs críticos de segurança e runtime
 
 ### Objetivo
