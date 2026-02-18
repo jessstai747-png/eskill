@@ -963,10 +963,9 @@ $router->post('api/clone/schedules/{id}/execute', \App\Controllers\CloneSchedule
 $router->get('api/clone/schedules/{id}/history', \App\Controllers\CloneSchedulerController::class, 'getScheduleHistory');
 
 // ML Recommendations (Recomendações Inteligentes)
-$router->get('api/clone/recommendations/sellers', \App\Controllers\CloneSchedulerController::class, 'getSellerRecommendations');
+// Note: 'sellers' and 'trends' routes are defined above (CloneSellerRecommendationController, FASE 10)
 $router->get('api/clone/recommendations/products', \App\Controllers\CloneSchedulerController::class, 'getProductRecommendations');
 $router->get('api/clone/recommendations/categories', \App\Controllers\CloneSchedulerController::class, 'getCategoryRecommendations');
-$router->get('api/clone/recommendations/trends', \App\Controllers\CloneSchedulerController::class, 'getTrendAnalysis');
 $router->get('api/clone/recommendations/predict/{itemId}', \App\Controllers\CloneSchedulerController::class, 'predictPerformance');
 
 // Clone Event Triggers
@@ -1157,7 +1156,6 @@ $router->get('api/compatibility/attributes/{categoryId}', CompatibilityControlle
 $router->get('api/questions', QuestionController::class, 'index');
 $router->get('api/questions/unanswered/count', QuestionController::class, 'countUnanswered');
 $router->get('api/questions/{id}', QuestionController::class, 'show');
-$router->post('api/questions/{id}/answer', QuestionController::class, 'answer');
 $router->post('api/questions/{id}/answer', QuestionController::class, 'answer');
 $router->post('api/questions/{id}/draft', QuestionController::class, 'draft');
 $router->delete('api/questions/{id}', QuestionController::class, 'delete');
@@ -1594,8 +1592,6 @@ $router->get('api/ai/{accountId}/category-demand/{categoryId}', AIPredictionsCon
 // Chatbot AI - Atendimento Inteligente
 $router->post('api/chatbot/{accountId}/process', ChatbotAIController::class, 'processMessage');
 $router->get('api/chatbot/{accountId}/stats', ChatbotAIController::class, 'getStats');
-$router->post('api/messaging/{accountId}/webhook', MessagingController::class, 'processWebhook');
-$router->get('api/messaging/{accountId}/stats', MessagingController::class, 'getStats');
 
 // ========================================
 // 🔥 AI Optimization Engine
