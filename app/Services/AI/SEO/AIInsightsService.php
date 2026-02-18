@@ -31,9 +31,9 @@ class AIInsightsService
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
-        
+
         $this->apiKey = $_ENV['OPENAI_API_KEY'] ?? $_SERVER['OPENAI_API_KEY'] ?? getenv('OPENAI_API_KEY') ?? '';
-        
+
         if (empty($this->apiKey)) {
             // Manual .env parsing fallback
             $envPath = __DIR__ . '/../../../../.env';
@@ -73,22 +73,22 @@ class AIInsightsService
     {
         // Coletar dados da conta
         $accountData = $this->getAccountData();
-        
+
         // Preparar contexto para GPT
         $context = $this->prepareContext($accountData);
-        
+
         // Prompt engenheirado para insights estratégicos
         $prompt = $this->buildStrategicPrompt($context, $options);
-        
+
         // Chamar GPT-4
         $response = $this->callGPT4($prompt);
-        
+
         // Parsear e estruturar resposta
         $insights = $this->parseInsights($response);
-        
+
         // Salvar no histórico
         $this->saveInsightHistory('strategic', $insights);
-        
+
         return [
             'type' => 'strategic',
             'generated_at' => date('Y-m-d H:i:s'),
@@ -115,7 +115,7 @@ class AIInsightsService
 
         // Análise de performance atual
         $performance = $this->getPerformanceMetrics();
-        
+
         // Identificar oportunidades
         $opportunities = $this->identifyTestOpportunities($performance);
 
@@ -138,14 +138,14 @@ class AIInsightsService
                 }
             ));
         }
-        
+
         // Prompt para GPT sugerir testes
         $prompt = $this->buildABTestPrompt($performance, $opportunities, $focusArea);
-        
+
         $response = $this->callGPT4($prompt);
-        
+
         $tests = $this->parseABTestSuggestions($response);
-        
+
         return [
             'suggested_tests' => $tests,
             'total_suggestions' => count($tests),
@@ -168,17 +168,17 @@ class AIInsightsService
         if (empty($historicalData)) {
             return $this->buildEmptyTrendsResponse($days);
         }
-        
+
         // Detectar padrões
         $patterns = $this->detectPatterns($historicalData);
-        
+
         // Prompt para análise de tendências
         $prompt = $this->buildTrendsPrompt($historicalData, $patterns);
-        
+
         $response = $this->callGPT4($prompt);
-        
+
         $trends = $this->parseTrends($response);
-        
+
         return [
             'period_days' => $days,
             'trends' => $trends,
@@ -199,9 +199,9 @@ class AIInsightsService
     public function explainMetric(string $metric, $value, array $context = []): array
     {
         $prompt = $this->buildExplanationPrompt($metric, $value, $context);
-        
+
         $response = $this->callGPT4($prompt);
-        
+
         return [
             'metric' => $metric,
             'value' => $value,
@@ -222,17 +222,17 @@ class AIInsightsService
     {
         // Análise completa do estado atual
         $analysis = $this->getComprehensiveAnalysis();
-        
+
         // Prompt para recomendações
         $prompt = $this->buildRecommendationsPrompt($analysis);
-        
+
         $response = $this->callGPT4($prompt);
-        
+
         $recommendations = $this->parseRecommendations($response);
-        
+
         // Priorizar baseado em impacto e esforço
         $prioritized = $this->prioritizeRecommendations($recommendations);
-        
+
         return [
             'recommendations' => array_slice($prioritized, 0, $limit),
             'total_identified' => count($recommendations),
@@ -250,14 +250,14 @@ class AIInsightsService
     {
         // Dados de competidores
         $competitorData = $this->getCompetitorData();
-        
+
         // Mudanças recentes
         $recentChanges = $this->getRecentMarketChanges();
-        
+
         $prompt = $this->buildSentimentPrompt($competitorData, $recentChanges);
-        
+
         $response = $this->callGPT4($prompt);
-        
+
         return [
             'sentiment' => $this->extractSentiment($response),
             'confidence' => $this->calculateSentimentConfidence($response),
@@ -295,7 +295,7 @@ class AIInsightsService
             'total_views_increase' => 0,
             'total_sales_increase' => 0
         ];
-        
+
         // Query separada para watchlist (usando tabela correta)
         try {
             $stmt2 = $this->db->prepare("SELECT COUNT(*) as cnt FROM competitor_tracking WHERE account_id = ?");
@@ -304,7 +304,7 @@ class AIInsightsService
         } catch (\Exception $e) {
             $metrics['watchlist_count'] = 0;
         }
-        
+
         // Query separada para alertas não lidos (usando tabela correta com join)
         try {
             $stmt3 = $this->db->prepare("
@@ -318,7 +318,7 @@ class AIInsightsService
         } catch (\Exception $e) {
             $metrics['unread_alerts'] = 0;
         }
-        
+
         return $metrics;
     }
 
@@ -335,7 +335,7 @@ class AIInsightsService
     private function buildStrategicPrompt(string $context, array $options): string
     {
         $focus = $options['focus'] ?? 'general';
-        
+
         return <<<PROMPT
 You are an expert Mercado Livre marketplace strategist. Analyze the following account data and provide strategic insights.
 
@@ -368,7 +368,7 @@ PROMPT;
         $perfJson = json_encode($performance, JSON_PRETTY_PRINT);
         $oppJson = json_encode($opportunities, JSON_PRETTY_PRINT);
         $focusArea = strtolower(trim($focusArea));
-        
+
         return <<<PROMPT
 You are an A/B testing expert for e-commerce. Based on the performance data and opportunities, suggest A/B tests.
 
@@ -400,7 +400,7 @@ PROMPT;
     {
         $dataJson = json_encode($data, JSON_PRETTY_PRINT);
         $patternsJson = json_encode($patterns, JSON_PRETTY_PRINT);
-        
+
         return <<<PROMPT
 Analyze the following historical data and identify key trends.
 
@@ -424,7 +424,7 @@ PROMPT;
     private function buildExplanationPrompt(string $metric, $value, array $context): string
     {
         $contextJson = json_encode($context, JSON_PRETTY_PRINT);
-        
+
         return <<<PROMPT
 Explain the metric "$metric" with value "$value" in simple, actionable terms for a Mercado Livre seller.
 
@@ -444,7 +444,7 @@ PROMPT;
     private function buildRecommendationsPrompt(array $analysis): string
     {
         $analysisJson = json_encode($analysis, JSON_PRETTY_PRINT);
-        
+
         return <<<PROMPT
 Based on comprehensive account analysis, provide prioritized recommendations.
 
@@ -466,7 +466,7 @@ PROMPT;
     {
         $compJson = json_encode($competitorData, JSON_PRETTY_PRINT);
         $changesJson = json_encode($changes, JSON_PRETTY_PRINT);
-        
+
         return <<<PROMPT
 Analyze market sentiment based on competitor behavior and recent changes.
 
@@ -494,7 +494,7 @@ PROMPT;
         // Cache key baseada no hash do prompt
         $cacheKey = 'gpt4_' . md5($prompt);
         $cachePath = __DIR__ . '/../../../../storage/cache/' . $cacheKey . '.json';
-        
+
         // Verificar cache (válido por 1 hora)
         if (file_exists($cachePath) && (time() - filemtime($cachePath)) < 3600) {
             $cached = file_get_contents($cachePath);
@@ -513,7 +513,7 @@ PROMPT;
                 503
             );
         }
-        
+
         $data = [
             'model' => $this->model,
             'messages' => [
@@ -559,24 +559,24 @@ PROMPT;
         }
 
         $decoded = json_decode($response, true);
-        
+
         if (!isset($decoded['choices'][0]['message']['content'])) {
             throw new \Exception('Invalid GPT-4 response format');
         }
 
         $content = $decoded['choices'][0]['message']['content'];
-        
+
         // Salvar no cache
         @file_put_contents($cachePath, $content);
 
         return $content;
     }
-    
+
     private function parseInsights(string $response): array
     {
         // Tentar parsear como JSON primeiro
         $decoded = json_decode($response, true);
-        
+
         if (json_last_error() === JSON_ERROR_NONE) {
             return $decoded;
         }
@@ -609,7 +609,7 @@ PROMPT;
     private function extractActionableItems(array $insights): array
     {
         $items = [];
-        
+
         if (isset($insights['next_steps']) && is_array($insights['next_steps'])) {
             foreach ($insights['next_steps'] as $step) {
                 if (isset($step['action'])) {
@@ -617,7 +617,7 @@ PROMPT;
                 }
             }
         }
-        
+
         return $items;
     }
 
@@ -625,19 +625,19 @@ PROMPT;
     {
         // Confiança baseada na quantidade de dados
         $optimizations = $data['total_optimizations'] ?? 0;
-        
+
         if ($optimizations >= 100) return 0.95;
         if ($optimizations >= 50) return 0.85;
         if ($optimizations >= 20) return 0.75;
         if ($optimizations >= 10) return 0.65;
-        
+
         return 0.50;
     }
 
     private function calculatePriorityScore(array $insights): int
     {
         $score = 0;
-        
+
         // Pontuação baseada em oportunidades de alto impacto
         if (isset($insights['opportunities'])) {
             foreach ($insights['opportunities'] as $opp) {
@@ -648,7 +648,7 @@ PROMPT;
                 }
             }
         }
-        
+
         return min($score, 100);
     }
 
@@ -678,14 +678,14 @@ PROMPT;
             GROUP BY optimization_type
         ");
         $stmt->execute([$this->accountId]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     private function identifyTestOpportunities(array $performance): array
     {
         $opportunities = [];
-        
+
         foreach ($performance as $metric) {
             if ($metric['avg_improvement'] < 15) {
                 $opportunities[] = [
@@ -695,19 +695,19 @@ PROMPT;
                 ];
             }
         }
-        
+
         return $opportunities;
     }
 
     private function estimateImpact(array $tests): array
     {
         $impact = ['high' => 0, 'medium' => 0, 'low' => 0];
-        
+
         foreach ($tests as $test) {
             $level = $test['expected_impact'] ?? 'medium';
             $impact[$level] = ($impact[$level] ?? 0) + 1;
         }
-        
+
         return $impact;
     }
 
@@ -715,10 +715,10 @@ PROMPT;
     {
         // Baseado no volume de tráfego
         $totalCount = array_sum(array_column($performance, 'count'));
-        
+
         if ($totalCount > 1000) return 7;  // 1 semana
         if ($totalCount > 500) return 14;   // 2 semanas
-        
+
         return 30; // 1 mês
     }
 
@@ -738,29 +738,29 @@ PROMPT;
             ORDER BY date ASC
         ");
         $stmt->execute([$this->accountId, $days]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     private function detectPatterns(array $data): array
     {
         $patterns = [];
-        
+
         // Detectar tendência de crescimento
         if (count($data) >= 7) {
             $first7 = array_slice($data, 0, 7);
             $last7 = array_slice($data, -7);
-            
+
             $avgFirst = array_sum(array_column($first7, 'optimizations')) / 7;
             $avgLast = array_sum(array_column($last7, 'optimizations')) / 7;
-            
+
             if ($avgLast > $avgFirst * 1.2) {
                 $patterns[] = ['type' => 'growth', 'strength' => 'strong'];
             } elseif ($avgLast < $avgFirst * 0.8) {
                 $patterns[] = ['type' => 'decline', 'strength' => 'strong'];
             }
         }
-        
+
         return $patterns;
     }
 
@@ -773,7 +773,7 @@ PROMPT;
         }
 
         $avg = array_sum($values) / count($values);
-        
+
         return [
             'next_7_days' => round($avg * 7),
             'next_30_days' => round($avg * 30),
@@ -795,12 +795,12 @@ PROMPT;
     {
         $anomalies = [];
         $values = array_column($data, 'optimizations');
-        
+
         if (empty($values)) return $anomalies;
-        
+
         $mean = array_sum($values) / count($values);
         $stdDev = $this->calculateStdDev($values, $mean);
-        
+
         foreach ($data as $point) {
             $value = $point['optimizations'];
             if (abs($value - $mean) > 2 * $stdDev) {
@@ -811,7 +811,7 @@ PROMPT;
                 ];
             }
         }
-        
+
         return $anomalies;
     }
 
@@ -900,12 +900,12 @@ PROMPT;
 
     private function prioritizeRecommendations(array $recommendations): array
     {
-        usort($recommendations, function($a, $b) {
+        usort($recommendations, function ($a, $b) {
             $scoreA = $this->getRecommendationScore($a);
             $scoreB = $this->getRecommendationScore($b);
             return $scoreB <=> $scoreA;
         });
-        
+
         return $recommendations;
     }
 
@@ -913,23 +913,23 @@ PROMPT;
     {
         $impactScores = ['high' => 10, 'medium' => 5, 'low' => 2];
         $effortScores = ['low' => 10, 'medium' => 5, 'high' => 2];
-        
+
         $impact = $impactScores[$rec['impact'] ?? 'medium'] ?? 5;
         $effort = $effortScores[$rec['effort'] ?? 'medium'] ?? 5;
-        
+
         return $impact * $effort;
     }
 
     private function filterQuickWins(array $recommendations): array
     {
-        return array_filter($recommendations, function($rec) {
+        return array_filter($recommendations, function ($rec) {
             return ($rec['impact'] ?? '') === 'high' && ($rec['effort'] ?? '') === 'low';
         });
     }
 
     private function filterLongTerm(array $recommendations): array
     {
-        return array_filter($recommendations, function($rec) {
+        return array_filter($recommendations, function ($rec) {
             return ($rec['effort'] ?? '') === 'high';
         });
     }
@@ -946,7 +946,7 @@ PROMPT;
             ");
             $stmt->execute([$this->accountId]);
             $data = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-            
+
             // Contar alertas recentes
             $stmt2 = $this->db->prepare("
                 SELECT COUNT(*) as total_changes
@@ -958,7 +958,7 @@ PROMPT;
             $stmt2->execute([$this->accountId]);
             $data['total_changes'] = $stmt2->fetchColumn() ?: 0;
             $data['price_change_rate'] = 0;
-            
+
             return $data;
         } catch (\Exception $e) {
             return ['total_competitors' => 0, 'total_changes' => 0, 'price_change_rate' => 0];
@@ -979,7 +979,7 @@ PROMPT;
                 GROUP BY ca.type
             ");
             $stmt->execute([$this->accountId]);
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             return [];
@@ -1014,11 +1014,11 @@ PROMPT;
     {
         $competitors = $data['total_competitors'] ?? 0;
         $changes = $data['total_changes'] ?? 0;
-        
+
         if ($changes > 50) return 'highly_dynamic';
         if ($changes > 20) return 'moderately_active';
         if ($competitors > 10) return 'competitive';
-        
+
         return 'stable';
     }
 }

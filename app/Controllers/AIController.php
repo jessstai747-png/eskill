@@ -108,7 +108,6 @@ class AIController
                 'data' => $insights,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Throwable $e) {
             $statusCode = ((int)$e->getCode() === 503) ? 503 : 500;
             http_response_code($statusCode);
@@ -155,7 +154,6 @@ class AIController
                 'data' => $tests,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Throwable $e) {
             $statusCode = ((int)$e->getCode() === 503) ? 503 : 500;
             http_response_code($statusCode);
@@ -198,7 +196,6 @@ class AIController
                 'period' => "{$days} days",
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Throwable $e) {
             $statusCode = 500;
             if ($e instanceof \InvalidArgumentException) {
@@ -256,7 +253,6 @@ class AIController
                 'data' => $explanation,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Throwable $e) {
             $statusCode = 500;
             if ($e instanceof \InvalidArgumentException) {
@@ -300,7 +296,6 @@ class AIController
                 'count' => count($recommendations),
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Throwable $e) {
             $statusCode = ((int)$e->getCode() === 503) ? 503 : 500;
             http_response_code($statusCode);
@@ -336,7 +331,6 @@ class AIController
                 'data' => $sentiment,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Throwable $e) {
             $statusCode = ((int)$e->getCode() === 503) ? 503 : 500;
             http_response_code($statusCode);
@@ -387,7 +381,6 @@ class AIController
                 'data' => $payload,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -422,7 +415,6 @@ class AIController
                 'data' => $payload,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -468,7 +460,6 @@ class AIController
                 'data' => $comparison,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -517,7 +508,6 @@ class AIController
                 'data' => $suggestion,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -566,7 +556,6 @@ class AIController
                 'data' => $duplicates,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -658,7 +647,6 @@ class AIController
                 'data' => $result,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -731,7 +719,6 @@ class AIController
                 'data' => $result,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -819,7 +806,6 @@ class AIController
                 'data' => $updateResult,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1034,7 +1020,6 @@ class AIController
                 'data' => $suggestion,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1080,7 +1065,6 @@ class AIController
                 'data' => $analysis,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1136,7 +1120,6 @@ class AIController
                 'data' => $optimization,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1192,7 +1175,6 @@ class AIController
                 'data' => $result,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1227,7 +1209,6 @@ class AIController
                 'data' => $analysis,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1278,7 +1259,6 @@ class AIController
                 'data' => $forecast,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1335,7 +1315,6 @@ class AIController
                 'data' => $response,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1385,7 +1364,6 @@ class AIController
                 'data' => $response,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1431,7 +1409,6 @@ class AIController
                 'data' => $response,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode([
@@ -1466,7 +1443,6 @@ class AIController
                 'data' => $response,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode([
@@ -1501,7 +1477,6 @@ class AIController
                 'message' => 'Conversation history cleared',
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode([

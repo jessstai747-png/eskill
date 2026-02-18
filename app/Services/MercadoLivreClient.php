@@ -488,6 +488,36 @@ class MercadoLivreClient
         $payload['method'] = $method;
         $payload['endpoint'] = $endpoint;
 
+        return $this->decorateLegacyResponse($payload);
+    }
+
+    /**
+     * Mantém compatibilidade com consumidores legados que esperam:
+     * - success (bool)
+     * - body (payload original)
+     *
+     * Não aplica envelope em listas (ex.: multiget /items?ids=...)
+     * para evitar quebrar iterações existentes.
+     */
+    private function decorateLegacyResponse(array $payload): array
+    {
+        if (array_is_list($payload)) {
+            return $payload;
+        }
+
+        if (isset($payload['error'])) {
+            $payload['success'] = false;
+            return $payload;
+        }
+
+        if (!array_key_exists('success', $payload)) {
+            $payload['success'] = true;
+        }
+
+        if (!array_key_exists('body', $payload)) {
+            $payload['body'] = $payload;
+        }
+
         return $payload;
     }
 
@@ -569,23 +599,23 @@ class MercadoLivreClient
     private function requestWithRetry(string $method, string $endpoint, array $options = [], bool $allowRetry = true, bool $requiresAuth = true): array
     {
         if (!$this->isNetworkAllowed()) {
-            return $this->networkDisabledError($method, $endpoint);
+            return $this->decorateLegacyResponse($this->networkDisabledError($method, $endpoint));
         }
 
         if ($requiresAuth && !$this->isConfigured()) {
-            return $this->missingTokenError($endpoint);
+            return $this->decorateLegacyResponse($this->missingTokenError($endpoint));
         }
 
         // CIRCUIT BREAKER: Verifica se API está em estado de falha
         $circuitBreaker = $this->getCircuitBreaker();
         if ($circuitBreaker && !$circuitBreaker->canRequest()) {
-            return [
+            return $this->decorateLegacyResponse([
                 'error' => 'circuit_breaker_open',
                 'message' => 'API do Mercado Livre temporariamente indisponível. Tente novamente em alguns minutos.',
                 'method' => $method,
                 'endpoint' => $endpoint,
                 'status' => 503,
-            ];
+            ]);
         }
 
         // PROACTIVE TOKEN REFRESH: Verifica e renova token ANTES de fazer a requisição
@@ -619,13 +649,13 @@ class MercadoLivreClient
                 $circuitBreaker->recordSuccess();
             }
 
-            return $result;
+            return $this->decorateLegacyResponse($result);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $status = $e->getResponse()?->getStatusCode();
 
             // Se o endpoint exige auth e não há token, padroniza erro.
             if ($status === 401 && $requiresAuth && !$this->hasAccessToken) {
-                return $this->missingTokenError($endpoint);
+                return $this->decorateLegacyResponse($this->missingTokenError($endpoint));
             }
 
             // Token pode ter expirado / sido revogado; tenta refresh e reenvia 1x.
@@ -673,7 +703,9 @@ class MercadoLivreClient
                 $body = null;
             }
 
-            return $this->normalizeHttpError($method, $endpoint, $status, $body, $e->getMessage());
+            return $this->decorateLegacyResponse(
+                $this->normalizeHttpError($method, $endpoint, $status, $body, $e->getMessage())
+            );
         } catch (\GuzzleHttp\Exception\ServerException $e) {
             // Erros 5xx - sempre contam para circuit breaker
             $status = $e->getResponse()?->getStatusCode() ?? 500;
@@ -695,7 +727,9 @@ class MercadoLivreClient
                 $body = null;
             }
 
-            return $this->normalizeHttpError($method, $endpoint, $status, $body, $e->getMessage());
+            return $this->decorateLegacyResponse(
+                $this->normalizeHttpError($method, $endpoint, $status, $body, $e->getMessage())
+            );
         } catch (\GuzzleHttp\Exception\ConnectException $e) {
             // Erros de conexão (timeout, DNS, etc) - contam para circuit breaker
             if ($circuitBreaker) {
@@ -707,13 +741,13 @@ class MercadoLivreClient
                 'endpoint' => $endpoint,
                 'error' => $e->getMessage(),
             ]);
-            return [
+            return $this->decorateLegacyResponse([
                 'error' => 'connection_error',
                 'message' => 'Não foi possível conectar à API do Mercado Livre. Verifique sua conexão.',
                 'method' => $method,
                 'endpoint' => $endpoint,
                 'status' => 0,
-            ];
+            ]);
         } catch (\Exception $e) {
             // Outros erros de rede
             if ($circuitBreaker) {
@@ -725,13 +759,13 @@ class MercadoLivreClient
                 'endpoint' => $endpoint,
                 'error' => $e->getMessage(),
             ]);
-            return [
+            return $this->decorateLegacyResponse([
                 'error' => 'network_error',
                 'message' => $e->getMessage(),
                 'method' => $method,
                 'endpoint' => $endpoint,
                 'status' => 0,
-            ];
+            ]);
         }
     }
 
@@ -842,6 +876,14 @@ class MercadoLivreClient
             ]);
             return null;
         }
+    }
+
+    /**
+     * Compatibilidade: alguns serviços antigos chamam getMe().
+     */
+    public function getMe(): array
+    {
+        return $this->get('/users/me');
     }
 
     /**

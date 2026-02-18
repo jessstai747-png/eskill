@@ -100,14 +100,23 @@ class ItemService
         $siteId = $this->getAccountSiteId() ?? ($_ENV['ML_SITE_ID'] ?? 'MLB');
         $hasToken = $this->client->getAccessToken() !== '';
 
-        // For custom filters like low_stock and high_sales, we must use local cache
+        // low_stock/high_sales dependem do cache local; em modo real estrito retornamos erro claro.
         $hasCustomFilters = !empty($filters['low_stock']) || !empty($filters['high_sales']);
-
-        // For custom filters like low_stock and high_sales, we must use local cache
-        $hasCustomFilters = !empty($filters['low_stock']) || !empty($filters['high_sales']);
-
-        // If we have custom filters, go directly to local cache
         if ($hasCustomFilters) {
+            if (!$this->shouldAllowLocalFallback($filters)) {
+                return [
+                    'success' => false,
+                    'error' => 'local_cache_required',
+                    'message' => 'Filtros low_stock/high_sales exigem cache local. Ative allow_local_cache=true para usar dados sincronizados.',
+                    'items' => [],
+                    'page' => $page,
+                    'pages' => 1,
+                    'limit' => $limit,
+                    'total' => 0,
+                    'has_more' => false,
+                ];
+            }
+
             return $this->listItemsFromLocalCache($filters, $limit, $page, $offset, [
                 'reason' => 'custom_filters_required'
             ]);
@@ -319,7 +328,22 @@ class ItemService
         }
 
         $envAllow = $_ENV['ML_ALLOW_LOCAL_CACHE_FALLBACK'] ?? getenv('ML_ALLOW_LOCAL_CACHE_FALLBACK') ?? null;
-        return filter_var($envAllow, FILTER_VALIDATE_BOOLEAN);
+        if (!filter_var($envAllow, FILTER_VALIDATE_BOOLEAN)) {
+            return false;
+        }
+
+        // Em produção/staging, fallback local só com opt-in explícito via query
+        // ou flag dedicada de emergência.
+        $appEnv = strtolower((string)($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? 'production'));
+        if (in_array($appEnv, ['production', 'prod', 'staging'], true)) {
+            $prodAllow = $_ENV['ML_ALLOW_LOCAL_CACHE_FALLBACK_PRODUCTION']
+                ?? getenv('ML_ALLOW_LOCAL_CACHE_FALLBACK_PRODUCTION')
+                ?? null;
+
+            return filter_var($prodAllow, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return true;
     }
 
     private function filterItemsByCustomCriteria(array $items, array $filters): array
@@ -483,15 +507,15 @@ class ItemService
     /**
      * Obtém detalhes de um anúncio específico
      */
-    public function getItem(string $itemId): array
+    public function getItem(string $itemId, array $options = []): array
     {
         $item = [];
         try {
             $response = $this->client->get("/items/{$itemId}");
-            if (isset($response['success']) && $response['success']) {
-                $item = $response['body'] ?? [];
-            } else {
+            if (isset($response['error'])) {
                 $item = ['error' => $response['error'] ?? 'API Error'];
+            } else {
+                $item = $this->unwrapMlResponse($response);
             }
         } catch (\Exception $e) {
             // API failed/Item not found in ML
@@ -500,13 +524,13 @@ class ItemService
 
         // Try fallback to local DB if API failed or returned error
         if (isset($item['error'])) {
-            if (!$this->shouldAllowLocalFallback([]) || $this->db === null) {
+            if (!$this->shouldAllowLocalFallback($options) || $this->db === null) {
                 // Real-only: sem fallback silencioso para cache local
                 return $item;
             }
 
             try {
-                $stmt = $this->db->prepare("SELECT * FROM ml_items WHERE id = :id");
+                $stmt = $this->db->prepare("SELECT * FROM ml_items WHERE ml_item_id = :id OR id = :id LIMIT 1");
                 $stmt->execute([':id' => $itemId]);
                 $local = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -762,10 +786,11 @@ class ItemService
         }
 
         $response = $this->client->post('/items', $itemData);
+        $payload = $this->unwrapMlResponse($response);
 
         // Registrar no banco de dados se criado com sucesso
-        if (!isset($response['error']) && isset($response['id'])) {
-            $this->saveItemToDatabase($response);
+        if (!isset($response['error']) && isset($payload['id'])) {
+            $this->saveItemToDatabase($payload);
         }
 
         return $response;
@@ -812,10 +837,11 @@ class ItemService
         }
 
         $response = $this->client->put("/items/{$itemId}", $updateData);
+        $payload = $this->unwrapMlResponse($response);
 
         // Atualizar no banco de dados se atualizado com sucesso
         if (!isset($response['error'])) {
-            $this->saveItemToDatabase($response);
+            $this->saveItemToDatabase($payload);
         }
 
         return $response;
@@ -1059,15 +1085,16 @@ class ItemService
     {
         // 1. Fetch from API (bypass cache)
         $response = $this->client->get("/items/{$itemId}");
+        $payload = $this->unwrapMlResponse($response);
 
         if (isset($response['error'])) {
             return ['error' => $response['message'] ?? 'API Error'];
         }
 
         // 2. Save to DB
-        $this->saveItemToDatabase($response);
+        $this->saveItemToDatabase($payload);
 
-        return $response;
+        return $payload;
     }
 
     /**
@@ -1371,6 +1398,15 @@ class ItemService
 
     private function getLocalCategoriesFallback(array $context = []): array
     {
+        if ($this->db === null) {
+            return [
+                'success' => false,
+                'error' => 'db_unavailable',
+                'message' => 'Banco de dados indisponível para fallback local.',
+                'categories' => [],
+            ];
+        }
+
         $where = [];
         $params = [];
 
@@ -1433,6 +1469,18 @@ class ItemService
     {
         // seller_id no contexto de anúncios equivale ao ml_user_id da conta
         return $this->getMlUserId();
+    }
+
+    /**
+     * Normaliza resposta do client para payload puro da API.
+     */
+    private function unwrapMlResponse(array $response): array
+    {
+        if (isset($response['body']) && is_array($response['body']) && !isset($response['body']['error'])) {
+            return $response['body'];
+        }
+
+        return $response;
     }
 
     private function formatItemForList(array $item): array

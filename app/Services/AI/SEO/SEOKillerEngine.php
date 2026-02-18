@@ -609,12 +609,24 @@ class SEOKillerEngine
         $critical = array_filter($problems, fn($p) => $p['severity'] === 'critical');
 
         foreach (array_slice($critical, 0, 3) as $p) {
-            $actions[] = ['priority' => 1, 'type' => 'fix_problem', 'action' => $p['solution'],
-                'category' => $p['category'], 'impact' => 'Alto', 'affected' => $p['affected_items'] ?? 0];
+            $actions[] = [
+                'priority' => 1,
+                'type' => 'fix_problem',
+                'action' => $p['solution'],
+                'category' => $p['category'],
+                'impact' => 'Alto',
+                'affected' => $p['affected_items'] ?? 0
+            ];
         }
         foreach (array_slice($opportunities, 0, 2) as $o) {
-            $actions[] = ['priority' => 2, 'type' => 'opportunity', 'action' => $o['strategy'],
-                'category' => $o['category'], 'impact' => 'Médio-Alto', 'potential' => '+' . $o['potential'] . '%'];
+            $actions[] = [
+                'priority' => 2,
+                'type' => 'opportunity',
+                'action' => $o['strategy'],
+                'category' => $o['category'],
+                'impact' => 'Médio-Alto',
+                'potential' => '+' . $o['potential'] . '%'
+            ];
         }
 
         return $actions;
