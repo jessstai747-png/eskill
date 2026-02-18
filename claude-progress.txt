@@ -6,6 +6,38 @@
 
 ---
 
+## Sessão: 2026-02-18 PM2 — Broken routes fix + empty catch fix
+
+### Objetivo
+Implementar os 10 endpoints quebrados (rotas referenciando métodos inexistentes) e corrigir empty catch blocks.
+
+### Implementação
+1. **AnalyticsController — 6 novos endpoints implementados:**
+   - `apiStats()`: Estatísticas de uso da API (requests, IPs únicos, top IPs) via tabela `rate_limits`
+   - `requestsChart()`: Dados de chart por hora para visualização de requests
+   - `salesMetrics()`: Métricas de vendas diárias (orders, revenue, ticket médio, paid/cancelled)
+   - `listingsMetrics()`: Métricas de anúncios por status e categoria
+   - `questionsMetrics()`: Métricas de perguntas (status, daily, tempo médio de resposta)
+   - `exportReport()`: Export de dados em CSV ou JSON (sales, listings, questions)
+
+2. **ReportController — 4 novos endpoints implementados:**
+   - `byAccount(accountId)`: Relatório por conta ML (orders, items, questions)
+   - `byCategory(categoryId)`: Relatório por categoria (summary, top items)
+   - `byBrand(brand)`: Relatório por marca (busca em JSON attributes + título)
+   - `consolidated()`: Relatório consolidado (revenue, inventory, top categories, questions)
+   - Fix: `parent::__construct()` descomentado para garantir `$this->request` disponível
+
+3. **Empty catch fix:**
+   - `app/Views/layouts/app.php:38`: Added `error_log()` ao catch vazio de notification count
+
+### Validação
+- `php -l` em todos os 3 arquivos: sem erros de sintaxe
+- PHPUnit Unit Suite: 261 testes ✅, 523 assertions, 33 skipped
+- Codacy CLI: 0 issues em todos os 3 arquivos
+- Git commit: `a6951dd`
+
+---
+
 ## Sessão: 2026-02-18 PM — Security hardening + Full codebase audit
 
 ### Objetivo
@@ -34,6 +66,45 @@ Validar que todo o código é real (não mock/placeholder) e corrigir vulnerabil
 - `public/index.php`: HTTPS redirect logic (linhas 143-157)
 - `app/Middleware/SecurityMiddleware.php`: force_https config reading (linha 78) + localhost bypass (linhas 105-114)
 - `router.php`: SSRF protection via realpath() validation
+
+---
+
+## Sessão: 2026-02-18 AM4 — Migração real ampliada: remoção de `orders` em runtime + normalização `ml_account_id`
+
+### Objetivo
+Continuar a implementação real da integração Mercado Livre removendo consultas legadas em `orders` e corrigindo incompatibilidades de coluna em `ml_orders`.
+
+### Implementação
+1. **Remoção de SQL legado `orders` no runtime (`app/`, `bin/`, `scripts/`)**:
+   - Migração para `ml_orders` aplicada em:
+     - `app/Services/AIRecommendationEngineService.php`
+     - `app/Services/TrendsService.php`
+     - `app/Services/FinancialService.php`
+     - `app/Services/AI/SEO/AIPricingOptimizer.php`
+     - `app/Controllers/AdvancedReportController.php`
+     - `app/Controllers/FullController.php`
+     - `app/Controllers/CustomerController.php`
+2. **Customer CRM com dados reais via JSON de pedido**:
+   - `CustomerController` deixou de depender de colunas legadas (`buyer_*`) e passou a extrair comprador de `ml_orders.order_data` (`$.buyer.*`, `$.shipping.receiver_address.*`).
+   - Histórico e produtos comprados filtram comprador com `JSON_EXTRACT(order_data, '$.buyer.id')`.
+3. **Normalização de conta em `ml_orders`**:
+   - Correção de `account_id` -> `ml_account_id` em serviços críticos:
+     - `app/Services/MercadoLivre/MLAnalyticsIntelligenceService.php`
+     - `app/Services/MercadoLivre/AdvancedPricingEngine.php`
+     - `app/Services/MercadoLivre/MLAdsAdvancedService.php`
+     - `app/Services/MercadoLivre/CompetitorIntelligenceService.php`
+     - `app/Services/AI/ML/DeepDemandPredictor.php`
+     - `app/Services/AI/SEO/PredictiveAnalyticsService.php`
+     - `app/Services/BrandCentralService.php`
+4. **Hardening adicional**:
+   - `MLAdsAdvancedService::estimateAudienceSize()` deixou de usar padrão inválido com `FOUND_ROWS()` e passou a executar `COUNT(DISTINCT ...)` real com `fetchColumn()`.
+   - `BrandCentralService` ajustado para `date_created` e contagem de compradores via JSON (`order_data`).
+
+### Validação
+- `php -l` ✅ em todos os arquivos alterados nesta sessão.
+- Busca por SQL legado `orders` em runtime (`app|bin|scripts`) ✅ sem ocorrências.
+- `php vendor/bin/phpunit` ❌ ambiente sem DB (`127.0.0.1:3307/app_test` indisponível).
+- `bash bin/init.sh` ⚠️ smoke OK com aviso de MySQL/ PHPUnit por indisponibilidade de banco.
 
 ---
 
