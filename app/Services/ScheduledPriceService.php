@@ -235,7 +235,6 @@ class ScheduledPriceService
                 'errors' => $errors,
                 'message' => 'Campanha criada com sucesso'
             ];
-
         } catch (\Exception $e) {
             $this->db->rollBack();
             return ['success' => false, 'message' => 'Erro ao criar campanha: ' . $e->getMessage()];
@@ -279,10 +278,14 @@ class ScheduledPriceService
 
         // Whitelist ORDER BY to prevent SQL injection
         $allowedOrders = [
-            'scheduled_at ASC', 'scheduled_at DESC',
-            'created_at ASC', 'created_at DESC',
-            'item_id ASC', 'item_id DESC',
-            'new_price ASC', 'new_price DESC',
+            'scheduled_at ASC',
+            'scheduled_at DESC',
+            'created_at ASC',
+            'created_at DESC',
+            'item_id ASC',
+            'item_id DESC',
+            'new_price ASC',
+            'new_price DESC',
         ];
         $orderBy = in_array($filters['order_by'] ?? '', $allowedOrders, true)
             ? $filters['order_by'] : 'scheduled_at ASC';
@@ -438,7 +441,6 @@ class ScheduledPriceService
             $this->db->commit();
 
             return ['success' => true, 'message' => 'Campanha cancelada'];
-
         } catch (\Exception $e) {
             $this->db->rollBack();
             return ['success' => false, 'message' => 'Erro ao cancelar campanha'];
@@ -513,7 +515,6 @@ class ScheduledPriceService
                 $this->logAction($schedule['id'], 'executed', [
                     'new_price' => $schedule['new_price']
                 ]);
-
             } catch (\Exception $e) {
                 // Falhou
                 $this->updateStatus($schedule['id'], self::STATUS_FAILED, [
@@ -596,7 +597,6 @@ class ScheduledPriceService
                 $this->logAction($schedule['id'], 'rolled_back', [
                     'rollback_price' => $schedule['rollback_price']
                 ]);
-
             } catch (\Exception $e) {
                 $results['failed']++;
                 $results['details'][] = [

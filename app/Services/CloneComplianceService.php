@@ -160,9 +160,12 @@ class CloneComplianceService
 
         // Whitelist ORDER BY to prevent SQL injection
         $allowedOrders = [
-            'created_at DESC', 'created_at ASC',
-            'event_type ASC', 'event_type DESC',
-            'user_id ASC', 'user_id DESC',
+            'created_at DESC',
+            'created_at ASC',
+            'event_type ASC',
+            'event_type DESC',
+            'user_id ASC',
+            'user_id DESC',
         ];
         $orderBy = in_array($filters['order_by'] ?? '', $allowedOrders, true)
             ? $filters['order_by'] : 'created_at DESC';
@@ -736,16 +739,24 @@ class CloneComplianceService
     public function exportAuditLogs(array $filters = []): string
     {
         $result = $this->getAuditLogs(array_merge($filters, ['limit' => 10000]));
-        
+
         $filename = 'audit_logs_' . date('Y-m-d_His') . '.csv';
         $filepath = __DIR__ . '/../../storage/exports/' . $filename;
 
         $fp = fopen($filepath, 'w');
-        
+
         // Header
         fputcsv($fp, [
-            'ID', 'Data/Hora', 'Tipo', 'Descrição', 'Severidade',
-            'Usuário', 'Job ID', 'Item ID', 'IP', 'Dados'
+            'ID',
+            'Data/Hora',
+            'Tipo',
+            'Descrição',
+            'Severidade',
+            'Usuário',
+            'Job ID',
+            'Item ID',
+            'IP',
+            'Dados'
         ]);
 
         foreach ($result['logs'] as $log) {
@@ -834,7 +845,7 @@ class CloneComplianceService
         ];
 
         $interval = $map[$period] ?? '30 DAY';
-        
+
         $stmt = $this->db->query("SELECT DATE_SUB(NOW(), INTERVAL {$interval}) as date_from");
         return $stmt->fetchColumn();
     }

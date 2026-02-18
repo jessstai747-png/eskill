@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Router script for PHP built-in web server
  * 
@@ -24,7 +25,7 @@ if ($uri !== '/' && $path !== '' && file_exists($path)) {
     if (is_dir($path)) {
         return false; // Let the server handle directory browsing (or return 404)
     }
-    
+
     // Serve the file with appropriate mime type
     $ext = pathinfo($path, PATHINFO_EXTENSION);
     $mimeTypes = [
@@ -42,11 +43,11 @@ if ($uri !== '/' && $path !== '' && file_exists($path)) {
         'ttf' => 'font/ttf',
         'eot' => 'application/vnd.ms-fontobject',
     ];
-    
+
     if (isset($mimeTypes[$ext])) {
         header('Content-Type: ' . $mimeTypes[$ext]);
     }
-    
+
     readfile($path);
     return true;
 }

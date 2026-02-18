@@ -235,9 +235,18 @@ class PriceRulesEngineService
         $params = ['id' => $ruleId, 'account_id' => $this->accountId];
 
         $allowedFields = [
-            'name', 'description', 'rule_type', 'conditions', 'actions',
-            'priority', 'is_active', 'applies_to', 'item_ids', 'category_ids',
-            'start_date', 'end_date'
+            'name',
+            'description',
+            'rule_type',
+            'conditions',
+            'actions',
+            'priority',
+            'is_active',
+            'applies_to',
+            'item_ids',
+            'category_ids',
+            'start_date',
+            'end_date'
         ];
 
         foreach ($allowedFields as $field) {
@@ -366,7 +375,7 @@ class PriceRulesEngineService
 
             // Aplicar ação
             $result = $this->applyAction($rule['rule_type'], $actions, $item, $newPrice);
-            
+
             if ($result['applied']) {
                 $newPrice = $result['new_price'];
                 $appliedRules[] = [
@@ -387,7 +396,7 @@ class PriceRulesEngineService
         $priceChanged = abs($newPrice - $currentPrice) > 0.01;
         if ($priceChanged && !empty($appliedRules)) {
             $applyResult = $this->mlClient->put("/items/{$itemId}", ['price' => $newPrice]);
-            
+
             if (!$applyResult || isset($applyResult['error'])) {
                 return [
                     'success' => false,
@@ -434,7 +443,7 @@ class PriceRulesEngineService
 
             try {
                 $result = $this->executeRulesForItem($itemId);
-                
+
                 if ($result['success'] && $result['price_changed']) {
                     $results['items_updated']++;
                     $results['rules_applied'] += count($result['applied_rules']);
@@ -486,7 +495,7 @@ class PriceRulesEngineService
             $actions = json_decode($rule['actions'], true);
 
             $wouldApply = $this->evaluateConditions($conditions, $item, $simulatedPrice);
-            
+
             $simResult = [
                 'rule_id' => $rule['id'],
                 'rule_name' => $rule['name'],
@@ -519,8 +528,8 @@ class PriceRulesEngineService
             'current_price' => $currentPrice,
             'simulated_price' => $simulatedPrice,
             'price_change' => $simulatedPrice - $currentPrice,
-            'price_change_percent' => $currentPrice > 0 
-                ? round((($simulatedPrice - $currentPrice) / $currentPrice) * 100, 2) 
+            'price_change_percent' => $currentPrice > 0
+                ? round((($simulatedPrice - $currentPrice) / $currentPrice) * 100, 2)
                 : 0,
             'simulation' => $simulation
         ];
@@ -739,7 +748,7 @@ class PriceRulesEngineService
         $totalCost = (float)($costs['product_cost'] ?? 0)
             + (float)($costs['shipping_cost'] ?? 0)
             + (float)($costs['packaging_cost'] ?? 0);
-        
+
         $commissionRate = (float)($costs['ml_commission'] ?? 16) / 100;
         $taxRate = (float)($costs['tax_rate'] ?? 9) / 100;
 
@@ -747,7 +756,7 @@ class PriceRulesEngineService
         // price - (price * commission) - (price * tax) - cost = price * target_margin
         // price * (1 - commission - tax - target_margin) = cost
         // price = cost / (1 - commission - tax - target_margin)
-        
+
         $targetMarginRate = $targetMargin / 100;
         $denominator = 1 - $commissionRate - $taxRate - $targetMarginRate;
 
@@ -964,15 +973,15 @@ class PriceRulesEngineService
         );
 
         $results = $searchResult['results'] ?? [];
-        
+
         // Encontrar menor preço que não seja o próprio item
         foreach ($results as $result) {
             if ($result['id'] !== $item['id']) {
                 $competitorPrice = (float)($result['price'] ?? 0);
-                
+
                 // Cachear resultado
                 $this->cacheCompetitorPrice($item['id'], $competitorPrice);
-                
+
                 return $competitorPrice;
             }
         }
@@ -1007,7 +1016,7 @@ class PriceRulesEngineService
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'sem', 'e', 'ou', 'a', 'o', 'um', 'uma'];
         $words = preg_split('/\s+/', strtolower($title));
         $keywords = array_filter($words, fn($w) => strlen($w) > 2 && !in_array($w, $stopWords));
-        
+
         return implode(' ', array_slice($keywords, 0, 5));
     }
 

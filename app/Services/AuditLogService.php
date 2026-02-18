@@ -12,9 +12,9 @@ class AuditLogService
     public function log(string $action, ?int $userId = null, ?int $accountId = null, array $data = [], string $resource = 'system'): void
     {
         $db = Database::getInstance();
-        
+
         $this->ensureAuditLogsTable();
-        
+
         try {
             $stmt = $db->prepare("\n                INSERT INTO audit_logs \n                (user_id, ml_account_id, action, resource, ip_address, user_agent, data, created_at)\n                VALUES \n                (:user_id, :account_id, :action, :resource, :ip, :user_agent, :data, :created_at)\n            ");
 
@@ -36,57 +36,57 @@ class AuditLogService
             ]);
         }
     }
-    
+
     /**
      * Obtém logs de auditoria
      */
     public function getLogs(array $filters = []): array
     {
         $db = Database::getInstance();
-        
+
         $sql = "SELECT * FROM audit_logs WHERE 1=1";
         $params = [];
-        
+
         if (isset($filters['user_id'])) {
             $sql .= " AND user_id = :user_id";
             $params['user_id'] = $filters['user_id'];
         }
-        
+
         if (isset($filters['account_id'])) {
             $sql .= " AND ml_account_id = :account_id";
             $params['account_id'] = $filters['account_id'];
         }
-        
+
         if (isset($filters['action'])) {
             $sql .= " AND action = :action";
             $params['action'] = $filters['action'];
         }
-        
+
         if (isset($filters['date_from'])) {
             $sql .= " AND created_at >= :date_from";
             $params['date_from'] = $filters['date_from'];
         }
-        
+
         if (isset($filters['date_to'])) {
             $sql .= " AND created_at <= :date_to";
             $params['date_to'] = $filters['date_to'];
         }
-        
+
         $limitSql = max(1, min((int) ($filters['limit'] ?? 100), 500));
         $sql .= " ORDER BY created_at DESC LIMIT " . $limitSql;
-        
+
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
-        
+
         $logs = $stmt->fetchAll();
-        
+
         foreach ($logs as &$log) {
             $log['data'] = json_decode($log['data'], true);
         }
-        
+
         return $logs;
     }
-    
+
     /**
      * Garante que tabela existe
      */
@@ -144,4 +144,3 @@ class AuditLogService
         }
     }
 }
-
