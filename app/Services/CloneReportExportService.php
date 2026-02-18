@@ -53,13 +53,13 @@ class CloneReportExportService
             switch ($format) {
                 case 'pdf':
                     return $this->exportToPdf($data, $options);
-                
+
                 case 'excel':
                     return $this->exportToExcel($data, $options);
-                
+
                 case 'csv':
                     return $this->exportToCsv($data);
-                
+
                 default:
                     return ['success' => false, 'error' => 'Formato não implementado'];
             }
@@ -177,7 +177,7 @@ class CloneReportExportService
             $totalItems += (int)$job['items_total'];
             $totalCompleted += (int)$job['items_completed'];
             $totalFailed += (int)$job['items_failed'];
-            
+
             if ($job['duration_seconds']) {
                 $totalDuration += (int)$job['duration_seconds'];
             }
@@ -186,12 +186,12 @@ class CloneReportExportService
             $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
         }
 
-        $successRate = $totalItems > 0 
-            ? round(($totalCompleted / $totalItems) * 100, 2) 
+        $successRate = $totalItems > 0
+            ? round(($totalCompleted / $totalItems) * 100, 2)
             : 0;
 
-        $avgDuration = $totalJobs > 0 
-            ? round($totalDuration / $totalJobs, 2) 
+        $avgDuration = $totalJobs > 0
+            ? round($totalDuration / $totalJobs, 2)
             : 0;
 
         return [
@@ -349,7 +349,7 @@ class CloneReportExportService
     {
         // Gerar HTML e usar DomPDF ou similar
         $html = $this->generateReportHtml($data, $options);
-        
+
         $filename = 'clone_report_' . date('Y-m-d_His') . '.html';
         $filePath = $this->getStoragePath() . '/' . $filename;
         file_put_contents($filePath, $html);
@@ -377,7 +377,7 @@ class CloneReportExportService
         $pdf->Ln(2);
 
         $pdf->SetFont('helvetica', '', 10);
-        
+
         $summaryData = [
             ['Total de Jobs', $summary['total_jobs']],
             ['Total de Itens', $summary['total_items']],
@@ -448,7 +448,7 @@ class CloneReportExportService
         try {
             $spreadsheetClass = 'PhpOffice\\PhpSpreadsheet\\Spreadsheet';
             $spreadsheet = new $spreadsheetClass();
-            
+
             // Aba 1: Resumo
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle('Resumo');
@@ -469,7 +469,7 @@ class CloneReportExportService
             // Salvar arquivo
             $filename = 'clone_report_' . date('Y-m-d_His') . '.xlsx';
             $filePath = $this->getStoragePath() . '/' . $filename;
-            
+
             $writerClass = 'PhpOffice\\PhpSpreadsheet\\Writer\\Xlsx';
             $writer = new $writerClass($spreadsheet);
             $writer->save($filePath);
@@ -589,13 +589,13 @@ class CloneReportExportService
     {
         $sheet->setCellValue('A1', 'Jobs por Data');
         $sheet->getStyle('A1')->getFont()->setBold(true);
-        
+
         $row = 2;
         $sheet->setCellValue("A{$row}", 'Data');
         $sheet->setCellValue("B{$row}", 'Jobs');
         $sheet->setCellValue("C{$row}", 'Clonados');
         $sheet->setCellValue("D{$row}", 'Falhas');
-        
+
         $row = 3;
         foreach ($chartsData['by_date'] as $data) {
             $sheet->setCellValue("A{$row}", $data['date']);
@@ -617,16 +617,16 @@ class CloneReportExportService
         try {
             $filename = 'clone_report_' . date('Y-m-d_His') . '.csv';
             $filePath = $this->getStoragePath() . '/' . $filename;
-            
+
             $fp = fopen($filePath, 'w');
             if ($fp === false) {
                 throw new \RuntimeException("Não foi possível abrir arquivo: {$filePath}");
             }
-            
+
             try {
                 // BOM para UTF-8
                 fprintf($fp, chr(0xEF) . chr(0xBB) . chr(0xBF));
-                
+
                 // Cabeçalho
                 fputcsv($fp, [
                     'Job ID',
@@ -641,7 +641,7 @@ class CloneReportExportService
                     'Concluído Em',
                     'Duração (seg)',
                 ]);
-                
+
                 // Dados
                 foreach ($data['jobs'] as $job) {
                     fputcsv($fp, [
@@ -661,7 +661,7 @@ class CloneReportExportService
             } finally {
                 fclose($fp);
             }
-            
+
             return [
                 'success' => true,
                 'file_path' => $filePath,
@@ -785,11 +785,11 @@ class CloneReportExportService
     private function getStoragePath(): string
     {
         $path = __DIR__ . '/../../storage/exports';
-        
+
         if (!is_dir($path)) {
             mkdir($path, 0755, true);
         }
-        
+
         return $path;
     }
 
@@ -804,11 +804,11 @@ class CloneReportExportService
         if ($seconds < 60) {
             return round($seconds, 1) . 's';
         }
-        
+
         if ($seconds < 3600) {
             return round($seconds / 60, 1) . 'min';
         }
-        
+
         return round($seconds / 3600, 1) . 'h';
     }
 

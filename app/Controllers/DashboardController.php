@@ -17,7 +17,7 @@ class DashboardController extends BaseController
     private ?\App\Services\NotificationService $notificationService = null;
 
     public function __construct(
-        DashboardService $dashboardService, 
+        DashboardService $dashboardService,
         UserService $userService
     ) {
         parent::__construct();
@@ -69,7 +69,7 @@ class DashboardController extends BaseController
             header('Location: /login');
             exit;
         }
-        
+
         ob_start();
         require __DIR__ . '/../Views/dashboard/index.php';
         $content = ob_get_clean();
@@ -100,18 +100,18 @@ class DashboardController extends BaseController
 
         $accountId = $this->request->get('account_id') ?? $this->userService->getActiveAccountId();
         $userId = $this->userService->getCurrentUser()['id'];
-        
+
         // 🚀 CACHE: Try to get from cache first (5 min TTL)
         // Note: We might want real-time features to NOT be cached as aggressively, 
         // or cached separately. For now, let's keep the main metrics cached
         // and append real-time stuff after.
-        
+
         $cacheKey = "dashboard:metrics:account:{$accountId}";
         $cache = new CacheService();
-        
-        $metrics = $cache->remember($cacheKey, function() use ($accountId, $userId) {
+
+        $metrics = $cache->remember($cacheKey, function () use ($accountId, $userId) {
             $startTime = microtime(true);
-            
+
             // 1. Main metrics from DashboardService
             $metrics = $this->dashboardService->getMetrics($accountId);
 
@@ -120,13 +120,13 @@ class DashboardController extends BaseController
             // Wait, I want Real-Time to be FRESH.
             // So System Health should probably be OUTSIDE cache if it's critical.
             // But Competitor Alerts and Growth are heavy.
-            
+
             // 3. Growth Stats (Real Data)
             $cloneMetrics = $this->getCloneService()->getCloneMetrics();
             $avgHealth = $this->calculateAvgHealth($accountId);
 
             $metrics['growth'] = [
-                'seo_score_avg' => round($avgHealth * 100), 
+                'seo_score_avg' => round($avgHealth * 100),
                 'cloned_items_today' => $cloneMetrics['today'] ?? 0,
                 'cloned_items_total' => $cloneMetrics['total'] ?? 0
             ];
@@ -136,7 +136,7 @@ class DashboardController extends BaseController
             // Compat: alinhar com docs/front antigo
             $metrics['recent_orders'] = $metrics['recent_orders'] ?? ($metrics['recent_orders_count'] ?? 0);
             $metrics['active_accounts'] = $this->countActiveAccounts($userId);
-            
+
             return $metrics;
         }, 300);
 
@@ -145,22 +145,22 @@ class DashboardController extends BaseController
         $metrics['active_accounts'] = $metrics['active_accounts'] ?? $this->countActiveAccounts($userId);
 
         // --- REAL-TIME DATA (Always Fresh) ---
-        
+
         // 1. Unread Notifications
         $metrics['notifications'] = [
             'unread_count' => $this->getNotificationService()->getUnreadCount($userId),
             'recent' => $this->getNotificationService()->getUserNotifications($userId, 5)
         ];
-        
+
         // 2. Open Claims (API Fetch - Fast)
         try {
             $claimsService = new \App\Services\ClaimsService($accountId);
             $claimsData = $claimsService->getClaims('to_seller', 50, 0);
-            
+
             // Count claims requiring action based on status
             $actionRequiredStatuses = ['opened', 'waiting_resolution', 'waiting_response', 'pending'];
             $actionRequired = 0;
-            
+
             if (isset($claimsData['results']) && is_array($claimsData['results'])) {
                 foreach ($claimsData['results'] as $claim) {
                     if (in_array($claim['status'] ?? '', $actionRequiredStatuses, true)) {
@@ -168,7 +168,7 @@ class DashboardController extends BaseController
                     }
                 }
             }
-            
+
             $metrics['claims'] = [
                 'total_open' => $claimsData['paging']['total'] ?? 0,
                 'action_required' => $actionRequired
@@ -176,14 +176,14 @@ class DashboardController extends BaseController
         } catch (\Exception $e) {
             $metrics['claims'] = ['error' => $e->getMessage()];
         }
-        
+
         // 3. System Health (Local Check)
         $metrics['system_health'] = [
             'cron' => $this->checkCronHealth(),
             'webhooks' => $this->checkWebhookHealth(),
             'api' => 'online'
         ];
-        
+
         // 4. Competitor Alerts
         $competitorService = new \App\Services\CompetitorService($accountId);
         $metrics['competitor_alerts'] = $competitorService->getRecentAlerts(5);
@@ -193,16 +193,16 @@ class DashboardController extends BaseController
         // The original code did manual composition. I should preserve it.
         // Re-reading original code: getMetricsData composed it manually.
         // So I must RE-COMPOSE it inside the cache closure, OR accept that I am overwriting the caching logic slightly.
-        
+
         // Let's stick to the original structure but injecting new data
         // Resetting strategy: I will just Append to the result of the ORIGINAL method body 
         // by making a targeted replacement of the JSON response part? No, that's messy.
         // I'll replace the whole method body to be clean.
-        
+
         // ... (See Replacement Content)
-        
+
         // ...
-        
+
         // Add cache metadata
         $metrics['_meta'] = [
             'cache_ttl' => 300,
@@ -262,11 +262,11 @@ class DashboardController extends BaseController
         }
 
         $input = $this->request->json();
-        
+
         try {
             // Dispatch Job
             $jobService = new \App\Services\JobService();
-            
+
             // Extract Gap Keywords for Context
             $gapKeywords = $input['gap_keywords'] ?? [];
             if (!isset($input['options']) || !is_array($input['options'])) {
@@ -283,35 +283,34 @@ class DashboardController extends BaseController
                 'context' => $input,
                 'user_id' => $currentUser['id'] ?? null
             ];
-            
+
             // NOTE: Ideally we should use AIContentGeneratorService to build the prompt string here 
             // OR move the entire logic to the job. For now, let's keep it simple:
             // We'll pass the whole '$input' to the job and let the Job Handler use AIContentGeneratorService
-            
+
             // Re-targeting to use 'ai_content_generation' type which we need to support in JobService 
             // OR just use 'ai_generation' if we build the prompt here.
-            
+
             // Let's use the raw input and let the worker handle it.
             // But JobService expecting specific payload for 'ai_generation'.
             // Let's stick to the plan: Dispatch 'ai_generation' with pre-built prompt?
             // Actually better: Modify JobService to handle 'generate_content_full' which calls AIContentGeneratorService.
-            
+
             // For this iteration, let's just return the Job ID and assume the existing synchronous flow 
             // IS REPLACED by this async one. 
             // Wait, if I change this to async, the frontend breaks immediately.
             // I need to update frontend NEXT.
-            
+
             // Implementation:
             $prompt = "Gere uma descrição para: " . ($input['product']['title'] ?? 'Item');
-            
+
             $jobId = $jobService->dispatch('ai_generation', [
                 'prompt' => $prompt, // This is a simplification. Real implementation needs the complex prompt builder.
                 'system' => "Expert Copywriter",
                 'complexity' => 'advanced'
             ]);
-            
+
             echo json_encode(['job_id' => $jobId, 'status' => 'pending']);
-            
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
@@ -332,7 +331,7 @@ class DashboardController extends BaseController
 
         $jobService = new \App\Services\JobService();
         $status = $jobService->getJobsStatus([$jobId]);
-        
+
         if (empty($status[$jobId])) {
             http_response_code(404);
             echo json_encode(['error' => 'Job not found']);
@@ -354,7 +353,7 @@ class DashboardController extends BaseController
         }
     }
 
-    private function calculateAvgHealth(?int $accountId): float 
+    private function calculateAvgHealth(?int $accountId): float
     {
         try {
             $db = Database::getInstance();
@@ -362,12 +361,12 @@ class DashboardController extends BaseController
                     FROM items 
                     WHERE status = 'active'";
             $params = [];
-            
+
             if ($accountId) {
                 $sql .= " AND account_id = :account_id";
                 $params['account_id'] = $accountId;
             }
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             return (float) $stmt->fetchColumn() ?: 0.0;
@@ -376,23 +375,23 @@ class DashboardController extends BaseController
         }
     }
 
-    private function checkCronHealth(): string 
+    private function checkCronHealth(): string
     {
         // Simple file check or db check
         $lockFile = __DIR__ . '/../../storage/cron_sync_orders.lock';
         // Check logs modification time as a proxy for activity
         $logFile = __DIR__ . '/../../storage/logs/cron_sync.log';
-        
+
         if (file_exists($logFile)) {
-             if (time() - filemtime($logFile) < 3600) return 'running'; // Activity in last hour
+            if (time() - filemtime($logFile) < 3600) return 'running'; // Activity in last hour
         }
-        
+
         if (file_exists($lockFile)) {
             // Se o lock existe e é velho > 20min, pode estar travado
             if (time() - filemtime($lockFile) > 1200) return 'stuck';
             return 'running';
         }
-        return 'idle'; 
+        return 'idle';
     }
 
     private function checkWebhookHealth(): string
@@ -403,7 +402,7 @@ class DashboardController extends BaseController
             $stmt = $db->query("SELECT created_at FROM webhook_events ORDER BY id DESC LIMIT 1");
             $last = $stmt->fetchColumn();
             if (!$last) return 'unknown';
-            
+
             // Se último foi há menos de 1 hora, OK
             return (strtotime($last) > strtotime('-1 hour')) ? 'healthy' : 'warning';
         } catch (\Exception $e) {
@@ -680,7 +679,7 @@ class DashboardController extends BaseController
         }
 
         $currentUser = $this->userService->getCurrentUser();
-        
+
         // Buscar contas ativas para o select
         $db = Database::getInstance();
         $stmt = $db->query("SELECT id, nickname, ml_user_id FROM ml_accounts WHERE status = 'active' ORDER BY nickname, ml_user_id");
@@ -716,7 +715,7 @@ class DashboardController extends BaseController
             }
             require $viewPath;
             $content = ob_get_clean();
-            
+
             require __DIR__ . '/../Views/layouts/modern/app.php';
         } catch (\Throwable $e) {
             ob_end_clean(); // Clean buffer if error
@@ -1050,7 +1049,7 @@ class DashboardController extends BaseController
             header('Location: /dashboard');
             exit;
         }
-        
+
         $pageTitle = 'Admin EAN';
         ob_start();
         require __DIR__ . '/../Views/dashboard/ean-admin.php';
@@ -1104,11 +1103,11 @@ class DashboardController extends BaseController
             header('Location: /login');
             exit;
         }
-        
+
         $currentUser = $this->userService->getCurrentUser();
         $pageTitle = 'Advanced Analytics';
         $activePage = 'advanced-analytics';
-        
+
         ob_start();
         require __DIR__ . '/../Views/dashboard/advanced-analytics.php';
         $content = ob_get_clean();
@@ -1121,11 +1120,11 @@ class DashboardController extends BaseController
             header('Location: /login');
             exit;
         }
-        
+
         $currentUser = $this->userService->getCurrentUser();
         $pageTitle = 'Competitor Monitor';
         $activePage = 'competitor-monitor';
-        
+
         ob_start();
         require __DIR__ . '/../Views/dashboard/competitor-monitor.php';
         $content = ob_get_clean();

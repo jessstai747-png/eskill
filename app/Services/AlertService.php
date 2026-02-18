@@ -195,7 +195,7 @@ class AlertService
 
         return $expiring;
     }
-    
+
     /**
      * Detecta novos concorrentes em uma categoria/marca
      */
@@ -203,11 +203,11 @@ class AlertService
     {
         $searchService = new SearchService($accountId);
         $analysis = $searchService->analyzeListings($categoryId, $brand);
-        
+
         if (isset($analysis['error'])) {
             return $analysis;
         }
-        
+
         // Obter vendedores atuais
         $sellers = [];
         foreach (($analysis['catalog']['items'] ?? []) as $item) {
@@ -216,14 +216,14 @@ class AlertService
                 $sellers[$sellerId] = $item['seller']['nickname'] ?? 'Unknown';
             }
         }
-        
+
         foreach (($analysis['common']['items'] ?? []) as $item) {
             $sellerId = $item['seller']['id'] ?? null;
             if ($sellerId) {
                 $sellers[$sellerId] = $item['seller']['nickname'] ?? 'Unknown';
             }
         }
-        
+
         // Comparar com histórico real de sellers conhecidos
         $db = Database::getInstance();
         $this->ensureCompetitorHistoryTable();
@@ -275,26 +275,26 @@ class AlertService
                 'seller_id' => $sellerId,
                 'nickname' => $nickname,
             ];
-            
+
             $alertData = [
                 'category_id' => $categoryId,
                 'brand' => $brand,
                 'seller_id' => $sellerId,
                 'seller_nickname' => $nickname,
             ];
-            
+
             $this->createAlert($accountId, 'new_competitor', $alertData);
-            
+
             // Enviar Telegram se configurado
             $telegramService = new TelegramService();
             if (method_exists($telegramService, 'isEnabled') ? $telegramService->isEnabled() : false) {
                 $telegramService->sendNewCompetitorNotification($alertData);
             }
         }
-        
+
         return $newSellers;
     }
-    
+
     /**
      * Detecta variação significativa de preço
      */
@@ -302,17 +302,17 @@ class AlertService
     {
         $searchService = new SearchService();
         $analysis = $searchService->analyzeListings($categoryId, $brand);
-        
+
         if (isset($analysis['error']) || !isset($analysis['prices']['avg'])) {
             return [];
         }
-        
+
         $avgPrice = $analysis['prices']['avg'];
         $minPrice = $analysis['prices']['min'];
         $maxPrice = $analysis['prices']['max'];
-        
+
         $variation = ($maxPrice - $minPrice) / $avgPrice;
-        
+
         if ($variation > $threshold) {
             return [
                 'variation' => $variation,
@@ -322,22 +322,22 @@ class AlertService
                 'alert' => true,
             ];
         }
-        
+
         return [
             'variation' => $variation,
             'alert' => false,
         ];
     }
-    
+
     /**
      * Cria um alerta no sistema
      */
     public function createAlert(?int $accountId, string $type, array $data): void
     {
         $db = Database::getInstance();
-        
+
         $this->ensureAlertsTable();
-        
+
         try {
             $stmt = $db->prepare("
                 INSERT INTO alerts 
@@ -345,10 +345,10 @@ class AlertService
                 VALUES 
                 (:account_id, :type, :severity, :message, :data, NULL, NOW())
             ");
-            
+
             $severity = $this->getSeverity($type);
             $message = $this->getMessage($type, $data);
-            
+
             $stmt->execute([
                 'account_id' => $accountId,
                 'type' => $type,
@@ -362,40 +362,40 @@ class AlertService
             $this->logger->exception($e, ['account_id' => $accountId, 'type' => $type]);
         }
     }
-    
+
     /**
      * Detecta novos produtos em uma categoria
      */
     public function detectNewProductsInCategory(string $categoryId, ?string $brand = null, ?int $accountId = null): array
     {
         $searchService = new SearchService($accountId);
-        
+
         // Buscar produtos recentes (últimos 7 dias)
         $filters = [
             'category' => $categoryId,
             'sort' => 'relevance', // Produtos mais recentes primeiro
             'limit' => 50,
         ];
-        
+
         if ($brand) {
             $filters['BRAND'] = $brand;
         }
-        
+
         $results = $searchService->search($filters);
-        
+
         if (isset($results['error'])) {
             return $results;
         }
-        
+
         $newProducts = [];
         $sevenDaysAgo = strtotime('-7 days');
-        
+
         foreach ($results['results'] ?? [] as $item) {
             // Verificar se o produto foi criado recentemente
             $dateCreated = $item['date_created'] ?? null;
             if ($dateCreated) {
                 $createdTimestamp = strtotime($dateCreated);
-                
+
                 if ($createdTimestamp >= $sevenDaysAgo) {
                     $newProducts[] = [
                         'item_id' => $item['id'] ?? null,
@@ -406,7 +406,7 @@ class AlertService
                         'date_created' => $dateCreated,
                         'permalink' => $item['permalink'] ?? '',
                     ];
-                    
+
                     // Criar alerta
                     if ($accountId) {
                         $alertData = [
@@ -416,9 +416,9 @@ class AlertService
                             'item_title' => $item['title'] ?? '',
                             'seller_nickname' => $item['seller']['nickname'] ?? '',
                         ];
-                        
+
                         $this->createAlert($accountId, 'new_product_in_category', $alertData);
-                        
+
                         // Enviar Telegram se configurado
                         $telegramService = new TelegramService();
                         if (method_exists($telegramService, 'isEnabled') ? $telegramService->isEnabled() : false) {
@@ -428,7 +428,7 @@ class AlertService
                 }
             }
         }
-        
+
         return [
             'category_id' => $categoryId,
             'brand' => $brand,
@@ -436,7 +436,7 @@ class AlertService
             'new_products' => $newProducts,
         ];
     }
-    
+
     /**
      * Obtém severidade do alerta
      */
@@ -451,10 +451,10 @@ class AlertService
             'ai_billing_error' => 'danger',
             'ai_provider_error' => 'danger',
         ];
-        
+
         return $severities[$type] ?? 'info';
     }
-    
+
     /**
      * Gera mensagem do alerta
      */
@@ -463,16 +463,16 @@ class AlertService
         switch ($type) {
             case 'token_expiring':
                 return "Token da conta {$data['nickname']} expira em breve";
-                
+
             case 'new_competitor':
                 return "Novo concorrente detectado: {$data['seller_nickname']}";
-                
+
             case 'price_variation':
                 return "Variação significativa de preços detectada";
-                
+
             case 'new_order':
                 return "Novo pedido recebido: R$ " . number_format($data['total'], 2, ',', '.');
-                
+
             case 'new_product_in_category':
                 $brandText = isset($data['brand']) ? " ({$data['brand']})" : '';
                 return "Novo produto detectado na categoria{$brandText}: {$data['item_title']}";
@@ -482,7 +482,7 @@ class AlertService
 
             case 'ai_provider_error':
                 return "ERRO IA: Falha em todos os provedores. Último erro: {$data['last_error']}";
-                
+
             default:
                 return "Alerta: {$type}";
         }
@@ -495,7 +495,7 @@ class AlertService
     {
         try {
             $db = Database::getInstance();
-            
+
             $stmt = $db->prepare("
                 SELECT u.email 
                 FROM ml_accounts ma
@@ -504,7 +504,7 @@ class AlertService
             ");
             $stmt->execute(['account_id' => $accountId]);
             $account = $stmt->fetch();
-            
+
             if ($account && !empty($account['email'])) {
                 $emailService = new EmailService();
                 $emailService->sendTokenExpiringNotification(
@@ -590,4 +590,3 @@ class AlertService
         ");
     }
 }
-

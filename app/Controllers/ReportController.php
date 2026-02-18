@@ -106,7 +106,7 @@ class ReportController extends BaseController
                     SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
                     SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders
                 FROM ml_orders
-                WHERE seller_id = :account_id
+                WHERE ml_account_id = :account_id
                 AND DATE(date_created) >= :cutoff
             ");
             $stmtOrders->execute([':account_id' => $accountId, ':cutoff' => $cutoff]);
@@ -117,7 +117,7 @@ class ReportController extends BaseController
                     status,
                     COUNT(*) as count
                 FROM items
-                WHERE seller_id = :account_id
+                WHERE account_id = :account_id
                 GROUP BY status
             ");
             $stmtItems->execute([':account_id' => $accountId]);
@@ -128,8 +128,8 @@ class ReportController extends BaseController
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'UNANSWERED' THEN 1 ELSE 0 END) as unanswered
                 FROM ml_questions
-                WHERE seller_id = :account_id
-                AND created_at >= :cutoff
+                WHERE account_id = :account_id
+                AND date_created >= :cutoff
             ");
             $stmtQuestions->execute([':account_id' => $accountId, ':cutoff' => $cutoff . ' 00:00:00']);
             $questionStats = $stmtQuestions->fetch(\PDO::FETCH_ASSOC) ?: [];

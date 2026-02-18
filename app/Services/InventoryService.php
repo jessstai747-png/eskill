@@ -66,7 +66,7 @@ class InventoryService extends MercadoLivreClient
                 $origin['quantity'] = (int)$origin['quantity'];
                 $origin['reserved'] = (int)$origin['reserved'];
                 $origin['available'] = (int)$origin['available'];
-                
+
                 $totalQuantity += $origin['quantity'];
                 $totalReserved += $origin['reserved'];
                 $totalAvailable += $origin['available'];
@@ -186,7 +186,8 @@ class InventoryService extends MercadoLivreClient
             }
 
             // Gerar ID único usando UUID v4 para evitar colisões
-            $reservationId = sprintf('RSV_%s_%s',
+            $reservationId = sprintf(
+                'RSV_%s_%s',
                 date('Ymd'),
                 bin2hex(random_bytes(8))
             );
@@ -247,7 +248,6 @@ class InventoryService extends MercadoLivreClient
                 'quantity' => $quantity,
                 'expires_at' => $expiresAt,
             ];
-
         } catch (\Exception $e) {
             $this->db->rollBack();
             log_error('Erro ao criar reserva de estoque', [
@@ -444,7 +444,6 @@ class InventoryService extends MercadoLivreClient
                             'sku' => $sku,
                         ]);
                     }
-
                 } catch (\Exception $e) {
                     $results['errors']++;
                     $results['details'][$sku] = ['error' => $e->getMessage()];
@@ -591,7 +590,6 @@ class InventoryService extends MercadoLivreClient
                         'api_synced' => ($sourceInfo['source'] === 'api'),
                     ];
                 }
-                
             } catch (\Exception $e) {
                 $results['errors'][] = [
                     'item' => $item['ml_item_id'],
@@ -599,7 +597,7 @@ class InventoryService extends MercadoLivreClient
                 ];
             }
         }
-        
+
         return $results;
     }
 
@@ -617,10 +615,10 @@ class InventoryService extends MercadoLivreClient
         foreach ($items as $item) {
             try {
                 $this->client->put("/items/{$item['ml_item_id']}", ['available_quantity' => $quantity]);
-                
+
                 $this->db->prepare("UPDATE items SET available_quantity = ? WHERE id = ?")
-                         ->execute([$quantity, $item['id']]);
-                         
+                    ->execute([$quantity, $item['id']]);
+
                 $results['updated']++;
             } catch (\Exception $e) {
                 $results['errors']++;

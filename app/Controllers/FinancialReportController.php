@@ -65,17 +65,17 @@ class FinancialReportController extends BaseController
     public function getPnLData(): void
     {
         header('Content-Type: application/json');
-        
+
         $dates = $this->getValidatedDateRange();
         if (!$dates) {
             return;
         }
         [$startDate, $endDate] = $dates;
-        
+
         try {
             $pnl = $this->financialService->getPnL($startDate, $endDate . ' 23:59:59');
             $daily = $this->financialService->getDailyRevenue($startDate, $endDate . ' 23:59:59');
-            
+
             echo json_encode([
                 'success' => true,
                 'pnl' => $pnl,
@@ -171,7 +171,7 @@ class FinancialReportController extends BaseController
         </body>
         </html>
         ";
-        
+
         $options = new Options();
         $options->set('defaultFont', 'Helvetica');
         $dompdf = new Dompdf($options);
@@ -573,7 +573,7 @@ class FinancialReportController extends BaseController
 
         try {
             $summary = $this->financialService->getDashboardSummary();
-            
+
             // Adicionar saldo da conta em tempo real
             $balance = $this->financialService->getAccountBalance();
             $summary['account_balance'] = $balance;

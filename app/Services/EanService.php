@@ -236,8 +236,14 @@ class EanService
             )->execute(['id' => $nextEan['ean_id']]);
 
             // Registrar transação
-            $this->recordTransaction($accountId, 'debit', 1, 'use', $nextEan['assignment_id'],
-                "EAN {$nextEan['ean']} vinculado ao item {$mlItemId}");
+            $this->recordTransaction(
+                $accountId,
+                'debit',
+                1,
+                'use',
+                $nextEan['assignment_id'],
+                "EAN {$nextEan['ean']} vinculado ao item {$mlItemId}"
+            );
 
             $this->db->commit();
 
@@ -288,8 +294,14 @@ class EanService
             )->execute(['ean_id' => $assignment['ean_id']]);
 
             // Transação de crédito
-            $this->recordTransaction($accountId, 'credit', 1, 'unlink', $assignmentId,
-                "EAN {$assignment['ean']} desvinculado");
+            $this->recordTransaction(
+                $accountId,
+                'credit',
+                1,
+                'unlink',
+                $assignmentId,
+                "EAN {$assignment['ean']} desvinculado"
+            );
 
             $this->db->commit();
             return true;
@@ -744,7 +756,7 @@ class EanService
             'paid_without_credit_transaction' => count($result['divergences']['paid_without_credit_transaction']),
             'failed_with_assignments' => count($result['divergences']['failed_with_assignments']),
             'total_divergences' =>
-                count($result['divergences']['pending_with_payment_id'])
+            count($result['divergences']['pending_with_payment_id'])
                 + count($result['divergences']['paid_without_full_assignments'])
                 + count($result['divergences']['paid_without_credit_transaction'])
                 + count($result['divergences']['failed_with_assignments']),
@@ -830,8 +842,7 @@ class EanService
         int $limit = 200,
         bool $dryRun = true,
         bool $rollbackOnWorsening = true
-    ): array
-    {
+    ): array {
         $hoursBack = max(1, min(720, $hoursBack));
         $limit = max(1, min(1000, $limit));
 
@@ -952,7 +963,7 @@ class EanService
             && $rollbackOnWorsening
             && !empty($result['created_transaction_ids'])
             && (int)($result['divergences_after']['total_divergences'] ?? 0)
-                > (int)($result['divergences_before']['total_divergences'] ?? 0)
+            > (int)($result['divergences_before']['total_divergences'] ?? 0)
         ) {
             $rolledBackCount = $this->rollbackLowRiskRemediationTransactions(
                 $result['created_transaction_ids'],
@@ -1282,7 +1293,7 @@ class EanService
         $windowSeconds = $windowMinutes * 60;
 
         $normalizedIssues = array_values(array_unique(array_filter(array_map(
-            static fn ($issue) => is_string($issue) ? trim($issue) : '',
+            static fn($issue) => is_string($issue) ? trim($issue) : '',
             $issues
         ))));
 
@@ -1578,7 +1589,7 @@ class EanService
         array $options = []
     ): array {
         $normalizedIssues = array_values(array_unique(array_filter(array_map(
-            static fn ($i) => is_string($i) ? trim($i) : '',
+            static fn($i) => is_string($i) ? trim($i) : '',
             $issues
         ))));
 
@@ -1877,7 +1888,7 @@ class EanService
      */
     private function rollbackLowRiskRemediationTransactions(array $transactionIds, string $runId): int
     {
-        $filteredIds = array_values(array_filter(array_map('intval', $transactionIds), static fn ($id) => $id > 0));
+        $filteredIds = array_values(array_filter(array_map('intval', $transactionIds), static fn($id) => $id > 0));
         if (empty($filteredIds)) {
             return 0;
         }
@@ -2028,8 +2039,14 @@ class EanService
             ]);
 
             // Registrar transação
-            $this->recordTransaction($accountId, 'credit', $assigned, 'purchase', $purchaseId,
-                "Compra confirmada: {$assigned} EANs");
+            $this->recordTransaction(
+                $accountId,
+                'credit',
+                $assigned,
+                'purchase',
+                $purchaseId,
+                "Compra confirmada: {$assigned} EANs"
+            );
 
             $this->db->commit();
 

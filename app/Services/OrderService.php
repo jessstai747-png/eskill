@@ -311,7 +311,7 @@ class OrderService
         }
 
         $userId = SessionHelper::getUserId();
-        
+
         // Se não houver usuário na sessão (CRON), buscar da conta vinculada
         if (!$userId && $this->accountId) {
             $userId = $this->getAccountUserId($this->accountId);
@@ -366,7 +366,7 @@ class OrderService
         }
 
         static $cache = [];
-        
+
         if (isset($cache[$accountId])) {
             return $cache[$accountId];
         }
@@ -374,7 +374,7 @@ class OrderService
         $stmt = $this->db->prepare("SELECT nickname FROM ml_accounts WHERE id = :id LIMIT 1");
         $stmt->execute(['id' => $accountId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         $cache[$accountId] = $result['nickname'] ?? null;
         return $cache[$accountId];
     }

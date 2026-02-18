@@ -214,7 +214,7 @@ class CompetitorMonitorService
     public function scanCompetitors(string $itemId, ?string $keywords = null): array
     {
         $ml = $this->getMlClient();
-        
+
         // Obter informações do item original
         $item = $ml->get("/items/{$itemId}");
         if (!$item || isset($item['error'])) {
@@ -230,7 +230,7 @@ class CompetitorMonitorService
 
         // Buscar produtos similares
         $competitors = [];
-        
+
         try {
             $searchParams = [
                 'category' => $categoryId,
@@ -248,7 +248,7 @@ class CompetitorMonitorService
             $position = 0;
             foreach ($results as $result) {
                 $position++;
-                
+
                 // Ignorar o próprio item
                 if ($result['id'] === $itemId) {
                     continue;
@@ -297,7 +297,6 @@ class CompetitorMonitorService
                 'alerts_generated' => count($alerts),
                 'alerts' => $alerts
             ];
-
         } catch (\Exception $e) {
             return ['success' => false, 'message' => 'Erro ao buscar concorrentes: ' . $e->getMessage()];
         }
@@ -447,10 +446,17 @@ class CompetitorMonitorService
 
         // Alerta: Preço muito acima do mercado
         if ($myPrice > $avgPrice * 1.15) {
-            $alerts[] = $this->createAlert($itemId, 'market_shift', 'high', 
+            $alerts[] = $this->createAlert(
+                $itemId,
+                'market_shift',
+                'high',
                 'Preço acima da média do mercado',
-                sprintf('Seu preço (R$ %.2f) está %.1f%% acima da média do mercado (R$ %.2f)', 
-                    $myPrice, (($myPrice / $avgPrice) - 1) * 100, $avgPrice),
+                sprintf(
+                    'Seu preço (R$ %.2f) está %.1f%% acima da média do mercado (R$ %.2f)',
+                    $myPrice,
+                    (($myPrice / $avgPrice) - 1) * 100,
+                    $avgPrice
+                ),
                 ['my_price' => $myPrice, 'avg_price' => $avgPrice, 'diff_percent' => (($myPrice / $avgPrice) - 1) * 100]
             );
         }
@@ -475,7 +481,10 @@ class CompetitorMonitorService
         }
 
         if (!empty($significantDrops)) {
-            $alerts[] = $this->createAlert($itemId, 'price_drop', 'high',
+            $alerts[] = $this->createAlert(
+                $itemId,
+                'price_drop',
+                'high',
                 'Queda significativa de preço detectada',
                 sprintf('%d concorrente(s) reduziram preço em mais de 10%%', count($significantDrops)),
                 ['drops' => $significantDrops]
@@ -484,7 +493,10 @@ class CompetitorMonitorService
 
         // Alerta: Oportunidade - você está bem posicionado
         if ($myPrice <= $minPrice * 1.05 && $myPrice >= $avgPrice * 0.85) {
-            $alerts[] = $this->createAlert($itemId, 'opportunity', 'low',
+            $alerts[] = $this->createAlert(
+                $itemId,
+                'opportunity',
+                'low',
                 'Boa posição competitiva',
                 'Seu preço está competitivo - considere ajuste de margem para aumentar lucro',
                 ['my_price' => $myPrice, 'min_price' => $minPrice, 'avg_price' => $avgPrice]
@@ -494,7 +506,10 @@ class CompetitorMonitorService
         // Alerta: Concorrentes sem estoque
         $outOfStock = array_filter($competitors, fn($c) => ($c['competitor_available_quantity'] ?? 0) === 0);
         if (count($outOfStock) >= 3) {
-            $alerts[] = $this->createAlert($itemId, 'competitor_out_of_stock', 'medium',
+            $alerts[] = $this->createAlert(
+                $itemId,
+                'competitor_out_of_stock',
+                'medium',
                 'Concorrentes sem estoque',
                 sprintf('%d concorrentes estão sem estoque - oportunidade de destaque', count($outOfStock)),
                 ['out_of_stock_count' => count($outOfStock)]
@@ -606,8 +621,8 @@ class CompetitorMonitorService
 
         $limit = max(1, min(500, (int) ($filters['limit'] ?? 50)));
 
-        $sql = "SELECT * FROM pricing_market_alerts WHERE " . implode(' AND ', $where) 
-             . " ORDER BY created_at DESC LIMIT $limit";
+        $sql = "SELECT * FROM pricing_market_alerts WHERE " . implode(' AND ', $where)
+            . " ORDER BY created_at DESC LIMIT $limit";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -684,7 +699,9 @@ class CompetitorMonitorService
         $freeShippingPercent = count($competitors) > 0 ? round(($freeShippingCount / count($competitors)) * 100) : 0;
 
         // Analisar vendedores premium
-        $premiumSellers = count(array_filter($competitors, fn($c) => 
+        $premiumSellers = count(array_filter(
+            $competitors,
+            fn($c) =>
             str_contains(strtolower($c['competitor_seller_reputation'] ?? ''), 'mercadolíder')
         ));
 
@@ -838,8 +855,11 @@ class CompetitorMonitorService
                 'type' => 'price_reduction',
                 'priority' => 'high',
                 'title' => 'Reduzir preço para aumentar competitividade',
-                'description' => sprintf('Seu preço está %.1f%% acima da média. Considere reduzir para R$ %.2f', 
-                    (($myPrice / $avgPrice) - 1) * 100, $suggestedPrice),
+                'description' => sprintf(
+                    'Seu preço está %.1f%% acima da média. Considere reduzir para R$ %.2f',
+                    (($myPrice / $avgPrice) - 1) * 100,
+                    $suggestedPrice
+                ),
                 'suggested_price' => $suggestedPrice
             ];
         }

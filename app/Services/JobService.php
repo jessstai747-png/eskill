@@ -20,14 +20,14 @@ use App\Services\AutonomousAgentService;
 class JobService
 {
     private \PDO $db;
-    
-    
+
+
     public function __construct()
     {
         $this->db = Database::getInstance();
         $this->ensureTableExists();
     }
-    
+
     /**
      * Cria tabela de jobs se não existir
      */
@@ -99,7 +99,7 @@ class JobService
             error_log('JobService: schema migration skipped - ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Adiciona um job à fila
      */
@@ -109,13 +109,13 @@ class JobService
             INSERT INTO jobs (type, payload, scheduled_at)
             VALUES (:type, :payload, :scheduled_at)
         ");
-        
+
         $stmt->execute([
             ':type' => $type,
             ':payload' => json_encode($payload),
             ':scheduled_at' => $scheduledAt ? $scheduledAt->format('Y-m-d H:i:s') : null,
         ]);
-        
+
         $jobId = (int)$this->db->lastInsertId();
 
         // Push to Redis Queue if not scheduled for future
@@ -132,10 +132,10 @@ class JobService
                 ]);
             }
         }
-        
+
         return $jobId;
     }
-    
+
     /**
      * Busca um job pelo ID
      */
@@ -162,10 +162,10 @@ class JobService
             LIMIT {$limitSql}
         ");
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Processa jobs pendentes
      */
@@ -174,7 +174,7 @@ class JobService
         $processed = [];
 
         $limitSql = max(1, min((int)$limit, 200));
-        
+
         // Buscar jobs pendentes ou agendados
         $stmt = $this->db->prepare("
             SELECT * FROM jobs
@@ -186,15 +186,15 @@ class JobService
         ");
         $stmt->execute();
         $jobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($jobs as $job) {
             $result = $this->processJob($job);
             $processed[] = $result;
         }
-        
+
         return $processed;
     }
-    
+
     /**
      * Processa um job específico
      */
@@ -203,28 +203,27 @@ class JobService
         $jobId = $job['id'];
         $type = $job['type'];
         $payload = json_decode($job['payload'], true);
-        
+
         // Marcar como processando
         $this->updateJobStatus($jobId, 'processing', null, new \DateTime());
-        
+
         try {
             // Executar job baseado no tipo
             $result = $this->executeJob($type, $payload, $jobId);
-            
+
             // Marcar como concluído
             $this->updateJobStatus($jobId, 'completed', null, null, new \DateTime(), null, $result);
-            
+
             return [
                 'id' => $jobId,
                 'type' => $type,
                 'status' => 'completed',
                 'result' => $result,
             ];
-            
         } catch (\Exception $e) {
             $attempts = (int)$job['attempts'] + 1;
             $maxAttempts = (int)$job['max_attempts'];
-            
+
             if ($attempts >= $maxAttempts) {
                 // Marcar como falhou
                 $this->updateJobStatus($jobId, 'failed', $e->getMessage());
@@ -232,7 +231,7 @@ class JobService
                 // Reagendar para tentar novamente
                 $this->updateJobStatus($jobId, 'pending', $e->getMessage(), null, null, $attempts);
             }
-            
+
             return [
                 'id' => $jobId,
                 'type' => $type,
@@ -242,7 +241,7 @@ class JobService
             ];
         }
     }
-    
+
     /**
      * Executa o job baseado no tipo
      */
@@ -251,13 +250,13 @@ class JobService
         switch ($type) {
             case 'sync_orders':
                 return $this->syncOrdersJob($payload);
-                
+
             case 'sync_items':
                 return $this->syncItemsJob($payload);
-                
+
             case 'update_price_history':
                 return $this->updatePriceHistoryJob($payload);
-                
+
             case 'check_alerts':
                 return $this->checkAlertsJob($payload);
 
@@ -284,7 +283,7 @@ class JobService
 
             case 'tech_sheet_auto_optimize':
                 return $this->techSheetAutoOptimizeJob($payload);
-                
+
             case 'bulk_optimize_exec':
                 return $this->bulkOptimizeExecJob($payload);
 
@@ -393,7 +392,7 @@ class JobService
     {
         $agentCode = $payload['agent'] ?? '';
         $accountId = $payload['account_id'] ?? null;
-        
+
         if (empty($agentCode)) {
             throw new \Exception('Agent code is required');
         }
@@ -489,7 +488,7 @@ class JobService
         // Selecionar pendências com lock leve
         $this->db->beginTransaction();
         try {
-                        $batchSizeSql = max(1, min(10, (int)$batchSize));
+            $batchSizeSql = max(1, min(10, (int)$batchSize));
             $stmtItems = $this->db->prepare("
                 SELECT id, source_item_id, source_snapshot, attempts
                 FROM catalog_clone_job_items
@@ -1000,7 +999,7 @@ class JobService
         }
 
         $options = $payload['options'] ?? [];
-        
+
         // Força execução pois foi disparado explicitamente
         $options['force'] = $options['force'] ?? true;
         $options['limit'] = min($options['limit'] ?? 100, 200);
@@ -1021,44 +1020,44 @@ class JobService
             'error' => $result['error'] ?? null,
         ];
     }
-    
+
     /**
      * Job: Sincronizar pedidos
      */
     private function syncOrdersJob(array $payload): array
     {
         $accountId = $payload['account_id'] ?? null;
-        
+
         if (!$accountId) {
             throw new \Exception('account_id é obrigatório para sync_orders');
         }
-        
+
         $orderService = new OrderService($accountId);
         $limit = (int)($payload['limit'] ?? 100);
         $result = $orderService->syncOrders(null, $limit);
-        
+
         return [
             'account_id' => $accountId,
             'synced' => $result['synced'] ?? 0,
             'errors' => $result['errors'] ?? 0,
         ];
     }
-    
+
     /**
      * Job: Sincronizar anúncios
      */
     private function syncItemsJob(array $payload): array
     {
         $accountId = $payload['account_id'] ?? null;
-        
+
         if (!$accountId) {
             throw new \Exception('account_id é obrigatório para sync_items');
         }
-        
+
         $itemService = new ItemService($accountId);
         $limit = (int)($payload['limit'] ?? 50);
         $result = $itemService->syncItems($limit);
-        
+
         return [
             'account_id' => $accountId,
             'success' => $result['success'] ?? false,
@@ -1067,7 +1066,7 @@ class JobService
             'total_found' => $result['total_found'] ?? null,
         ];
     }
-    
+
     /**
      * Job: Atualizar histórico de preços
      */
@@ -1075,28 +1074,28 @@ class JobService
     {
         $categoryId = $payload['category_id'] ?? null;
         $brand = $payload['brand'] ?? null;
-        
+
         if (!$categoryId || !$brand) {
             throw new \Exception('category_id e brand são obrigatórios');
         }
-        
+
         $searchService = new SearchService();
         $analysis = $searchService->analyzeListings($categoryId, $brand);
-        
+
         // Registrar histórico de preços
         if (isset($analysis['prices']['avg'])) {
             $priceHistoryService = new PriceHistoryService();
             // API atual do service: faz a análise e grava o histórico
             $priceHistoryService->recordPriceHistory((string)$categoryId, (string)$brand);
         }
-        
+
         return [
             'category_id' => $categoryId,
             'brand' => $brand,
             'avg_price' => $analysis['prices']['avg'] ?? null,
         ];
     }
-    
+
     /**
      * Job: Verificar alertas
      */
@@ -1104,13 +1103,13 @@ class JobService
     {
         $alertService = new AlertService();
         $result = $alertService->checkAllAlerts();
-        
+
         return [
             'alerts_checked' => $result['checked'] ?? 0,
             'alerts_triggered' => $result['triggered'] ?? 0,
         ];
     }
-    
+
     /**
      * Atualiza status de um job
      */
@@ -1125,22 +1124,22 @@ class JobService
     ): void {
         $updates = ['status = :status'];
         $params = [':status' => $status, ':id' => $jobId];
-        
+
         if ($errorMessage !== null) {
             $updates[] = 'error_message = :error_message';
             $params[':error_message'] = $errorMessage;
         }
-        
+
         if ($startedAt !== null) {
             $updates[] = 'started_at = :started_at';
             $params[':started_at'] = $startedAt->format('Y-m-d H:i:s');
         }
-        
+
         if ($completedAt !== null) {
             $updates[] = 'completed_at = :completed_at';
             $params[':completed_at'] = $completedAt->format('Y-m-d H:i:s');
         }
-        
+
         if ($attempts !== null) {
             $updates[] = 'attempts = :attempts';
             $params[':attempts'] = $attempts;
@@ -1151,7 +1150,7 @@ class JobService
             $encoded = json_encode($result, JSON_UNESCAPED_UNICODE);
             $params[':result'] = $encoded === false ? null : $encoded;
         }
-        
+
         $sql = "UPDATE jobs SET " . implode(', ', $updates) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -1179,26 +1178,26 @@ class JobService
 
         return $job;
     }
-    
+
     /**
      * Job: Clonar item de catálogo
      */
     private function catalogCloneItemJob(array $payload, ?int $jobId = null): array
     {
         $service = new CatalogCloneService();
-        
+
         // Injetar o job_id no payload para tracking
         $payload['job_id'] = $jobId;
-        
+
         // O payload do job deve corresponder exatamente ao que o service espera
         // source_account_id, source_item_id, target_account_id, pricing_strategy, stock_strategy
-        
+
         $result = $service->cloneCatalogItem($payload);
-        
+
         if (($result['status'] ?? 'error') === 'error') {
             throw new \Exception($result['message'] ?? 'Erro desconhecido na clonagem');
         }
-        
+
         return $result;
     }
 
@@ -1225,7 +1224,7 @@ class JobService
         $prompt = $payload['prompt'] ?? '';
         $system = $payload['system'] ?? '';
         $complexity = $payload['complexity'] ?? 'basic';
-        
+
         if (empty($prompt)) {
             throw new \Exception('Prompt Required');
         }
@@ -1251,21 +1250,21 @@ class JobService
             FROM jobs
             GROUP BY status
         ");
-        
+
         $stats = [
             'pending' => 0,
             'processing' => 0,
             'completed' => 0,
             'failed' => 0,
         ];
-        
+
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $stats[$row['status']] = (int)$row['count'];
         }
-        
+
         return $stats;
     }
-    
+
     /**
      * Limpa jobs antigos (completados há mais de X dias)
      */
@@ -1276,9 +1275,9 @@ class JobService
             WHERE status IN ('completed', 'failed')
             AND completed_at < DATE_SUB(NOW(), INTERVAL :days DAY)
         ");
-        
+
         $stmt->execute([':days' => $days]);
-        
+
         return $stmt->rowCount();
     }
     /**
@@ -1289,22 +1288,22 @@ class JobService
         if (empty($jobIds)) {
             return [];
         }
-        
+
         // Sanitizar IDs (apenas inteiros)
         $ids = array_map('intval', $jobIds);
         $inQuery = implode(',', $ids);
-        
+
         $stmt = $this->db->query("
             SELECT id, status, error_message 
             FROM jobs 
             WHERE id IN ($inQuery)
         ");
-        
+
         $result = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $result[$row['id']] = $row;
         }
-        
+
         return $result;
     }
     /**
@@ -1323,7 +1322,7 @@ class JobService
         $accountId = $stmt->fetchColumn();
 
         if (!$accountId) {
-             throw new \Exception("SEO Bulk Job #{$seoJobId} não encontrado");
+            throw new \Exception("SEO Bulk Job #{$seoJobId} não encontrado");
         }
 
         $optimizer = new BulkOptimizer((int)$accountId);

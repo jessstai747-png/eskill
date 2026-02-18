@@ -21,7 +21,7 @@ class StructuredLogService
     private Logger $logger;
     private string $logPath;
     private string $logLevel;
-    
+
     // Níveis de log
     const LEVEL_DEBUG = Logger::DEBUG;
     const LEVEL_INFO = Logger::INFO;
@@ -33,16 +33,16 @@ class StructuredLogService
     {
         $this->logPath = getenv('LOG_PATH') ?: (__DIR__ . '/../../storage/logs/app.log');
         $this->logLevel = getenv('LOG_LEVEL') ?: 'debug';
-        
+
         // Garantir que o diretório de logs existe
         $logDir = dirname($this->logPath);
         if (!is_dir($logDir)) {
             @mkdir($logDir, 0775, true);
         }
-        
+
         // Criar logger
         $this->logger = new Logger('app');
-        
+
         // Handler principal: usar RotatingFileHandler para gerar arquivos por dia (app-YYYY-MM-DD.log)
         try {
             // Ensure the configured path ends with a filename; if a directory was provided, append app.log
@@ -81,7 +81,7 @@ class StructuredLogService
         } catch (\Throwable $e) {
             // ignore
         }
-        
+
         // Processors adicionais
         $this->logger->pushProcessor(new WebProcessor());
         $this->logger->pushProcessor(new IntrospectionProcessor());
@@ -94,7 +94,7 @@ class StructuredLogService
             $record['extra']['account_id'] = $_SESSION['account_id'] ?? null;
             $record['extra']['request_id'] = $_SERVER['HTTP_X_REQUEST_ID'] ?? uniqid('req_');
             $record['extra']['timestamp'] = microtime(true);
-            
+
             return $record;
         });
     }
@@ -105,8 +105,20 @@ class StructuredLogService
     private function maskSensitiveValues(array $data): array
     {
         $sensitiveKeys = [
-            'password', 'pass', 'pwd', 'secret', 'token', 'access_token', 'refresh_token',
-            'client_secret', 'app_key', 'api_key', 'authorization', 'auth', 'db_password', 'smtp_pass'
+            'password',
+            'pass',
+            'pwd',
+            'secret',
+            'token',
+            'access_token',
+            'refresh_token',
+            'client_secret',
+            'app_key',
+            'api_key',
+            'authorization',
+            'auth',
+            'db_password',
+            'smtp_pass'
         ];
 
         $masked = [];
@@ -209,7 +221,7 @@ class StructuredLogService
         ];
 
         $level = $duration > 5.0 ? 'warning' : 'info';
-        
+
         $this->{$level}("Performance: {$operation}", $context);
     }
 
@@ -240,7 +252,7 @@ class StructuredLogService
     {
         $logFile = $this->logPath;
         $results = [];
-        
+
         if (!file_exists($logFile)) {
             return [];
         }
@@ -266,13 +278,13 @@ class StructuredLogService
             while ($pos > 0 && $foundParams < $limit) {
                 $readSize = ($pos < $chunkSize) ? $pos : $chunkSize;
                 $pos -= $readSize;
-                
+
                 fseek($handle, $pos);
                 $chunk = fread($handle, $readSize);
-                
+
                 $buffer = $chunk . $buffer;
                 $lines = explode("\n", $buffer);
-                
+
                 // The first element of $lines (index 0) is likely incomplete until we reach start of file,
                 // so we keep it in buffer and process the rest reversed.
                 // If pos == 0, process all.
@@ -305,15 +317,15 @@ class StructuredLogService
 
                     if ($startDate && ($log['datetime'] ?? '') < $startDate) {
                         continue; // Log is older than start date? Valid. But if file is sorted, we can stop?
-                                  // Logs are appended, so if we read backwards and hit a date < start_date, we can theoretically stop if monotonic.
-                                  // Assuming valid timestamps:
+                        // Logs are appended, so if we read backwards and hit a date < start_date, we can theoretically stop if monotonic.
+                        // Assuming valid timestamps:
                         // If we find a log OLDER than usage start, we can stop reading?
                         // Yes, optimizing:
-                         break 2; // Stop outer loop
+                        break 2; // Stop outer loop
                     }
 
                     if ($endDate && ($log['datetime'] ?? '') > $endDate) {
-                        continue; 
+                        continue;
                     }
 
                     $results[] = $log;
@@ -323,7 +335,7 @@ class StructuredLogService
         } finally {
             fclose($handle);
         }
-        
+
         return $results;
     }
 
@@ -333,7 +345,7 @@ class StructuredLogService
     public function getStatistics(string $period = '24h'): array
     {
         $logs = $this->search(['limit' => 10000]);
-        
+
         $stats = [
             'total' => count($logs),
             'by_level' => [
@@ -379,12 +391,12 @@ class StructuredLogService
         $stats['top_errors'] = array_slice($errorMessages, 0, 10, true);
 
         // Top 10 operações lentas
-        usort($stats['performance']['slow_operations'], function($a, $b) {
+        usort($stats['performance']['slow_operations'], function ($a, $b) {
             return $b['duration'] <=> $a['duration'];
         });
         $stats['performance']['slow_operations'] = array_slice(
-            $stats['performance']['slow_operations'], 
-            0, 
+            $stats['performance']['slow_operations'],
+            0,
             10
         );
 
@@ -398,9 +410,9 @@ class StructuredLogService
     {
         $logDir = dirname($this->logPath);
         $deleted = 0;
-        
+
         $cutoff = time() - ($days * 86400);
-        
+
         foreach (glob($logDir . '/*.log*') as $file) {
             if (filemtime($file) < $cutoff) {
                 unlink($file);
@@ -431,7 +443,7 @@ class StructuredLogService
      */
     private function getMonologLevel(string $level): int
     {
-        return match(strtolower($level)) {
+        return match (strtolower($level)) {
             'debug' => Logger::DEBUG,
             'info' => Logger::INFO,
             'warning', 'warn' => Logger::WARNING,

@@ -18,32 +18,32 @@ class CloneAutoSchedulerService
 {
     private PDO $db;
     private int $accountId;
-    
+
     // Frequências suportadas
     public const FREQ_ONCE = 'once';
     public const FREQ_HOURLY = 'hourly';
     public const FREQ_DAILY = 'daily';
     public const FREQ_WEEKLY = 'weekly';
     public const FREQ_MONTHLY = 'monthly';
-    
+
     // Status do schedule
     public const STATUS_ACTIVE = 'active';
     public const STATUS_PAUSED = 'paused';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
-    
+
     // Tipos de trigger
     public const TRIGGER_NEW_ITEMS = 'new_items';
     public const TRIGGER_PRICE_DROP = 'price_drop';
     public const TRIGGER_STOCK_AVAILABLE = 'stock_available';
     public const TRIGGER_SCHEDULED = 'scheduled';
-    
+
     public function __construct(int $accountId)
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
     }
-    
+
     /**
      * Cria um novo agendamento de clonagem
      */
@@ -55,7 +55,7 @@ class CloneAutoSchedulerService
                 throw new \InvalidArgumentException("Campo obrigatório: $field");
             }
         }
-        
+
         $stmt = $this->db->prepare("
             INSERT INTO clone_schedules (
                 account_id, name, description, source_type, source_value,
@@ -71,9 +71,9 @@ class CloneAutoSchedulerService
                 :next_run_at, NOW(), NOW()
             )
         ");
-        
+
         $nextRun = $this->calculateNextRun($config);
-        
+
         $stmt->execute([
             'account_id' => $this->accountId,
             'name' => $config['name'],
@@ -83,7 +83,7 @@ class CloneAutoSchedulerService
             'frequency' => $config['frequency'] ?? self::FREQ_DAILY,
             'run_at_hour' => $config['run_at_hour'] ?? 3, // Default 3 AM
             'run_at_minute' => $config['run_at_minute'] ?? 0,
-            'run_on_days' => json_encode($config['run_on_days'] ?? [1,2,3,4,5,6,7]),
+            'run_on_days' => json_encode($config['run_on_days'] ?? [1, 2, 3, 4, 5, 6, 7]),
             'trigger_type' => $config['trigger_type'] ?? self::TRIGGER_SCHEDULED,
             'trigger_conditions' => json_encode($config['trigger_conditions'] ?? []),
             'template_id' => $config['template_id'] ?? null,
@@ -93,18 +93,18 @@ class CloneAutoSchedulerService
             'is_active' => $config['is_active'] ?? true,
             'next_run_at' => $nextRun?->format('Y-m-d H:i:s'),
         ]);
-        
+
         $scheduleId = (int) $this->db->lastInsertId();
-        
+
         $this->logScheduleAction($scheduleId, 'created', $config);
-        
+
         return [
             'success' => true,
             'schedule_id' => $scheduleId,
             'next_run_at' => $nextRun?->format('Y-m-d H:i:s'),
         ];
     }
-    
+
     /**
      * Atualiza um agendamento
      */
@@ -114,45 +114,53 @@ class CloneAutoSchedulerService
         if (!$schedule) {
             throw new \InvalidArgumentException("Agendamento não encontrado: $scheduleId");
         }
-        
+
         $updates = [];
         $params = ['id' => $scheduleId, 'account_id' => $this->accountId];
-        
+
         $allowedFields = [
-            'name', 'description', 'source_type', 'source_value',
-            'frequency', 'run_at_hour', 'run_at_minute', 'template_id',
-            'max_items_per_run', 'seo_level', 'is_active'
+            'name',
+            'description',
+            'source_type',
+            'source_value',
+            'frequency',
+            'run_at_hour',
+            'run_at_minute',
+            'template_id',
+            'max_items_per_run',
+            'seo_level',
+            'is_active'
         ];
-        
+
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $config)) {
                 $updates[] = "$field = :$field";
                 $params[$field] = $config[$field];
             }
         }
-        
+
         // Campos JSON
         if (isset($config['run_on_days'])) {
             $updates[] = "run_on_days = :run_on_days";
             $params['run_on_days'] = json_encode($config['run_on_days']);
         }
-        
+
         if (isset($config['filters'])) {
             $updates[] = "filters = :filters";
             $params['filters'] = json_encode($config['filters']);
         }
-        
+
         if (isset($config['trigger_conditions'])) {
             $updates[] = "trigger_conditions = :trigger_conditions";
             $params['trigger_conditions'] = json_encode($config['trigger_conditions']);
         }
-        
+
         if (empty($updates)) {
             return ['success' => true, 'message' => 'Nenhuma alteração'];
         }
-        
+
         $updates[] = "updated_at = NOW()";
-        
+
         // Recalcular próxima execução
         $merged = array_merge($schedule, $config);
         $nextRun = $this->calculateNextRun($merged);
@@ -160,23 +168,23 @@ class CloneAutoSchedulerService
             $updates[] = "next_run_at = :next_run_at";
             $params['next_run_at'] = $nextRun->format('Y-m-d H:i:s');
         }
-        
+
         $stmt = $this->db->prepare("
             UPDATE clone_schedules 
             SET " . implode(', ', $updates) . "
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute($params);
-        
+
         $this->logScheduleAction($scheduleId, 'updated', $config);
-        
+
         return [
             'success' => true,
             'schedule_id' => $scheduleId,
             'next_run_at' => $nextRun?->format('Y-m-d H:i:s'),
         ];
     }
-    
+
     /**
      * Pausa um agendamento
      */
@@ -188,12 +196,12 @@ class CloneAutoSchedulerService
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute(['id' => $scheduleId, 'account_id' => $this->accountId]);
-        
+
         $this->logScheduleAction($scheduleId, 'paused');
-        
+
         return $stmt->rowCount() > 0;
     }
-    
+
     /**
      * Resume um agendamento
      */
@@ -203,9 +211,9 @@ class CloneAutoSchedulerService
         if (!$schedule) {
             return false;
         }
-        
+
         $nextRun = $this->calculateNextRun($schedule);
-        
+
         $stmt = $this->db->prepare("
             UPDATE clone_schedules 
             SET is_active = 1, status = 'active', 
@@ -217,28 +225,28 @@ class CloneAutoSchedulerService
             'account_id' => $this->accountId,
             'next_run' => $nextRun?->format('Y-m-d H:i:s'),
         ]);
-        
+
         $this->logScheduleAction($scheduleId, 'resumed');
-        
+
         return $stmt->rowCount() > 0;
     }
-    
+
     /**
      * Remove um agendamento
      */
     public function deleteSchedule(int $scheduleId): bool
     {
         $this->logScheduleAction($scheduleId, 'deleted');
-        
+
         $stmt = $this->db->prepare("
             DELETE FROM clone_schedules 
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute(['id' => $scheduleId, 'account_id' => $this->accountId]);
-        
+
         return $stmt->rowCount() > 0;
     }
-    
+
     /**
      * Obtém um agendamento por ID
      */
@@ -249,18 +257,18 @@ class CloneAutoSchedulerService
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute(['id' => $scheduleId, 'account_id' => $this->accountId]);
-        
+
         $schedule = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($schedule) {
             $schedule['run_on_days'] = json_decode($schedule['run_on_days'] ?? '[]', true);
             $schedule['filters'] = json_decode($schedule['filters'] ?? '{}', true);
             $schedule['trigger_conditions'] = json_decode($schedule['trigger_conditions'] ?? '{}', true);
         }
-        
+
         return $schedule ?: null;
     }
-    
+
     /**
      * Lista todos os agendamentos
      */
@@ -274,38 +282,38 @@ class CloneAutoSchedulerService
             LEFT JOIN clone_templates ct ON ct.id = cs.template_id
             WHERE cs.account_id = :account_id
         ";
-        
+
         $params = ['account_id' => $this->accountId];
-        
+
         if (isset($filters['is_active'])) {
             $query .= " AND cs.is_active = :is_active";
             $params['is_active'] = $filters['is_active'] ? 1 : 0;
         }
-        
+
         if (!empty($filters['source_type'])) {
             $query .= " AND cs.source_type = :source_type";
             $params['source_type'] = $filters['source_type'];
         }
-        
+
         $query .= " ORDER BY cs.next_run_at ASC";
-        
+
         if (!empty($filters['limit'])) {
             $query .= " LIMIT " . (int) $filters['limit'];
         }
-        
+
         $stmt = $this->db->prepare($query);
         $stmt->execute($params);
-        
+
         $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($schedules as &$s) {
             $s['run_on_days'] = json_decode($s['run_on_days'] ?? '[]', true);
             $s['filters'] = json_decode($s['filters'] ?? '{}', true);
         }
-        
+
         return $schedules;
     }
-    
+
     /**
      * Obtém agendamentos prontos para execução
      */
@@ -320,18 +328,18 @@ class CloneAutoSchedulerService
             LIMIT 10
         ");
         $stmt->execute();
-        
+
         $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($schedules as &$s) {
             $s['run_on_days'] = json_decode($s['run_on_days'] ?? '[]', true);
             $s['filters'] = json_decode($s['filters'] ?? '{}', true);
             $s['trigger_conditions'] = json_decode($s['trigger_conditions'] ?? '{}', true);
         }
-        
+
         return $schedules;
     }
-    
+
     /**
      * Executa um agendamento
      */
@@ -341,16 +349,16 @@ class CloneAutoSchedulerService
         if (!$schedule) {
             throw new \InvalidArgumentException("Agendamento não encontrado: $scheduleId");
         }
-        
+
         // Marcar como em execução
         $this->updateScheduleStatus($scheduleId, 'running');
-        
+
         $runId = $this->createRun($scheduleId);
-        
+
         try {
             // Buscar itens para clonar
             $items = $this->fetchSourceItems($schedule);
-            
+
             if (empty($items)) {
                 $this->completeRun($runId, 0, 0, 'Nenhum item encontrado');
                 $this->scheduleNextRun($scheduleId, $schedule);
@@ -361,14 +369,14 @@ class CloneAutoSchedulerService
                     'message' => 'Nenhum item encontrado para clonar',
                 ];
             }
-            
+
             // Limitar itens
             $maxItems = $schedule['max_items_per_run'] ?? 50;
             $items = array_slice($items, 0, $maxItems);
-            
+
             // Criar job de clonagem
             $jobService = new CatalogCloneService($this->accountId);
-            
+
             $jobResult = $jobService->createBatchJob([
                 'item_ids' => array_column($items, 'id'),
                 'template_id' => $schedule['template_id'],
@@ -376,28 +384,27 @@ class CloneAutoSchedulerService
                 'source' => 'auto_schedule',
                 'schedule_id' => $scheduleId,
             ]);
-            
+
             $this->updateRunJob($runId, $jobResult['job_id'] ?? null);
             $this->completeRun($runId, count($items), 0, null, $jobResult['job_id'] ?? null);
-            
+
             // Agendar próxima execução
             $this->scheduleNextRun($scheduleId, $schedule);
-            
+
             return [
                 'success' => true,
                 'run_id' => $runId,
                 'job_id' => $jobResult['job_id'] ?? null,
                 'items_found' => count($items),
             ];
-            
         } catch (\Exception $e) {
             $this->completeRun($runId, 0, 0, $e->getMessage());
             $this->updateScheduleStatus($scheduleId, 'failed');
-            
+
             throw $e;
         }
     }
-    
+
     /**
      * Busca itens da origem configurada
      * Usa endpoints que não requerem permissões especiais
@@ -407,9 +414,9 @@ class CloneAutoSchedulerService
         $sourceType = $schedule['source_type'];
         $sourceValue = $schedule['source_value'];
         $filters = $schedule['filters'] ?? [];
-        
+
         $cloneService = new CatalogCloneService($this->accountId);
-        
+
         switch ($sourceType) {
             case 'seller_id':
                 $result = $cloneService->listSellerItems($sourceValue, [
@@ -418,20 +425,20 @@ class CloneAutoSchedulerService
                     'brand' => $filters['brand'] ?? null,
                 ]);
                 return $result['items'] ?? [];
-                
+
             case 'category_id':
                 // Usar highlights que funciona sem permissões especiais
                 $client = new MercadoLivreClient($this->accountId);
                 $response = $client->get("/highlights/MLB/category/{$sourceValue}");
                 $itemIds = $response['content'] ?? [];
-                
+
                 if (empty($itemIds)) {
                     return [];
                 }
-                
+
                 // Buscar detalhes dos itens
                 $itemsResponse = $client->get('/items', ['ids' => implode(',', array_slice($itemIds, 0, 50))]);
-                
+
                 $items = [];
                 foreach ($itemsResponse as $itemData) {
                     if (isset($itemData['body'])) {
@@ -439,7 +446,7 @@ class CloneAutoSchedulerService
                     }
                 }
                 return $items;
-                
+
             case 'search_query':
                 // Para search_query, usar trends como fallback
                 $client = new MercadoLivreClient($this->accountId);
@@ -448,7 +455,7 @@ class CloneAutoSchedulerService
                     if (preg_match('/^MLB\d+$/', $sourceValue)) {
                         $response = $client->get("/highlights/MLB/category/{$sourceValue}");
                         $itemIds = $response['content'] ?? [];
-                        
+
                         if (!empty($itemIds)) {
                             $itemsResponse = $client->get('/items', ['ids' => implode(',', array_slice($itemIds, 0, 50))]);
                             $items = [];
@@ -467,12 +474,12 @@ class CloneAutoSchedulerService
                     ]);
                 }
                 return [];
-                
+
             default:
                 return [];
         }
     }
-    
+
     /**
      * Calcula a próxima execução
      */
@@ -481,34 +488,34 @@ class CloneAutoSchedulerService
         $frequency = $config['frequency'] ?? self::FREQ_DAILY;
         $hour = (int) ($config['run_at_hour'] ?? 3);
         $minute = (int) ($config['run_at_minute'] ?? 0);
-        $days = $config['run_on_days'] ?? [1,2,3,4,5,6,7];
-        
+        $days = $config['run_on_days'] ?? [1, 2, 3, 4, 5, 6, 7];
+
         if (is_string($days)) {
-            $days = json_decode($days, true) ?? [1,2,3,4,5,6,7];
+            $days = json_decode($days, true) ?? [1, 2, 3, 4, 5, 6, 7];
         }
 
         // Guard against empty days array causing infinite loop
         if (empty($days)) {
-            $days = [1,2,3,4,5,6,7];
+            $days = [1, 2, 3, 4, 5, 6, 7];
         }
-        
+
         $now = new \DateTime();
         $next = new \DateTime();
         $next->setTime($hour, $minute, 0);
-        
+
         switch ($frequency) {
             case self::FREQ_ONCE:
                 if ($next <= $now) {
                     return null; // Já passou
                 }
                 return $next;
-                
+
             case self::FREQ_HOURLY:
                 $next = clone $now;
                 $next->modify('+1 hour');
                 $next->setTime((int) $next->format('H'), $minute, 0);
                 return $next;
-                
+
             case self::FREQ_DAILY:
                 if ($next <= $now) {
                     $next->modify('+1 day');
@@ -518,29 +525,29 @@ class CloneAutoSchedulerService
                     $next->modify('+1 day');
                 }
                 return $next;
-                
+
             case self::FREQ_WEEKLY:
                 $next->modify('next monday');
                 $next->setTime($hour, $minute, 0);
                 return $next;
-                
+
             case self::FREQ_MONTHLY:
                 $next->modify('first day of next month');
                 $next->setTime($hour, $minute, 0);
                 return $next;
-                
+
             default:
                 return $next;
         }
     }
-    
+
     /**
      * Agenda próxima execução
      */
     private function scheduleNextRun(int $scheduleId, array $schedule): void
     {
         $nextRun = $this->calculateNextRun($schedule);
-        
+
         $stmt = $this->db->prepare("
             UPDATE clone_schedules 
             SET next_run_at = :next_run, 
@@ -554,7 +561,7 @@ class CloneAutoSchedulerService
             'next_run' => $nextRun?->format('Y-m-d H:i:s'),
         ]);
     }
-    
+
     /**
      * Cria registro de execução
      */
@@ -568,10 +575,10 @@ class CloneAutoSchedulerService
             )
         ");
         $stmt->execute(['schedule_id' => $scheduleId]);
-        
+
         return (int) $this->db->lastInsertId();
     }
-    
+
     /**
      * Atualiza job da execução
      */
@@ -582,14 +589,14 @@ class CloneAutoSchedulerService
         ");
         $stmt->execute(['id' => $runId, 'job_id' => $jobId]);
     }
-    
+
     /**
      * Completa execução
      */
     private function completeRun(int $runId, int $itemsFound, int $itemsCloned, ?string $error = null, ?int $jobId = null): void
     {
         $status = $error ? 'failed' : 'completed';
-        
+
         $stmt = $this->db->prepare("
             UPDATE clone_schedule_runs 
             SET status = :status,
@@ -609,7 +616,7 @@ class CloneAutoSchedulerService
             'job_id' => $jobId,
         ]);
     }
-    
+
     /**
      * Atualiza status do agendamento
      */
@@ -620,7 +627,7 @@ class CloneAutoSchedulerService
         ");
         $stmt->execute(['id' => $scheduleId, 'status' => $status]);
     }
-    
+
     /**
      * Registra ação no log
      */
@@ -644,7 +651,7 @@ class CloneAutoSchedulerService
             // Ignore log errors
         }
     }
-    
+
     /**
      * Obtém histórico de execuções
      */
@@ -662,10 +669,10 @@ class CloneAutoSchedulerService
         ");
         $stmt->bindValue(':schedule_id', $scheduleId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Estatísticas de agendamentos
      */
@@ -681,7 +688,7 @@ class CloneAutoSchedulerService
         ");
         $stmt->execute(['account_id' => $this->accountId]);
         $scheduleStats = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         $stmt = $this->db->prepare("
             SELECT 
                 COUNT(*) as total_runs,
@@ -695,7 +702,7 @@ class CloneAutoSchedulerService
         ");
         $stmt->execute(['account_id' => $this->accountId]);
         $runStats = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return [
             'schedules' => $scheduleStats,
             'runs_last_30_days' => $runStats,

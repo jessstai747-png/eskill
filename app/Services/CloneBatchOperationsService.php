@@ -18,13 +18,13 @@ class CloneBatchOperationsService
     private PDO $db;
     private int $accountId;
     private ?MercadoLivreClient $client = null;
-    
+
     public function __construct(int $accountId)
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
     }
-    
+
     private function getClient(): MercadoLivreClient
     {
         if ($this->client === null) {
@@ -32,7 +32,7 @@ class CloneBatchOperationsService
         }
         return $this->client;
     }
-    
+
     /**
      * Repricing em lote baseado em regras
      */
@@ -45,29 +45,29 @@ class CloneBatchOperationsService
             'errors' => 0,
             'details' => []
         ];
-        
+
         // Buscar itens elegíveis
         $items = $this->getItemsForRepricing($rules);
         $results['total'] = count($items);
-        
+
         foreach ($items as $item) {
             try {
                 $newPrice = $this->calculateNewPrice($item, $rules);
-                
+
                 if ($newPrice === null || $newPrice === (float) $item['price']) {
                     $results['skipped']++;
                     continue;
                 }
-                
+
                 // Aplicar novo preço
                 $client = $this->getClient();
                 $client->put("/items/{$item['target_item_id']}", [
                     'price' => $newPrice
                 ]);
-                
+
                 // Atualizar local
                 $this->updateLocalPrice($item['target_item_id'], $newPrice, $item['price']);
-                
+
                 $results['updated']++;
                 $results['details'][] = [
                     'item_id' => $item['target_item_id'],
@@ -75,9 +75,9 @@ class CloneBatchOperationsService
                     'new_price' => $newPrice,
                     'change_percent' => round((($newPrice - $item['price']) / $item['price']) * 100, 2)
                 ];
-                
+
                 usleep(100000); // Rate limit
-                
+
             } catch (\Exception $e) {
                 $results['errors']++;
                 $results['details'][] = [
@@ -86,13 +86,13 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         // Registrar operação
         $this->logBatchOperation('repricing', $results);
-        
+
         return $results;
     }
-    
+
     /**
      * Atualização massiva de estoque
      */
@@ -104,32 +104,31 @@ class CloneBatchOperationsService
             'errors' => 0,
             'details' => []
         ];
-        
+
         $client = $this->getClient();
-        
+
         foreach ($updates as $update) {
             $itemId = $update['item_id'] ?? null;
             $quantity = $update['quantity'] ?? null;
-            
+
             if (!$itemId || $quantity === null) {
                 $results['errors']++;
                 continue;
             }
-            
+
             try {
                 $client->put("/items/$itemId", [
                     'available_quantity' => (int) $quantity
                 ]);
-                
+
                 $results['updated']++;
                 $results['details'][] = [
                     'item_id' => $itemId,
                     'quantity' => (int) $quantity,
                     'success' => true
                 ];
-                
+
                 usleep(100000);
-                
             } catch (\Exception $e) {
                 $results['errors']++;
                 $results['details'][] = [
@@ -139,12 +138,12 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         $this->logBatchOperation('stock_update', $results);
-        
+
         return $results;
     }
-    
+
     /**
      * Pausar/Ativar em lote
      */
@@ -154,31 +153,30 @@ class CloneBatchOperationsService
         if (!in_array($newStatus, $validStatuses)) {
             throw new \InvalidArgumentException("Status inválido: $newStatus");
         }
-        
+
         $results = [
             'total' => count($itemIds),
             'updated' => 0,
             'errors' => 0,
             'details' => []
         ];
-        
+
         $client = $this->getClient();
-        
+
         foreach ($itemIds as $itemId) {
             try {
                 $client->put("/items/$itemId", [
                     'status' => $newStatus
                 ]);
-                
+
                 $results['updated']++;
                 $results['details'][] = [
                     'item_id' => $itemId,
                     'new_status' => $newStatus,
                     'success' => true
                 ];
-                
+
                 usleep(100000);
-                
             } catch (\Exception $e) {
                 $results['errors']++;
                 $results['details'][] = [
@@ -188,12 +186,12 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         $this->logBatchOperation('status_change', $results);
-        
+
         return $results;
     }
-    
+
     /**
      * Atualização de títulos em lote
      */
@@ -205,44 +203,43 @@ class CloneBatchOperationsService
             'errors' => 0,
             'details' => []
         ];
-        
+
         $client = $this->getClient();
-        
+
         foreach ($updates as $update) {
             $itemId = $update['item_id'] ?? null;
             $newTitle = $update['title'] ?? null;
-            
+
             if (!$itemId || !$newTitle) {
                 $results['errors']++;
                 continue;
             }
-            
+
             // Validar título
             if (mb_strlen($newTitle) > 60) {
                 $newTitle = mb_substr($newTitle, 0, 57) . '...';
             }
-            
+
             try {
                 $client->put("/items/$itemId", [
                     'title' => $newTitle
                 ]);
-                
+
                 // Atualizar local
                 $stmt = $this->db->prepare("
                     UPDATE cloned_items SET title = :title 
                     WHERE target_item_id = :item_id
                 ");
                 $stmt->execute(['title' => $newTitle, 'item_id' => $itemId]);
-                
+
                 $results['updated']++;
                 $results['details'][] = [
                     'item_id' => $itemId,
                     'new_title' => $newTitle,
                     'success' => true
                 ];
-                
+
                 usleep(100000);
-                
             } catch (\Exception $e) {
                 $results['errors']++;
                 $results['details'][] = [
@@ -252,12 +249,12 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         $this->logBatchOperation('title_update', $results);
-        
+
         return $results;
     }
-    
+
     /**
      * Aplicar regra de preço a categoria
      */
@@ -274,9 +271,9 @@ class CloneBatchOperationsService
             'account_id' => $this->accountId,
             'category_id' => $categoryId
         ]);
-        
+
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $updates = [];
         foreach ($items as $item) {
             $newPrice = $this->calculateNewPrice($item, $rule);
@@ -287,10 +284,10 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         return $this->batchPriceUpdate($updates);
     }
-    
+
     /**
      * Atualização de preços em lote
      */
@@ -302,34 +299,33 @@ class CloneBatchOperationsService
             'errors' => 0,
             'details' => []
         ];
-        
+
         $client = $this->getClient();
-        
+
         foreach ($updates as $update) {
             $itemId = $update['item_id'] ?? null;
             $price = $update['price'] ?? null;
-            
+
             if (!$itemId || $price === null) {
                 $results['errors']++;
                 continue;
             }
-            
+
             try {
                 $client->put("/items/$itemId", [
                     'price' => (float) $price
                 ]);
-                
+
                 $this->updateLocalPrice($itemId, (float) $price);
-                
+
                 $results['updated']++;
                 $results['details'][] = [
                     'item_id' => $itemId,
                     'price' => (float) $price,
                     'success' => true
                 ];
-                
+
                 usleep(100000);
-                
             } catch (\Exception $e) {
                 $results['errors']++;
                 $results['details'][] = [
@@ -339,12 +335,12 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         $this->logBatchOperation('price_update', $results);
-        
+
         return $results;
     }
-    
+
     /**
      * Sincronização em lote de métricas
      */
@@ -356,7 +352,7 @@ class CloneBatchOperationsService
             'errors' => 0,
             'details' => []
         ];
-        
+
         // Se não especificado, buscar todos ativos
         if (empty($itemIds)) {
             $stmt = $this->db->prepare("
@@ -369,15 +365,15 @@ class CloneBatchOperationsService
             $stmt->execute(['account_id' => $this->accountId]);
             $itemIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'target_item_id');
         }
-        
+
         $results['total'] = count($itemIds);
         $client = $this->getClient();
-        
+
         foreach ($itemIds as $itemId) {
             try {
                 // Buscar dados atuais
                 $itemData = $client->get("/items/$itemId");
-                
+
                 // Buscar visitas
                 $visits = 0;
                 try {
@@ -389,7 +385,7 @@ class CloneBatchOperationsService
                 } catch (\Exception $e) {
                     error_log('CloneBatchOperationsService: failed to fetch visits for ' . $itemId . ' - ' . $e->getMessage());
                 }
-                
+
                 // Atualizar métricas
                 $this->updateItemMetrics($itemId, [
                     'price' => $itemData['price'] ?? 0,
@@ -397,11 +393,10 @@ class CloneBatchOperationsService
                     'sold_quantity' => $itemData['sold_quantity'] ?? 0,
                     'visits' => $visits
                 ]);
-                
+
                 $results['synced']++;
-                
+
                 usleep(150000);
-                
             } catch (\Exception $e) {
                 $results['errors']++;
                 $results['details'][] = [
@@ -410,12 +405,12 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         $this->logBatchOperation('sync_metrics', $results);
-        
+
         return $results;
     }
-    
+
     /**
      * Aplicar otimização SEO em lote
      */
@@ -428,36 +423,36 @@ class CloneBatchOperationsService
             'errors' => 0,
             'details' => []
         ];
-        
+
         $seoService = new CloneSeoOptimizationService($this->accountId);
         $client = $this->getClient();
-        
+
         foreach ($itemIds as $itemId) {
             try {
                 // Analisar item
                 $analysis = $seoService->analyzeForClone($itemId, $level);
-                
+
                 if (!$analysis['success'] ?? true) {
                     $results['errors']++;
                     continue;
                 }
-                
+
                 // Se score já bom, skip
                 if (($analysis['current_score'] ?? 0) >= 80) {
                     $results['skipped']++;
                     continue;
                 }
-                
+
                 // Buscar dados atuais
                 $itemData = $client->get("/items/$itemId");
-                
+
                 // Aplicar otimizações
                 $newTitle = $seoService->optimizeTitle($itemData['title'] ?? '', $level);
-                
+
                 if ($newTitle !== $itemData['title']) {
                     $client->put("/items/$itemId", ['title' => $newTitle]);
                 }
-                
+
                 $results['optimized']++;
                 $results['details'][] = [
                     'item_id' => $itemId,
@@ -465,9 +460,8 @@ class CloneBatchOperationsService
                     'potential_score' => $analysis['potential_score'],
                     'title_changed' => $newTitle !== $itemData['title']
                 ];
-                
+
                 usleep(200000);
-                
             } catch (\Exception $e) {
                 $results['errors']++;
                 $results['details'][] = [
@@ -476,12 +470,12 @@ class CloneBatchOperationsService
                 ];
             }
         }
-        
+
         $this->logBatchOperation('seo_optimization', $results);
-        
+
         return $results;
     }
-    
+
     /**
      * Encerrar clones antigos sem vendas
      */
@@ -501,9 +495,9 @@ class CloneBatchOperationsService
             'account_id' => $this->accountId,
             'days' => $daysWithoutSales
         ]);
-        
+
         $staleItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (empty($staleItems)) {
             return [
                 'total' => 0,
@@ -511,12 +505,12 @@ class CloneBatchOperationsService
                 'message' => 'Nenhum item elegível para encerramento'
             ];
         }
-        
+
         $itemIds = array_column($staleItems, 'target_item_id');
-        
+
         return $this->batchStatusChange($itemIds, 'paused');
     }
-    
+
     /**
      * Busca itens para repricing
      */
@@ -529,30 +523,30 @@ class CloneBatchOperationsService
             WHERE ci.target_account_id = :account_id
             AND ci.status = 'completed'
         ";
-        
+
         $params = ['account_id' => $this->accountId];
-        
+
         if (!empty($rules['category_id'])) {
             $query .= " AND ci.category_id = :category_id";
             $params['category_id'] = $rules['category_id'];
         }
-        
+
         if (!empty($rules['min_price'])) {
             $query .= " AND ci.price >= :min_price";
             $params['min_price'] = $rules['min_price'];
         }
-        
+
         if (!empty($rules['max_price'])) {
             $query .= " AND ci.price <= :max_price";
             $params['max_price'] = $rules['max_price'];
         }
-        
+
         $stmt = $this->db->prepare($query);
         $stmt->execute($params);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Calcula novo preço baseado em regras
      */
@@ -560,42 +554,42 @@ class CloneBatchOperationsService
     {
         $currentPrice = (float) $item['price'];
         $newPrice = $currentPrice;
-        
+
         $type = $rules['type'] ?? 'percentage';
         $value = (float) ($rules['value'] ?? 0);
-        
+
         switch ($type) {
             case 'percentage':
                 $newPrice = $currentPrice * (1 + ($value / 100));
                 break;
-                
+
             case 'fixed_increase':
                 $newPrice = $currentPrice + $value;
                 break;
-                
+
             case 'fixed_decrease':
                 $newPrice = $currentPrice - $value;
                 break;
-                
+
             case 'set_price':
                 $newPrice = $value;
                 break;
-                
+
             case 'round':
                 $newPrice = $this->roundPrice($currentPrice, $rules);
                 break;
         }
-        
+
         // Validar preço mínimo
         $minPrice = (float) ($rules['min_price'] ?? 1);
         if ($newPrice < $minPrice) {
             $newPrice = $minPrice;
         }
-        
+
         // Arredondar para 2 casas
         return round($newPrice, 2);
     }
-    
+
     /**
      * Arredonda preço conforme regras
      */
@@ -603,20 +597,20 @@ class CloneBatchOperationsService
     {
         $strategy = $rules['round_strategy'] ?? 'nearest';
         $precision = (int) ($rules['round_precision'] ?? 0);
-        
+
         switch ($strategy) {
             case 'up':
                 return ceil($price / pow(10, $precision)) * pow(10, $precision);
-                
+
             case 'down':
                 return floor($price / pow(10, $precision)) * pow(10, $precision);
-                
+
             case 'nearest':
             default:
                 return round($price / pow(10, $precision)) * pow(10, $precision);
         }
     }
-    
+
     /**
      * Atualiza preço local
      */
@@ -626,7 +620,7 @@ class CloneBatchOperationsService
             UPDATE cloned_items SET price = :price WHERE target_item_id = :item_id
         ");
         $stmt->execute(['price' => $newPrice, 'item_id' => $itemId]);
-        
+
         // Registrar histórico
         if ($oldPrice !== null) {
             try {
@@ -648,17 +642,17 @@ class CloneBatchOperationsService
             }
         }
     }
-    
+
     /**
      * Atualiza métricas de item
      */
     private function updateItemMetrics(string $itemId, array $data): void
     {
         $revenue = ($data['sold_quantity'] ?? 0) * ($data['price'] ?? 0);
-        $conversion = ($data['visits'] ?? 0) > 0 
-            ? (($data['sold_quantity'] ?? 0) / $data['visits']) * 100 
+        $conversion = ($data['visits'] ?? 0) > 0
+            ? (($data['sold_quantity'] ?? 0) / $data['visits']) * 100
             : 0;
-        
+
         $stmt = $this->db->prepare("
             INSERT INTO clone_item_metrics (
                 account_id, item_id, visits, sales, revenue, conversion_rate, synced_at
@@ -672,7 +666,7 @@ class CloneBatchOperationsService
                 conversion_rate = VALUES(conversion_rate),
                 synced_at = NOW()
         ");
-        
+
         $stmt->execute([
             'account_id' => $this->accountId,
             'item_id' => $itemId,
@@ -681,7 +675,7 @@ class CloneBatchOperationsService
             'revenue' => $revenue,
             'conversion' => $conversion
         ]);
-        
+
         // Atualizar último sync
         $stmt = $this->db->prepare("
             UPDATE cloned_items SET last_synced_at = NOW() 
@@ -689,7 +683,7 @@ class CloneBatchOperationsService
         ");
         $stmt->execute(['item_id' => $itemId]);
     }
-    
+
     /**
      * Registra operação em lote
      */
@@ -704,7 +698,7 @@ class CloneBatchOperationsService
                     :account_id, :type, :total, :success, :errors, :results, NOW()
                 )
             ");
-            
+
             $stmt->execute([
                 'account_id' => $this->accountId,
                 'type' => $type,
@@ -717,7 +711,7 @@ class CloneBatchOperationsService
             // Tabela pode não existir
         }
     }
-    
+
     /**
      * Histórico de operações em lote
      */
@@ -733,7 +727,7 @@ class CloneBatchOperationsService
             ");
             $stmt->bindValue(':account_id', $this->accountId, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             return [];
