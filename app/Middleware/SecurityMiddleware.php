@@ -370,7 +370,18 @@ class SecurityMiddleware
      */
     private function redirectToHttps(): void
     {
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        // Validate host against trusted domain to prevent host header injection
+        $trustedDomain = $_ENV['APP_DOMAIN'] ?? 'eskill.com.br';
+        $host = $_SERVER['HTTP_HOST'] ?? $trustedDomain;
+
+        // Strip port for comparison
+        $hostWithoutPort = strtolower(explode(':', $host)[0]);
+        $trustedWithoutPort = strtolower(explode(':', $trustedDomain)[0]);
+
+        if ($hostWithoutPort !== $trustedWithoutPort && $hostWithoutPort !== 'localhost') {
+            $host = $trustedDomain;
+        }
+
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
 
         header("Location: https://{$host}{$uri}", true, 301);
