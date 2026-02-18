@@ -53,7 +53,20 @@ class AnalyticsController extends BaseController
 
         $start = $this->request->get('start', date('Y-m-01'));
         $end = $this->request->get('end', date('Y-m-d'));
+
+        // Validate date format
+        $datePattern = '/^\d{4}-\d{2}-\d{2}$/';
+        if (!preg_match($datePattern, $start) || !preg_match($datePattern, $end)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Formato de data inválido. Use YYYY-MM-DD.']);
+            return;
+        }
+
+        $allowedGranularity = ['day', 'week', 'month'];
         $granularity = $this->request->get('granularity', 'day');
+        if (!in_array($granularity, $allowedGranularity, true)) {
+            $granularity = 'day';
+        }
 
         $data = $this->service->getRevenueTrend($start, $end, $granularity);
         echo json_encode(['success' => true, 'data' => $data]);
