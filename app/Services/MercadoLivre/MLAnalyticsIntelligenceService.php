@@ -5,6 +5,7 @@ namespace App\Services\MercadoLivre;
 
 use App\Services\MercadoLivreClient;
 use App\Services\CacheService;
+use App\Services\StructuredLogService;
 
 /**
  * Enhanced ML Analytics and Intelligence Service
@@ -23,6 +24,7 @@ class MLAnalyticsIntelligenceService
     private \PDO $db;
     private MercadoLivreClient $mlClient;
     private CacheService $cache;
+    private StructuredLogService $logger;
     private int $accountId;
     private array $config;
 
@@ -32,6 +34,7 @@ class MLAnalyticsIntelligenceService
         $this->db = \App\Database::getInstance();
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->cache = new CacheService();
+        $this->logger = new StructuredLogService();
         $this->config = $this->loadAnalyticsConfig();
     }
 
@@ -62,7 +65,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getComprehensiveAnalytics error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getComprehensiveAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -97,7 +100,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::analyzeSearchBehavior error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::analyzeSearchBehavior error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -136,7 +139,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getCategoryIntelligence error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getCategoryIntelligence error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -170,7 +173,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::mapCustomerJourney error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::mapCustomerJourney error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -204,7 +207,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::analyzeConversionFunnel error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::analyzeConversionFunnel error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -238,7 +241,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::trackROIAttribution error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::trackROIAttribution error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -272,7 +275,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::generatePredictiveAnalytics error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::generatePredictiveAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -305,7 +308,7 @@ class MLAnalyticsIntelligenceService
             ];
             
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::generateIntelligenceReports error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::generateIntelligenceReports error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -438,7 +441,7 @@ class MLAnalyticsIntelligenceService
                     $latestPoints[] = strtotime((string)$latest);
                 }
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getDataFreshness error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getDataFreshness error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // ignorar fonte
             }
 
@@ -451,7 +454,7 @@ class MLAnalyticsIntelligenceService
                     $latestPoints[] = strtotime((string)$latest);
                 }
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getDataFreshness error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getDataFreshness error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // ignorar fonte
             }
 
@@ -464,7 +467,7 @@ class MLAnalyticsIntelligenceService
                     $latestPoints[] = strtotime((string)$latest);
                 }
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getDataFreshness error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getDataFreshness error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // ignorar fonte
             }
 
@@ -492,7 +495,7 @@ class MLAnalyticsIntelligenceService
             $days = (int)floor($hours / 24);
             return $days . ' d';
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getDataFreshness error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getDataFreshness error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return 'indisponível';
         }
     }
@@ -543,7 +546,7 @@ class MLAnalyticsIntelligenceService
                 'period_days' => $days,
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getPerformanceOverview error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getPerformanceOverview error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return ['error' => $e->getMessage()];
         }
     }
@@ -558,7 +561,7 @@ class MLAnalyticsIntelligenceService
                 $catTrends = $this->mlClient->getTrends($catId);
                 $trends[$catId] = $catTrends;
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getSearchAnalytics error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getSearchAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Pular
             }
         }
@@ -592,7 +595,7 @@ class MLAnalyticsIntelligenceService
                 'total_customers' => intval($result['total_customers'] ?? 0),
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getCustomerJourneyAnalysis error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getCustomerJourneyAnalysis error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'paying_customers' => 0,
                 'engaged_customers' => 0,
@@ -625,7 +628,7 @@ class MLAnalyticsIntelligenceService
                 'conversion_rate' => $impressions > 0 ? round(($purchases / $impressions) * 100, 2) : 0,
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getConversionFunnel error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getConversionFunnel error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'impressions' => 0,
                 'purchases' => 0,
@@ -664,7 +667,7 @@ class MLAnalyticsIntelligenceService
                 'previous_sales' => $previous,
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getPredictiveInsights error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getPredictiveInsights error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'sales_trend' => 'unknown',
                 'trend_pct' => 0,
@@ -684,7 +687,7 @@ class MLAnalyticsIntelligenceService
                 $analysis = $this->mlClient->getCompetitorAnalysis('', $catId);
                 $positioning[$catId] = $analysis['price_analysis'] ?? [];
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getMarketPositioning error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getMarketPositioning error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Pular
             }
         }
@@ -709,7 +712,7 @@ class MLAnalyticsIntelligenceService
                 'total_items' => intval($result['total_items'] ?? 0),
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getOperationalMetrics error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getOperationalMetrics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'active_items' => 0,
                 'paused_items' => 0,
@@ -727,7 +730,7 @@ class MLAnalyticsIntelligenceService
             try {
                 $data[$catId] = $this->mlClient->getTrends($catId);
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getSearchData error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getSearchData error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Pular
             }
         }
@@ -771,7 +774,7 @@ class MLAnalyticsIntelligenceService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_COLUMN) ?: [];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getActiveCategories error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getActiveCategories error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'total_revenue' => 0.0,
                 'total_orders' => 0,
@@ -806,13 +809,13 @@ class MLAnalyticsIntelligenceService
                 $searchResults = $this->mlClient->searchItems(['category' => $category, 'limit' => 5]);
                 $marketData['total_listings'] = intval($searchResults['paging']['total'] ?? 0);
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::analyzeCategoryPerformance error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::analyzeCategoryPerformance error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Continuar
             }
 
             return array_merge($data, ['category_id' => $category, 'market' => $marketData]);
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::analyzeCategoryPerformance error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::analyzeCategoryPerformance error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return ['category_id' => $category, 'error' => $e->getMessage()];
         }
     }
@@ -902,7 +905,7 @@ class MLAnalyticsIntelligenceService
                 'answered' => intval($result['answered'] ?? 0),
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::analyzeTouchpoints error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::analyzeTouchpoints error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'total_questions' => 0,
                 'answered' => 0,
@@ -931,7 +934,7 @@ class MLAnalyticsIntelligenceService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::identifyConversionPoints error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::identifyConversionPoints error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'organic' => [
                     'name' => 'Orgânico',
@@ -971,7 +974,7 @@ class MLAnalyticsIntelligenceService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::analyzeDropOffPoints error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::analyzeDropOffPoints error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'models' => [],
                 'recommended' => 'time_decay',
@@ -1027,7 +1030,7 @@ class MLAnalyticsIntelligenceService
 
             return $segments;
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getSegmentJourneys error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getSegmentJourneys error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'new' => ['label' => 'Novos', 'buyers' => 0, 'total_spent' => 0, 'avg_order' => 0, 'avg_frequency' => 0],
                 'repeat' => ['label' => 'Recorrentes', 'buyers' => 0, 'total_spent' => 0, 'avg_order' => 0, 'avg_frequency' => 0],
@@ -1072,7 +1075,7 @@ class MLAnalyticsIntelligenceService
                     : 0,
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getLifetimeValueAnalysis error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getLifetimeValueAnalysis error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'repeat_buyers' => 0,
                 'avg_ltv' => 0,
@@ -1285,7 +1288,7 @@ class MLAnalyticsIntelligenceService
 
             return $funnels;
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getSegmentFunnels error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getSegmentFunnels error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'new' => [
                     'buyers' => 0,
@@ -1349,7 +1352,7 @@ class MLAnalyticsIntelligenceService
 
             return $funnels;
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getProductFunnels error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getProductFunnels error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [[
                 'item_id' => '',
                 'title' => 'Dados indisponíveis',
@@ -1396,7 +1399,7 @@ class MLAnalyticsIntelligenceService
                 'stage_attribution' => $attribution,
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::performFunnelAttribution error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::performFunnelAttribution error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'total_revenue' => 0,
                 'model' => 'position_based',
@@ -1443,7 +1446,7 @@ class MLAnalyticsIntelligenceService
                 'optimization_scenarios' => $scenarios,
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::calculateOptimizationImpact error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::calculateOptimizationImpact error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'current_conversion_rate' => 0,
                 'current_aov' => 0,
@@ -1603,7 +1606,7 @@ class MLAnalyticsIntelligenceService
                 $adRevenue = floatval($adData['ad_revenue'] ?? 0);
                 $adCost = floatval($adData['ad_cost'] ?? 0);
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::performMultiTouchAttribution error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::performMultiTouchAttribution error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Tabela pode não existir
             }
 
@@ -1639,7 +1642,7 @@ class MLAnalyticsIntelligenceService
                 'recommended_model' => 'time_decay',
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::performMultiTouchAttribution error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::performMultiTouchAttribution error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'abandoned_terms' => [],
                 'total_gaps' => 0,
@@ -1675,7 +1678,7 @@ class MLAnalyticsIntelligenceService
                 $stmtAds->execute();
                 $adData = $stmtAds->fetch(\PDO::FETCH_ASSOC) ?: $adData;
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getChannelPerformance error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getChannelPerformance error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Tabela pode não existir
             }
 
@@ -1706,7 +1709,7 @@ class MLAnalyticsIntelligenceService
 
             return $channels;
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getChannelPerformance error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getChannelPerformance error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'segments' => [
                     'direct_buyers' => [
@@ -1752,7 +1755,7 @@ class MLAnalyticsIntelligenceService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::calculateROIByProduct error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::calculateROIByProduct error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [[
                 'item_id' => '',
                 'revenue' => 0.0,
@@ -1781,7 +1784,7 @@ class MLAnalyticsIntelligenceService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::calculateROIByCategory error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::calculateROIByCategory error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [[
                 'category_id' => '',
                 'revenue' => 0.0,
@@ -1823,7 +1826,7 @@ class MLAnalyticsIntelligenceService
                 'total_revenue_analyzed' => round($totalRevenue, 2),
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::compareAttributionModels error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::compareAttributionModels error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'models' => [],
                 'recommended' => 'time_decay',
@@ -1852,7 +1855,7 @@ class MLAnalyticsIntelligenceService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::performCostAnalysis error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::performCostAnalysis error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'estimated_fees' => 0.0,
                 'gross_revenue' => 0.0,
@@ -1910,7 +1913,7 @@ class MLAnalyticsIntelligenceService
                 ],
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::generateBudgetOptimization error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::generateBudgetOptimization error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'current_budget' => 0.0,
                 'current_roas' => 0,
@@ -2264,7 +2267,7 @@ class MLAnalyticsIntelligenceService
                 'term_details' => array_slice($rates, 0, 20),
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getSearchSuccessRates error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getSearchSuccessRates error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'total_trending_terms' => 0,
                 'terms_with_listings' => 0,
@@ -2415,7 +2418,7 @@ class MLAnalyticsIntelligenceService
                     : 'Boa cobertura \u2014 todos os termos possuem an\u00fancios',
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getAbandonedSearches error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getAbandonedSearches error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'abandoned_terms' => [],
                 'total_gaps' => 0,
@@ -2450,7 +2453,7 @@ class MLAnalyticsIntelligenceService
                 $matchCount = (int)($row['matches'] ?? 0);
                 $totalSales = (int)($row['total_sold'] ?? 0);
             } catch (\Exception $e) {
-                error_log("MLAnalyticsIntelligenceService::getKeywordPerformance error: " . $e->getMessage());
+                $this->logger->warning('MLAnalyticsIntelligenceService::getKeywordPerformance error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Tabela pode não existir
             }
 
@@ -2538,7 +2541,7 @@ class MLAnalyticsIntelligenceService
                 'data_source' => 'behavioral_inference',
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::segmentSearchUsers error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::segmentSearchUsers error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'segments' => [
                     'direct_buyers' => [
@@ -2631,7 +2634,7 @@ class MLAnalyticsIntelligenceService
                 'revenue' => round(floatval($metrics['total_revenue'] ?? 0), 2),
             ];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::analyzeSearchFunnel error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::analyzeSearchFunnel error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'funnel_stages' => [
                     ['stage' => 'Busca', 'volume' => 0, 'rate' => 100.0],
@@ -2668,7 +2671,7 @@ class MLAnalyticsIntelligenceService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::getDemandHistoricalData error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::getDemandHistoricalData error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [[
                 'date' => date('Y-m-d'),
                 'sales' => 0.0,
@@ -2985,7 +2988,7 @@ class MLAnalyticsIntelligenceService
             if ($count > 0) return 0.6;
             return 0.3;
         } catch (\Exception $e) {
-            error_log("MLAnalyticsIntelligenceService::calculateDataQualityScore error: " . $e->getMessage());
+            $this->logger->warning('MLAnalyticsIntelligenceService::calculateDataQualityScore error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return 0.5;
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -12,12 +13,12 @@ use PDO;
 class EanBalance
 {
     private PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Obter saldo de um seller
      */
@@ -28,17 +29,17 @@ class EanBalance
         ");
         $stmt->execute(['account_id' => $accountId]);
         $balance = $stmt->fetch();
-        
+
         if (!$balance) {
             // Tentar criar registro se não existir
             $created = $this->create($accountId);
-            
+
             if ($created > 0) {
                 // Re-buscar o registro criado
                 $stmt->execute(['account_id' => $accountId]);
                 return $stmt->fetch() ?: null;
             }
-            
+
             // Se não conseguiu criar, retornar valores padrão
             return [
                 'account_id' => $accountId,
@@ -50,10 +51,10 @@ class EanBalance
                 'updated_at' => date('Y-m-d H:i:s')
             ];
         }
-        
+
         return $balance;
     }
-    
+
     /**
      * Criar registro de saldo
      */
@@ -65,7 +66,7 @@ class EanBalance
         $stmt->execute(['account_id' => $accountId]);
         return (int) $this->db->lastInsertId();
     }
-    
+
     /**
      * Creditar EANs (após compra paga)
      */
@@ -73,7 +74,7 @@ class EanBalance
     {
         // Garantir que o registro existe
         $this->create($accountId);
-        
+
         $stmt = $this->db->prepare("
             UPDATE ean_balances 
             SET 
@@ -82,14 +83,14 @@ class EanBalance
                 last_purchase_at = NOW()
             WHERE account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             'account_id' => $accountId,
             'qty1' => $quantity,
             'qty2' => $quantity,
         ]);
     }
-    
+
     /**
      * Debitar EANs (ao usar)
      */
@@ -102,7 +103,7 @@ class EanBalance
                 available = available - :qty2
             WHERE account_id = :account_id AND available >= :qty3
         ");
-        
+
         return $stmt->execute([
             'account_id' => $accountId,
             'qty1' => $quantity,
@@ -110,7 +111,7 @@ class EanBalance
             'qty3' => $quantity,
         ]);
     }
-    
+
     /**
      * Desfazer uso de EAN (desvincular)
      */
@@ -123,7 +124,7 @@ class EanBalance
                 available = available + :qty2
             WHERE account_id = :account_id AND total_used >= :qty3
         ");
-        
+
         return $stmt->execute([
             'account_id' => $accountId,
             'qty1' => $quantity,
@@ -131,39 +132,62 @@ class EanBalance
             'qty3' => $quantity,
         ]);
     }
-    
+
     /**
      * Estornar crédito (reembolso)
-     * Prevents negative balance by requiring available >= quantity
+     * Uses transaction + SELECT FOR UPDATE to prevent race conditions.
+     * Prevents negative balance by verifying available >= quantity under lock.
      */
     public function refund(int $accountId, int $quantity): bool
     {
-        $stmt = $this->db->prepare("
-            UPDATE ean_balances 
-            SET 
-                total_purchased = total_purchased - :qty1,
-                available = available - :qty2
-            WHERE account_id = :account_id
-              AND total_purchased >= :qty3
-              AND available >= :qty4
-        ");
-        
-        $stmt->execute([
-            'account_id' => $accountId,
-            'qty1' => $quantity,
-            'qty2' => $quantity,
-            'qty3' => $quantity,
-            'qty4' => $quantity,
-        ]);
+        $this->db->beginTransaction();
+        try {
+            // Lock the row to prevent concurrent refunds racing
+            $lockStmt = $this->db->prepare("
+                SELECT available, total_purchased
+                FROM ean_balances
+                WHERE account_id = :account_id
+                FOR UPDATE
+            ");
+            $lockStmt->execute(['account_id' => $accountId]);
+            $row = $lockStmt->fetch(\PDO::FETCH_ASSOC);
 
-        if ($stmt->rowCount() === 0) {
-            error_log("EanBalance::refund failed — insufficient balance for account_id={$accountId}, qty={$quantity}");
-            return false;
+            if (!$row) {
+                $this->db->rollBack();
+                error_log("EanBalance::refund failed — no balance record for account_id={$accountId}");
+                return false;
+            }
+
+            if ((int)$row['available'] < $quantity || (int)$row['total_purchased'] < $quantity) {
+                $this->db->rollBack();
+                error_log("EanBalance::refund failed — insufficient balance for account_id={$accountId}, qty={$quantity}, available={$row['available']}, total_purchased={$row['total_purchased']}");
+                return false;
+            }
+
+            // Row is locked — safe to update without race condition
+            $updateStmt = $this->db->prepare("
+                UPDATE ean_balances 
+                SET 
+                    total_purchased = total_purchased - :qty1,
+                    available = available - :qty2
+                WHERE account_id = :account_id
+            ");
+
+            $updateStmt->execute([
+                'account_id' => $accountId,
+                'qty1' => $quantity,
+                'qty2' => $quantity,
+            ]);
+
+            $this->db->commit();
+            return true;
+        } catch (\PDOException $e) {
+            $this->db->rollBack();
+            error_log("EanBalance::refund exception for account_id={$accountId}: " . $e->getMessage());
+            throw $e;
         }
-
-        return true;
     }
-    
+
     /**
      * Ajustar saldo manualmente
      */
@@ -177,7 +201,7 @@ class EanBalance
                 available = :available
             WHERE account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             'account_id' => $accountId,
             'total' => $newAvailable + $newUsed,
@@ -185,7 +209,7 @@ class EanBalance
             'available' => $newAvailable,
         ]);
     }
-    
+
     /**
      * Verificar se tem saldo disponível
      */
@@ -194,7 +218,7 @@ class EanBalance
         $balance = $this->getByAccount($accountId);
         return $balance && $balance['available'] >= $quantity;
     }
-    
+
     /**
      * Recalcular saldo baseado nas atribuições
      */
@@ -211,10 +235,10 @@ class EanBalance
         ");
         $stmt->execute(['account_id' => $accountId]);
         $counts = $stmt->fetch();
-        
+
         // Atualizar saldo
         $this->create($accountId);
-        
+
         $updateStmt = $this->db->prepare("
             UPDATE ean_balances 
             SET 
@@ -223,7 +247,7 @@ class EanBalance
                 available = :available
             WHERE account_id = :account_id
         ");
-        
+
         return $updateStmt->execute([
             'account_id' => $accountId,
             'total' => (int) $counts['total'],
@@ -231,7 +255,7 @@ class EanBalance
             'available' => (int) $counts['available'],
         ]);
     }
-    
+
     /**
      * Listar todos os saldos (admin)
      */

@@ -5,6 +5,7 @@ namespace App\Services\MercadoLivre;
 
 use App\Services\MercadoLivreClient;
 use App\Services\CacheService;
+use App\Services\StructuredLogService;
 
 /**
  * Smart Q&A Automation Service
@@ -22,6 +23,7 @@ class SmartQAService
     private \PDO $db;
     private MercadoLivreClient $mlClient;
     private CacheService $cache;
+    private StructuredLogService $logger;
     private int $accountId;
     private array $config;
     private array $knowledgeBase;
@@ -32,6 +34,7 @@ class SmartQAService
         $this->db = \App\Database::getInstance();
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->cache = new CacheService();
+        $this->logger = new StructuredLogService();
         $this->config = $this->loadQAConfig();
         $this->knowledgeBase = $this->loadKnowledgeBase();
     }
@@ -69,7 +72,7 @@ class SmartQAService
             ];
             
         } catch (\Exception $e) {
-            error_log("SmartQAService::processAutoResponses error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::processAutoResponses error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -114,7 +117,7 @@ class SmartQAService
             ];
             
         } catch (\Exception $e) {
-            error_log("SmartQAService::generateProactiveQA error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::generateProactiveQA error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -151,7 +154,7 @@ class SmartQAService
             ];
             
         } catch (\Exception $e) {
-            error_log("SmartQAService::processBatchAnswers error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::processBatchAnswers error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -186,7 +189,7 @@ class SmartQAService
             ];
             
         } catch (\Exception $e) {
-            error_log("SmartQAService::updateKnowledgeBase error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::updateKnowledgeBase error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -219,7 +222,7 @@ class SmartQAService
             ];
             
         } catch (\Exception $e) {
-            error_log("SmartQAService::getQAAnalytics error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getQAAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -538,7 +541,7 @@ class SmartQAService
             $item['has_warranty'] = ((float)($item['price'] ?? 0)) > 100;
             return $item;
         } catch (\Exception $e) {
-            error_log("SmartQAService::getProductInfo error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getProductInfo error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -560,7 +563,7 @@ class SmartQAService
             $stmt->execute(['account_id' => $this->accountId]);
             return array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'id');
         } catch (\Exception $e) {
-            error_log("SmartQAService::getProductsNeedingQA error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getProductsNeedingQA error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -582,7 +585,7 @@ class SmartQAService
             }
             return $rows;
         } catch (\Exception $e) {
-            error_log("SmartQAService::loadKnowledgeBase error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::loadKnowledgeBase error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -630,7 +633,7 @@ class SmartQAService
             ]);
             $this->knowledgeBase[] = $entry;
         } catch (\Exception $e) {
-            error_log("SmartQAService::addToKnowledgeBase error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::addToKnowledgeBase error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             // ignore duplicates
         }
     }
@@ -692,7 +695,7 @@ class SmartQAService
                 WHERE id = :id
             ")->execute(['id' => $entryId]);
         } catch (\Exception $e) {
-            error_log("SmartQAService::incrementKBUsage error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::incrementKBUsage error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             // non-critical
         }
     }
@@ -942,7 +945,7 @@ class SmartQAService
                 }
             }
         } catch (\Exception $e) {
-            error_log("SmartQAService::saveProactiveQA error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::saveProactiveQA error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             // table may not exist yet
         }
     }
@@ -1024,7 +1027,7 @@ class SmartQAService
                 'account_id'  => $this->accountId
             ]);
         } catch (\Exception $e) {
-            error_log("SmartQAService::logAutoResponse error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::logAutoResponse error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             // non-critical
         }
     }
@@ -1091,7 +1094,7 @@ class SmartQAService
                 ? round((int)($overview['answered'] ?? 0) / $total * 100, 1) : 0;
             return $overview;
         } catch (\Exception $e) {
-            error_log("SmartQAService::getQAOverview error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getQAOverview error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return ['error' => $e->getMessage()];
         }
     }
@@ -1117,7 +1120,7 @@ class SmartQAService
             $stmt->execute(['account_id' => $this->accountId, 'since' => $since]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log("SmartQAService::getResponsePerformanceAnalytics error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getResponsePerformanceAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -1136,7 +1139,7 @@ class SmartQAService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log("SmartQAService::getQuestionTrends error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getQuestionTrends error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -1160,7 +1163,7 @@ class SmartQAService
             $data['auto_response_rate'] = $total > 0 ? round($auto / $total * 100, 1) : 0;
             return $data;
         } catch (\Exception $e) {
-            error_log("SmartQAService::getAutoResponseEffectiveness error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getAutoResponseEffectiveness error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -1180,7 +1183,7 @@ class SmartQAService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log("SmartQAService::getEscalationPatterns error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getEscalationPatterns error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -1204,7 +1207,7 @@ class SmartQAService
             }
             return $rows;
         } catch (\Exception $e) {
-            error_log("SmartQAService::getKnowledgeBasePerformance error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getKnowledgeBasePerformance error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -1226,7 +1229,7 @@ class SmartQAService
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log("SmartQAService::getProductQuestionHeatmap error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getProductQuestionHeatmap error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }
@@ -1257,7 +1260,7 @@ class SmartQAService
                 'performance_grade' => $avgMin < 60 ? 'excellent' : ($avgMin < 240 ? 'good' : ($avgMin < 720 ? 'average' : 'needs_improvement'))
             ];
         } catch (\Exception $e) {
-            error_log("SmartQAService::getTimeToAnswerAnalysis error: " . $e->getMessage());
+            $this->logger->warning('SmartQAService::getTimeToAnswerAnalysis error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [];
         }
     }

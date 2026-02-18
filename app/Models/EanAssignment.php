@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -12,12 +13,12 @@ use PDO;
 class EanAssignment
 {
     private PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Atribuir EAN a um seller
      */
@@ -29,7 +30,7 @@ class EanAssignment
             VALUES 
             (:ean_id, :account_id, :purchase_id, :ml_item_id, :product_title, :product_sku, :category_id)
         ");
-        
+
         $stmt->execute([
             'ean_id' => $eanId,
             'account_id' => $accountId,
@@ -39,10 +40,10 @@ class EanAssignment
             'product_sku' => $productData['product_sku'] ?? null,
             'category_id' => $productData['category_id'] ?? null,
         ]);
-        
+
         return (int) $this->db->lastInsertId();
     }
-    
+
     /**
      * Atribuir múltiplos EANs
      */
@@ -53,7 +54,7 @@ class EanAssignment
             INSERT INTO ean_assignments (ean_id, account_id, purchase_id)
             VALUES (:ean_id, :account_id, :purchase_id)
         ");
-        
+
         foreach ($eanIds as $eanId) {
             try {
                 $stmt->execute([
@@ -68,10 +69,10 @@ class EanAssignment
                 continue;
             }
         }
-        
+
         return $assigned;
     }
-    
+
     /**
      * Buscar EANs de um seller
      */
@@ -80,11 +81,11 @@ class EanAssignment
         $where = "WHERE a.account_id = :account_id";
 
         $limitSql = max(1, min(500, (int)$limit));
-        
+
         if ($onlyAvailable) {
             $where .= " AND a.ml_item_id IS NULL";
         }
-        
+
         $stmt = $this->db->prepare("
             SELECT 
                 a.*,
@@ -98,10 +99,10 @@ class EanAssignment
         ");
         $stmt->bindValue(':account_id', $accountId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll();
     }
-    
+
     /**
      * Buscar EANs disponíveis (não usados) de um seller
      */
@@ -122,10 +123,10 @@ class EanAssignment
         ");
         $stmt->bindValue(':account_id', $accountId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll();
     }
-    
+
     /**
      * Vincular EAN a um anúncio do ML
      */
@@ -136,14 +137,14 @@ class EanAssignment
             SET ml_item_id = :ml_item_id, product_title = :title
             WHERE id = :id AND ml_item_id IS NULL
         ");
-        
+
         return $stmt->execute([
             'id' => $assignmentId,
             'ml_item_id' => $mlItemId,
             'title' => $title,
         ]);
     }
-    
+
     /**
      * Desvincular EAN de um anúncio
      */
@@ -156,7 +157,7 @@ class EanAssignment
         ");
         return $stmt->execute(['id' => $assignmentId]);
     }
-    
+
     /**
      * Buscar atribuição por EAN
      */
@@ -171,7 +172,7 @@ class EanAssignment
         $stmt->execute(['ean' => $ean]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Buscar por item do ML
      */
@@ -186,7 +187,7 @@ class EanAssignment
         $stmt->execute(['ml_item_id' => $mlItemId]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Contar EANs de um seller
      */
@@ -203,7 +204,7 @@ class EanAssignment
         $stmt->execute(['account_id' => $accountId]);
         return $stmt->fetch();
     }
-    
+
     /**
      * Próximo EAN disponível para um seller
      */
@@ -224,7 +225,7 @@ class EanAssignment
         $stmt->execute(['account_id' => $accountId]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Buscar atribuição por ID
      */
@@ -239,7 +240,7 @@ class EanAssignment
         $stmt->execute(['id' => $id]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Marcar como disponível novamente
      */

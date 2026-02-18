@@ -6,6 +6,106 @@
 
 ---
 
+## Sessão: 2026-02-19 — Security: RBAC, Race Condition Fix, Structured Logging Migration
+
+### Objetivo
+Corrigir os 2 problemas críticos (🔴) e 5 importantes (🟡) identificados na revisão arquitetural de segurança.
+
+### Correções implementadas
+
+#### 🔴1 — IDOR em REST API (`api/realtime_db_api.php`)
+- Adicionado `$tableACL` com 4 modos de acesso por tabela: `self`, `owner`, `admin`, `read_only`
+- 5 novos métodos RBAC: `isUserAdmin()`, `checkTableAccess()`, `buildOwnershipWhere()`, `buildOwnershipWherePositional()`, `enforceOwnershipOnInsert()`
+- Todos os 5 métodos CRUD refatorados para aplicar filtro de ownership automático
+- Rate limiting agora usa `userId + IP` (antes: só IP)
+- `allowedTables` agora derivado de `array_keys($tableACL)`
+
+#### 🔴2 — Race Condition em `EanBalance::refund()` (`app/Models/EanBalance.php`)
+- Reescrito com `beginTransaction()` + `SELECT ... FOR UPDATE` (lock de linha)
+- Verificação explícita de saldos após lock, `commit()` no sucesso, `rollBack()` na falha
+- Bug anterior: `UPDATE ... WHERE available >= :qty` sem transação era vulnerável a race condition
+
+#### 🟡3 — 79 `error_log()` → StructuredLogService (3 services)
+- `CompetitorIntelligenceService.php`: import + property + constructor + 11 replacements
+- `SmartQAService.php`: import + property + constructor + 20 replacements
+- `MLAnalyticsIntelligenceService.php`: import + property + constructor + 48 replacements
+- Padrão: `error_log("msg: " . $e->getMessage())` → `$this->logger->warning('msg', ['error' => $e->getMessage(), 'account_id' => $this->accountId])`
+
+#### 🟡5 — Arquivo órfão `routes/seo_api.php`
+- Renomeado para `routes/seo_api.php.disabled` (38 endpoints usando `$app->get()`, nunca era carregado)
+
+#### 🟡6 — DDL em toda requisição (`api/realtime_db_api.php`)
+- Adicionado `private static bool $rateLimitTableVerified = false`
+- `ensureRateLimitTable()` retorna imediatamente se já verificado na instância
+- `ip_address` VARCHAR alargado para 100 para suportar combo `userId+IP`
+
+#### 🟡7 — `@mkdir` antes de validação (`bin/generate-password-reset-link.php`)
+- Validação agora ANTES do `@mkdir` (era depois, permitia path traversal)
+- Ancestor-walking check: sobe com `dirname()` até encontrar diretório existente, valida contra `$allowedBase`
+- Removido segundo `@mkdir` redundante
+
+#### 🟡4 — strict_types (sem alteração de código)
+- Apenas monitoramento recomendado — não requer mudança de código
+
+### Arquivos afetados (tracked)
+- `api/realtime_db_api.php` — RBAC + rate limiting + DDL fix (+316 linhas)
+- `app/Models/EanBalance.php` — transação + FOR UPDATE
+- `app/Services/MercadoLivre/CompetitorIntelligenceService.php` — logger migration
+- `app/Services/MercadoLivre/SmartQAService.php` — logger migration
+- `app/Services/MercadoLivre/MLAnalyticsIntelligenceService.php` — logger migration
+- `bin/generate-password-reset-link.php` — mkdir order fix
+- Inclui também as correções da sessão anterior (security hardening) que não foram comitadas
+
+### Verificação
+- `php -l`: 0 erros em todos os 16 arquivos modificados
+- `grep -c error_log`: 0 em todos os 3 serviços migrados
+- `grep` confirmou 5 métodos RBAC presentes em realtime_db_api.php
+- PHPUnit: falha no bootstrap por indisponibilidade de DB (pré-existente)
+
+---
+
+## Sessão: 2026-02-18 PM6 — Canonical schema hardening (analytics/report/shipping)
+
+### Objetivo
+Remover dependências de colunas legadas e alinhar consultas para dados reais do schema canônico (`ml_orders.order_data`, `ml_order_id`, `ml_questions.date_created`) com escopo de conta.
+
+### Correções implementadas
+1. **AnalyticsController (`app/Controllers/AnalyticsController.php`)**
+   - Propagado `active account` para `AnalyticsService` em `getRevenueTrend/getCustomerLTV/getInventoryTurnover/getProfitMargins/getSummary/getForecast`.
+   - `salesMetrics/listingsMetrics/questionsMetrics` agora aplicam filtro opcional por conta ativa.
+   - `questionsMetrics/exportQuestionsData` migrados de `created_at` para `date_created`.
+   - Export de vendas usa `ml_order_id as order_id` + `ml_account_id as account_id` (removendo colunas não-canônicas do select).
+2. **ReportController (`app/Controllers/ReportController.php`)**
+   - `consolidated()` refeito para receita por categoria via `order_items` + `ml_orders` (remove join inválido em `ml_orders.item_id`).
+   - `ml_questions.created_at` -> `ml_questions.date_created`.
+3. **Shipping real data path**
+   - `app/Services/ShippingService.php`:
+     - `generatePickList()` agora lê itens de `order_data` (`order_items/items`) em vez de `ml_orders.items`.
+     - Busca por pedidos aceita `id` interno e `ml_order_id`.
+     - `getShippingIds()` extrai `shipping.id` de `order_data` (remove dependência de coluna `shipping_id`).
+     - Filtro opcional por `ml_account_id` quando conta ativa existir.
+   - `app/Controllers/ShippingController.php`:
+     - Resolve conta ativa da sessão e injeta no `ShippingService`.
+   - `app/Views/dashboard/shipping.php`:
+     - Contagem de itens ajustada para `order.order_items` (com fallback), evitando `0 item(s)` falso com payload real da API.
+4. **Join hardening adicional (`order_items` x `ml_orders`)**
+   - Ajustados joins para suportar `oi.order_id = o.id OR oi.order_id = o.ml_order_id` em:
+     - `app/Controllers/CustomerController.php`
+     - `app/Controllers/FullController.php`
+     - `app/Services/TrendsService.php`
+     - `app/Services/FinancialService.php`
+     - `app/Services/AI/ML/DeepDemandPredictor.php`
+     - `app/Services/AI/SEO/AIPricingOptimizer.php`
+5. **DeepDemandPredictor fallback real**
+   - `getSalesHistoryFromMLOrders()` em `app/Services/AI/ML/DeepDemandPredictor.php` deixou de usar coluna inexistente `ml_orders.order_items`.
+   - Agora processa `order_data` real e agrega quantidade por dia para o SKU alvo.
+
+### Verificação
+- `php -l`: 0 erros em 10 arquivos alterados.
+- `php vendor/bin/phpunit`: falha no bootstrap por indisponibilidade de DB (`127.0.0.1:3307`, `app_test`), sem execução da suíte.
+
+---
+
 ## Sessão: 2026-02-18 PM5b — Host header injection + resource leak final
 
 ### Correções Adicionais (commits e085f85, 7c1f523)

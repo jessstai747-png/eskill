@@ -45,14 +45,23 @@ $defaultOutput = $root . '/storage/logs/' . $defaultName;
 $outputPath = $options['output'] ?? $defaultOutput;
 
 // Validate output path — must be under storage/
+// IMPORTANT: validate BEFORE creating directories to prevent path traversal mkdir
 $outputDir = dirname($outputPath);
-@mkdir($outputDir, 0775, true);
-$realOutputDir = realpath($outputDir);
 $allowedBase = realpath($root . '/storage');
-if ($realOutputDir === false || $allowedBase === false || !str_starts_with($realOutputDir, $allowedBase)) {
+
+// For non-existing dirs, walk up to find an existing ancestor and check it
+$checkDir = $outputDir;
+while (!is_dir($checkDir) && $checkDir !== dirname($checkDir)) {
+    $checkDir = dirname($checkDir);
+}
+$realCheckDir = realpath($checkDir);
+if ($realCheckDir === false || $allowedBase === false || !str_starts_with($realCheckDir, $allowedBase)) {
     fwrite(STDERR, "Caminho de saída inválido: deve estar dentro de storage/\n");
     exit(1);
 }
+
+// Now safe to create directory after validation
+@mkdir($outputDir, 0775, true);
 
 try {
     $db = Database::getInstance();
@@ -60,16 +69,16 @@ try {
     // Ensure table exists (same schema as PasswordResetService)
     $db->exec(
         "CREATE TABLE IF NOT EXISTS password_resets (\n" .
-        "    id INT PRIMARY KEY AUTO_INCREMENT,\n" .
-        "    email VARCHAR(255) NOT NULL,\n" .
-        "    token VARCHAR(64) NOT NULL UNIQUE,\n" .
-        "    expires_at TIMESTAMP NOT NULL,\n" .
-        "    used_at TIMESTAMP NULL,\n" .
-        "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n" .
-        "    INDEX idx_email (email),\n" .
-        "    INDEX idx_token (token),\n" .
-        "    INDEX idx_expires (expires_at)\n" .
-        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            "    id INT PRIMARY KEY AUTO_INCREMENT,\n" .
+            "    email VARCHAR(255) NOT NULL,\n" .
+            "    token VARCHAR(64) NOT NULL UNIQUE,\n" .
+            "    expires_at TIMESTAMP NOT NULL,\n" .
+            "    used_at TIMESTAMP NULL,\n" .
+            "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n" .
+            "    INDEX idx_email (email),\n" .
+            "    INDEX idx_token (token),\n" .
+            "    INDEX idx_expires (expires_at)\n" .
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
 
     // Only create reset token for existing users
@@ -107,7 +116,6 @@ try {
     $content .= "Expira em: {$expiresAt}\n\n";
     $content .= $resetUrl . "\n";
 
-    @mkdir(dirname($outputPath), 0775, true);
     file_put_contents($outputPath, $content);
     @chmod($outputPath, 0600);
 

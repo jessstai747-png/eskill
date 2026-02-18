@@ -53,6 +53,7 @@ class AnalyticsController extends BaseController
 
         $start = $this->request->get('start', date('Y-m-01'));
         $end = $this->request->get('end', date('Y-m-d'));
+        $accountId = $this->getActiveAccountId();
 
         // Validate date format
         $datePattern = '/^\d{4}-\d{2}-\d{2}$/';
@@ -68,7 +69,7 @@ class AnalyticsController extends BaseController
             $granularity = 'day';
         }
 
-        $data = $this->service->getRevenueTrend($start, $end, $granularity);
+        $data = $this->service->getRevenueTrend($start, $end, $granularity, $accountId);
         echo json_encode(['success' => true, 'data' => $data]);
     }
 
@@ -78,7 +79,7 @@ class AnalyticsController extends BaseController
     public function getCustomerLTV(): void
     {
         header('Content-Type: application/json');
-        $data = $this->service->getCustomerLTV();
+        $data = $this->service->getCustomerLTV($this->getActiveAccountId());
         echo json_encode(['success' => true, 'data' => $data]);
     }
 
@@ -88,7 +89,7 @@ class AnalyticsController extends BaseController
     public function getInventoryTurnover(): void
     {
         header('Content-Type: application/json');
-        $data = $this->service->getInventoryTurnover();
+        $data = $this->service->getInventoryTurnover($this->getActiveAccountId());
         echo json_encode(['success' => true, 'data' => $data]);
     }
 
@@ -98,7 +99,7 @@ class AnalyticsController extends BaseController
     public function getProfitMargins(): void
     {
         header('Content-Type: application/json');
-        $data = $this->service->getProfitMargins();
+        $data = $this->service->getProfitMargins($this->getActiveAccountId());
         echo json_encode(['success' => true, 'data' => $data]);
     }
 
@@ -108,7 +109,7 @@ class AnalyticsController extends BaseController
     public function getSummary(): void
     {
         header('Content-Type: application/json');
-        $data = $this->service->getDashboardSummary();
+        $data = $this->service->getDashboardSummary($this->getActiveAccountId());
         echo json_encode(['success' => true, 'data' => $data]);
     }
 
@@ -119,7 +120,7 @@ class AnalyticsController extends BaseController
     {
         header('Content-Type: application/json');
         $days = $this->request->getInt('days', 7);
-        $data = $this->service->getForecast($days);
+        $data = $this->service->getForecast($days, $this->getActiveAccountId());
         echo json_encode(['success' => true, 'data' => $data]);
     }
 
@@ -223,8 +224,9 @@ class AnalyticsController extends BaseController
             $db = \App\Database::getInstance();
             $days = $this->request->getInt('days', 30);
             $cutoff = date('Y-m-d', strtotime("-{$days} days"));
+            $accountId = $this->getActiveAccountId();
 
-            $stmt = $db->prepare("
+            $dailySql = "
                 SELECT 
                     DATE(date_created) as day,
                     COUNT(*) as orders,
@@ -234,13 +236,20 @@ class AnalyticsController extends BaseController
                     SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders
                 FROM ml_orders
                 WHERE DATE(date_created) >= :cutoff
-                GROUP BY day
-                ORDER BY day ASC
-            ");
-            $stmt->execute([':cutoff' => $cutoff]);
+            ";
+
+            $params = [':cutoff' => $cutoff];
+            if ($accountId !== null && $accountId > 0) {
+                $dailySql .= " AND ml_account_id = :account_id";
+                $params[':account_id'] = $accountId;
+            }
+
+            $dailySql .= " GROUP BY day ORDER BY day ASC";
+            $stmt = $db->prepare($dailySql);
+            $stmt->execute($params);
             $daily = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            $stmtTotals = $db->prepare("
+            $totalsSql = "
                 SELECT 
                     COUNT(*) as total_orders,
                     SUM(total_amount) as total_revenue,
@@ -248,8 +257,14 @@ class AnalyticsController extends BaseController
                     SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END) as paid_revenue
                 FROM ml_orders
                 WHERE DATE(date_created) >= :cutoff
-            ");
-            $stmtTotals->execute([':cutoff' => $cutoff]);
+            ";
+
+            if ($accountId !== null && $accountId > 0) {
+                $totalsSql .= " AND ml_account_id = :account_id";
+            }
+
+            $stmtTotals = $db->prepare($totalsSql);
+            $stmtTotals->execute($params);
             $totals = $stmtTotals->fetch(\PDO::FETCH_ASSOC) ?: [];
 
             echo json_encode([
@@ -280,8 +295,11 @@ class AnalyticsController extends BaseController
 
         try {
             $db = \App\Database::getInstance();
+            $accountId = $this->getActiveAccountId();
 
-            $stmt = $db->query("
+            $params = [];
+
+            $statusSql = "
                 SELECT 
                     status,
                     COUNT(*) as count,
@@ -289,22 +307,34 @@ class AnalyticsController extends BaseController
                     AVG(price) as avg_price,
                     SUM(available_quantity) as total_stock
                 FROM items
-                GROUP BY status
-                ORDER BY count DESC
-            ");
+                WHERE 1 = 1
+            ";
+            if ($accountId !== null && $accountId > 0) {
+                $statusSql .= " AND account_id = :account_id";
+                $params[':account_id'] = $accountId;
+            }
+            $statusSql .= " GROUP BY status ORDER BY count DESC";
+
+            $stmt = $db->prepare($statusSql);
+            $stmt->execute($params);
             $byStatus = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            $stmtCat = $db->query("
+            $categorySql = "
                 SELECT 
                     category_id,
                     COUNT(*) as count,
                     AVG(price) as avg_price
                 FROM items
                 WHERE status = 'active'
-                GROUP BY category_id
-                ORDER BY count DESC
-                LIMIT 15
-            ");
+            ";
+
+            if ($accountId !== null && $accountId > 0) {
+                $categorySql .= " AND account_id = :account_id";
+            }
+            $categorySql .= " GROUP BY category_id ORDER BY count DESC LIMIT 15";
+
+            $stmtCat = $db->prepare($categorySql);
+            $stmtCat->execute($params);
             $byCategory = $stmtCat->fetchAll(\PDO::FETCH_ASSOC);
 
             echo json_encode([
@@ -331,40 +361,57 @@ class AnalyticsController extends BaseController
             $db = \App\Database::getInstance();
             $days = $this->request->getInt('days', 30);
             $cutoff = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            $accountId = $this->getActiveAccountId();
+            $params = [':cutoff' => $cutoff];
 
-            $stmt = $db->prepare("
+            $byStatusSql = "
                 SELECT 
                     status,
                     COUNT(*) as count
                 FROM ml_questions
-                WHERE created_at >= :cutoff
-                GROUP BY status
-            ");
-            $stmt->execute([':cutoff' => $cutoff]);
+                WHERE date_created >= :cutoff
+            ";
+            if ($accountId !== null && $accountId > 0) {
+                $byStatusSql .= " AND account_id = :account_id";
+                $params[':account_id'] = $accountId;
+            }
+            $byStatusSql .= " GROUP BY status";
+
+            $stmt = $db->prepare($byStatusSql);
+            $stmt->execute($params);
             $byStatus = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            $stmtDaily = $db->prepare("
+            $dailySql = "
                 SELECT 
-                    DATE(created_at) as day,
+                    DATE(date_created) as day,
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'ANSWERED' THEN 1 ELSE 0 END) as answered,
                     SUM(CASE WHEN status = 'UNANSWERED' THEN 1 ELSE 0 END) as unanswered
                 FROM ml_questions
-                WHERE created_at >= :cutoff
-                GROUP BY day
-                ORDER BY day ASC
-            ");
-            $stmtDaily->execute([':cutoff' => $cutoff]);
+                WHERE date_created >= :cutoff
+            ";
+            if ($accountId !== null && $accountId > 0) {
+                $dailySql .= " AND account_id = :account_id";
+            }
+            $dailySql .= " GROUP BY day ORDER BY day ASC";
+
+            $stmtDaily = $db->prepare($dailySql);
+            $stmtDaily->execute($params);
             $daily = $stmtDaily->fetchAll(\PDO::FETCH_ASSOC);
 
-            $stmtAvgResponse = $db->prepare("
+            $avgResponseSql = "
                 SELECT 
-                    AVG(TIMESTAMPDIFF(MINUTE, created_at, answer_date)) as avg_response_minutes
+                    AVG(TIMESTAMPDIFF(MINUTE, date_created, answer_date)) as avg_response_minutes
                 FROM ml_questions
                 WHERE answer_date IS NOT NULL
-                AND created_at >= :cutoff
-            ");
-            $stmtAvgResponse->execute([':cutoff' => $cutoff]);
+                AND date_created >= :cutoff
+            ";
+            if ($accountId !== null && $accountId > 0) {
+                $avgResponseSql .= " AND account_id = :account_id";
+            }
+
+            $stmtAvgResponse = $db->prepare($avgResponseSql);
+            $stmtAvgResponse->execute($params);
             $avgResponse = $stmtAvgResponse->fetch(\PDO::FETCH_ASSOC);
 
             echo json_encode([
@@ -393,11 +440,12 @@ class AnalyticsController extends BaseController
             $days = $this->request->getInt('days', 30);
             $format = $this->request->get('format', 'csv');
             $cutoff = date('Y-m-d', strtotime("-{$days} days"));
+            $accountId = $this->getActiveAccountId();
 
             $rows = match ($type) {
-                'sales' => $this->exportSalesData($db, $cutoff),
-                'listings' => $this->exportListingsData($db),
-                'questions' => $this->exportQuestionsData($db, $cutoff),
+                'sales' => $this->exportSalesData($db, $cutoff, $accountId),
+                'listings' => $this->exportListingsData($db, $accountId),
+                'questions' => $this->exportQuestionsData($db, $cutoff, $accountId),
                 default => throw new \InvalidArgumentException("Invalid export type: {$type}"),
             };
 
@@ -433,50 +481,79 @@ class AnalyticsController extends BaseController
     /**
      * Export sales data for CSV/JSON
      */
-    private function exportSalesData(\PDO $db, string $cutoff): array
+    private function exportSalesData(\PDO $db, string $cutoff, ?int $accountId = null): array
     {
-        $stmt = $db->prepare("
+        $sql = "
             SELECT 
-                order_id, user_id, status, total_amount, 
-                listing_type, DATE(date_created) as order_date
+                ml_order_id as order_id,
+                ml_account_id as account_id,
+                status,
+                total_amount,
+                DATE(date_created) as order_date
             FROM ml_orders
             WHERE DATE(date_created) >= :cutoff
-            ORDER BY date_created DESC
-        ");
-        $stmt->execute([':cutoff' => $cutoff]);
+        ";
+
+        $params = [':cutoff' => $cutoff];
+        if ($accountId !== null && $accountId > 0) {
+            $sql .= " AND ml_account_id = :account_id";
+            $params[':account_id'] = $accountId;
+        }
+        $sql .= " ORDER BY date_created DESC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
      * Export listings data for CSV/JSON
      */
-    private function exportListingsData(\PDO $db): array
+    private function exportListingsData(\PDO $db, ?int $accountId = null): array
     {
-        $stmt = $db->query("
+        $sql = "
             SELECT 
                 item_id, title, status, price, 
                 available_quantity, category_id, permalink
             FROM items
-            ORDER BY status ASC, price DESC
-        ");
+            WHERE 1 = 1
+        ";
+
+        $params = [];
+        if ($accountId !== null && $accountId > 0) {
+            $sql .= " AND account_id = :account_id";
+            $params[':account_id'] = $accountId;
+        }
+        $sql .= " ORDER BY status ASC, price DESC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
      * Export questions data for CSV/JSON
      */
-    private function exportQuestionsData(\PDO $db, string $cutoff): array
+    private function exportQuestionsData(\PDO $db, string $cutoff, ?int $accountId = null): array
     {
-        $stmt = $db->prepare("
+        $sql = "
             SELECT 
                 question_id, item_id, status, question_text,
-                answer_text, from_user_id, DATE(created_at) as question_date,
+                answer_text, from_user_id, DATE(date_created) as question_date,
                 DATE(answer_date) as answered_date
             FROM ml_questions
-            WHERE created_at >= :cutoff
-            ORDER BY created_at DESC
-        ");
-        $stmt->execute([':cutoff' => $cutoff . ' 00:00:00']);
+            WHERE date_created >= :cutoff
+        ";
+
+        $params = [':cutoff' => $cutoff . ' 00:00:00'];
+        if ($accountId !== null && $accountId > 0) {
+            $sql .= " AND account_id = :account_id";
+            $params[':account_id'] = $accountId;
+        }
+        $sql .= " ORDER BY date_created DESC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

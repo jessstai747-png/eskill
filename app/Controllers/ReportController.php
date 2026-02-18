@@ -317,13 +317,16 @@ class ReportController extends BaseController
 
             $stmtTopCat = $db->prepare("
                 SELECT 
-                    i.category_id,
-                    COUNT(DISTINCT i.item_id) as items,
-                    COALESCE(SUM(o.total_amount), 0) as revenue
-                FROM items i
-                LEFT JOIN ml_orders o ON o.item_id = i.item_id 
-                    AND DATE(o.date_created) >= :cutoff AND o.status = 'paid'
-                GROUP BY i.category_id
+                    COALESCE(oi.category_id, i.category_id, 'unknown') as category_id,
+                    COUNT(DISTINCT oi.item_id) as items,
+                    COALESCE(SUM(oi.quantity * oi.unit_price), 0) as revenue
+                FROM ml_orders o
+                INNER JOIN order_items oi 
+                    ON (oi.order_id = o.id OR oi.order_id = o.ml_order_id)
+                LEFT JOIN items i ON i.item_id = oi.item_id
+                WHERE DATE(o.date_created) >= :cutoff
+                AND o.status = 'paid'
+                GROUP BY category_id
                 ORDER BY revenue DESC
                 LIMIT 10
             ");
@@ -336,7 +339,7 @@ class ReportController extends BaseController
                     SUM(CASE WHEN status = 'ANSWERED' THEN 1 ELSE 0 END) as answered,
                     SUM(CASE WHEN status = 'UNANSWERED' THEN 1 ELSE 0 END) as unanswered
                 FROM ml_questions
-                WHERE created_at >= :cutoff
+                WHERE date_created >= :cutoff
             ");
             $stmtQuestions->execute([':cutoff' => $cutoff . ' 00:00:00']);
             $questions = $stmtQuestions->fetch(\PDO::FETCH_ASSOC) ?: [];

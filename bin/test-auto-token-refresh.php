@@ -26,14 +26,14 @@ echo "✅ [1/6] Testando UnifiedTokenRefreshService...\n";
 try {
     $service = new \App\Services\UnifiedTokenRefreshService();
     $reflection = new ReflectionClass($service);
-    
+
     $methods = ['refreshExpiring', 'forceRefreshAll', 'refreshAccount', 'getHealthMetrics'];
     foreach ($methods as $method) {
         if ($reflection->hasMethod($method)) {
             echo "   ✓ Método {$method}() existe\n";
         }
     }
-    
+
     $tests['UnifiedTokenRefreshService'] = true;
 } catch (Exception $e) {
     echo "   ✗ Erro: " . $e->getMessage() . "\n";
@@ -53,11 +53,11 @@ try {
 echo "\n✅ [3/6] Testando conexão com banco...\n";
 try {
     $db = \App\Database::getInstance();
-    
+
     // Testar se tabelas necessárias existem
     $tables = ['ml_accounts', 'items', 'orders', 'questions'];
     $existingTables = [];
-    
+
     foreach ($tables as $table) {
         $stmt = $db->prepare("SHOW TABLES LIKE :table");
         $stmt->execute(['table' => $table]);
@@ -66,7 +66,7 @@ try {
             echo "   ✓ Tabela '{$table}' existe\n";
         }
     }
-    
+
     if (count($existingTables) >= 2) {
         $tests['Database Connection'] = true;
     }
@@ -79,13 +79,13 @@ echo "\n✅ [4/6] Verificando worker file...\n";
 $workerFile = __DIR__ . '/../bin/auto-token-refresh-worker.php';
 if (file_exists($workerFile)) {
     echo "   ✓ Worker existe: {$workerFile}\n";
-    
+
     if (is_executable($workerFile)) {
         echo "   ✓ Worker é executável\n";
     } else {
         echo "   ⚠️  Worker não é executável (chmod +x recomendado)\n";
     }
-    
+
     // Test syntax
     exec("php -l " . escapeshellarg($workerFile) . " 2>&1", $output, $return);
     if ($return === 0) {
@@ -104,7 +104,7 @@ echo "\n✅ [5/6] Verificando configuração de cron...\n";
 $cronFile = __DIR__ . '/../crontab.auto-token-refresh.example';
 if (file_exists($cronFile)) {
     echo "   ✓ Arquivo de exemplo existe\n";
-    
+
     $content = file_get_contents($cronFile);
     if (strpos($content, 'auto-token-refresh-worker.php') !== false) {
         echo "   ✓ Configuração do worker encontrada\n";
@@ -119,7 +119,7 @@ echo "\n✅ [6/6] Verificando diretório de logs...\n";
 $logDir = __DIR__ . '/../storage/logs';
 if (is_dir($logDir)) {
     echo "   ✓ Diretório existe: {$logDir}\n";
-    
+
     if (is_writable($logDir)) {
         echo "   ✓ Diretório é writable\n";
         $tests['Log Directory'] = true;

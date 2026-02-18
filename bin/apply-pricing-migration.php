@@ -101,21 +101,21 @@ foreach ($statements as $statement) {
     if (empty($statement)) {
         continue;
     }
-    
+
     // Extrair nome da tabela do CREATE TABLE
     if (preg_match('/CREATE TABLE.*?`?(\w+)`?/i', $statement, $matches)) {
         $tableName = $matches[1];
-        
+
         if (in_array($tableName, $existingTables)) {
             echo "  ⚠ Pulando {$tableName} (já existe)\n";
             $skipped++;
             continue;
         }
     }
-    
+
     try {
         $pdo->exec($statement);
-        
+
         if (preg_match('/CREATE TABLE/i', $statement)) {
             if (isset($tableName)) {
                 echo "  ✓ Criada tabela {$tableName}\n";

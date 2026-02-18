@@ -29,6 +29,33 @@ class RealTimeDatabaseAPI
     private $logger;
     private $allowedTables;
     private $maxResults;
+    private static bool $rateLimitTableVerified = false;
+
+    /**
+     * Table ACL — defines per-table access control.
+     *
+     * Modes:
+     *   'owner'     – rows filtered by ownership column (user_id / account_id)
+     *   'self'      – user can only access their own row (id = auth user_id)
+     *   'admin'     – only admin users can access
+     *   'read_only' – any authenticated user can read, only admin can write
+     *
+     * 'owner_column' defines which column holds the owner reference.
+     */
+    private array $tableACL = [
+        'users'                  => ['mode' => 'self'],
+        'items'                  => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        'orders'                 => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        'products'               => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        'categories'             => ['mode' => 'read_only'],
+        'ml_accounts'            => ['mode' => 'owner', 'owner_column' => 'user_id'],
+        'account_health_history' => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        'seo_analysis_cache'     => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        'notifications'          => ['mode' => 'owner', 'owner_column' => 'user_id'],
+        'settings'               => ['mode' => 'admin'],
+        'logs'                   => ['mode' => 'read_only'],
+        'analytics'              => ['mode' => 'owner', 'owner_column' => 'account_id'],
+    ];
 
     public function __construct()
     {
@@ -36,21 +63,8 @@ class RealTimeDatabaseAPI
         $this->jwtService = new JwtService();
         $this->logger = new StructuredLogService();
 
-        // Define allowed tables for security
-        $this->allowedTables = [
-            'users',
-            'items',
-            'orders',
-            'products',
-            'categories',
-            'ml_accounts',
-            'account_health_history',
-            'seo_analysis_cache',
-            'notifications',
-            'settings',
-            'logs',
-            'analytics'
-        ];
+        // Define allowed tables for security (keys from ACL)
+        $this->allowedTables = array_keys($this->tableACL);
 
         $this->maxResults = 1000; // Maximum results per query
     }
@@ -82,15 +96,18 @@ class RealTimeDatabaseAPI
                 return;
             }
 
-            // Check rate limit
+            // Check rate limit (user_id + IP for defense-in-depth)
             $rateLimitResult = $this->checkRateLimit($authResult['user_id']);
             if (!$rateLimitResult['allowed']) {
                 $this->sendResponse(['error' => 'Rate limit exceeded'], 429);
                 return;
             }
 
+            // Resolve user role and admin status for RBAC
+            $isAdmin = $this->isUserAdmin($authResult['user_id']);
+
             // Route the request
-            $this->routeRequest($method, $path, $input, $authResult['user_id']);
+            $this->routeRequest($method, $path, $input, $authResult['user_id'], $isAdmin);
         } catch (Exception $e) {
             $this->logger->error('API Error', [
                 'error' => $e->getMessage(),
@@ -110,7 +127,7 @@ class RealTimeDatabaseAPI
     /**
      * Route requests to appropriate handlers
      */
-    private function routeRequest($method, $path, $input, $userId)
+    private function routeRequest($method, $path, $input, $userId, bool $isAdmin = false)
     {
         $segments = explode('/', trim($path, '/'));
 
@@ -132,20 +149,33 @@ class RealTimeDatabaseAPI
             return;
         }
 
+        // RBAC: check table-level write permission
+        $isWrite = in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true);
+        if (!$this->checkTableAccess($table, $userId, $isAdmin, $isWrite)) {
+            $this->logger->warning('RBAC denied', [
+                'table' => $table,
+                'user_id' => $userId,
+                'method' => $method,
+                'is_admin' => $isAdmin,
+            ]);
+            $this->sendResponse(['error' => 'Forbidden'], 403);
+            return;
+        }
+
         // Extract ID if present
         $id = isset($segments[3]) && is_numeric($segments[3]) ? (int)$segments[3] : null;
 
         switch ($method) {
             case 'GET':
                 if ($id) {
-                    $this->getRecord($table, $id, $userId);
+                    $this->getRecord($table, $id, $userId, $isAdmin);
                 } else {
-                    $this->getList($table, $input, $userId);
+                    $this->getList($table, $input, $userId, $isAdmin);
                 }
                 break;
 
             case 'POST':
-                $this->createRecord($table, $input, $userId);
+                $this->createRecord($table, $input, $userId, $isAdmin);
                 break;
 
             case 'PUT':
@@ -154,7 +184,7 @@ class RealTimeDatabaseAPI
                     $this->sendResponse(['error' => 'ID required for update'], 400);
                     return;
                 }
-                $this->updateRecord($table, $id, $input, $userId);
+                $this->updateRecord($table, $id, $input, $userId, $isAdmin);
                 break;
 
             case 'DELETE':
@@ -162,7 +192,7 @@ class RealTimeDatabaseAPI
                     $this->sendResponse(['error' => 'ID required for delete'], 400);
                     return;
                 }
-                $this->deleteRecord($table, $id, $userId);
+                $this->deleteRecord($table, $id, $userId, $isAdmin);
                 break;
 
             default:
@@ -174,11 +204,16 @@ class RealTimeDatabaseAPI
     /**
      * Get a single record by ID
      */
-    private function getRecord($table, $id, $userId)
+    private function getRecord($table, $id, $userId, bool $isAdmin = false)
     {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM `{$table}` WHERE `id` = :id LIMIT 1");
-            $stmt->execute(['id' => $id]);
+            // Build ownership WHERE clause
+            $ownerWhere = $this->buildOwnershipWhere($table, $userId, $isAdmin);
+            $sql = "SELECT * FROM `{$table}` WHERE `id` = :id" . $ownerWhere['clause'] . " LIMIT 1";
+            $params = array_merge(['id' => $id], $ownerWhere['params']);
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
             $record = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$record) {
@@ -200,7 +235,7 @@ class RealTimeDatabaseAPI
     /**
      * Get a list of records with filtering, sorting, and pagination
      */
-    private function getList($table, $input, $userId)
+    private function getList($table, $input, $userId, bool $isAdmin = false)
     {
         try {
             $page = (int)($input['page'] ?? 1);
@@ -218,9 +253,10 @@ class RealTimeDatabaseAPI
                 $orderBy = 'id';
             }
 
-            // Build WHERE clause from filters
-            $whereClause = '1=1';
-            $params = [];
+            // Build WHERE clause from filters + ownership
+            $ownerWhere = $this->buildOwnershipWhere($table, $userId, $isAdmin);
+            $whereClause = '1=1' . $ownerWhere['clause'];
+            $params = $ownerWhere['params'];
 
             if (isset($input['filters']) && is_array($input['filters'])) {
                 foreach ($input['filters'] as $field => $value) {
@@ -236,7 +272,7 @@ class RealTimeDatabaseAPI
 
             $stmt = $this->db->prepare($sql);
 
-            // Bind filter parameters
+            // Bind all parameters
             foreach ($params as $key => $value) {
                 $stmt->bindValue(":{$key}", $value);
             }
@@ -248,7 +284,7 @@ class RealTimeDatabaseAPI
             $countSql = "SELECT COUNT(*) as total FROM `{$table}` WHERE {$whereClause}";
             $countStmt = $this->db->prepare($countSql);
 
-            // Bind filter parameters for count
+            // Bind all parameters for count
             foreach ($params as $key => $value) {
                 $countStmt->bindValue(":{$key}", $value);
             }
@@ -280,7 +316,7 @@ class RealTimeDatabaseAPI
     /**
      * Create a new record
      */
-    private function createRecord($table, $input, $userId)
+    private function createRecord($table, $input, $userId, bool $isAdmin = false)
     {
         try {
             if (empty($input)) {
@@ -295,6 +331,9 @@ class RealTimeDatabaseAPI
                 $this->sendResponse(['error' => 'No valid fields provided'], 400);
                 return;
             }
+
+            // RBAC: enforce ownership column on insert
+            $filteredInput = $this->enforceOwnershipOnInsert($table, $filteredInput, $userId, $isAdmin);
 
             $columns = array_keys($filteredInput);
             $placeholders = ':' . implode(', :', $columns);
@@ -335,7 +374,7 @@ class RealTimeDatabaseAPI
     /**
      * Update an existing record
      */
-    private function updateRecord($table, $id, $input, $userId)
+    private function updateRecord($table, $id, $input, $userId, bool $isAdmin = false)
     {
         try {
             if (empty($input)) {
@@ -351,12 +390,27 @@ class RealTimeDatabaseAPI
                 return;
             }
 
+            // RBAC: build ownership WHERE clause
+            $ownerWhere = $this->buildOwnershipWhere($table, $userId, $isAdmin);
+
             $setColumns = array_map(fn($k) => "`{$k}` = ?", array_keys($filteredInput));
             $setClause = implode(', ', $setColumns);
-            $sql = "UPDATE `{$table}` SET {$setClause} WHERE `id` = ?";
+            $sql = "UPDATE `{$table}` SET {$setClause} WHERE `id` = ?" . $ownerWhere['clause'];
 
             $values = array_values($filteredInput);
             $values[] = $id;
+            // Append ownership params as positional
+            foreach ($ownerWhere['params'] as $val) {
+                $values[] = $val;
+            }
+
+            // Need to convert named owner params to positional for this query
+            // Rebuild SQL with positional placeholders for ownership
+            $ownerPositional = $this->buildOwnershipWherePositional($table, $userId, $isAdmin);
+            $sql = "UPDATE `{$table}` SET {$setClause} WHERE `id` = ?" . $ownerPositional['clause'];
+            $values = array_values($filteredInput);
+            $values[] = $id;
+            $values = array_merge($values, $ownerPositional['values']);
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($values);
@@ -395,12 +449,16 @@ class RealTimeDatabaseAPI
     /**
      * Delete a record
      */
-    private function deleteRecord($table, $id, $userId)
+    private function deleteRecord($table, $id, $userId, bool $isAdmin = false)
     {
         try {
-            // First, check if record exists
-            $stmt = $this->db->prepare("SELECT `id` FROM `{$table}` WHERE `id` = :id LIMIT 1");
-            $stmt->execute(['id' => $id]);
+            // RBAC: check record exists AND belongs to user
+            $ownerWhere = $this->buildOwnershipWhere($table, $userId, $isAdmin);
+            $checkSql = "SELECT `id` FROM `{$table}` WHERE `id` = :id" . $ownerWhere['clause'] . " LIMIT 1";
+            $params = array_merge(['id' => $id], $ownerWhere['params']);
+
+            $stmt = $this->db->prepare($checkSql);
+            $stmt->execute($params);
             $exists = $stmt->fetch();
 
             if (!$exists) {
@@ -408,8 +466,8 @@ class RealTimeDatabaseAPI
                 return;
             }
 
-            $stmt = $this->db->prepare("DELETE FROM `{$table}` WHERE `id` = :id");
-            $stmt->execute(['id' => $id]);
+            $stmt = $this->db->prepare("DELETE FROM `{$table}` WHERE `id` = :id" . $ownerWhere['clause']);
+            $stmt->execute($params);
 
             $this->logger->info('Record deleted', [
                 'table' => $table,
@@ -478,11 +536,14 @@ class RealTimeDatabaseAPI
             $maxRequests = 100;
             $cutoff = date('Y-m-d H:i:s', time() - $windowSeconds);
 
+            // Rate limit by user_id + IP combination for defense-in-depth
+            $identifier = 'u' . $userId . '_' . $ip;
+
             $stmt = $this->db->prepare(
-                "SELECT COUNT(*) as count FROM rate_limits WHERE ip_address = :ip AND created_at > :cutoff"
+                "SELECT COUNT(*) as count FROM rate_limits WHERE ip_address = :identifier AND created_at > :cutoff"
             );
             $stmt->execute([
-                'ip' => $ip,
+                'identifier' => $identifier,
                 'cutoff' => $cutoff,
             ]);
 
@@ -493,9 +554,9 @@ class RealTimeDatabaseAPI
             }
 
             $insertStmt = $this->db->prepare(
-                "INSERT INTO rate_limits (ip_address, created_at) VALUES (:ip, NOW())"
+                "INSERT INTO rate_limits (ip_address, created_at) VALUES (:identifier, NOW())"
             );
-            $insertStmt->execute(['ip' => $ip]);
+            $insertStmt->execute(['identifier' => $identifier]);
 
             return [
                 'allowed' => true,
@@ -536,18 +597,24 @@ class RealTimeDatabaseAPI
     }
 
     /**
-     * Garante que a tabela de rate limit exista
+     * Garante que a tabela de rate limit exista (once per process)
      */
     private function ensureRateLimitTable(): void
     {
+        if (self::$rateLimitTableVerified) {
+            return;
+        }
+
         $this->db->exec(
             "CREATE TABLE IF NOT EXISTS rate_limits (
                 id INT PRIMARY KEY AUTO_INCREMENT,
-                ip_address VARCHAR(45) NOT NULL,
+                ip_address VARCHAR(100) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_ip_created (ip_address, created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
+
+        self::$rateLimitTableVerified = true;
     }
 
     /**
@@ -581,6 +648,161 @@ class RealTimeDatabaseAPI
         }
 
         return $filtered;
+    }
+
+    /**
+     * Check if user is admin
+     */
+    private function isUserAdmin(int $userId): bool
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT is_admin, role FROM users WHERE id = :id LIMIT 1"
+            );
+            $stmt->execute(['id' => $userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                return false;
+            }
+
+            return !empty($user['is_admin']) || ($user['role'] ?? '') === 'admin';
+        } catch (Exception $e) {
+            $this->logger->warning('isUserAdmin check failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Check table-level access based on ACL.
+     * Returns false if access is denied.
+     */
+    private function checkTableAccess(string $table, int $userId, bool $isAdmin, bool $isWrite): bool
+    {
+        $acl = $this->tableACL[$table] ?? null;
+        if ($acl === null) {
+            return false; // Unknown table
+        }
+
+        $mode = $acl['mode'];
+
+        // Admin always has access
+        if ($isAdmin) {
+            return true;
+        }
+
+        return match ($mode) {
+            'admin' => false, // Non-admin denied
+            'read_only' => !$isWrite, // Non-admin can only read
+            'owner', 'self' => true, // Row-level check happens in buildOwnershipWhere
+            default => false,
+        };
+    }
+
+    /**
+     * Build ownership WHERE clause for row-level access control (named params).
+     *
+     * @return array{clause: string, params: array}
+     */
+    private function buildOwnershipWhere(string $table, int $userId, bool $isAdmin): array
+    {
+        // Admin bypasses row-level checks
+        if ($isAdmin) {
+            return ['clause' => '', 'params' => []];
+        }
+
+        $acl = $this->tableACL[$table] ?? null;
+        if ($acl === null) {
+            // Deny all — unknown table should never reach here
+            return ['clause' => ' AND 1=0', 'params' => []];
+        }
+
+        $mode = $acl['mode'];
+
+        if ($mode === 'self') {
+            // 'self' tables (e.g. users): user can only see their own row by id
+            return [
+                'clause' => ' AND `id` = :rbac_owner_id',
+                'params' => ['rbac_owner_id' => $userId],
+            ];
+        }
+
+        if ($mode === 'owner') {
+            $col = $acl['owner_column'] ?? 'user_id';
+            if (!$this->isValidFieldName($col)) {
+                return ['clause' => ' AND 1=0', 'params' => []];
+            }
+            return [
+                'clause' => " AND `{$col}` = :rbac_owner_id",
+                'params' => ['rbac_owner_id' => $userId],
+            ];
+        }
+
+        // read_only and admin modes — no extra WHERE needed (table-level check already passed)
+        return ['clause' => '', 'params' => []];
+    }
+
+    /**
+     * Build ownership WHERE clause with positional (?) placeholders.
+     * Used by UPDATE which mixes positional params.
+     *
+     * @return array{clause: string, values: array}
+     */
+    private function buildOwnershipWherePositional(string $table, int $userId, bool $isAdmin): array
+    {
+        if ($isAdmin) {
+            return ['clause' => '', 'values' => []];
+        }
+
+        $acl = $this->tableACL[$table] ?? null;
+        if ($acl === null) {
+            return ['clause' => ' AND 1=0', 'values' => []];
+        }
+
+        $mode = $acl['mode'];
+
+        if ($mode === 'self') {
+            return ['clause' => ' AND `id` = ?', 'values' => [$userId]];
+        }
+
+        if ($mode === 'owner') {
+            $col = $acl['owner_column'] ?? 'user_id';
+            if (!$this->isValidFieldName($col)) {
+                return ['clause' => ' AND 1=0', 'values' => []];
+            }
+            return ['clause' => " AND `{$col}` = ?", 'values' => [$userId]];
+        }
+
+        return ['clause' => '', 'values' => []];
+    }
+
+    /**
+     * Enforce ownership column on INSERT — automatically set the ownership column
+     * to the authenticated user's ID so users cannot create records for others.
+     */
+    private function enforceOwnershipOnInsert(string $table, array $input, int $userId, bool $isAdmin): array
+    {
+        if ($isAdmin) {
+            return $input; // Admin can set any owner
+        }
+
+        $acl = $this->tableACL[$table] ?? null;
+        if ($acl === null) {
+            return $input;
+        }
+
+        $mode = $acl['mode'];
+
+        if ($mode === 'owner') {
+            $col = $acl['owner_column'] ?? 'user_id';
+            // Force ownership column to authenticated user
+            $input[$col] = $userId;
+        }
+
+        return $input;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Services\MercadoLivre;
 
 use App\Services\MercadoLivreClient;
 use App\Services\CacheService;
+use App\Services\StructuredLogService;
 
 /**
  * Competitor Intelligence System
@@ -23,6 +24,7 @@ class CompetitorIntelligenceService
     private \PDO $db;
     private MercadoLivreClient $mlClient;
     private CacheService $cache;
+    private StructuredLogService $logger;
     private int $accountId;
     private array $config;
 
@@ -32,6 +34,7 @@ class CompetitorIntelligenceService
         $this->db = \App\Database::getInstance();
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->cache = new CacheService();
+        $this->logger = new StructuredLogService();
         $this->config = $this->loadIntelligenceConfig();
     }
 
@@ -71,7 +74,7 @@ class CompetitorIntelligenceService
                 'summary' => $this->generateMonitoringSummary($results)
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::startCompetitorMonitoring error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::startCompetitorMonitoring error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -108,7 +111,7 @@ class CompetitorIntelligenceService
                 'opportunity_score' => $this->calculateOpportunityScore($opportunities, $crossCategoryOpportunities)
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::analyzeMarketOpportunities error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::analyzeMarketOpportunities error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -148,7 +151,7 @@ class CompetitorIntelligenceService
                 'action_plan' => $this->generateActionPlan($recommendations)
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::trackCompetitiveAdvantages error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::trackCompetitiveAdvantages error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -195,7 +198,7 @@ class CompetitorIntelligenceService
                 'action_items' => $this->extractActionItems($reports)
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::generateIntelligenceReports error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::generateIntelligenceReports error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -237,7 +240,7 @@ class CompetitorIntelligenceService
                 'recommendations' => $this->generateRealTimeRecommendations($monitoringResults)
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::realTimeMarketMonitoring error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::realTimeMarketMonitoring error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -488,7 +491,7 @@ class CompetitorIntelligenceService
                     'top_sellers' => array_slice(array_unique(array_column($items, 'seller_id')), 0, 5),
                 ];
             } catch (\Exception $e) {
-                error_log("CompetitorIntelligenceService::generateWeeklyMarketAnalysis error: " . $e->getMessage());
+                $this->logger->warning('CompetitorIntelligenceService::generateWeeklyMarketAnalysis error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 $weeklyData[] = ['category' => $category, 'error' => $e->getMessage()];
             }
         }
@@ -569,7 +572,7 @@ class CompetitorIntelligenceService
                         : 'unknown',
                 ];
             } catch (\Exception $e) {
-                error_log("CompetitorIntelligenceService::generatePriceCompetitionAnalysis error: " . $e->getMessage());
+                $this->logger->warning('CompetitorIntelligenceService::generatePriceCompetitionAnalysis error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 continue;
             }
         }
@@ -1061,7 +1064,7 @@ class CompetitorIntelligenceService
                 'timestamp' => time(),
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::getRealTimeMarketData error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::getRealTimeMarketData error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             $data = ['error' => $e->getMessage(), 'timestamp' => time()];
         }
 
@@ -1253,7 +1256,7 @@ class CompetitorIntelligenceService
                     ]),
                 ]);
             } catch (\Exception $e) {
-                error_log("CompetitorIntelligenceService::monitorCompetitorPrices error: " . $e->getMessage());
+                $this->logger->warning('CompetitorIntelligenceService::monitorCompetitorPrices error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
                 // Non-blocking
             }
         }
@@ -1334,7 +1337,7 @@ class CompetitorIntelligenceService
                 'negative_rating' => $reputation['transactions']['ratings']['negative'] ?? 0,
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::monitorCompetitorReputation error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::monitorCompetitorReputation error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
                 'power_seller' => null,
                 'level_id' => null,
@@ -1371,7 +1374,7 @@ class CompetitorIntelligenceService
                 'sample_items' => array_slice($items, 0, 10),
             ];
         } catch (\Exception $e) {
-            error_log("CompetitorIntelligenceService::getCategoryMarketData error: " . $e->getMessage());
+            $this->logger->warning('CompetitorIntelligenceService::getCategoryMarketData error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             $data['error'] = $e->getMessage();
         }
 

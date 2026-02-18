@@ -37,7 +37,7 @@ $requiredExtensions = ['json', 'curl', 'pdo', 'mbstring'];
 foreach ($requiredExtensions as $ext) {
     $checks["ext_{$ext}"] = extension_loaded($ext);
     echo "  Extensão {$ext}: " . ($checks["ext_{$ext}"] ? '✓' : '✗') . "\n";
-    
+
     if (!$checks["ext_{$ext}"]) {
         $errors[] = "Extensão PHP '{$ext}' não está instalada";
     }
@@ -63,7 +63,7 @@ if (!$checks['env_exists']) {
         $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
         $dotenv->load();
     }
-    
+
     // Verificar variáveis críticas
     $requiredVars = [
         'DB_HOST' => 'Host do banco de dados',
@@ -75,11 +75,11 @@ if (!$checks['env_exists']) {
         'AI_API_KEY' => 'Chave da API de IA',
         'APP_KEY' => 'Chave de criptografia'
     ];
-    
+
     foreach ($requiredVars as $var => $desc) {
         $value = $_ENV[$var] ?? getenv($var) ?? '';
         $checks["env_{$var}"] = !empty($value) && $value !== 'your_' && $value !== 'change_me';
-        
+
         if ($checks["env_{$var}"]) {
             echo "  {$var}: ✓\n";
         } else {
@@ -101,7 +101,7 @@ try {
     $db = App\Database::getInstance();
     $checks['db_connection'] = true;
     echo "  Conexão com banco: ✓\n";
-    
+
     // Verificar tabelas
     $requiredTables = [
         'seo_synonym_hierarchy',
@@ -109,19 +109,18 @@ try {
         'seo_monitoring_schedule',
         'seo_optimizations'
     ];
-    
+
     foreach ($requiredTables as $table) {
         $stmt = $db->prepare("SHOW TABLES LIKE :table");
         $stmt->execute(['table' => $table]);
         $exists = $stmt->rowCount() > 0;
         $checks["table_{$table}"] = $exists;
         echo "  Tabela {$table}: " . ($exists ? '✓' : '✗') . "\n";
-        
+
         if (!$exists) {
             $warnings[] = "Tabela '{$table}' não existe. Execute: ./setup-seo-database.sh";
         }
     }
-    
 } catch (Exception $e) {
     $checks['db_connection'] = false;
     echo "  Conexão com banco: ✗\n";
@@ -147,18 +146,18 @@ foreach ($requiredDirs as $dir => $writable) {
     $path = __DIR__ . '/../' . $dir;
     $exists = is_dir($path);
     $checks["dir_{$dir}"] = $exists;
-    
+
     if ($exists && $writable) {
         $isWritable = is_writable($path);
         $checks["writable_{$dir}"] = $isWritable;
         echo "  {$dir}: " . ($isWritable ? '✓ (gravável)' : '⚠ (não gravável)') . "\n";
-        
+
         if (!$isWritable) {
             $warnings[] = "Diretório '{$dir}' não é gravável. Execute: chmod -R 775 {$dir}";
         }
     } else {
         echo "  {$dir}: " . ($exists ? '✓' : '✗') . "\n";
-        
+
         if (!$exists) {
             $warnings[] = "Diretório '{$dir}' não existe. Execute: mkdir -p {$dir}";
         }
@@ -206,7 +205,7 @@ foreach ($requiredClasses as $class) {
     $checks["class_{$class}"] = $exists;
     $shortName = substr($class, strrpos($class, '\\') + 1);
     echo "  {$shortName}: " . ($exists ? '✓' : '✗') . "\n";
-    
+
     if (!$exists) {
         $errors[] = "Classe '{$class}' não encontrada";
     }

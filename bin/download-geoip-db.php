@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -24,16 +25,16 @@ $dbFile = $dataDir . '/GeoLite2-City.mmdb';
 if (file_exists($dbFile)) {
     $fileAge = time() - filemtime($dbFile);
     $daysOld = floor($fileAge / 86400);
-    
+
     echo "✓ Banco de dados existente encontrado\n";
     echo "  Arquivo: $dbFile\n";
     echo "  Idade: $daysOld dias\n";
     echo "  Tamanho: " . number_format(filesize($dbFile) / 1024 / 1024, 2) . " MB\n\n";
-    
+
     if ($daysOld < 30) {
         echo "✅ Banco de dados é recente (menos de 30 dias)\n";
         echo "   Não é necessário atualizar.\n\n";
-        
+
         $update = readline("Deseja atualizar mesmo assim? (y/n): ");
         if (strtolower($update) !== 'y') {
             echo "✅ Mantendo banco de dados atual.\n";
@@ -57,15 +58,15 @@ switch ($option) {
     case '1':
         downloadDbIP($dataDir);
         break;
-    
+
     case '2':
         downloadMaxMind($dataDir);
         break;
-    
+
     case '3':
         useLocalFile($dataDir);
         break;
-    
+
     default:
         echo "❌ Operação cancelada.\n";
         exit(0);
@@ -74,52 +75,52 @@ switch ($option) {
 function downloadDbIP(string $dataDir): void
 {
     echo "\n📥 Baixando de DB-IP.com (versão gratuita)...\n";
-    
+
     // DB-IP oferece versão lite gratuita sem cadastro
     $url = 'https://download.db-ip.com/free/dbip-city-lite-' . date('Y-m') . '.mmdb.gz';
-    
+
     echo "URL: $url\n";
     echo "Baixando...\n";
-    
+
     $gzFile = $dataDir . '/dbip-city-lite.mmdb.gz';
     $mmdbFile = $dataDir . '/GeoLite2-City.mmdb';
-    
+
     // Download com curl
     $cmd = "curl -L -o " . escapeshellarg($gzFile) . " " . escapeshellarg($url) . " 2>&1";
     exec($cmd, $output, $returnCode);
-    
+
     if ($returnCode !== 0 || !file_exists($gzFile)) {
         echo "❌ Erro ao baixar. Tentando versão anterior...\n";
-        
+
         // Tentar mês anterior
         $prevMonth = date('Y-m', strtotime('-1 month'));
         $url = "https://download.db-ip.com/free/dbip-city-lite-{$prevMonth}.mmdb.gz";
-        
+
         $cmd = "curl -L -o " . escapeshellarg($gzFile) . " " . escapeshellarg($url) . " 2>&1";
         exec($cmd, $output, $returnCode);
-        
+
         if ($returnCode !== 0 || !file_exists($gzFile)) {
             echo "❌ Falha no download. Verifique a conexão ou use outra opção.\n";
             exit(1);
         }
     }
-    
+
     echo "✓ Download concluído\n";
     echo "📦 Descompactando...\n";
-    
+
     // Descompactar
     $gz = gzopen($gzFile, 'r');
     $out = fopen($mmdbFile, 'w');
-    
+
     while (!gzeof($gz)) {
         fwrite($out, gzread($gz, 4096));
     }
-    
+
     gzclose($gz);
     fclose($out);
-    
+
     unlink($gzFile);
-    
+
     echo "✅ Banco de dados instalado com sucesso!\n";
     echo "   Arquivo: $mmdbFile\n";
     echo "   Tamanho: " . number_format(filesize($mmdbFile) / 1024 / 1024, 2) . " MB\n";
@@ -131,9 +132,9 @@ function downloadMaxMind(string $dataDir): void
     echo "1. Crie uma conta gratuita em: https://www.maxmind.com/en/geolite2/signup\n";
     echo "2. Gere uma license key\n";
     echo "3. Use o link de download permanente fornecido\n\n";
-    
+
     $url = readline("Cole o link de download do MaxMind: ");
-    
+
     if (empty($url)) {
         echo "❌ Link não fornecido.\n";
         exit(1);
@@ -144,35 +145,35 @@ function downloadMaxMind(string $dataDir): void
         echo "❌ URL inválida. Apenas links de maxmind.com e db-ip.com são aceitos.\n";
         exit(1);
     }
-    
+
     $mmdbFile = $dataDir . '/GeoLite2-City.mmdb';
     $tarFile = $dataDir . '/GeoLite2-City.tar.gz';
-    
+
     echo "📥 Baixando...\n";
-    
+
     $cmd = "curl -L -o " . escapeshellarg($tarFile) . " " . escapeshellarg($url) . " 2>&1";
     exec($cmd, $output, $returnCode);
-    
+
     if ($returnCode !== 0) {
         echo "❌ Erro ao baixar.\n";
         exit(1);
     }
-    
+
     echo "✓ Download concluído\n";
     echo "📦 Extraindo...\n";
-    
+
     // Extrair
     exec("cd " . escapeshellarg($dataDir) . " && tar -xzf " . escapeshellarg(basename($tarFile)) . " 2>&1", $output, $returnCode);
-    
+
     // Encontrar o arquivo .mmdb extraído
     $files = glob($dataDir . '/GeoLite2-City_*/GeoLite2-City.mmdb');
-    
+
     if (!empty($files)) {
         rename($files[0], $mmdbFile);
-        
+
         // Limpar
         exec("rm -rf " . escapeshellarg($dataDir) . "/GeoLite2-City_* " . escapeshellarg($tarFile));
-        
+
         echo "✅ Banco de dados instalado com sucesso!\n";
         echo "   Arquivo: $mmdbFile\n";
         echo "   Tamanho: " . number_format(filesize($mmdbFile) / 1024 / 1024, 2) . " MB\n";
@@ -185,14 +186,14 @@ function downloadMaxMind(string $dataDir): void
 function useLocalFile(string $dataDir): void
 {
     $source = readline("Caminho completo do arquivo .mmdb: ");
-    
+
     if (!file_exists($source)) {
         echo "❌ Arquivo não encontrado: $source\n";
         exit(1);
     }
-    
+
     $dest = $dataDir . '/GeoLite2-City.mmdb';
-    
+
     if (copy($source, $dest)) {
         echo "✅ Arquivo copiado com sucesso!\n";
         echo "   Destino: $dest\n";
