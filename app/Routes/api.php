@@ -269,11 +269,6 @@ $router->post('api/seo-killer/api-keys', SEOKillerController::class, 'createApiK
 $router->delete('api/seo-killer/api-keys/{clientId}', SEOKillerController::class, 'revokeApiKey');
 $router->post('api/seo-killer/backlinks/analyze', SEOKillerController::class, 'analyzeBacklinks');
 
-// New SEO Killer Analytics & Automation
-$router->get('api/seo-killer/score/{itemId}', SEOKillerController::class, 'calculateScore');
-$router->get('api/seo-killer/autopilot/status', SEOKillerController::class, 'getAutopilotRealStatus');
-$router->get('api/seo-killer/top-performers', SEOKillerController::class, 'getTopPerformingItems');
-
 // Keywords & Competitors
 $router->post('api/seo-killer/keywords', SEOKillerController::class, 'researchKeywords');
 $router->post('api/seo-killer/spy', SEOKillerController::class, 'spyCompetitors');

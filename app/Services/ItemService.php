@@ -568,6 +568,8 @@ class ItemService
                     $item['description'] = $description['plain_text'] ?? $description['text'] ?? ($item['description'] ?? '');
                 }
             } catch (\Exception $e) {
+                // Description fetch is non-critical — item data is still valid without it
+                error_log("[ItemService] Failed to fetch description for {$itemId}: " . $e->getMessage());
             }
         }
 

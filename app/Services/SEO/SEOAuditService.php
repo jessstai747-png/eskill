@@ -632,6 +632,7 @@ class SEOAuditService
                 ];
             }
         } catch (\Throwable $e) {
+            error_log('[SEOAudit] Hidden fields analysis failed: ' . $e->getMessage());
         }
 
         return $recommendations;
