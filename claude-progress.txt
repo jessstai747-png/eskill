@@ -6,6 +6,34 @@
 
 ---
 
+## Sessão: 2026-02-18 PM5 — Race conditions, infinite loop, validation, resource leaks
+
+### Objetivo
+Corrigir race conditions, loop infinito, injeção de nome de tabela, validação de datas, vazamento de recursos.
+
+### Correções (commits 467005a, 4256789)
+
+#### Commit 467005a — Race conditions + bugs
+1. **CRITICAL — EanService::useEan()**: SELECT-then-UPDATE sem transação → `beginTransaction/commit/rollBack` (previne double-assign de EAN)
+2. **HIGH — EanService::unlinkEan()**: Multi-UPDATE sem transação → `beginTransaction/commit/rollBack` (previne saldo inconsistente)
+3. **MEDIUM — EanService::checkLowStock()**: `=== 0` nunca true com string DB → `(int)$balance['available'] === 0`
+4. **MEDIUM — InventoryService::releaseReservation()**: SELECT-then-UPDATE sem transação → `beginTransaction` + `FOR UPDATE` (previne double-release)
+5. **HIGH — CloneAutoSchedulerService::calculateNextRun()**: `$days = []` causa loop infinito → guard `if (empty($days)) $days = [1..7]`
+6. **HIGH — OptimizationController::optimizeTable()**: Nome de tabela sem validação → regex `/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/` + Content-Type no erro
+7. **MEDIUM — CloneReportExportService::exportToCsv()**: fopen sem fclose no catch → `try/finally { fclose() }`
+8. **LOW — CacheService::saveToFile()**: `file_put_contents` sem LOCK_EX → adicionado `LOCK_EX`
+
+#### Commit 4256789 — Date validation
+9. **MEDIUM — FinancialReportController**: 14 métodos sem validação de data → `getValidatedDateRange()` helper com `DateTime::createFromFormat` + regex
+10. **MEDIUM — AnalyticsController**: `getRevenueTrend()` sem validação → regex YYYY-MM-DD + whitelist granularity
+
+### Verificação
+- `php -l`: 0 erros em todos os arquivos
+- PHPUnit Unit: 261 testes, 523 assertions, 0 failures
+- Codacy CLI: 0 issues em todos os arquivos modificados
+
+---
+
 ## Sessão: 2026-02-18 PM4 — Security hardening round 2
 
 ### Objetivo
@@ -167,6 +195,45 @@ Validar que todo o código é real (não mock/placeholder) e corrigir vulnerabil
 - `public/index.php`: HTTPS redirect logic (linhas 143-157)
 - `app/Middleware/SecurityMiddleware.php`: force_https config reading (linha 78) + localhost bypass (linhas 105-114)
 - `router.php`: SSRF protection via realpath() validation
+
+---
+
+## Sessão: 2026-02-18 AM5 — Hardening de analytics/reporting: buyer via JSON real + joins resilientes de pedidos
+
+### Objetivo
+Continuar a implementação real eliminando suposições legadas em camadas analíticas (colunas inexistentes em `ml_orders`) e estabilizar joins com `order_items`.
+
+### Implementação
+1. **Relatórios por conta alinhados ao schema atual**:
+   - `app/Controllers/ReportController.php`
+   - Migração de `seller_id` para colunas canônicas:
+     - `ml_orders.ml_account_id`
+     - `items.account_id`
+     - `ml_questions.account_id`
+   - Ajuste de data de perguntas para `date_created` (em vez de `created_at`).
+2. **Customer intelligence sem coluna física `buyer_id` em `ml_orders`**:
+   - `app/Services/MercadoLivre/MLAnalyticsIntelligenceService.php`
+   - Métricas de clientes passaram a extrair comprador de `order_data` (`$.buyer.id`) com `JSON_EXTRACT/JSON_UNQUOTE`.
+   - Queries de jornada/LTV/segmentação adaptadas para agrupar por `buyer_id` derivado do payload.
+3. **Simulador de promoção usando payload real de pedidos**:
+   - `app/Services/PromotionSimulatorService.php`
+   - `getVendasMedias()` deixou de depender de `o.order_items` e `JOIN ml_accounts`.
+   - Agora filtra por `ml_account_id` e busca item no JSON de `order_data` via `JSON_SEARCH(... '$.order_items[*].item.id')`.
+4. **Predictive analytics com `order_data` canônico**:
+   - `app/Services/PredictiveAnalyticsService.php`
+   - `collectHistoricalSalesData()` e `collectPriceVolumeData()` migrados de coluna legada `items` para `order_data` (extraindo `order_items/items` do payload).
+5. **Joins robustos entre `ml_orders` e `order_items`**:
+   - Ajustados para suportar cenários com `order_items.order_id` apontando para `ml_orders.id` **ou** `ml_orders.ml_order_id`:
+     - `app/Services/AI/SEO/PredictiveAnalyticsService.php`
+     - `app/Services/MercadoLivre/MLAnalyticsIntelligenceService.php`
+     - `app/Services/MercadoLivre/CompetitorIntelligenceService.php`
+     - `app/Services/MercadoLivre/AdvancedPricingEngine.php`
+     - `app/Services/MercadoLivre/MLAdsAdvancedService.php`
+     - `app/Controllers/PdfController.php`
+
+### Validação
+- `php -l` ✅ em todos os arquivos alterados nesta sessão.
+- `php vendor/bin/phpunit` ❌ (bootstrap falha por indisponibilidade de DB: `127.0.0.1:3307/app_test`).
 
 ---
 
