@@ -1132,7 +1132,7 @@ $router->post('api/jobs/status', JobController::class, 'status');
 $router->post('api/jobs', JobController::class, 'dispatch');
 $router->post('api/jobs/process', JobController::class, 'process');
 $router->post('api/jobs/clean', JobController::class, 'clean');
-$router->get('api/jobs/{id}', JobController::class, 'get');
+$router->get('api/jobs/{id}', JobController::class, 'getJob');
 
 // Rotas de relatórios
 $router->get('api/reports/account/{accountId}', ReportController::class, 'byAccount');

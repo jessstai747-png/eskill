@@ -165,6 +165,33 @@ class GeminiProvider extends AbstractAIProvider
     private function fetchImageAsBase64(string $url): ?array
     {
         try {
+            // Validate URL protocol — only allow http/https
+            $parsed = parse_url($url);
+            $scheme = $parsed['scheme'] ?? '';
+            if (!in_array($scheme, ['http', 'https'], true)) {
+                log_warning('GeminiProvider: protocolo não permitido para imagem', [
+                    'service' => 'GeminiProvider',
+                    'url' => $url,
+                    'scheme' => $scheme,
+                ]);
+                return null;
+            }
+            
+            // Block private/reserved IP ranges (SSRF protection)
+            $host = $parsed['host'] ?? '';
+            if (empty($host)) {
+                return null;
+            }
+            $ip = gethostbyname($host);
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                log_warning('GeminiProvider: IP privado/reservado bloqueado', [
+                    'service' => 'GeminiProvider',
+                    'url' => $url,
+                    'resolved_ip' => $ip,
+                ]);
+                return null;
+            }
+            
             $imageContent = file_get_contents($url);
             if ($imageContent === false) {
                 return null;

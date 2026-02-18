@@ -191,12 +191,17 @@ class BackupService
      */
     public function restoreBackup(string $filename): array
     {
+        // Sanitize filename — prevent path traversal
+        $filename = basename($filename);
         $filepath = $this->backupDir . '/' . $filename;
-
-        if (!file_exists($filepath)) {
+        
+        // Verify resolved path is within backup directory
+        $realPath = realpath($filepath);
+        $realBackupDir = realpath($this->backupDir);
+        if ($realPath === false || $realBackupDir === false || !str_starts_with($realPath, $realBackupDir . '/')) {
             return [
                 'success' => false,
-                'error' => 'Arquivo de backup não encontrado',
+                'error' => 'Arquivo de backup não encontrado ou caminho inválido',
             ];
         }
 
