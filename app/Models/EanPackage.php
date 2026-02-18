@@ -11,12 +11,12 @@ use PDO;
 class EanPackage
 {
     private PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Buscar todos os pacotes ativos
      */
@@ -30,7 +30,7 @@ class EanPackage
         $stmt->execute();
         return $stmt->fetchAll();
     }
-    
+
     /**
      * Buscar pacote por ID
      */
@@ -40,7 +40,7 @@ class EanPackage
         $stmt->execute(['id' => $id]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Buscar pacote por slug
      */
@@ -50,7 +50,7 @@ class EanPackage
         $stmt->execute(['slug' => $slug]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Criar novo pacote
      */
@@ -62,7 +62,7 @@ class EanPackage
             VALUES 
             (:name, :slug, :quantity, :price, :price_per_ean, :discount_percent, :description, :badge, :is_featured, :is_active, :sort_order)
         ");
-        
+
         $stmt->execute([
             'name' => $data['name'],
             'slug' => $data['slug'],
@@ -76,23 +76,31 @@ class EanPackage
             'is_active' => $data['is_active'] ?? true,
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
-        
+
         return (int) $this->db->lastInsertId();
     }
-    
+
     /**
      * Atualizar pacote
      */
     public function update(int $id, array $data): bool
     {
         $allowedFields = [
-            'name', 'slug', 'quantity', 'price', 'discount_percent',
-            'description', 'badge', 'is_featured', 'is_active', 'sort_order',
+            'name',
+            'slug',
+            'quantity',
+            'price',
+            'discount_percent',
+            'description',
+            'badge',
+            'is_featured',
+            'is_active',
+            'sort_order',
         ];
 
         $fields = [];
         $params = ['id' => $id];
-        
+
         foreach ($data as $key => $value) {
             if (!in_array($key, $allowedFields, true)) {
                 continue;
@@ -104,17 +112,17 @@ class EanPackage
         if (empty($fields)) {
             return false;
         }
-        
+
         if (isset($data['price']) && isset($data['quantity']) && (int)$data['quantity'] > 0) {
             $fields[] = "price_per_ean = :price_per_ean";
             $params['price_per_ean'] = $data['price'] / $data['quantity'];
         }
-        
+
         $sql = "UPDATE ean_packages SET " . implode(', ', $fields) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
     }
-    
+
     /**
      * Desativar pacote
      */
@@ -123,7 +131,7 @@ class EanPackage
         $stmt = $this->db->prepare("UPDATE ean_packages SET is_active = FALSE WHERE id = :id");
         return $stmt->execute(['id' => $id]);
     }
-    
+
     /**
      * Obter pacotes em destaque
      */

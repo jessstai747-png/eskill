@@ -41,13 +41,13 @@ class AdvancedPricingEngine
         try {
             $pricingRules = array_merge($this->config['dynamic_pricing'], $rules);
             $results = [];
-            
+
             // Get all products with pricing rules
             $products = $this->getProductsForPricing($pricingRules);
-            
+
             foreach ($products as $product) {
                 $priceDecision = $this->calculateOptimalPrice($product, $pricingRules);
-                
+
                 if ($priceDecision['adjust_price']) {
                     $result = $this->applyPriceChange($product, $priceDecision);
                     $results[] = $result;
@@ -61,7 +61,6 @@ class AdvancedPricingEngine
                 'results' => $results,
                 'summary' => $this->generatePricingSummary($results)
             ];
-            
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -77,14 +76,14 @@ class AdvancedPricingEngine
     {
         try {
             $monitoringResults = [];
-            
+
             if (empty($competitorItems)) {
                 $competitorItems = $this->getActiveCompetitorItems();
             }
 
             foreach ($competitorItems as $competitorItem) {
                 $monitoring = $this->monitorCompetitorItem($competitorItem);
-                
+
                 if ($monitoring['requires_action']) {
                     $adjustment = $this->calculateCompetitorAdjustment($competitorItem, $monitoring);
                     if ($adjustment['adjust']) {
@@ -101,7 +100,6 @@ class AdvancedPricingEngine
                 'results' => $monitoringResults,
                 'market_intelligence' => $this->generateMarketIntelligence($monitoringResults)
             ];
-            
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -117,14 +115,14 @@ class AdvancedPricingEngine
     {
         try {
             $results = [];
-            
+
             if (empty($productIds)) {
                 $productIds = $this->getProductsForPsychologicalPricing();
             }
 
             foreach ($productIds as $productId) {
                 $psychologicalPrice = $this->calculatePsychologicalPrice($productId);
-                
+
                 if ($psychologicalPrice['adjust_price']) {
                     $result = $this->applyPsychologicalPrice($productId, $psychologicalPrice);
                     $results[] = $result;
@@ -138,7 +136,6 @@ class AdvancedPricingEngine
                 'psychological_patterns' => $this->getPsychologicalPatterns($results),
                 'estimated_conversion_lift' => $this->estimateConversionLift($results)
             ];
-            
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -154,7 +151,7 @@ class AdvancedPricingEngine
     {
         try {
             $results = [];
-            
+
             if (empty($products)) {
                 $products = $this->getProductsWithElasticityData();
             }
@@ -162,7 +159,7 @@ class AdvancedPricingEngine
             foreach ($products as $product) {
                 $elasticityAnalysis = $this->calculatePriceElasticity($product);
                 $optimalPrice = $this->findOptimalPriceByElasticity($product, $elasticityAnalysis);
-                
+
                 if ($optimalPrice['adjust_price']) {
                     $result = $this->applyElasticityBasedPrice($product, $optimalPrice);
                     $results[] = $result;
@@ -176,7 +173,6 @@ class AdvancedPricingEngine
                 'elasticity_insights' => $this->generateElasticityInsights($results),
                 'estimated_revenue_impact' => $this->estimateRevenueImpact($results)
             ];
-            
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -193,10 +189,10 @@ class AdvancedPricingEngine
         try {
             $batchResults = [];
             $batchId = $this->generateBatchId();
-            
+
             // Get products for optimization
             $products = $this->getProductsForBatchOptimization($optimizationConfig);
-            
+
             foreach ($products as $product) {
                 $optimization = $this->performComprehensiveOptimization($product, $optimizationConfig);
                 $optimization['batch_id'] = $batchId;
@@ -216,7 +212,6 @@ class AdvancedPricingEngine
                 'applied_results' => $appliedResults,
                 'summary' => $this->generateBatchOptimizationSummary($batchResults, $appliedResults)
             ];
-            
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -249,7 +244,6 @@ class AdvancedPricingEngine
                 'generated_at' => time(),
                 'data_period' => $filters['period'] ?? 'last_30_days'
             ];
-            
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -282,31 +276,31 @@ class AdvancedPricingEngine
 
         // Calculate optimal price
         $baseAdjustment = 0;
-        
+
         // Competitor-based adjustment
         if ($factors['competitor_position'] > 0.8) { // More expensive than 80% of competitors
             $baseAdjustment -= $rules['competitor_adjustment_rate'] ?? 0.05;
         }
-        
+
         // Demand-based adjustment
         if ($demandLevel > 1.2) { // High demand
             $baseAdjustment += $rules['demand_premium_rate'] ?? 0.03;
         }
-        
+
         // Stock-based adjustment
         if ($stockLevel < $rules['low_stock_threshold'] ?? 5) {
             $baseAdjustment += $rules['stock_scarcity_premium'] ?? 0.02;
         }
 
         $optimalPrice = $currentPrice * (1 + $baseAdjustment);
-        
+
         // Apply psychological pricing
         $optimalPrice = $this->applyPsychologicalAdjustment($optimalPrice);
-        
+
         // Apply price limits
         $minPrice = max($product['cost'] * 1.1, $rules['min_price_margin'] ?? 1.0);
         $maxPrice = $currentPrice * ($rules['max_increase_rate'] ?? 1.2);
-        
+
         $optimalPrice = max($minPrice, min($optimalPrice, $maxPrice));
 
         return [
@@ -358,10 +352,14 @@ class AdvancedPricingEngine
     private function calculatePsychologicalPrice(string $productId): array
     {
         $currentPrice = $this->getProductPrice($productId);
-        
+
         // Common psychological price endings
         $psychologicalEndings = [
-            0.99, 0.95, 0.90, 0.87, 0.85
+            0.99,
+            0.95,
+            0.90,
+            0.87,
+            0.85
         ];
 
         $bestPsychologicalPrice = $currentPrice;
@@ -369,10 +367,10 @@ class AdvancedPricingEngine
 
         foreach ($psychologicalEndings as $ending) {
             $candidatePrice = floor($currentPrice) + $ending;
-            
+
             // Calculate psychological score
             $score = $this->calculatePsychologicalScore($candidatePrice, $currentPrice);
-            
+
             if ($score > $bestPsychologicalScore) {
                 $bestPsychologicalScore = $score;
                 $bestPsychologicalPrice = $candidatePrice;
@@ -412,7 +410,7 @@ class AdvancedPricingEngine
     private function calculatePriceElasticity(array $product): array
     {
         $historicalData = $this->getHistoricalPricingData($product['id']);
-        
+
         if (count($historicalData) < 10) {
             return [
                 'elasticity_coefficient' => 0,
@@ -423,7 +421,7 @@ class AdvancedPricingEngine
 
         // Calculate elasticity using regression
         $elasticity = $this->calculateElasticityCoefficient($historicalData);
-        
+
         // Determine price elasticity classification
         $elasticityType = 'unit_elastic';
         if ($elasticity > 1.5) {
@@ -1132,7 +1130,9 @@ class AdvancedPricingEngine
     {
         try {
             $days = match ($filters['period'] ?? 'last_30_days') {
-                'last_7_days' => 7, 'last_90_days' => 90, default => 30
+                'last_7_days' => 7,
+                'last_90_days' => 90,
+                default => 30
             };
 
             $stmt = $this->db->prepare("
@@ -1169,7 +1169,9 @@ class AdvancedPricingEngine
     {
         try {
             $days = match ($filters['period'] ?? 'last_30_days') {
-                'last_7_days' => 7, 'last_90_days' => 90, default => 30
+                'last_7_days' => 7,
+                'last_90_days' => 90,
+                default => 30
             };
             $since = date('Y-m-d', strtotime("-{$days} days"));
 
@@ -1325,10 +1327,13 @@ class AdvancedPricingEngine
             $stmt->execute(['account_id' => $this->accountId]);
             foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $item) {
                 $recs[] = [
-                    'product_id' => $item['id'], 'title' => $item['title'],
-                    'type' => 'reduce_price', 'current' => $item['our_price'],
+                    'product_id' => $item['id'],
+                    'title' => $item['title'],
+                    'type' => 'reduce_price',
+                    'current' => $item['our_price'],
                     'suggested' => round((float)$item['avg_comp'] * 1.05, 2),
-                    'reason' => 'Preço acima da média dos concorrentes', 'priority' => 'high'
+                    'reason' => 'Preço acima da média dos concorrentes',
+                    'priority' => 'high'
                 ];
             }
 
@@ -1343,10 +1348,13 @@ class AdvancedPricingEngine
             $stmt2->execute(['account_id' => $this->accountId]);
             foreach ($stmt2->fetchAll(\PDO::FETCH_ASSOC) as $item) {
                 $recs[] = [
-                    'product_id' => $item['id'], 'title' => $item['title'],
-                    'type' => 'increase_price', 'current' => $item['price'],
+                    'product_id' => $item['id'],
+                    'title' => $item['title'],
+                    'type' => 'increase_price',
+                    'current' => $item['price'],
                     'suggested' => round((float)$item['price'] * 1.08, 2),
-                    'reason' => 'Alta demanda com estoque baixo', 'priority' => 'medium'
+                    'reason' => 'Alta demanda com estoque baixo',
+                    'priority' => 'medium'
                 ];
             }
             return $recs;
@@ -1405,7 +1413,9 @@ class AdvancedPricingEngine
     {
         try {
             $days = match ($filters['period'] ?? 'last_30_days') {
-                'last_7_days' => 7, 'last_90_days' => 90, default => 30
+                'last_7_days' => 7,
+                'last_90_days' => 90,
+                default => 30
             };
             $since = date('Y-m-d', strtotime("-{$days} days"));
 
@@ -1440,8 +1450,11 @@ class AdvancedPricingEngine
         $total = 0.0;
         foreach ($results as $r) {
             $total += match ($r['pricing_type'] ?? 'standard') {
-                'charm_pricing' => 0.08, 'prestige_pricing' => 0.03,
-                'odd_pricing' => 0.05, 'even_pricing' => 0.02, default => 0.04
+                'charm_pricing' => 0.08,
+                'prestige_pricing' => 0.03,
+                'odd_pricing' => 0.05,
+                'even_pricing' => 0.02,
+                default => 0.04
             };
         }
         return round($total / count($results), 4);
@@ -1518,11 +1531,16 @@ class AdvancedPricingEngine
     private function calculatePricingConfidence(array $factors): float
     {
         $w = [
-            'competitor_position' => 0.25, 'elasticity_factor' => 0.20,
-            'stock_pressure' => 0.10, 'demand_factor' => 0.20,
-            'margin_protection' => 0.15, 'psychological_factor' => 0.05, 'time_factor' => 0.05
+            'competitor_position' => 0.25,
+            'elasticity_factor' => 0.20,
+            'stock_pressure' => 0.10,
+            'demand_factor' => 0.20,
+            'margin_protection' => 0.15,
+            'psychological_factor' => 0.05,
+            'time_factor' => 0.05
         ];
-        $tw = 0; $ts = 0;
+        $tw = 0;
+        $ts = 0;
         foreach ($w as $k => $wt) {
             if (isset($factors[$k])) {
                 $ts += min(1.0, abs((float)$factors[$k])) * $wt;
@@ -1678,7 +1696,8 @@ class AdvancedPricingEngine
         sort($prices);
         $changes = [];
         for ($i = 1; $i < count($prices); $i++) {
-            $p1 = $prices[$i - 1]; $p2 = $prices[$i];
+            $p1 = $prices[$i - 1];
+            $p2 = $prices[$i];
             $q1 = $groups[$p1]['qty'] / $groups[$p1]['n'];
             $q2 = $groups[$p2]['qty'] / $groups[$p2]['n'];
             if ($p1 > 0 && $q1 > 0) {

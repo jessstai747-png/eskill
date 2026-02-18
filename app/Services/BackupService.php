@@ -194,7 +194,7 @@ class BackupService
         // Sanitize filename — prevent path traversal
         $filename = basename($filename);
         $filepath = $this->backupDir . '/' . $filename;
-        
+
         // Verify resolved path is within backup directory
         $realPath = realpath($filepath);
         $realBackupDir = realpath($this->backupDir);

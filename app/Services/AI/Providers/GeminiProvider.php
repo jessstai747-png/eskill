@@ -176,7 +176,7 @@ class GeminiProvider extends AbstractAIProvider
                 ]);
                 return null;
             }
-            
+
             // Block private/reserved IP ranges (SSRF protection)
             $host = $parsed['host'] ?? '';
             if (empty($host)) {
@@ -191,7 +191,7 @@ class GeminiProvider extends AbstractAIProvider
                 ]);
                 return null;
             }
-            
+
             $imageContent = file_get_contents($url);
             if ($imageContent === false) {
                 return null;

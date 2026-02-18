@@ -31,15 +31,15 @@ class SettingsController
             header('Location: /login');
             exit;
         }
-        
+
         $currentUser = $this->userService->getCurrentUser();
         $pageTitle = 'Configurações';
         $activePage = 'settings';
-        
+
         ob_start();
         require __DIR__ . '/../Views/dashboard/settings-content.php';
         $content = ob_get_clean();
-        
+
         require __DIR__ . '/../Views/layouts/modern/app.php';
     }
 
@@ -54,16 +54,24 @@ class SettingsController
             echo json_encode(['error' => 'Autenticação necessária']);
             return;
         }
-        
+
         $input = json_decode(file_get_contents('php://input'), true);
         $userId = $_SESSION['user_id'];
 
         // Whitelist de setting keys para notificações
         $allowedKeys = [
-            'email_orders', 'email_questions', 'email_claims',
-            'push_enabled', 'sms_enabled', 'telegram_enabled',
-            'notify_low_stock', 'notify_price_change', 'notify_new_sale',
-            'notify_shipment', 'notify_return', 'digest_daily',
+            'email_orders',
+            'email_questions',
+            'email_claims',
+            'push_enabled',
+            'sms_enabled',
+            'telegram_enabled',
+            'notify_low_stock',
+            'notify_price_change',
+            'notify_new_sale',
+            'notify_shipment',
+            'notify_return',
+            'digest_daily',
         ];
 
         // Salvar no banco (criar tabela user_settings se necessário)
@@ -117,7 +125,7 @@ class SettingsController
             echo json_encode(['error' => 'Autenticação necessária']);
             return;
         }
-        
+
         $input = json_decode(file_get_contents('php://input'), true);
         $userId = $_SESSION['user_id'];
 
@@ -153,7 +161,7 @@ class SettingsController
             echo json_encode(['error' => 'Autenticação necessária']);
             return;
         }
-        
+
         $input = json_decode(file_get_contents('php://input'), true);
         $userId = $_SESSION['user_id'];
 
@@ -189,14 +197,14 @@ class SettingsController
             echo json_encode(['error' => 'Autenticação necessária']);
             return;
         }
-        
+
         $input = json_decode(file_get_contents('php://input'), true);
         $accountId = $input['account_id'] ?? \App\Helpers\SessionHelper::getActiveAccountId();
-        
+
         if (!$accountId) {
-             http_response_code(400);
-             echo json_encode(['error' => 'Account ID required']);
-             return;
+            http_response_code(400);
+            echo json_encode(['error' => 'Account ID required']);
+            return;
         }
 
         $settings = new \App\Services\SettingsService((int)$accountId);
@@ -204,11 +212,11 @@ class SettingsController
         if (isset($input['default_tax_rate'])) {
             $settings->set('default_tax_rate', $input['default_tax_rate']);
         }
-        
+
         if (isset($input['default_pricing_strategy'])) {
             $settings->set('default_pricing_strategy', $input['default_pricing_strategy']);
         }
-        
+
         if (isset($input['min_margin_percent'])) {
             $settings->set('min_margin_percent', $input['min_margin_percent']);
         }
@@ -228,13 +236,13 @@ class SettingsController
             echo json_encode(['error' => 'Autenticação necessária']);
             return;
         }
-        
+
         $accountId = $this->request->get('account_id') ?? \App\Helpers\SessionHelper::getActiveAccountId();
-        
+
         if (!$accountId) {
-             http_response_code(400);
-             echo json_encode(['error' => 'Account ID required']);
-             return;
+            http_response_code(400);
+            echo json_encode(['error' => 'Account ID required']);
+            return;
         }
 
         $settings = new \App\Services\SettingsService((int)$accountId);
@@ -332,7 +340,6 @@ class SettingsController
             }
 
             echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
         } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode([
