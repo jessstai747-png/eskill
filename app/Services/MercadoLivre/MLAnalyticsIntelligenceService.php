@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\MercadoLivre;
@@ -63,7 +64,6 @@ class MLAnalyticsIntelligenceService
                 'data_freshness' => $this->getDataFreshness(),
                 'summary' => $this->generateAnalyticsSummary($analytics)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::getComprehensiveAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -80,7 +80,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $searchData = $this->getSearchData($timeframe);
-            
+
             $analysis = [
                 'search_patterns' => $this->analyzeSearchPatterns($searchData),
                 'keyword_performance' => $this->getKeywordPerformance($searchData),
@@ -98,7 +98,6 @@ class MLAnalyticsIntelligenceService
                 'insights' => $this->extractSearchInsights($analysis),
                 'recommendations' => $this->generateSearchRecommendations($analysis)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::analyzeSearchBehavior error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -115,7 +114,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $categoryInsights = [];
-            
+
             if (empty($categories)) {
                 $categories = $this->getActiveCategories();
             }
@@ -137,7 +136,6 @@ class MLAnalyticsIntelligenceService
                 'opportunity_matrix' => $this->generateCategoryOpportunityMatrix($categoryInsights),
                 'strategic_recommendations' => $this->generateCategoryStrategicRecommendations($categoryInsights)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::getCategoryIntelligence error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -171,7 +169,6 @@ class MLAnalyticsIntelligenceService
                 'optimization_opportunities' => $this->identifyJourneyOptimizations($journeyData),
                 'recommendations' => $this->generateJourneyRecommendations($journeyData)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::mapCustomerJourney error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -205,7 +202,6 @@ class MLAnalyticsIntelligenceService
                 'optimization_recommendations' => $this->generateFunnelOptimizations($funnelData),
                 'expected_improvement' => $this->estimateFunnelImprovement($funnelData)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::analyzeConversionFunnel error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -239,7 +235,6 @@ class MLAnalyticsIntelligenceService
                 'roi_metrics' => $this->calculateROIMetrics($attributionData),
                 'budget_recommendations' => $this->generateBudgetRecommendations($attributionData)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::trackROIAttribution error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -273,7 +268,6 @@ class MLAnalyticsIntelligenceService
                 'actionable_insights' => $this->generateActionableInsights($predictions),
                 'implementation_roadmap' => $this->generateImplementationRoadmap($predictions)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::generatePredictiveAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -306,7 +300,6 @@ class MLAnalyticsIntelligenceService
                 'data_quality_score' => $this->calculateDataQualityScore(),
                 'recommendations' => $this->generateIntelligenceRecommendations($reports)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('MLAnalyticsIntelligenceService::generateIntelligenceReports error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -362,7 +355,7 @@ class MLAnalyticsIntelligenceService
     {
         $historicalData = $this->getDemandHistoricalData($config);
         $externalFactors = $this->getExternalFactors($config);
-        
+
         $forecast = [
             'product_demand' => $this->forecastProductDemand($historicalData, $externalFactors),
             'category_trends' => $this->forecastCategoryTrends($historicalData, $externalFactors),
@@ -802,7 +795,7 @@ class MLAnalyticsIntelligenceService
             ");
             $stmt->execute(['account_id' => $this->accountId, 'category_id' => $category]);
             $data = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
-            
+
             // Enriquecer com dados de mercado
             $marketData = [];
             try {
@@ -914,8 +907,14 @@ class MLAnalyticsIntelligenceService
         }
     }
 
-    private function analyzeCustomerPaths(array $filters): array { return $this->getCustomerJourneyAnalysis($filters); }
-    private function getEngagementMetrics(array $filters): array { return $this->analyzeTouchpoints($filters); }
+    private function analyzeCustomerPaths(array $filters): array
+    {
+        return $this->getCustomerJourneyAnalysis($filters);
+    }
+    private function getEngagementMetrics(array $filters): array
+    {
+        return $this->analyzeTouchpoints($filters);
+    }
 
     private function identifyConversionPoints(array $filters): array
     {
@@ -1213,8 +1212,14 @@ class MLAnalyticsIntelligenceService
     }
 
     // Funnel methods
-    private function getStagePerformance(array $config): array { return $this->getConversionFunnel($config); }
-    private function calculateConversionRates(array $config): array { return $this->getConversionFunnel($config); }
+    private function getStagePerformance(array $config): array
+    {
+        return $this->getConversionFunnel($config);
+    }
+    private function calculateConversionRates(array $config): array
+    {
+        return $this->getConversionFunnel($config);
+    }
 
     private function identifyFunnelLeakage(array $config): array
     {
@@ -2189,10 +2194,18 @@ class MLAnalyticsIntelligenceService
         // Comparar com dados do mês (Black Friday/Natal = alto, Jan = baixo)
         $month = (int) date('n');
         $monthFactors = [
-            1 => 'declining', 2 => 'declining', 3 => 'stable',
-            4 => 'stable', 5 => 'growing', 6 => 'growing',
-            7 => 'stable', 8 => 'growing', 9 => 'stable',
-            10 => 'growing', 11 => 'peak', 12 => 'peak',
+            1 => 'declining',
+            2 => 'declining',
+            3 => 'stable',
+            4 => 'stable',
+            5 => 'growing',
+            6 => 'growing',
+            7 => 'stable',
+            8 => 'growing',
+            9 => 'stable',
+            10 => 'growing',
+            11 => 'peak',
+            12 => 'peak',
         ];
 
         return [
@@ -2308,9 +2321,18 @@ class MLAnalyticsIntelligenceService
     private function getSearchByLocation(array $searchData): array
     {
         $stateDistribution = [
-            'SP' => 35.0, 'RJ' => 12.0, 'MG' => 10.0, 'RS' => 7.0,
-            'PR' => 6.5, 'SC' => 4.5, 'BA' => 4.0, 'DF' => 3.5,
-            'GO' => 3.0, 'PE' => 3.0, 'CE' => 2.5, 'outros' => 9.0,
+            'SP' => 35.0,
+            'RJ' => 12.0,
+            'MG' => 10.0,
+            'RS' => 7.0,
+            'PR' => 6.5,
+            'SC' => 4.5,
+            'BA' => 4.0,
+            'DF' => 3.5,
+            'GO' => 3.0,
+            'PE' => 3.0,
+            'CE' => 2.5,
+            'outros' => 9.0,
         ];
 
         $totalTerms = 0;
@@ -2341,14 +2363,22 @@ class MLAnalyticsIntelligenceService
     private function getSearchByTime(array $searchData): array
     {
         $hourlyDistribution = [
-            '00-06' => 5.0, '06-09' => 10.0, '09-12' => 20.0,
-            '12-14' => 15.0, '14-18' => 22.0, '18-21' => 20.0,
+            '00-06' => 5.0,
+            '06-09' => 10.0,
+            '09-12' => 20.0,
+            '12-14' => 15.0,
+            '14-18' => 22.0,
+            '18-21' => 20.0,
             '21-00' => 8.0,
         ];
 
         $dayOfWeekDistribution = [
-            'segunda' => 16.0, 'terca' => 15.5, 'quarta' => 15.0,
-            'quinta' => 14.5, 'sexta' => 14.0, 'sabado' => 13.0,
+            'segunda' => 16.0,
+            'terca' => 15.5,
+            'quarta' => 15.0,
+            'quinta' => 14.5,
+            'sexta' => 14.0,
+            'sabado' => 13.0,
             'domingo' => 12.0,
         ];
 
@@ -2605,12 +2635,21 @@ class MLAnalyticsIntelligenceService
 
             $stages = [
                 ['stage' => 'Busca', 'volume' => $estimatedSearchImpressions, 'rate' => 100.0],
-                ['stage' => 'Visualiza\u00e7\u00e3o', 'volume' => $views,
-                    'rate' => $estimatedSearchImpressions > 0 ? round(($views / $estimatedSearchImpressions) * 100, 2) : 0],
-                ['stage' => 'Pergunta', 'volume' => $questions,
-                    'rate' => $views > 0 ? round(($questions / $views) * 100, 2) : 0],
-                ['stage' => 'Compra', 'volume' => $sales,
-                    'rate' => $views > 0 ? round(($sales / $views) * 100, 2) : 0],
+                [
+                    'stage' => 'Visualiza\u00e7\u00e3o',
+                    'volume' => $views,
+                    'rate' => $estimatedSearchImpressions > 0 ? round(($views / $estimatedSearchImpressions) * 100, 2) : 0
+                ],
+                [
+                    'stage' => 'Pergunta',
+                    'volume' => $questions,
+                    'rate' => $views > 0 ? round(($questions / $views) * 100, 2) : 0
+                ],
+                [
+                    'stage' => 'Compra',
+                    'volume' => $sales,
+                    'rate' => $views > 0 ? round(($sales / $views) * 100, 2) : 0
+                ],
             ];
 
             $biggestDrop = '';

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\MercadoLivre;
@@ -51,11 +52,11 @@ class SmartQAService
             }
 
             $results = [];
-            
+
             foreach ($questions as $question) {
                 $result = $this->processSingleQuestion($question);
                 $results[] = $result;
-                
+
                 // Apply auto-response if recommended
                 if ($result['auto_respond'] && $result['answer']) {
                     $this->sendAutoAnswer($question['id'], $result['answer']);
@@ -70,7 +71,6 @@ class SmartQAService
                 'results' => $results,
                 'summary' => $this->generateProcessingSummary($results)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('SmartQAService::processAutoResponses error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -87,7 +87,7 @@ class SmartQAService
     {
         try {
             $proactiveQA = [];
-            
+
             // Get products if none specified
             if (empty($productIds)) {
                 $productIds = $this->getProductsNeedingQA();
@@ -115,7 +115,6 @@ class SmartQAService
                 'proactive_qa' => $proactiveQA,
                 'estimated_impact' => $this->estimateQAImpact($proactiveQA)
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('SmartQAService::generateProactiveQA error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -133,7 +132,7 @@ class SmartQAService
         try {
             $results = [];
             $batchId = $this->generateBatchId();
-            
+
             foreach ($questionBatch as $question) {
                 $result = $this->processSingleQuestion($question);
                 $result['batch_id'] = $batchId;
@@ -142,7 +141,7 @@ class SmartQAService
 
             // Process batch optimizations
             $batchOptimizations = $this->optimizeBatchResponses($results);
-            
+
             return [
                 'success' => true,
                 'batch_id' => $batchId,
@@ -152,7 +151,6 @@ class SmartQAService
                 'results' => $results,
                 'batch_optimizations' => $batchOptimizations
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('SmartQAService::processBatchAnswers error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -169,7 +167,7 @@ class SmartQAService
     {
         try {
             $updatedEntries = [];
-            
+
             foreach ($newEntries as $entry) {
                 $processedEntry = $this->processKnowledgeEntry($entry);
                 if ($processedEntry['valid']) {
@@ -187,7 +185,6 @@ class SmartQAService
                 'knowledge_base_size' => count($this->knowledgeBase),
                 'updated_entries' => $updatedEntries
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('SmartQAService::updateKnowledgeBase error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -220,7 +217,6 @@ class SmartQAService
                 'generated_at' => time(),
                 'data_period' => $filters['period'] ?? 'last_30_days'
             ];
-            
         } catch (\Exception $e) {
             $this->logger->warning('SmartQAService::getQAAnalytics error', ['error' => $e->getMessage(), 'account_id' => $this->accountId]);
             return [
@@ -237,18 +233,18 @@ class SmartQAService
     {
         // Analyze question
         $analysis = $this->analyzeQuestion($question);
-        
+
         // Check if auto-response is appropriate
         $shouldAutoRespond = $this->shouldAutoRespond($question, $analysis);
-        
+
         $answer = null;
         if ($shouldAutoRespond) {
             $answer = $this->generateAutoAnswer($question, $analysis);
         }
-        
+
         // Check if escalation is needed
         $shouldEscalate = $this->shouldEscalate($question, $analysis);
-        
+
         return [
             'question_id' => $question['id'],
             'question_text' => $question['text'],
@@ -271,10 +267,10 @@ class SmartQAService
     {
         // Get product info for context
         $productInfo = $this->getProductInfo($question['item_id']);
-        
+
         // Use AI for analysis
         $aiAnalysis = $this->analyzeQuestionWithAI($question, $productInfo);
-        
+
         // Fallback to rule-based analysis
         if (!$aiAnalysis) {
             $aiAnalysis = $this->analyzeQuestionWithRules($question);
@@ -300,29 +296,31 @@ class SmartQAService
     {
         // Check against auto-response rules
         $rules = $this->config['auto_response_rules'];
-        
+
         // Never auto-respond to negative sentiment questions
         if ($analysis['sentiment'] === 'negative' && $rules['skip_negative_sentiment']) {
             return false;
         }
-        
+
         // Auto-respond to low complexity questions
         if ($analysis['complexity'] === 'low' && $rules['auto_simple_questions']) {
             return true;
         }
-        
+
         // Auto-respond if answer exists in knowledge base
         if ($this->hasKnowledgeBaseAnswer($question, $analysis)) {
             return true;
         }
-        
+
         // Auto-respond if product information is sufficient
-        if ($analysis['requires_inventory_check'] === false && 
-            $analysis['requires_shipping_info'] === false && 
-            $rules['auto_product_questions']) {
+        if (
+            $analysis['requires_inventory_check'] === false &&
+            $analysis['requires_shipping_info'] === false &&
+            $rules['auto_product_questions']
+        ) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -336,19 +334,19 @@ class SmartQAService
         if ($kbAnswer) {
             return $this->personalizeAnswer($kbAnswer, $question);
         }
-        
+
         // Generate answer with AI
         $aiAnswer = $this->generateAIAnswer($question, $analysis);
         if ($aiAnswer) {
             return $aiAnswer;
         }
-        
+
         // Use template answers
         $templateAnswer = $this->getTemplateAnswer($analysis);
         if ($templateAnswer) {
             return $this->personalizeAnswer($templateAnswer, $question);
         }
-        
+
         return null;
     }
 
@@ -363,10 +361,10 @@ class SmartQAService
         }
 
         $questions = [];
-        
+
         // Generate questions based on product type and category
         $questionTemplates = $this->getQuestionTemplates($productInfo['category_id']);
-        
+
         foreach ($questionTemplates as $template) {
             $question = $this->generateQuestionFromTemplate($template, $productInfo);
             $questions[] = $question;
@@ -375,12 +373,12 @@ class SmartQAService
         // Add competitor questions
         $competitorQuestions = $this->generateCompetitorQuestions($productInfo);
         $questions = array_merge($questions, $competitorQuestions);
-        
+
         // Add shipping and warranty questions
         if ($productInfo['requires_shipping']) {
             $questions[] = $this->generateShippingQuestion($productInfo);
         }
-        
+
         if ($productInfo['has_warranty']) {
             $questions[] = $this->generateWarrantyQuestion($productInfo);
         }
@@ -398,15 +396,14 @@ class SmartQAService
                 'text' => $answer,
                 'status' => 'ACTIVE'
             ]);
-            
+
             if (!isset($result['error'])) {
                 // Log auto-response
                 $this->logAutoResponse($questionId, $answer);
                 return true;
             }
-            
+
             return false;
-            
         } catch (\Exception $e) {
             log_warning('Falha na auto-resposta de pergunta', [
                 'service' => 'SmartQAService',
@@ -426,13 +423,12 @@ class SmartQAService
             $prompt = $this->buildAnalysisPrompt($question, $productInfo);
             $aiService = new \App\Services\AI\AIService();
             $response = $aiService->generateResponse($prompt);
-            
+
             if ($response['success']) {
                 return json_decode($response['content'], true);
             }
-            
+
             return null;
-            
         } catch (\Exception $e) {
             log_warning('Falha na análise de pergunta por IA', [
                 'service' => 'SmartQAService',
@@ -451,13 +447,12 @@ class SmartQAService
             $prompt = $this->buildAnswerPrompt($question, $analysis);
             $aiService = new \App\Services\AI\AIService();
             $response = $aiService->generateResponse($prompt);
-            
+
             if ($response['success']) {
                 return $response['content'];
             }
-            
+
             return null;
-            
         } catch (\Exception $e) {
             log_warning('Falha na geração de resposta por IA', [
                 'service' => 'SmartQAService',
@@ -482,7 +477,7 @@ class SmartQAService
             ORDER BY q.date_created ASC
             LIMIT 50
         ");
-        
+
         $stmt->execute(['account_id' => $this->accountId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
@@ -729,11 +724,17 @@ class SmartQAService
         $posWords = ['ótimo', 'excelent', 'parabeniz', 'obrigad', 'recomend'];
         $sentiment = 'neutral';
         foreach ($negWords as $w) {
-            if (mb_strpos($text, $w) !== false) { $sentiment = 'negative'; break; }
+            if (mb_strpos($text, $w) !== false) {
+                $sentiment = 'negative';
+                break;
+            }
         }
         if ($sentiment === 'neutral') {
             foreach ($posWords as $w) {
-                if (mb_strpos($text, $w) !== false) { $sentiment = 'positive'; break; }
+                if (mb_strpos($text, $w) !== false) {
+                    $sentiment = 'positive';
+                    break;
+                }
             }
         }
 
@@ -741,7 +742,10 @@ class SmartQAService
         $urgentWords = ['urgent', 'rápid', 'hoje', 'agora', 'imediato'];
         $urgency = 'normal';
         foreach ($urgentWords as $w) {
-            if (mb_strpos($text, $w) !== false) { $urgency = 'high'; break; }
+            if (mb_strpos($text, $w) !== false) {
+                $urgency = 'high';
+                break;
+            }
         }
 
         // Keywords extraction
@@ -1042,11 +1046,11 @@ class SmartQAService
         $pCat    = $productInfo['category_id'] ?? '';
 
         return "Analise a seguinte pergunta de um comprador sobre o produto \"{$pTitle}\" "
-             . "(categoria: {$pCat}, preço: R\${$pPrice}).\n\n"
-             . "Pergunta: \"{$qText}\"\n\n"
-             . "Retorne um JSON com os campos: category (shipping|warranty|stock|pricing|specifications|compatibility|invoice|general), "
-             . "sentiment (positive|negative|neutral), urgency (high|normal|low), "
-             . "complexity (high|medium|low), keywords (array de strings), intent (question|complaint|request|statement).";
+            . "(categoria: {$pCat}, preço: R\${$pPrice}).\n\n"
+            . "Pergunta: \"{$qText}\"\n\n"
+            . "Retorne um JSON com os campos: category (shipping|warranty|stock|pricing|specifications|compatibility|invoice|general), "
+            . "sentiment (positive|negative|neutral), urgency (high|normal|low), "
+            . "complexity (high|medium|low), keywords (array de strings), intent (question|complaint|request|statement).";
     }
 
     private function buildAnswerPrompt(array $question, array $analysis): string
@@ -1058,12 +1062,12 @@ class SmartQAService
         $pTitle    = $product['title'] ?? 'o produto';
 
         return "Gere uma resposta profissional e amigável para a seguinte pergunta sobre \"{$pTitle}\" "
-             . "no Mercado Livre.\n\n"
-             . "Categoria da pergunta: {$category}\n"
-             . "Sentimento: {$sentiment}\n"
-             . "Pergunta: \"{$qText}\"\n\n"
-             . "Regras: seja cordial, use no máximo 300 caracteres, não prometa o que não pode cumprir, "
-             . "use português brasileiro formal.";
+            . "no Mercado Livre.\n\n"
+            . "Categoria da pergunta: {$category}\n"
+            . "Sentimento: {$sentiment}\n"
+            . "Pergunta: \"{$qText}\"\n\n"
+            . "Regras: seja cordial, use no máximo 300 caracteres, não prometa o que não pode cumprir, "
+            . "use português brasileiro formal.";
     }
 
     // ─── Analytics helpers ──────────────────────────────────────────────
@@ -1072,7 +1076,9 @@ class SmartQAService
     {
         try {
             $days = match ($filters['period'] ?? 'last_30_days') {
-                'last_7_days' => 7, 'last_90_days' => 90, default => 30
+                'last_7_days' => 7,
+                'last_90_days' => 90,
+                default => 30
             };
             $since = date('Y-m-d', strtotime("-{$days} days"));
 
@@ -1103,7 +1109,9 @@ class SmartQAService
     {
         try {
             $days = match ($filters['period'] ?? 'last_30_days') {
-                'last_7_days' => 7, 'last_90_days' => 90, default => 30
+                'last_7_days' => 7,
+                'last_90_days' => 90,
+                default => 30
             };
             $since = date('Y-m-d', strtotime("-{$days} days"));
 

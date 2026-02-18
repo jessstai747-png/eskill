@@ -6,6 +6,61 @@
 
 ---
 
+## Sessão: 2026-02-19 (2) — Integração ML API: Proxy, Ownership Fix, ACL Extension
+
+### Objetivo
+Integrar o sistema RBAC/segurança (`realtime_db_api.php`) com a API do Mercado Livre:
+- Corrigir bug crítico no modelo de ownership para tabelas com `account_id`
+- Estender ACL com 13 tabelas ML
+- Adicionar proxy ML API com ~19 endpoints
+- Suportar seleção de conta ML via header/query
+
+### Correções implementadas
+
+#### 🔴 Bug crítico — Ownership `account_id` usava `user_id`
+- `buildOwnershipWhere()` fazia `account_id = :userId`, mas `account_id` é `ml_accounts.id` (não users.id)
+- Usuário 5 pode ter ML accounts 10, 11, 12 — items com `account_id = 10` não seriam visíveis
+- **Fix**: `getUserMLAccountIds()` resolve user → seus ML accounts
+- Se `activeMLAccountId` setado: `account_id = :rbac_account_id`
+- Se não: `account_id IN (:rbac_acc_0, :rbac_acc_1, ...)`
+- Se sem accounts: `AND 1=0` (nega acesso)
+- Mesma correção em `buildOwnershipWherePositional()` e `enforceOwnershipOnInsert()`
+
+#### ✨ ML API Proxy — 19 endpoints via `/api/v1/ml/*`
+- `routeMLRequest()` + `dispatchMLRequest()` — roteamento via `match()`
+- Handlers: `handleMLItems`, `handleMLSearch`, `handleMLOrders`, `handleMLQuestions`, `handleMLCategories`, `handleMLTrends`, `handleMLCompetitors`
+- Endpoints: items CRUD, search, orders, questions (answer), categories, trends, competitors, me, diagnose
+- Uses `MercadoLivreClient` com OAuth token do ML account do usuário
+- Catch `GuzzleHttp\Exception\ClientException` com forwarding de status code
+
+#### ✨ ML Account Context Resolution
+- `resolveMLAccountContext(int $userId)` — seta `userMLAccountIds` + `activeMLAccountId`
+- Suporta `X-ML-Account-Id` header e `?ml_account_id=` query param
+- Valida que account pertence ao user (previne IDOR entre accounts)
+- Adicionado `X-ML-Account-Id` ao CORS `Access-Control-Allow-Headers`
+
+#### ✨ ACL estendido — 13 tabelas ML adicionadas
+- `ml_ad_campaigns_advanced`, `ml_pricing_rules`, `ml_competitor_monitoring` → owner por account_id
+- `ml_competitor_data`, `ml_competitor_alerts`, `ml_market_opportunities` → read_only
+- `ml_search_analytics`, `ml_customer_journey`, `ml_conversion_funnel`, `ml_predictive_analytics` → read_only
+- `ml_service_executions`, `ml_service_status`, `ml_service_alerts` → read_only
+- `ml_qa_automation`, `ml_qa_knowledge_base` → read_only
+
+### Arquivos afetados
+- `api/realtime_db_api.php` — 861→1341 linhas (ownership fix + ACL + ML proxy + ML context)
+- `app/Services/MercadoLivre/CompetitorIntelligenceService.php` — formatter whitespace only
+- `app/Services/MercadoLivre/SmartQAService.php` — formatter whitespace only
+- `app/Services/MercadoLivre/MLAnalyticsIntelligenceService.php` — formatter whitespace only
+
+### Bug técnico corrigido
+- `MercadoLivreClient::isConfigured()` é `protected` — proxy usa `$client->getAccessToken() === ''`
+
+### Validação
+- `php -l` — 0 erros de sintaxe em todos os 4 arquivos
+- `get_errors` — 0 erros de lint em `realtime_db_api.php`
+
+---
+
 ## Sessão: 2026-02-19 — Security: RBAC, Race Condition Fix, Structured Logging Migration
 
 ### Objetivo

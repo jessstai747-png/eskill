@@ -20,6 +20,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Database;
 use App\Services\JwtService;
+use App\Services\MercadoLivreClient;
 use App\Services\StructuredLogService;
 
 class RealTimeDatabaseAPI
@@ -31,6 +32,12 @@ class RealTimeDatabaseAPI
     private $maxResults;
     private static bool $rateLimitTableVerified = false;
 
+    /** @var array<int> Cached ML account IDs for the authenticated user */
+    private array $userMLAccountIds = [];
+
+    /** @var int|null Active ML account resolved from header/query */
+    private ?int $activeMLAccountId = null;
+
     /**
      * Table ACL — defines per-table access control.
      *
@@ -41,8 +48,11 @@ class RealTimeDatabaseAPI
      *   'read_only' – any authenticated user can read, only admin can write
      *
      * 'owner_column' defines which column holds the owner reference.
+     * When owner_column is 'account_id', the RBAC resolves the user's ML accounts
+     * from ml_accounts and filters by those IDs (not the user_id directly).
      */
     private array $tableACL = [
+        // Core tables
         'users'                  => ['mode' => 'self'],
         'items'                  => ['mode' => 'owner', 'owner_column' => 'account_id'],
         'orders'                 => ['mode' => 'owner', 'owner_column' => 'account_id'],
@@ -55,6 +65,27 @@ class RealTimeDatabaseAPI
         'settings'               => ['mode' => 'admin'],
         'logs'                   => ['mode' => 'read_only'],
         'analytics'              => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        // ML Ads
+        'ml_ad_campaigns_advanced' => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        // ML Pricing
+        'ml_pricing_rules'         => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        // ML Competitor Intelligence
+        'ml_competitor_monitoring' => ['mode' => 'owner', 'owner_column' => 'account_id'],
+        'ml_competitor_data'       => ['mode' => 'read_only'],
+        'ml_competitor_alerts'     => ['mode' => 'read_only'],
+        'ml_market_opportunities'  => ['mode' => 'read_only'],
+        // ML Analytics (global, not per-account)
+        'ml_search_analytics'    => ['mode' => 'read_only'],
+        'ml_customer_journey'    => ['mode' => 'read_only'],
+        'ml_conversion_funnel'   => ['mode' => 'read_only'],
+        'ml_predictive_analytics' => ['mode' => 'read_only'],
+        // ML Unified / Service Management
+        'ml_service_executions'  => ['mode' => 'read_only'],
+        'ml_service_status'      => ['mode' => 'read_only'],
+        'ml_service_alerts'      => ['mode' => 'read_only'],
+        // ML Q&A
+        'ml_qa_automation'       => ['mode' => 'read_only'],
+        'ml_qa_knowledge_base'   => ['mode' => 'read_only'],
     ];
 
     public function __construct()
@@ -77,7 +108,7 @@ class RealTimeDatabaseAPI
         header('Content-Type: application/json');
         header('Access-Control-Allow-Origin: ' . ($_ENV['APP_URL'] ?? $_ENV['CORS_ALLOWED_ORIGIN'] ?? 'https://eskill.com.br'));
         header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-ML-Account-Id');
 
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             http_response_code(200);
@@ -96,18 +127,30 @@ class RealTimeDatabaseAPI
                 return;
             }
 
+            $userId = $authResult['user_id'];
+
             // Check rate limit (user_id + IP for defense-in-depth)
-            $rateLimitResult = $this->checkRateLimit($authResult['user_id']);
+            $rateLimitResult = $this->checkRateLimit($userId);
             if (!$rateLimitResult['allowed']) {
                 $this->sendResponse(['error' => 'Rate limit exceeded'], 429);
                 return;
             }
 
             // Resolve user role and admin status for RBAC
-            $isAdmin = $this->isUserAdmin($authResult['user_id']);
+            $isAdmin = $this->isUserAdmin($userId);
 
-            // Route the request
-            $this->routeRequest($method, $path, $input, $authResult['user_id'], $isAdmin);
+            // Resolve ML account context (sets $this->userMLAccountIds and $this->activeMLAccountId)
+            $this->resolveMLAccountContext($userId);
+
+            // Check if this is a ML API proxy request (/api/v1/ml/...)
+            $segments = explode('/', trim($path, '/'));
+            if (count($segments) >= 3 && $segments[0] === 'api' && $segments[1] === 'v1' && $segments[2] === 'ml') {
+                $this->routeMLRequest($method, $segments, $input, $userId);
+                return;
+            }
+
+            // Route standard DB request
+            $this->routeRequest($method, $path, $input, $userId, $isAdmin);
         } catch (Exception $e) {
             $this->logger->error('API Error', [
                 'error' => $e->getMessage(),
@@ -705,6 +748,9 @@ class RealTimeDatabaseAPI
     /**
      * Build ownership WHERE clause for row-level access control (named params).
      *
+     * When owner_column is 'account_id', resolves the user's ML account IDs
+     * and filters with IN() clause. Optionally scoped to activeMLAccountId.
+     *
      * @return array{clause: string, params: array}
      */
     private function buildOwnershipWhere(string $table, int $userId, bool $isAdmin): array
@@ -735,6 +781,39 @@ class RealTimeDatabaseAPI
             if (!$this->isValidFieldName($col)) {
                 return ['clause' => ' AND 1=0', 'params' => []];
             }
+
+            // For account_id columns, resolve to user's ML account IDs
+            if ($col === 'account_id') {
+                // If a specific ML account is active, scope to that
+                if ($this->activeMLAccountId !== null) {
+                    return [
+                        'clause' => " AND `{$col}` = :rbac_account_id",
+                        'params' => ['rbac_account_id' => $this->activeMLAccountId],
+                    ];
+                }
+
+                // Otherwise, use all user's ML account IDs
+                $accountIds = $this->userMLAccountIds;
+                if (empty($accountIds)) {
+                    // User has no ML accounts — deny access to account-scoped tables
+                    return ['clause' => ' AND 1=0', 'params' => []];
+                }
+
+                // Build IN clause with named params
+                $placeholders = [];
+                $params = [];
+                foreach ($accountIds as $i => $accId) {
+                    $key = 'rbac_acc_' . $i;
+                    $placeholders[] = ':' . $key;
+                    $params[$key] = $accId;
+                }
+                return [
+                    'clause' => " AND `{$col}` IN (" . implode(', ', $placeholders) . ')',
+                    'params' => $params,
+                ];
+            }
+
+            // For user_id columns (ml_accounts, notifications), filter directly
             return [
                 'clause' => " AND `{$col}` = :rbac_owner_id",
                 'params' => ['rbac_owner_id' => $userId],
@@ -773,6 +852,25 @@ class RealTimeDatabaseAPI
             if (!$this->isValidFieldName($col)) {
                 return ['clause' => ' AND 1=0', 'values' => []];
             }
+
+            // For account_id columns, resolve to user's ML account IDs
+            if ($col === 'account_id') {
+                if ($this->activeMLAccountId !== null) {
+                    return ['clause' => " AND `{$col}` = ?", 'values' => [$this->activeMLAccountId]];
+                }
+
+                $accountIds = $this->userMLAccountIds;
+                if (empty($accountIds)) {
+                    return ['clause' => ' AND 1=0', 'values' => []];
+                }
+
+                $placeholders = implode(', ', array_fill(0, count($accountIds), '?'));
+                return [
+                    'clause' => " AND `{$col}` IN ({$placeholders})",
+                    'values' => $accountIds,
+                ];
+            }
+
             return ['clause' => " AND `{$col}` = ?", 'values' => [$userId]];
         }
 
@@ -782,6 +880,8 @@ class RealTimeDatabaseAPI
     /**
      * Enforce ownership column on INSERT — automatically set the ownership column
      * to the authenticated user's ID so users cannot create records for others.
+     *
+     * For account_id tables, uses the active ML account (or first available).
      */
     private function enforceOwnershipOnInsert(string $table, array $input, int $userId, bool $isAdmin): array
     {
@@ -798,11 +898,392 @@ class RealTimeDatabaseAPI
 
         if ($mode === 'owner') {
             $col = $acl['owner_column'] ?? 'user_id';
-            // Force ownership column to authenticated user
-            $input[$col] = $userId;
+
+            if ($col === 'account_id') {
+                // Resolve to active ML account or validate caller-supplied value
+                if ($this->activeMLAccountId !== null) {
+                    $input[$col] = $this->activeMLAccountId;
+                } elseif (isset($input[$col])) {
+                    // Validate that the supplied account_id belongs to this user
+                    $suppliedId = (int) $input[$col];
+                    if (!in_array($suppliedId, $this->userMLAccountIds, true)) {
+                        // Replace with first available account or block
+                        $input[$col] = $this->userMLAccountIds[0] ?? 0;
+                    }
+                } elseif (!empty($this->userMLAccountIds)) {
+                    $input[$col] = $this->userMLAccountIds[0];
+                }
+            } else {
+                // user_id columns — force to authenticated user
+                $input[$col] = $userId;
+            }
         }
 
         return $input;
+    }
+
+    /**
+     * Resolve ML account context for the authenticated user.
+     *
+     * Sets $this->userMLAccountIds (all ML accounts for the user) and
+     * $this->activeMLAccountId (specific account from header/query, validated).
+     */
+    private function resolveMLAccountContext(int $userId): void
+    {
+        $this->userMLAccountIds = $this->getUserMLAccountIds($userId);
+
+        // Check for specific ML account selection via header or query
+        $headerAccountId = (int) ($_SERVER['HTTP_X_ML_ACCOUNT_ID'] ?? 0);
+        $queryAccountId = (int) ($_GET['ml_account_id'] ?? 0);
+        $requestedId = $headerAccountId > 0 ? $headerAccountId : ($queryAccountId > 0 ? $queryAccountId : 0);
+
+        if ($requestedId > 0) {
+            // Validate that the requested account belongs to this user
+            if (in_array($requestedId, $this->userMLAccountIds, true)) {
+                $this->activeMLAccountId = $requestedId;
+            } else {
+                $this->logger->warning('ML account access denied — account does not belong to user', [
+                    'user_id' => $userId,
+                    'requested_account_id' => $requestedId,
+                    'user_accounts' => $this->userMLAccountIds,
+                ]);
+                // Don't set — deny scoping to accounts the user doesn't own
+            }
+        }
+    }
+
+    /**
+     * Get all ML account IDs belonging to a user.
+     *
+     * @return array<int>
+     */
+    private function getUserMLAccountIds(int $userId): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT id FROM ml_accounts WHERE user_id = :user_id ORDER BY id'
+            );
+            $stmt->execute(['user_id' => $userId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+
+            return array_map('intval', $rows);
+        } catch (Exception $e) {
+            $this->logger->warning('Failed to resolve ML accounts for user', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    // =========================================================================
+    //  Mercado Livre API Proxy
+    // =========================================================================
+
+    /**
+     * Route ML API proxy requests: /api/v1/ml/{resource}[/{id}][/{sub}]
+     *
+     * Proxies requests to Mercado Livre API via MercadoLivreClient,
+     * using the authenticated user's ML account for authorization.
+     */
+    private function routeMLRequest(string $method, array $segments, array $input, int $userId): void
+    {
+        // segments: ['api', 'v1', 'ml', resource, id?, sub?]
+        $resource = $segments[3] ?? '';
+        $resourceId = $segments[4] ?? null;
+        $subResource = $segments[5] ?? null;
+
+        if ($resource === '') {
+            $this->sendResponse(['error' => 'ML resource required (e.g. /api/v1/ml/items)'], 400);
+            return;
+        }
+
+        // Resolve which ML account to use
+        $accountId = $this->activeMLAccountId;
+        if ($accountId === null && !empty($this->userMLAccountIds)) {
+            $accountId = $this->userMLAccountIds[0]; // Default to first account
+        }
+
+        if ($accountId === null) {
+            $this->sendResponse([
+                'error' => 'No ML account configured',
+                'message' => 'Vincule uma conta do Mercado Livre antes de usar a API.',
+            ], 422);
+            return;
+        }
+
+        try {
+            $client = new MercadoLivreClient($accountId);
+
+            if ($client->getAccessToken() === '') {
+                $this->sendResponse([
+                    'error' => 'ML account not configured',
+                    'message' => 'A conta ML selecionada não possui token válido.',
+                    'account_id' => $accountId,
+                ], 401);
+                return;
+            }
+
+            $result = $this->dispatchMLRequest($client, $method, $resource, $resourceId, $subResource, $input);
+            $this->sendResponse($result);
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $response = $e->getResponse();
+            $statusCode = $response ? $response->getStatusCode() : 500;
+            $body = $response ? json_decode((string) $response->getBody(), true) : [];
+
+            $this->logger->warning('ML API client error', [
+                'resource' => $resource,
+                'status' => $statusCode,
+                'error' => $body['message'] ?? $e->getMessage(),
+                'account_id' => $accountId,
+                'user_id' => $userId,
+            ]);
+
+            $this->sendResponse([
+                'error' => $body['error'] ?? 'ml_api_error',
+                'message' => $body['message'] ?? $e->getMessage(),
+                'status' => $statusCode,
+            ], $statusCode);
+        } catch (Exception $e) {
+            $this->logger->error('ML API proxy error', [
+                'resource' => $resource,
+                'error' => $e->getMessage(),
+                'account_id' => $accountId,
+                'user_id' => $userId,
+            ]);
+
+            $this->sendResponse([
+                'error' => 'ml_proxy_error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Dispatch ML API request to appropriate MercadoLivreClient method.
+     *
+     * @return array API response data
+     */
+    private function dispatchMLRequest(
+        MercadoLivreClient $client,
+        string $method,
+        string $resource,
+        ?string $resourceId,
+        ?string $subResource,
+        array $input
+    ): array {
+        return match ($resource) {
+            'items' => $this->handleMLItems($client, $method, $resourceId, $subResource, $input),
+            'search' => $this->handleMLSearch($client, $input),
+            'orders' => $this->handleMLOrders($client, $method, $resourceId, $input),
+            'questions' => $this->handleMLQuestions($client, $method, $resourceId, $input),
+            'categories' => $this->handleMLCategories($client, $resourceId, $subResource, $input),
+            'trends' => $this->handleMLTrends($client, $resourceId),
+            'me' => $client->getMe(),
+            'diagnose' => $client->diagnose(),
+            'competitors' => $this->handleMLCompetitors($client, $input),
+            default => throw new Exception("Unknown ML resource: {$resource}"),
+        };
+    }
+
+    /**
+     * Handle /api/v1/ml/items[/{id}][/{sub}]
+     */
+    private function handleMLItems(
+        MercadoLivreClient $client,
+        string $method,
+        ?string $itemId,
+        ?string $subResource,
+        array $input
+    ): array {
+        if ($method === 'GET') {
+            if ($itemId === null) {
+                // GET /ml/items → list seller's items
+                $params = array_intersect_key($input, array_flip(['status', 'limit', 'offset', 'category']));
+                return $client->getMyItems($params);
+            }
+
+            if ($subResource === 'health') {
+                return $client->getItemHealth($itemId);
+            }
+
+            if ($subResource === 'description') {
+                return $client->get("/items/{$itemId}/description", [], 300, true);
+            }
+
+            // GET /ml/items/{id} → item details
+            return $client->getItemDetails($itemId);
+        }
+
+        if ($method === 'PUT' || $method === 'PATCH') {
+            if ($itemId === null) {
+                throw new Exception('Item ID required for update');
+            }
+
+            if ($subResource === 'description') {
+                $plainText = $input['plain_text'] ?? $input['description'] ?? '';
+                if ($plainText === '') {
+                    throw new Exception('plain_text or description field required');
+                }
+                return $client->updateDescription($itemId, $plainText);
+            }
+
+            // PUT /ml/items/{id} → update item
+            return $client->updateItem($itemId, $input);
+        }
+
+        throw new Exception("Method {$method} not supported for items");
+    }
+
+    /**
+     * Handle /api/v1/ml/search?q=...&category=...
+     */
+    private function handleMLSearch(MercadoLivreClient $client, array $input): array
+    {
+        $keyword = $input['q'] ?? $input['keyword'] ?? '';
+        $category = $input['category'] ?? $input['category_id'] ?? '';
+        $limit = (int) ($input['limit'] ?? 20);
+
+        if ($keyword === '' && $category === '') {
+            throw new Exception('Search requires q (keyword) or category parameter');
+        }
+
+        if ($keyword !== '' && $category !== '') {
+            return $client->searchByKeyword($keyword, $category, $limit);
+        }
+
+        $params = array_intersect_key($input, array_flip(['q', 'category', 'limit', 'offset', 'sort']));
+        return $client->searchItems($params);
+    }
+
+    /**
+     * Handle /api/v1/ml/orders[/{id}]
+     */
+    private function handleMLOrders(MercadoLivreClient $client, string $method, ?string $orderId, array $input): array
+    {
+        if ($method !== 'GET') {
+            throw new Exception('Only GET is supported for orders');
+        }
+
+        $sellerId = $client->getSellerId();
+        if (empty($sellerId)) {
+            return ['error' => 'seller_not_found', 'orders' => []];
+        }
+
+        if ($orderId !== null) {
+            return $client->get("/orders/{$orderId}");
+        }
+
+        // List orders with optional filters
+        $params = [
+            'seller' => $sellerId,
+            'sort' => $input['sort'] ?? 'date_desc',
+        ];
+
+        if (!empty($input['status'])) {
+            $params['order.status'] = $input['status'];
+        }
+
+        $limit = min((int) ($input['limit'] ?? 50), 50);
+        $offset = (int) ($input['offset'] ?? 0);
+        $params['limit'] = $limit;
+        $params['offset'] = $offset;
+
+        return $client->get('/orders/search', $params);
+    }
+
+    /**
+     * Handle /api/v1/ml/questions[/{id}]
+     */
+    private function handleMLQuestions(MercadoLivreClient $client, string $method, ?string $questionId, array $input): array
+    {
+        $sellerId = $client->getSellerId();
+        if (empty($sellerId)) {
+            return ['error' => 'seller_not_found', 'questions' => []];
+        }
+
+        if ($method === 'GET') {
+            if ($questionId !== null) {
+                return $client->get("/questions/{$questionId}");
+            }
+
+            // List unanswered questions
+            $params = [
+                'seller_id' => $sellerId,
+                'status' => $input['status'] ?? 'UNANSWERED',
+                'sort_fields' => 'date_created',
+                'sort_types' => 'DESC',
+                'limit' => min((int) ($input['limit'] ?? 50), 50),
+                'offset' => (int) ($input['offset'] ?? 0),
+            ];
+
+            if (!empty($input['item_id'])) {
+                $params['item'] = $input['item_id'];
+            }
+
+            return $client->get('/questions/search', $params);
+        }
+
+        if ($method === 'POST' && $questionId !== null) {
+            // Answer a question
+            $answerText = $input['text'] ?? $input['answer'] ?? '';
+            if ($answerText === '') {
+                throw new Exception('Answer text required');
+            }
+
+            return $client->post("/answers", [
+                'question_id' => (int) $questionId,
+                'text' => $answerText,
+            ]);
+        }
+
+        throw new Exception("Method {$method} not supported for questions");
+    }
+
+    /**
+     * Handle /api/v1/ml/categories[/{id}][/attributes]
+     */
+    private function handleMLCategories(MercadoLivreClient $client, ?string $categoryId, ?string $sub, array $input): array
+    {
+        if ($categoryId === null) {
+            // List root categories
+            $siteId = $input['site_id'] ?? 'MLB';
+            return $client->get("/sites/{$siteId}/categories", [], 3600, true);
+        }
+
+        if ($sub === 'attributes') {
+            return $client->getCategoryAttributes($categoryId);
+        }
+
+        return $client->getCategory($categoryId);
+    }
+
+    /**
+     * Handle /api/v1/ml/trends/{categoryId}
+     */
+    private function handleMLTrends(MercadoLivreClient $client, ?string $categoryId): array
+    {
+        if ($categoryId === null) {
+            throw new Exception('Category ID required for trends');
+        }
+
+        $trends = $client->getTrends($categoryId);
+        return ['trends' => $trends, 'category_id' => $categoryId];
+    }
+
+    /**
+     * Handle /api/v1/ml/competitors?keyword=...&category=...
+     */
+    private function handleMLCompetitors(MercadoLivreClient $client, array $input): array
+    {
+        $keyword = $input['keyword'] ?? $input['q'] ?? '';
+        $category = $input['category'] ?? $input['category_id'] ?? '';
+
+        if ($keyword === '' || $category === '') {
+            throw new Exception('keyword and category parameters required for competitor analysis');
+        }
+
+        return $client->getCompetitorAnalysis($keyword, $category);
     }
 
     /**
