@@ -6,6 +6,20 @@
 
 ---
 
+## Sessão: 2026-02-18 PM5b — Host header injection + resource leak final
+
+### Correções Adicionais (commits e085f85, 7c1f523)
+1. **StructuredLogService::search()**: `fclose` movido para `try/finally` — previne vazamento de handle
+2. **SecurityMiddleware::redirectToHttps()**: Host header validado contra `APP_DOMAIN` — previne redirect hijack
+3. **SecurityHeadersMiddleware::forceHttps()**: Host header validado contra `APP_DOMAIN` — previne redirect hijack
+
+### Verificação
+- `php -l`: 0 erros em todos os arquivos
+- PHPUnit Unit: 261 testes, 523 assertions, 0 failures, 33 skipped
+- Codacy CLI: 0 issues
+
+---
+
 ## Sessão: 2026-02-18 PM5 — Race conditions, infinite loop, validation, resource leaks
 
 ### Objetivo
