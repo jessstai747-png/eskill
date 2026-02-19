@@ -6,6 +6,20 @@
 
 ---
 
+## Sessão: 2026-02-19 — SEO-005/SEO-006: strict types e testes para Coverage e Synonyms
+
+### Implementação
+1. **declare(strict_types=1)** adicionado a SeoCoverageController.php e SeoSynonymsController.php (GapHunterService.php já tinha)
+2. **SeoCoverageControllerTest.php** criado: 20+ testes (strict types, deprecated, 6 endpoints, string params, dependencies, imports, validation, error handling)
+3. **SeoSynonymsControllerTest.php** criado: 15+ testes (strict types, deprecated, 5 endpoints, string params, dependencies, imports)
+4. **GapHunterServiceTest.php** criado: 15+ testes (strict types, methods, signatures, DB patterns, logging, gap persistence)
+
+### Validação
+- PHPUnit: 755 tests, 1300 assertions, 40 skipped — ALL PASS
+- SEO-005: ✅ | SEO-006: ✅
+
+---
+
 ## Sessão: 2026-02-19 — SEO-004: strict types, logging e testes estruturais para Keywords
 
 ### Objetivo
