@@ -1,0 +1,523 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Database;
+use PDO;
+
+/**
+ * Serviço Unificado de Renovação de Tokens do Mercado Livre
+ * 
+ * Consolida toda a lógica de renovação de tokens em um único lugar,
+ * fornecendo interface simples para diferentes modos de operação:
+ * - Renovação de tokens expirados/prestes a expirar
+ * - Renovação forçada de todas as contas
+ * - Renovação de conta específica
+ * - Métricas de saúde do sistema
+ * 
+ * Features:
+ * - File locking para evitar execuções concorrentes
+ * - Auditoria completa de todas as operações
+ * - Rate limiting configurável
+ * - Retry com backoff exponencial
+ * - Métricas detalhadas de sucesso/falha
+ */
+class UnifiedTokenRefreshService
+{
+    private PDO $db;
+    private MercadoLivreAuthService $authService;
+    private ?StructuredLogService $logger = null;
+    private ?string $lockFile = null;
+    
+    // Configurações padrão
+    private const DEFAULT_BUFFER_MINUTES = 120;      // 2 horas
+    private const DEFAULT_MAX_RETRIES = 3;
+    private const DEFAULT_RATE_DELAY_MS = 500;       // 0.5 segundos entre renovações
+    private const LOCK_TIMEOUT_SECONDS = 300;        // 5 minutos
+    private const SKIP_EXPIRED_DAYS = 30;            // Ignorar tokens expirados há mais de 30 dias
+    
+    public function __construct()
+    {
+        $this->db = Database::getInstance();
+        $this->authService = new MercadoLivreAuthService();
+        $this->lockFile = $this->getLockFilePath();
+        
+        try {
+            $this->logger = new StructuredLogService();
+        } catch (\Throwable $e) {
+            if (function_exists('log_warning')) {
+                log_warning('Falha ao inicializar StructuredLogService em UnifiedTokenRefreshService', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+    
+    /**
+     * Renova tokens que estão prestes a expirar
+     * 
+     * @param int $bufferMinutes Renovar se expira em menos de X minutos (padrão: 120 = 2 horas)
+     * @param bool $useLock Se false, não adquire lock (útil para testes)
+     * @return array Estatísticas da execução
+     */
+    public function refreshExpiring(int $bufferMinutes = self::DEFAULT_BUFFER_MINUTES, bool $useLock = true): array
+    {
+        if ($useLock && !$this->acquireLock()) {
+            return $this->createSkippedResult('Lock acquisition failed - another process is running');
+        }
+        
+        try {
+            return $this->executeRefresh(false, $bufferMinutes);
+        } catch (\Throwable $e) {
+            $this->log('error', 'Erro na renovação de tokens expirando', [
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        } finally {
+            if ($useLock) {
+                $this->releaseLock();
+            }
+        }
+    }
+    
+    /**
+     * Força renovação de TODAS as contas ativas
+     * 
+     * @param bool $useLock Se false, não adquire lock
+     * @return array Estatísticas da execução
+     */
+    public function forceRefreshAll(bool $useLock = true): array
+    {
+        if ($useLock && !$this->acquireLock()) {
+            return $this->createSkippedResult('Lock acquisition failed - another process is running');
+        }
+        
+        try {
+            return $this->executeRefresh(true);
+        } catch (\Throwable $e) {
+            $this->log('error', 'Erro na renovação forçada de tokens', [
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        } finally {
+            if ($useLock) {
+                $this->releaseLock();
+            }
+        }
+    }
+    
+    /**
+     * Renova token de uma conta específica
+     * 
+     * @param int $accountId ID da conta
+     * @param int $bufferMinutes Buffer de renovação
+     * @return array Resultado da renovação ['success' => bool, 'message' => string]
+     */
+    public function refreshAccount(int $accountId, int $bufferMinutes = self::DEFAULT_BUFFER_MINUTES): array
+    {
+        $this->log('info', "Renovando token da conta #{$accountId}", ['account_id' => $accountId]);
+        
+        $success = $this->authService->refreshToken($accountId, self::DEFAULT_MAX_RETRIES);
+        
+        return [
+            'success' => $success,
+            'account_id' => $accountId,
+            'message' => $success ? 'Token renovado com sucesso' : 'Falha ao renovar token',
+            'timestamp' => date('Y-m-d H:i:s'),
+        ];
+    }
+    
+    /**
+     * Obtém métricas de saúde do sistema de tokens
+     * 
+     * @return array Métricas detalhadas
+     */
+    public function getHealthMetrics(): array
+    {
+        $metrics = [
+            'timestamp' => date('Y-m-d H:i:s'),
+            'total_accounts' => $this->getTotalAccounts(),
+            'active_accounts' => $this->getActiveAccounts(),
+            'expired_accounts' => $this->getExpiredAccounts(),
+            'expiring_24h' => $this->getExpiringSoon(24),
+            'expiring_48h' => $this->getExpiringSoon(48),
+            'refresh_attempts_24h' => $this->getRefreshAttempts24h(),
+            'refresh_successes_24h' => $this->getRefreshSuccesses24h(),
+            'refresh_failures_24h' => $this->getRefreshFailures24h(),
+            'failure_rate_24h' => 0,
+            'accounts_with_failures' => $this->getAccountsWithConsecutiveFailures(3),
+            'last_refresh_avg_hours' => $this->getAverageHoursSinceLastRefresh(),
+        ];
+        
+        // Calcular taxa de falha
+        if ($metrics['refresh_attempts_24h'] > 0) {
+            $metrics['failure_rate_24h'] = round(
+                ($metrics['refresh_failures_24h'] / $metrics['refresh_attempts_24h']) * 100,
+                2
+            );
+        }
+        
+        // Status geral
+        $metrics['health_status'] = $this->determineHealthStatus($metrics);
+        
+        return $metrics;
+    }
+    
+    /**
+     * Executa a lógica de renovação de tokens
+     * 
+     * @param bool $forceAll Se true, renova todas as contas
+     * @param int $bufferMinutes Buffer de renovação
+     * @return array Estatísticas
+     */
+    private function executeRefresh(bool $forceAll, int $bufferMinutes = self::DEFAULT_BUFFER_MINUTES): array
+    {
+        $startTime = microtime(true);
+        
+        $results = [
+            'started_at' => date('Y-m-d H:i:s'),
+            'mode' => $forceAll ? 'force_all' : 'expiring_only',
+            'buffer_minutes' => $bufferMinutes,
+            'accounts_checked' => 0,
+            'tokens_refreshed' => 0,
+            'tokens_failed' => 0,
+            'tokens_skipped' => 0,
+            'details' => [],
+        ];
+        
+        $accounts = $this->getAccountsToRefresh($forceAll, $bufferMinutes);
+        $results['accounts_checked'] = count($accounts);
+        
+        $this->log('info', 'Iniciando renovação de tokens', [
+            'mode' => $results['mode'],
+            'accounts' => $results['accounts_checked'],
+        ]);
+        
+        // Rate limiting configuration
+        $rateDelayMs = (int)($_ENV['ML_API_RATE_DELAY_MS'] ?? self::DEFAULT_RATE_DELAY_MS);
+        $maxRetries = (int)($_ENV['TOKEN_REFRESH_MAX_RETRIES'] ?? self::DEFAULT_MAX_RETRIES);
+        
+        foreach ($accounts as $account) {
+            $accountId = (int)$account['id'];
+            $nickname = $account['nickname'];
+            $expiresAt = $account['token_expires_at'];
+            $currentStatus = $account['status'];
+            
+            $detail = [
+                'account_id' => $accountId,
+                'nickname' => $nickname,
+                'expires_at' => $expiresAt,
+                'status_before' => $currentStatus,
+            ];
+            
+            // Verificar se já expirou há muito tempo
+            if ($this->isTokenTooOld($expiresAt)) {
+                $detail['result'] = 'skipped';
+                $detail['reason'] = 'Token expirado há mais de ' . self::SKIP_EXPIRED_DAYS . ' dias - requer reconexão manual';
+                $results['tokens_skipped']++;
+                $results['details'][] = $detail;
+                continue;
+            }
+            
+            // Tentar renovar
+            try {
+                $success = $this->authService->refreshToken($accountId, $maxRetries);
+                
+                if ($success) {
+                    $detail['result'] = 'success';
+                    $detail['status_after'] = 'active';
+                    $results['tokens_refreshed']++;
+                    
+                    $this->log('info', "Token renovado: {$nickname}", ['account_id' => $accountId]);
+                } else {
+                    // Marcar como expirado se ainda não estava
+                    if ($currentStatus !== 'expired') {
+                        $this->markAccountAsExpired($accountId);
+                    }
+                    
+                    $detail['result'] = 'failed';
+                    $detail['status_after'] = 'expired';
+                    $detail['reason'] = 'Refresh token inválido ou expirado';
+                    $results['tokens_failed']++;
+                    
+                    $this->log('warning', "Falha ao renovar: {$nickname}", ['account_id' => $accountId]);
+                }
+            } catch (\Throwable $e) {
+                $detail['result'] = 'error';
+                $detail['reason'] = $e->getMessage();
+                $results['tokens_failed']++;
+                
+                $this->log('error', "Erro ao renovar: {$nickname}", [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            
+            $results['details'][] = $detail;
+            
+            // Rate limiting
+            usleep($rateDelayMs * 1000);
+        }
+        
+        $executionTime = round((microtime(true) - $startTime) * 1000);
+        $results['finished_at'] = date('Y-m-d H:i:s');
+        $results['execution_time_ms'] = $executionTime;
+
+        // Compatibilidade retroativa para consumidores antigos do worker
+        $results['checked'] = $results['accounts_checked'];
+        $results['refreshed'] = $results['tokens_refreshed'];
+        $results['failed'] = $results['tokens_failed'];
+        $results['skipped'] = $results['tokens_skipped'];
+        
+        $this->log('info', 'Renovação de tokens concluída', [
+            'checked' => $results['accounts_checked'],
+            'refreshed' => $results['tokens_refreshed'],
+            'failed' => $results['tokens_failed'],
+            'skipped' => $results['tokens_skipped'],
+            'execution_ms' => $executionTime,
+        ]);
+        
+        return $results;
+    }
+    
+    /**
+     * Obtém contas que precisam de renovação
+     */
+    private function getAccountsToRefresh(bool $forceAll, int $bufferMinutes): array
+    {
+        if ($forceAll) {
+            $stmt = $this->db->prepare("
+                SELECT id, nickname, ml_user_id, token_expires_at, status
+                FROM ml_accounts
+                WHERE refresh_token IS NOT NULL
+                AND refresh_token != ''
+                ORDER BY token_expires_at ASC
+            ");
+            $stmt->execute();
+        } else {
+            $bufferTime = date('Y-m-d H:i:s', time() + ($bufferMinutes * 60));
+            
+            $stmt = $this->db->prepare("
+                SELECT id, nickname, ml_user_id, token_expires_at, status
+                FROM ml_accounts
+                WHERE (
+                    token_expires_at <= :buffer_time
+                    OR status = 'expired'
+                )
+                AND refresh_token IS NOT NULL
+                AND refresh_token != ''
+                ORDER BY token_expires_at ASC
+            ");
+            $stmt->execute(['buffer_time' => $bufferTime]);
+        }
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * Verifica se o token está expirado há muito tempo
+     */
+    private function isTokenTooOld(string $expiresAt): bool
+    {
+        $secondsExpired = time() - strtotime($expiresAt);
+        return $secondsExpired > (self::SKIP_EXPIRED_DAYS * 24 * 3600);
+    }
+    
+    /**
+     * Marca conta como expirada
+     */
+    private function markAccountAsExpired(int $accountId): void
+    {
+        $this->db->prepare(
+            "UPDATE ml_accounts SET status = 'expired', updated_at = NOW() WHERE id = :id"
+        )->execute(['id' => $accountId]);
+    }
+    
+    // ===== FILE LOCKING =====
+    
+    private function getLockFilePath(): string
+    {
+        $storageDir = dirname(__DIR__, 2) . '/storage';
+        if (!is_dir($storageDir)) {
+            mkdir($storageDir, 0755, true);
+        }
+        return $storageDir . '/unified_token_refresh.lock';
+    }
+    
+    private function acquireLock(): bool
+    {
+        if (file_exists($this->lockFile)) {
+            $lockAge = time() - filemtime($this->lockFile);
+            
+            if ($lockAge < self::LOCK_TIMEOUT_SECONDS) {
+                $this->log('warning', 'Renovação já em execução em outro processo', [
+                    'lock_age' => $lockAge,
+                ]);
+                return false;
+            }
+            
+            $this->log('warning', 'Removendo lock expirado', ['lock_age' => $lockAge]);
+            @unlink($this->lockFile);
+        }
+        
+        $lockData = [
+            'pid' => getmypid(),
+            'hostname' => gethostname(),
+            'started_at' => date('Y-m-d H:i:s'),
+        ];
+        
+        $written = file_put_contents(
+            $this->lockFile,
+            json_encode($lockData, JSON_PRETTY_PRINT),
+            LOCK_EX
+        );
+        
+        if ($written === false) {
+            $this->log('error', 'Falha ao criar arquivo de lock', ['lock_file' => $this->lockFile]);
+            return false;
+        }
+        
+        $this->log('info', 'Lock adquirido', ['pid' => getmypid()]);
+        return true;
+    }
+    
+    private function releaseLock(): void
+    {
+        if (file_exists($this->lockFile)) {
+            if (@unlink($this->lockFile)) {
+                $this->log('info', 'Lock liberado');
+            }
+        }
+    }
+    
+    // ===== MÉTRICAS =====
+    
+    private function getTotalAccounts(): int
+    {
+        return (int)$this->db->query('SELECT COUNT(*) FROM ml_accounts')->fetchColumn();
+    }
+    
+    private function getActiveAccounts(): int
+    {
+        return (int)$this->db->query("SELECT COUNT(*) FROM ml_accounts WHERE status = 'active'")->fetchColumn();
+    }
+    
+    private function getExpiredAccounts(): int
+    {
+        return (int)$this->db->query("SELECT COUNT(*) FROM ml_accounts WHERE status = 'expired'")->fetchColumn();
+    }
+    
+    private function getExpiringSoon(int $hours): int
+    {
+        $threshold = date('Y-m-d H:i:s', time() + ($hours * 3600));
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM ml_accounts 
+             WHERE status = 'active' 
+             AND token_expires_at <= :threshold"
+        );
+        $stmt->execute(['threshold' => $threshold]);
+        return (int)$stmt->fetchColumn();
+    }
+    
+    private function getRefreshAttempts24h(): int
+    {
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM token_refresh_audit 
+             WHERE action = 'refresh_attempt' 
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)"
+        )->fetchColumn();
+    }
+    
+    private function getRefreshSuccesses24h(): int
+    {
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM token_refresh_audit 
+             WHERE action = 'refresh_success' 
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)"
+        )->fetchColumn();
+    }
+    
+    private function getRefreshFailures24h(): int
+    {
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM token_refresh_audit 
+             WHERE action = 'refresh_failed' 
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)"
+        )->fetchColumn();
+    }
+    
+    private function getAccountsWithConsecutiveFailures(int $threshold): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM ml_accounts WHERE refresh_failure_count >= :threshold"
+        );
+        $stmt->execute(['threshold' => $threshold]);
+        return (int)$stmt->fetchColumn();
+    }
+    
+    private function getAverageHoursSinceLastRefresh(): ?float
+    {
+        $result = $this->db->query(
+            "SELECT AVG(TIMESTAMPDIFF(HOUR, last_refresh_at, NOW())) as avg_hours 
+             FROM ml_accounts 
+             WHERE status = 'active' 
+             AND last_refresh_at IS NOT NULL"
+        )->fetch(PDO::FETCH_ASSOC);
+        
+        return $result['avg_hours'] ? round((float)$result['avg_hours'], 2) : null;
+    }
+    
+    private function determineHealthStatus(array $metrics): string
+    {
+        if ($metrics['failure_rate_24h'] >= 40) {
+            return 'critical';
+        }
+        
+        if ($metrics['failure_rate_24h'] >= 20 || $metrics['expired_accounts'] >= 5) {
+            return 'warning';
+        }
+        
+        if ($metrics['expiring_24h'] > 0) {
+            return 'attention';
+        }
+        
+        return 'healthy';
+    }
+    
+    // ===== HELPERS =====
+    
+    private function createSkippedResult(string $reason): array
+    {
+        return [
+            'started_at' => date('Y-m-d H:i:s'),
+            'finished_at' => date('Y-m-d H:i:s'),
+            'status' => 'skipped',
+            'reason' => $reason,
+            'accounts_checked' => 0,
+            'tokens_refreshed' => 0,
+            'tokens_failed' => 0,
+            'tokens_skipped' => 0,
+            // Compatibilidade retroativa
+            'checked' => 0,
+            'refreshed' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+        ];
+    }
+    
+    private function log(string $level, string $message, array $context = []): void
+    {
+        if ($this->logger) {
+            $this->logger->{$level}($message, $context);
+            return;
+        }
+        
+        $context['service'] = 'UnifiedTokenRefreshService';
+        $logFn = "log_{$level}";
+        if (function_exists($logFn)) {
+            $logFn($message, $context);
+        }
+    }
+}
