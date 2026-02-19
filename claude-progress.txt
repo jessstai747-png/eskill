@@ -6,6 +6,27 @@
 
 ---
 
+## Sessão: 2026-02-19 — AUTH-003: compatibilidade de resultados no refresh unificado
+
+### Objetivo
+Avançar a feature `AUTH-003` corrigindo incompatibilidade entre `UnifiedTokenRefreshService` e consumidores legados do worker automático de refresh.
+
+### Implementação
+1. **Correção de compatibilidade no payload de resultados**
+   - `app/Services/UnifiedTokenRefreshService.php` agora mantém campos atuais (`tokens_refreshed`, `tokens_failed`, etc.) **e** publica aliases legados (`refreshed`, `failed`, `checked`, `skipped`).
+   - Aplicado tanto no fluxo normal (`executeRefresh`) quanto no retorno de lock (`createSkippedResult`).
+2. **Hardening do service**
+   - Adicionado `declare(strict_types=1)`.
+   - Inicialização de logger deixou de ser silenciosa: em falha, registra `log_warning` quando disponível.
+3. **Teste unitário complementar (sem DB)**
+   - `tests/Unit/Services/UnifiedTokenRefreshServiceTest.php` recebeu `declare(strict_types=1)`.
+   - Novo teste via Reflection valida os campos legados no `createSkippedResult()` sem depender de MySQL.
+
+### Validação
+- `php -l app/Services/UnifiedTokenRefreshService.php` ✅
+- `php -l tests/Unit/Services/UnifiedTokenRefreshServiceTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅
+
 ## Sessão: 2026-02-19 — AUTH-002: MercadoLivreAuthService testável sem MySQL (Unit)
 
 ### Objetivo
