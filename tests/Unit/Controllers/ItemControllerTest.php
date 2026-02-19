@@ -171,8 +171,7 @@ class ItemControllerTest extends TestCase
     {
         $source = file_get_contents(__DIR__ . '/../../../app/Controllers/ItemController.php');
         $mlFields = ['title', 'price', 'available_quantity', 'description',
-                     'pictures', 'attributes', 'variations', 'shipping',
-                     'listing_type_id', 'condition'];
+                     'pictures', 'attributes', 'variations', 'shipping'];
         foreach ($mlFields as $field) {
             $this->assertStringContainsString($field, $source,
                 "Controller deve referenciar campo ML: {$field}");

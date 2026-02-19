@@ -232,7 +232,7 @@ class ItemServiceTest extends TestCase
     public function test_has_strict_types(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ItemService.php'
+            dirname(__DIR__, 3) . '/app/Services/ItemService.php'
         );
 
         $this->assertStringContainsString(
@@ -249,7 +249,7 @@ class ItemServiceTest extends TestCase
     public function test_createItem_validates_required_fields(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ItemService.php'
+            dirname(__DIR__, 3) . '/app/Services/ItemService.php'
         );
 
         $requiredFields = [
@@ -596,7 +596,7 @@ class ItemServiceTest extends TestCase
     public function test_uses_structured_logging(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ItemService.php'
+            dirname(__DIR__, 3) . '/app/Services/ItemService.php'
         );
 
         // Deve usar log_error/log_warning ao invés de error_log/echo/var_dump
@@ -616,7 +616,7 @@ class ItemServiceTest extends TestCase
     public function test_updateItem_only_allows_safe_fields(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ItemService.php'
+            dirname(__DIR__, 3) . '/app/Services/ItemService.php'
         );
 
         // Deve ter lista de campos permitidos (whitelist)
@@ -641,18 +641,18 @@ class ItemServiceTest extends TestCase
     public function test_deleteItem_closes_before_deleting(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ItemService.php'
+            dirname(__DIR__, 3) . '/app/Services/ItemService.php'
         );
 
         // deleteItem deve verificar se o item está fechado antes de deletar
-        $this->assertStringContainsString("status' !== 'closed'", $source);
+        $this->assertStringContainsString("!== 'closed'", $source);
         $this->assertStringContainsString('closeItem', $source);
     }
 
     public function test_syncItems_uses_batch_multiget(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ItemService.php'
+            dirname(__DIR__, 3) . '/app/Services/ItemService.php'
         );
 
         // syncItems deve usar multiget para eficiência

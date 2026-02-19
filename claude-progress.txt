@@ -6,6 +6,44 @@
 
 ---
 
+## Sessão: 2026-02-19 — DASH-001: strict types, logging e testes estruturais para Dashboard
+
+### Objetivo
+Fortalecer a base de código do Dashboard (segundo pilar de Fase 1) com strict types, logging estruturado e cobertura ampla de testes.
+
+### Implementação
+1. **declare(strict_types=1)** adicionado a DashboardController.php e DashboardService.php
+2. **Logging estruturado** — adicionou `log_warning()` a 3 catch blocks silenciosos em DashboardController (countActiveAccounts, calculateAvgHealth, checkWebhookHealth)
+3. **DashboardControllerTest.php** (AMPLIADO de 10→40+ testes):
+   - Existencia e heranca BaseController
+   - 8 metodos core, 16 metodos de pagina, 17 metodos clone, 5 metodos API (@dataProvider)
+   - Propriedades: dashboardService, userService, cloneService, notificationService
+   - Method signatures (void returns, string params)
+   - Lazy loading pattern (getCloneService, getNotificationService private)
+   - Auth pattern (> 5 isAuthenticated checks, 401 responses)
+   - JSON encoding (> 10x json_encode, Content-Type header)
+   - Delegation (dashboardService > 3x, userService > 5x)
+   - Cache support (CacheService + remember pattern)
+   - Error handling, structured logging, strict types
+4. **DashboardServiceTest.php** (NOVO — 25+ testes):
+   - Classe existe, instanciável
+   - getMetrics: aceita nullable accountId, retorna array
+   - 4 private methods verificados (ensureOrdersTable, resolvePendingQuestions, buildDegradedMetrics, unwrapMlResponse)
+   - buildDegradedMetrics: todas chaves, valores zerados, warning incluído
+   - unwrapMlResponse: extrai body, retorna raw on error, body não-array
+   - Métricas: ml_orders, 30 day window, reputation, items stats, pending questions, expiring tokens
+   - Fallbacks: degraded mode, API-first questions
+   - Prepared statements > 3x, sem interpolação de variáveis
+5. **phpunit.xml** — Adicionou testes estruturais puros ao Unit testsuite via `<file>` include
+6. **Corrigido** dirname level em ItemServiceTest (2→3), removido listing_type_id/condition dos campos ML do controller
+
+### Resultado
+- PHPUnit: 501 tests, 945 assertions, 40 skipped (DB offline) — ALL PASS
+- php -l: 0 erros em todos os arquivos editados
+- Commit: feat(dashboard): add strict types, logging and structural tests for Dashboard (DASH-001)
+
+---
+
 ## Sessão: 2026-02-19 — ITEMS-001: strict types, logging e testes estruturais para Items CRUD
 
 ### Objetivo

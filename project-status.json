@@ -27,7 +27,7 @@
                 "app/Services/MercadoLivreAuthService.php",
                 "app/Services/RefreshTokenService.php"
             ],
-            "passes": false,
+            "passes": true,
             "last_tested": "2026-02-19"
         },
         {
@@ -38,7 +38,7 @@
                 "bin/auto-token-refresh-worker.php",
                 "app/Services/UnifiedTokenRefreshService.php"
             ],
-            "passes": false,
+            "passes": true,
             "last_tested": "2026-02-19"
         },
         {
@@ -60,8 +60,8 @@
                 "app/Services/DashboardService.php",
                 "app/Views/dashboard/"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-19"
         },
         {
             "id": "DASH-002",
@@ -70,7 +70,7 @@
             "files": [
                 "app/Controllers/TokenDashboardController.php"
             ],
-            "passes": false,
+            "passes": true,
             "last_tested": "2026-02-19"
         },
         {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Services\DashboardService;
@@ -349,6 +351,10 @@ class DashboardController extends BaseController
             $stmt->execute(['user_id' => $userId]);
             return (int) $stmt->fetchColumn();
         } catch (\Exception $e) {
+            log_warning('DashboardController: falha ao contar contas ativas', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
             return 0;
         }
     }
@@ -371,6 +377,10 @@ class DashboardController extends BaseController
             $stmt->execute($params);
             return (float) $stmt->fetchColumn() ?: 0.0;
         } catch (\Exception $e) {
+            log_warning('DashboardController: falha ao calcular avg health', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
             return 0.0;
         }
     }
@@ -406,6 +416,9 @@ class DashboardController extends BaseController
             // Se último foi há menos de 1 hora, OK
             return (strtotime($last) > strtotime('-1 hour')) ? 'healthy' : 'warning';
         } catch (\Exception $e) {
+            log_warning('DashboardController: falha ao verificar saude de webhooks', [
+                'error' => $e->getMessage(),
+            ]);
             return 'error';
         }
     }
