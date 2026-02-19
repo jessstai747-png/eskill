@@ -798,6 +798,11 @@ class BulkSEOService
             $desc = $this->mlClient->get("/items/{$itemId}/description");
             return is_array($desc) ? trim((string)($desc['plain_text'] ?? '')) : '';
         } catch (Exception $e) {
+            log_warning('Falha ao obter descricao do item', [
+                'item_id' => $itemId,
+                'account_id' => $this->accountId,
+                'error' => $e->getMessage(),
+            ]);
             return '';
         }
     }

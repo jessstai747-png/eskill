@@ -6,6 +6,26 @@
 
 ---
 
+## Sessao: 2026-02-19 — SEO-007/SEO-008: strict types, logging e testes para Bulk SEO e SEO Optimization
+
+### Implementacao
+1. **declare(strict_types=1)** adicionado a SeoOptimizationController.php (BulkSEOService, workers ja tinham)
+2. **Silent catch corrigido** em BulkSEOService.php getItemDescription() — adicionado log_warning com item_id, account_id, error
+3. **BulkSEOServiceTest.php** criado: 70+ testes comportamentais via reflection (normalizeForComparison, hasRealChange, calculateSimilarity, generateTextDiff, generateDescriptionDiff, assessTitleRisks, assessDescriptionRisks, calculateOverallRisk, getRiskSummary, generateSummaryMessage, sanitizeItemIds, interpretMLError, isRetryableError, batch validation)
+4. **SeoOptimizationControllerTest.php** criado: 20+ testes (strict types, BaseController extends, validateRequired, resolveServiceClass, checkService, method signatures)
+5. Testes adicionados ao phpunit.xml Unit suite via file includes
+6. PHPUnit: 881 tests, 1519 assertions, 40 skipped — ALL PASS
+
+### Arquivos modificados
+- app/Services/BulkSEOService.php (silent catch fix)
+- app/Controllers/SeoOptimizationController.php (strict_types)
+- tests/Unit/Services/BulkSEOServiceTest.php (novo)
+- tests/Unit/Controllers/SeoOptimizationControllerTest.php (novo)
+- phpunit.xml (2 file includes adicionados)
+- project-status.json (SEO-007, SEO-008 passes: true)
+
+---
+
 ## Sessão: 2026-02-19 — SEO-005/SEO-006: strict types e testes para Coverage e Synonyms
 
 ### Implementação

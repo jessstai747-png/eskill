@@ -147,8 +147,8 @@
                 "app/Services/BulkSEOService.php",
                 "bin/bulk-seo-worker.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-19"
         },
         {
             "id": "SEO-008",
@@ -158,8 +158,8 @@
                 "bin/seo-performance-worker.php",
                 "app/Controllers/SeoOptimizationController.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-19"
         },
         {
             "id": "CLONE-001",

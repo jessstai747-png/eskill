@@ -32,6 +32,8 @@
             <file>tests/Unit/Controllers/SeoCoverageControllerTest.php</file>
             <file>tests/Unit/Controllers/SeoSynonymsControllerTest.php</file>
             <file>tests/Unit/Services/GapHunterServiceTest.php</file>
+            <file>tests/Unit/Services/BulkSEOServiceTest.php</file>
+            <file>tests/Unit/Controllers/SeoOptimizationControllerTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
