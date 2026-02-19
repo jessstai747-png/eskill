@@ -6,6 +6,32 @@
 
 ---
 
+## Sessão: 2026-02-19 — AUTH-003: integração do refresh com API do Mercado Livre
+
+### Objetivo
+Integrar o fluxo de refresh unificado (`AUTH-003`) com validação real da API do Mercado Livre após renovação de token.
+
+### Implementação
+1. **Validação pós-refresh em `/users/me`**
+   - `UnifiedTokenRefreshService` agora valida token renovado via `MercadoLivreClient` chamando `/users/me`.
+   - Resultado da validação é incluído em `refreshAccount()` e no detalhe do processamento em lote.
+2. **Sincronização de identidade da conta**
+   - Após validação com sucesso, sincroniza `ml_user_id` e `nickname` em `ml_accounts`.
+3. **Métricas de validação da API**
+   - Resultado de refresh agora inclui contadores:
+     - `api_validations_ok`
+     - `api_validations_failed`
+     - `api_validations_skipped`
+4. **Configuração por ambiente**
+   - Nova flag: `ML_VALIDATE_TOKEN_AFTER_REFRESH` (default: habilitado).
+5. **Cobertura de teste unitário estrutural**
+   - Teste atualizado para verificar integração com `/users/me`, toggle por ENV e presença dos novos contadores.
+
+### Validação
+- `php -l app/Services/UnifiedTokenRefreshService.php` ✅
+- `php -l tests/Unit/Services/UnifiedTokenRefreshServiceTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅
+
 ## Sessão: 2026-02-19 — AUTH-003: compatibilidade de resultados no refresh unificado
 
 ### Objetivo

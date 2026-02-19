@@ -322,6 +322,15 @@ class UnifiedTokenRefreshServiceTest extends TestCase
         }
     }
 
+    public function test_refresh_result_includes_api_validation_counters(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString("'api_validations_ok'", $source);
+        $this->assertStringContainsString("'api_validations_failed'", $source);
+        $this->assertStringContainsString("'api_validations_skipped'", $source);
+    }
+
     public function test_refresh_result_includes_mode(): void
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
@@ -367,6 +376,24 @@ class UnifiedTokenRefreshServiceTest extends TestCase
 
         $this->assertStringContainsString('MercadoLivreAuthService', $source);
         $this->assertStringContainsString('$this->authService', $source);
+    }
+
+    public function test_integrates_with_mercadolivre_api_users_me(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString("/users/me", $source,
+            'Deve validar token renovado consultando endpoint /users/me');
+        $this->assertStringContainsString('MercadoLivreClient', $source,
+            'Deve integrar com MercadoLivreClient para validar API');
+    }
+
+    public function test_supports_env_toggle_for_api_validation(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString('ML_VALIDATE_TOKEN_AFTER_REFRESH', $source,
+            'Deve permitir habilitar/desabilitar validação na API por variável de ambiente');
     }
 
     public function test_uses_database(): void

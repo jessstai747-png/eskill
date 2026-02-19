@@ -120,11 +120,28 @@ class UnifiedTokenRefreshService
         $this->log('info', "Renovando token da conta #{$accountId}", ['account_id' => $accountId]);
         
         $success = $this->authService->refreshToken($accountId, self::DEFAULT_MAX_RETRIES);
+
+        $apiValidation = [
+            'status' => 'skipped',
+            'message' => 'Validação na API desabilitada',
+        ];
+
+        if ($success) {
+            $apiValidation = $this->validateAccountConnection($accountId);
+        }
+
+        $message = $success ? 'Token renovado com sucesso' : 'Falha ao renovar token';
+        if ($success && $apiValidation['status'] === 'ok') {
+            $message = 'Token renovado e validado na API do Mercado Livre';
+        } elseif ($success && $apiValidation['status'] === 'failed') {
+            $message = 'Token renovado, mas validação na API falhou';
+        }
         
         return [
             'success' => $success,
             'account_id' => $accountId,
-            'message' => $success ? 'Token renovado com sucesso' : 'Falha ao renovar token',
+            'message' => $message,
+            'api_validation' => $apiValidation,
             'timestamp' => date('Y-m-d H:i:s'),
         ];
     }
@@ -184,6 +201,9 @@ class UnifiedTokenRefreshService
             'tokens_refreshed' => 0,
             'tokens_failed' => 0,
             'tokens_skipped' => 0,
+            'api_validations_ok' => 0,
+            'api_validations_failed' => 0,
+            'api_validations_skipped' => 0,
             'details' => [],
         ];
         
@@ -229,6 +249,17 @@ class UnifiedTokenRefreshService
                     $detail['result'] = 'success';
                     $detail['status_after'] = 'active';
                     $results['tokens_refreshed']++;
+
+                    $apiValidation = $this->validateAccountConnection($accountId);
+                    $detail['api_validation'] = $apiValidation;
+
+                    if ($apiValidation['status'] === 'ok') {
+                        $results['api_validations_ok']++;
+                    } elseif ($apiValidation['status'] === 'failed') {
+                        $results['api_validations_failed']++;
+                    } else {
+                        $results['api_validations_skipped']++;
+                    }
                     
                     $this->log('info', "Token renovado: {$nickname}", ['account_id' => $accountId]);
                 } else {
@@ -499,12 +530,116 @@ class UnifiedTokenRefreshService
             'tokens_refreshed' => 0,
             'tokens_failed' => 0,
             'tokens_skipped' => 0,
+            'api_validations_ok' => 0,
+            'api_validations_failed' => 0,
+            'api_validations_skipped' => 0,
             // Compatibilidade retroativa
             'checked' => 0,
             'refreshed' => 0,
             'failed' => 0,
             'skipped' => 0,
         ];
+    }
+
+    private function shouldValidateWithApi(): bool
+    {
+        $raw = $_ENV['ML_VALIDATE_TOKEN_AFTER_REFRESH']
+            ?? getenv('ML_VALIDATE_TOKEN_AFTER_REFRESH')
+            ?? null;
+
+        if ($raw === null || $raw === '') {
+            return true;
+        }
+
+        return (bool)filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Valida acesso na API do ML após refresh via /users/me
+     * e sincroniza identidade básica da conta no banco local.
+     *
+     * @return array{status: string, message: string, ml_user_id?: string, nickname?: string, error?: string}
+     */
+    private function validateAccountConnection(int $accountId): array
+    {
+        if (!$this->shouldValidateWithApi()) {
+            return [
+                'status' => 'skipped',
+                'message' => 'Validação na API desabilitada por configuração',
+            ];
+        }
+
+        try {
+            $client = new MercadoLivreClient($accountId, $this->authService);
+            $me = $client->get('/users/me');
+
+            if (isset($me['body']) && is_array($me['body'])) {
+                $me = $me['body'];
+            }
+
+            if (isset($me['error'])) {
+                return [
+                    'status' => 'failed',
+                    'message' => 'Falha ao validar token na API /users/me',
+                    'error' => (string)($me['message'] ?? $me['error']),
+                ];
+            }
+
+            $mlUserId = (string)($me['id'] ?? '');
+            if ($mlUserId === '') {
+                return [
+                    'status' => 'failed',
+                    'message' => 'Resposta inválida da API /users/me',
+                    'error' => 'Campo id ausente',
+                ];
+            }
+
+            $nickname = (string)($me['nickname'] ?? '');
+            $this->syncAccountIdentity($accountId, $mlUserId, $nickname !== '' ? $nickname : null);
+
+            return [
+                'status' => 'ok',
+                'message' => 'Token validado com sucesso na API do Mercado Livre',
+                'ml_user_id' => $mlUserId,
+                'nickname' => $nickname,
+            ];
+        } catch (\Throwable $e) {
+            $this->log('warning', 'Falha ao validar token na API do Mercado Livre', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 'failed',
+                'message' => 'Exceção ao validar token na API do Mercado Livre',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function syncAccountIdentity(int $accountId, string $mlUserId, ?string $nickname): void
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE ml_accounts
+                SET ml_user_id = :ml_user_id,
+                    nickname = COALESCE(:nickname, nickname),
+                    status = 'active',
+                    updated_at = NOW()
+                WHERE id = :id"
+            );
+
+            $stmt->execute([
+                'ml_user_id' => $mlUserId,
+                'nickname' => $nickname,
+                'id' => $accountId,
+            ]);
+        } catch (\Throwable $e) {
+            $this->log('warning', 'Falha ao sincronizar identidade da conta ML após validação', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
     
     private function log(string $level, string $message, array $context = []): void
