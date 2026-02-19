@@ -6,6 +6,27 @@
 
 ---
 
+## Sessao: 2025-07-25 — SEO-002/SEO-003: strict types, logging e testes para Title Generator e AI Content
+
+### Implementacao
+1. **declare(strict_types=1)** adicionado a 5 arquivos: TitleGeneratorController.php, TitleAnalyzerService.php, TitleGeneratorService.php, TitleVariationsService.php, AIContentGeneratorService.php
+2. **3 silent catches corrigidos** com log_warning:
+   - TitleAnalyzerService.php analyzeKeywords() — era `// Ignore errors`
+   - TitleGeneratorService.php analyzeTopCompetitors() — era return silencioso
+   - AIContentGeneratorService.php getCategoryInsights() — era `$name = null` silencioso
+3. **TitleAnalyzerServiceTest.php** criado: 30+ testes via reflection (analyzeLengthOptimization scoring por faixas, analyzeClarity, analyzeStructure, analyzeForbiddenWords com termos acentuados, determineStatus, hasBrand, hasModel, calculateReadability, constantes WEIGHTS/FORBIDDEN_TERMS/HIGH_IMPACT_WORDS)
+4. **TitleVariationsServiceTest.php** criado: 30+ testes via reflection (parseTitle componentes, reorderComponents com array, applySynonyms 2 args, addModifiers 60 chars limit, removeUnnecessaryWords, expandAbbreviations/compressTitle retornam arrays, wordsReordered, identifyStrategy, constantes SYNONYMS/MODIFIERS/CONNECTORS/ABBREVIATIONS)
+5. **TitleGeneratorControllerTest.php** criado: testes estruturais (standalone controller, 9 public endpoints, constructor params, try/catch coverage, service dependencies)
+6. **SeoDescriptionControllerTest.php** criado: testes estruturais (BaseController extends, deprecated annotation, 6 public endpoints, jsonResponse helper, return types)
+7. **AIContentGeneratorServiceTest.php** criado: 40+ testes (4 public methods, extractImportantWords stopwords/max8/sortByLength, validateMLTitle brand/truncate/trim, calculateKeywordDensity/ReadabilityScore/SEOScore, generateSuggestions, findSEOOpportunities, extractFeatures max8/skipInvalid)
+
+### Resultado
+- PHPUnit: 1037 tests, 1845 assertions, 40 skipped — ALL PASS
+- project-status.json: SEO-002 passes:true, SEO-003 passes:true
+- Fase 2 (SEO): 7/8 completas — falta apenas SEO-001 (SEOKillerController 4252 linhas)
+
+---
+
 ## Sessao: 2026-02-19 — SEO-007/SEO-008: strict types, logging e testes para Bulk SEO e SEO Optimization
 
 ### Implementacao

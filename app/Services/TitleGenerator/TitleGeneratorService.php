@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\TitleGenerator;
 
 use App\Services\MercadoLivreClient;
@@ -249,6 +251,10 @@ class TitleGeneratorService
             ];
 
         } catch (\Exception $e) {
+            log_warning('Falha ao analisar concorrentes top', [
+                'category_id' => $categoryId,
+                'error' => $e->getMessage(),
+            ]);
             return [
                 'titles' => [],
                 'avg_length' => 50,

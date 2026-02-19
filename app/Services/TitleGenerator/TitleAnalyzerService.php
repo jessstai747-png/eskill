@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\TitleGenerator;
 
 use App\Services\MercadoLivreClient;
@@ -176,7 +178,10 @@ class TitleAnalyzerService
                     }
                 }
             } catch (\Exception $e) {
-                // Ignore errors
+                log_warning('Falha ao analisar keywords do titulo', [
+                    'category_id' => $categoryId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

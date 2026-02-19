@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -555,6 +557,10 @@ class AIContentGeneratorService
             $category = $this->mlClient->get("/categories/{$categoryId}");
             $name = $category['name'] ?? null;
         } catch (Exception $e) {
+            log_warning('Falha ao obter insights de categoria', [
+                'category_id' => $categoryId,
+                'error' => $e->getMessage(),
+            ]);
             $name = null;
         }
 
