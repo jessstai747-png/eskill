@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -888,6 +890,7 @@ class CatalogCloneService
             $pendingJobs = $stmt->fetchColumn();
         } catch (\Exception $e) {
             // Tabela jobs pode não existir ainda
+            log_warning('Falha ao consultar jobs pendentes de clone', ['error' => $e->getMessage()]);
             $pendingJobs = 0;
         }
 
@@ -909,7 +912,7 @@ class CatalogCloneService
 
     public function searchItemsWithFilters(string $sourceAccountId, array $filters): array
     {
-        $client = new MercadoLivreClient($sourceAccountId);
+        $client = new MercadoLivreClient((int)$sourceAccountId);
         
         // Build search query
         $query = $filters['keyword'] ?? '';
@@ -1178,7 +1181,7 @@ class CatalogCloneService
 
     private function getActiveItemsFromAccount(string $accountId, int $limit = 10): array
     {
-        $client = new MercadoLivreClient($accountId);
+        $client = new MercadoLivreClient((int)$accountId);
         $sellerId = $client->getSellerId();
         
         // Usar /users/{seller_id}/items/search
@@ -2194,6 +2197,7 @@ class CatalogCloneService
             );
         } catch (Exception $e) {
             // Não falhar o clone por causa de métricas
+            log_warning('Falha ao salvar metricas do clone', ['error' => $e->getMessage()]);
         }
 
         // 17. Agendar ações pós-clone se template definir
@@ -2218,6 +2222,7 @@ class CatalogCloneService
                 }
             } catch (Exception $e) {
                 // Não falhar o clone por causa de ações pós-clone
+                log_warning('Falha ao executar acoes pos-clone', ['error' => $e->getMessage()]);
             }
         }
 
@@ -2262,6 +2267,7 @@ class CatalogCloneService
                 }
             } catch (Exception $e) {
                 // Ignorar erro de tabela não existente
+                log_warning('Falha ao verificar duplicidade de SKU', ['error' => $e->getMessage()]);
             }
         }
 

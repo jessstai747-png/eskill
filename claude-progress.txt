@@ -6,6 +6,22 @@
 
 ---
 
+## Sessao: 2025-07-25 — CLONE-001: strict types, bug fixes e testes para Catalog Clone
+
+### Implementacao
+1. **declare(strict_types=1)** adicionado a 3 arquivos: CatalogCloneService.php, CatalogCloneController.php, catalog-clone-worker.php
+2. **4 silent catches corrigidos** com log_warning em CatalogCloneService.php: jobs pendentes, metricas, acoes pos-clone, duplicidade SKU
+3. **Bug fix**: string-to-int type mismatch nas chamadas MercadoLivreClient — adicionado cast (int) em searchItemsWithFilters e getActiveItemsFromAccount
+4. **CatalogCloneServiceTest.php** criado: 55+ testes (15 public + 13 private methods, calculateStock 6 strategies, sanitizeTitle prefix/suffix/truncate/trim, preparePictures url/source/empty, filterClonableAttributes ITEM_CONDITION/SELLER_SKU exclusion, extractBrandFromItem BRAND/MARCA/null, calculateNextExecution daily/weekly/monthly, calculatePrice copy/markup/markdown/fixed/default, validateCloneParams valid/missing/invalidId/nonNumeric, prepareVariations basePrice/pictureIds)
+5. **CatalogCloneControllerTest.php** criado: 40+ testes (BaseController extends, strict_types, 40+ public endpoints em 5 grupos: core/advanced/template/metrics/monitoring, 10+ catch blocks)
+
+### Resultado
+- PHPUnit: 1244 tests, 2375 assertions, 40 skipped — ALL PASS
+- project-status.json: CLONE-001 passes:true
+- Fase 3 (Clone) iniciada: 1/8 completa
+
+---
+
 ## Sessao: 2025-07-25 — SEO-001: strict types, bug fix e testes para SEO Killer Controller e TitleOptimizerService
 
 ### Implementacao

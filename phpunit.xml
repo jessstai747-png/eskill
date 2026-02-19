@@ -41,6 +41,8 @@
             <file>tests/Unit/Services/AIContentGeneratorServiceTest.php</file>
             <file>tests/Unit/Controllers/SEOKillerControllerTest.php</file>
             <file>tests/Unit/Services/TitleOptimizerServiceTest.php</file>
+            <file>tests/Unit/Services/CatalogCloneServiceTest.php</file>
+            <file>tests/Unit/Controllers/CatalogCloneControllerTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

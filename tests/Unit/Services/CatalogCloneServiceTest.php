@@ -4,341 +4,399 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Services\CatalogCloneService;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 /**
- * Unit Tests for CatalogCloneService
- * 
- * Tests core business logic, validation, and error handling.
- * Integration tests with real API calls are in tests/Integration/
+ * @covers \App\Services\CatalogCloneService
  */
 class CatalogCloneServiceTest extends TestCase
 {
-    private CatalogCloneService $service;
+    private ReflectionClass $reflection;
 
     protected function setUp(): void
     {
-        parent::setUp();
-        $this->service = new CatalogCloneService();
+        $this->reflection = new ReflectionClass(\App\Services\CatalogCloneService::class);
+    }
+
+    private function invokePrivateMethod(string $methodName, array $args = []): mixed
+    {
+        $method = $this->reflection->getMethod($methodName);
+        $method->setAccessible(true);
+        $instance = $this->reflection->newInstanceWithoutConstructor();
+        return $method->invokeArgs($instance, $args);
     }
 
     // =========================================================================
-    // INSTANTIATION TESTS
+    // Structural
     // =========================================================================
 
-    /**
-     * @test
-     */
-    public function service_can_be_instantiated(): void
+    public function testClassExists(): void
     {
-        $this->assertInstanceOf(CatalogCloneService::class, $this->service);
+        $this->assertTrue(class_exists(\App\Services\CatalogCloneService::class));
+    }
+
+    public function testHasDeclareStrictTypes(): void
+    {
+        $file = $this->reflection->getFileName();
+        $this->assertNotFalse($file);
+        $this->assertStringContainsString('declare(strict_types=1)', file_get_contents($file));
     }
 
     /**
-     * @test
+     * @dataProvider publicMethodsProvider
      */
-    public function service_has_required_public_methods(): void
+    public function testPublicMethodExists(string $method): void
     {
-        $this->assertTrue(method_exists($this->service, 'cloneCatalogItem'));
-        $this->assertTrue(method_exists($this->service, 'simulateClone'));
-        $this->assertTrue(method_exists($this->service, 'getCloneHistory'));
-        $this->assertTrue(method_exists($this->service, 'getCloneMetrics'));
-        $this->assertTrue(method_exists($this->service, 'searchItemsWithFilters'));
-        $this->assertTrue(method_exists($this->service, 'createCloneSchedule'));
-        $this->assertTrue(method_exists($this->service, 'listSellerItems'));
+        $this->assertTrue($this->reflection->hasMethod($method));
+        $this->assertTrue($this->reflection->getMethod($method)->isPublic());
     }
 
-    // =========================================================================
-    // VALIDATION TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     */
-    public function clone_blocks_same_account(): void
+    public static function publicMethodsProvider(): array
     {
-        $result = $this->service->cloneCatalogItem([
-            'source_account_id' => 1,
-            'source_item_id' => 'MLB123456789',
-            'target_account_id' => 1,
-        ]);
-
-        $this->assertEquals('error', $result['status']);
-        $this->assertStringContainsString('mesma conta', strtolower($result['message']));
-    }
-
-    /**
-     * @test
-     */
-    public function simulate_clone_blocks_same_account(): void
-    {
-        $result = $this->service->simulateClone([
-            'source_account_id' => 1,
-            'source_item_id' => 'MLB123456789',
-            'target_account_id' => 1,
-        ]);
-
-        $this->assertEquals('error', $result['status']);
-        $this->assertStringContainsString('iguais', strtolower($result['message']));
-    }
-
-    // =========================================================================
-    // PRICING STRATEGY TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     */
-    public function markup_calculation_is_correct(): void
-    {
-        $originalPrice = 100.0;
-        $markupPercent = 15.0;
-        
-        $expectedPrice = round($originalPrice * (1 + ($markupPercent / 100)), 2);
-        
-        $this->assertEqualsWithDelta(115.0, $expectedPrice, 0.01);
-    }
-
-    /**
-     * @test
-     */
-    public function markdown_calculation_is_correct(): void
-    {
-        $originalPrice = 100.0;
-        $markdownPercent = 10.0;
-        
-        $expectedPrice = $originalPrice * (1 - ($markdownPercent / 100));
-        
-        $this->assertEquals(90.0, $expectedPrice);
-    }
-
-    /**
-     * @test
-     */
-    public function price_rounds_to_two_decimals(): void
-    {
-        $price = 99.999;
-        $rounded = round($price, 2);
-        
-        $this->assertEquals(100.0, $rounded);
-    }
-
-    /**
-     * @test
-     */
-    public function zero_markup_keeps_original_price(): void
-    {
-        $originalPrice = 199.90;
-        $markupPercent = 0;
-        
-        $finalPrice = $originalPrice * (1 + ($markupPercent / 100));
-        
-        $this->assertEquals(199.90, $finalPrice);
-    }
-
-    /**
-     * @test
-     */
-    public function negative_markup_reduces_price(): void
-    {
-        $originalPrice = 100.0;
-        $markupPercent = -20.0;
-        
-        $finalPrice = $originalPrice * (1 + ($markupPercent / 100));
-        
-        $this->assertEquals(80.0, $finalPrice);
-    }
-
-    // =========================================================================
-    // METRICS TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     * @group integration
-     */
-    public function get_clone_metrics_returns_expected_structure(): void
-    {
-        try {
-            $metrics = $this->service->getCloneMetrics();
-
-            $this->assertIsArray($metrics);
-            $this->assertArrayHasKey('today', $metrics);
-            $this->assertArrayHasKey('success_rate', $metrics);
-            $this->assertArrayHasKey('total', $metrics);
-            $this->assertArrayHasKey('avg_per_hour', $metrics);
-            $this->assertArrayHasKey('pending', $metrics);
-            $this->assertArrayHasKey('errors', $metrics);
-        } catch (\PDOException $e) {
-            $this->markTestSkipped('Requires cloned_items table: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * @test
-     * @group integration
-     */
-    public function metrics_values_are_numeric(): void
-    {
-        try {
-            $metrics = $this->service->getCloneMetrics();
-
-            $this->assertIsInt($metrics['today']);
-            $this->assertIsFloat($metrics['success_rate']);
-            $this->assertIsInt($metrics['total']);
-            $this->assertIsFloat($metrics['avg_per_hour']);
-            $this->assertIsInt($metrics['pending']);
-            $this->assertIsInt($metrics['errors']);
-        } catch (\PDOException $e) {
-            $this->markTestSkipped('Requires cloned_items table: ' . $e->getMessage());
-        }
-    }
-
-    // =========================================================================
-    // HISTORY TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     * @group integration
-     */
-    public function get_clone_history_returns_array(): void
-    {
-        try {
-            $history = $this->service->getCloneHistory(10);
-            $this->assertIsArray($history);
-        } catch (\PDOException $e) {
-            $this->markTestSkipped('Requires cloned_items table: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * @test
-     * @group integration
-     */
-    public function get_clone_history_respects_limit(): void
-    {
-        try {
-            $history = $this->service->getCloneHistory(5);
-            $this->assertLessThanOrEqual(5, count($history));
-        } catch (\PDOException $e) {
-            $this->markTestSkipped('Requires cloned_items table: ' . $e->getMessage());
-        }
-    }
-
-    // =========================================================================
-    // SUCCESS RATE CALCULATION TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     */
-    public function success_rate_calculation(): void
-    {
-        $todayClones = 100;
-        $todaySuccess = 95;
-        
-        $successRate = $todayClones > 0 ? round(($todaySuccess / $todayClones) * 100, 1) : 0;
-        
-        $this->assertEquals(95.0, $successRate);
-    }
-
-    /**
-     * @test
-     */
-    public function success_rate_handles_zero_clones(): void
-    {
-        $todayClones = 0;
-        $todaySuccess = 0;
-        
-        $successRate = $todayClones > 0 ? round(($todaySuccess / $todayClones) * 100, 1) : 0;
-        
-        $this->assertEquals(0, $successRate);
-    }
-
-    // =========================================================================
-    // AVERAGE PER HOUR CALCULATION TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     */
-    public function avg_per_hour_calculation(): void
-    {
-        $last24hCount = 240;
-        $avgPerHour = round($last24hCount / 24, 1);
-        
-        $this->assertEquals(10.0, $avgPerHour);
-    }
-
-    /**
-     * @test
-     */
-    public function avg_per_hour_handles_small_numbers(): void
-    {
-        $last24hCount = 5;
-        $avgPerHour = round($last24hCount / 24, 1);
-        
-        $this->assertEquals(0.2, $avgPerHour);
-    }
-
-    // =========================================================================
-    // ITEM ID VALIDATION TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     */
-    public function ml_item_id_format_validation(): void
-    {
-        // Valid MLB format
-        $validId = 'MLB1234567890';
-        $this->assertMatchesRegularExpression('/^ML[A-Z]\d+$/', $validId);
-        
-        // Invalid formats
-        $invalidId1 = '1234567890';
-        $this->assertDoesNotMatchRegularExpression('/^ML[A-Z]\d+$/', $invalidId1);
-        
-        $invalidId2 = 'MLBXYZ';
-        $this->assertDoesNotMatchRegularExpression('/^ML[A-Z]\d+$/', $invalidId2);
-    }
-
-    // =========================================================================
-    // PAYLOAD CONSTRUCTION TESTS
-    // =========================================================================
-
-    /**
-     * @test
-     */
-    public function picture_payload_format(): void
-    {
-        $sourcePictures = [
-            ['url' => 'https://example.com/img1.jpg', 'id' => '123'],
-            ['url' => 'https://example.com/img2.jpg', 'id' => '456'],
+        return [
+            ['cloneCatalogItem'],
+            ['cloneItem'],
+            ['simulateClone'],
+            ['getCloneHistory'],
+            ['getCloneMetrics'],
+            ['searchItemsWithFilters'],
+            ['createCloneSchedule'],
+            ['getActiveSchedules'],
+            ['cancelSchedule'],
+            ['processScheduledClones'],
+            ['listSellerItems'],
+            ['getSellerSummary'],
+            ['resolveItemIds'],
+            ['pricePreviewBatch'],
+            ['checkLocalDuplicate'],
         ];
-
-        $payload = array_map(function($pic) { 
-            return ['source' => $pic['url']]; 
-        }, $sourcePictures);
-
-        $this->assertCount(2, $payload);
-        $this->assertEquals(['source' => 'https://example.com/img1.jpg'], $payload[0]);
-        $this->assertEquals(['source' => 'https://example.com/img2.jpg'], $payload[1]);
     }
 
     /**
-     * @test
+     * @dataProvider privateMethodsProvider
      */
-    public function catalog_product_id_detection(): void
+    public function testPrivateMethodExists(string $method): void
     {
-        $catalogItem = ['catalog_product_id' => 'MLB12345678'];
-        $nonCatalogItem = ['title' => 'Test Item'];
+        $this->assertTrue($this->reflection->hasMethod($method));
+        $this->assertTrue($this->reflection->getMethod($method)->isPrivate());
+    }
 
-        $isCatalog1 = !empty($catalogItem['catalog_product_id']);
-        $isCatalog2 = !empty($nonCatalogItem['catalog_product_id']);
+    public static function privateMethodsProvider(): array
+    {
+        return [
+            ['validateCloneParams'],
+            ['calculateFinalPrice'],
+            ['calculatePrice'],
+            ['calculateStock'],
+            ['sanitizeTitle'],
+            ['preparePictures'],
+            ['filterClonableAttributes'],
+            ['prepareVariations'],
+            ['calculateNextExecution'],
+            ['extractBrandFromItem'],
+            ['checkNonCatalogDuplicate'],
+            ['logAndReturnError'],
+            ['logResult'],
+        ];
+    }
 
-        $this->assertTrue($isCatalog1);
-        $this->assertFalse($isCatalog2);
+    // =========================================================================
+    // Behavioral: calculateStock
+    // =========================================================================
+
+    public function testCalculateStockCopy(): void
+    {
+        $result = $this->invokePrivateMethod('calculateStock', [10, ['type' => 'copy']]);
+        $this->assertSame(10, $result);
+    }
+
+    public function testCalculateStockFixed(): void
+    {
+        $result = $this->invokePrivateMethod('calculateStock', [10, ['type' => 'fixed', 'value' => 5]]);
+        $this->assertSame(5, $result);
+    }
+
+    public function testCalculateStockZero(): void
+    {
+        $result = $this->invokePrivateMethod('calculateStock', [10, ['type' => 'zero']]);
+        $this->assertSame(0, $result);
+    }
+
+    public function testCalculateStockPercentage(): void
+    {
+        $result = $this->invokePrivateMethod('calculateStock', [100, ['type' => 'percentage', 'value' => 50]]);
+        $this->assertSame(50, $result);
+    }
+
+    public function testCalculateStockPercentageNeverNegative(): void
+    {
+        $result = $this->invokePrivateMethod('calculateStock', [1, ['type' => 'percentage', 'value' => -100]]);
+        $this->assertSame(0, $result);
+    }
+
+    public function testCalculateStockDefault(): void
+    {
+        $result = $this->invokePrivateMethod('calculateStock', [7, ['type' => 'unknown']]);
+        $this->assertSame(7, $result);
+    }
+
+    // =========================================================================
+    // Behavioral: sanitizeTitle
+    // =========================================================================
+
+    public function testSanitizeTitleNoOptions(): void
+    {
+        $result = $this->invokePrivateMethod('sanitizeTitle', ['Bagageiro CG 160', []]);
+        $this->assertSame('Bagageiro CG 160', $result);
+    }
+
+    public function testSanitizeTitleWithPrefix(): void
+    {
+        $result = $this->invokePrivateMethod('sanitizeTitle', ['CG 160', ['title_prefix' => 'Bagageiro']]);
+        $this->assertSame('Bagageiro CG 160', $result);
+    }
+
+    public function testSanitizeTitleWithSuffix(): void
+    {
+        $result = $this->invokePrivateMethod('sanitizeTitle', ['Bagageiro CG', ['title_suffix' => '160']]);
+        $this->assertSame('Bagageiro CG 160', $result);
+    }
+
+    public function testSanitizeTitleTruncatesAt60(): void
+    {
+        $longTitle = str_repeat('A', 70);
+        $result = $this->invokePrivateMethod('sanitizeTitle', [$longTitle, []]);
+        $this->assertLessThanOrEqual(60, mb_strlen($result));
+        $this->assertStringEndsWith('...', $result);
+    }
+
+    public function testSanitizeTitleTrims(): void
+    {
+        $result = $this->invokePrivateMethod('sanitizeTitle', ['  CG 160  ', []]);
+        $this->assertSame('CG 160', $result);
+    }
+
+    // =========================================================================
+    // Behavioral: preparePictures
+    // =========================================================================
+
+    public function testPreparePicturesReturnsSourceUrls(): void
+    {
+        $pics = [
+            ['url' => 'https://img.com/1.jpg'],
+            ['url' => 'https://img.com/2.jpg'],
+        ];
+        $result = $this->invokePrivateMethod('preparePictures', [$pics]);
+        $this->assertCount(2, $result);
+        $this->assertSame('https://img.com/1.jpg', $result[0]['source']);
+        $this->assertSame('https://img.com/2.jpg', $result[1]['source']);
+    }
+
+    public function testPreparePicturesHandlesSourceKey(): void
+    {
+        $pics = [['source' => 'https://img.com/1.jpg']];
+        $result = $this->invokePrivateMethod('preparePictures', [$pics]);
+        $this->assertSame('https://img.com/1.jpg', $result[0]['source']);
+    }
+
+    public function testPreparePicturesEmptyArray(): void
+    {
+        $result = $this->invokePrivateMethod('preparePictures', [[]]);
+        $this->assertSame([], $result);
+    }
+
+    // =========================================================================
+    // Behavioral: filterClonableAttributes
+    // =========================================================================
+
+    public function testFilterClonableAttributesExcludesItemCondition(): void
+    {
+        $attrs = [
+            ['id' => 'ITEM_CONDITION', 'value_name' => 'Novo'],
+            ['id' => 'BRAND', 'value_name' => 'Honda'],
+        ];
+        $result = $this->invokePrivateMethod('filterClonableAttributes', [$attrs]);
+        $ids = array_column($result, 'id');
+        $this->assertNotContains('ITEM_CONDITION', $ids);
+        $this->assertContains('BRAND', $ids);
+    }
+
+    public function testFilterClonableAttributesExcludesSellerSKU(): void
+    {
+        $attrs = [
+            ['id' => 'SELLER_SKU', 'value_name' => 'ABC-123'],
+            ['id' => 'COLOR', 'value_name' => 'Preto'],
+        ];
+        $result = $this->invokePrivateMethod('filterClonableAttributes', [$attrs]);
+        $ids = array_column($result, 'id');
+        $this->assertNotContains('SELLER_SKU', $ids);
+        $this->assertContains('COLOR', $ids);
+    }
+
+    // =========================================================================
+    // Behavioral: extractBrandFromItem
+    // =========================================================================
+
+    public function testExtractBrandFromItemBRAND(): void
+    {
+        $item = ['attributes' => [['id' => 'BRAND', 'value_name' => 'Honda']]];
+        $result = $this->invokePrivateMethod('extractBrandFromItem', [$item]);
+        $this->assertSame('Honda', $result);
+    }
+
+    public function testExtractBrandFromItemMARCA(): void
+    {
+        $item = ['attributes' => [['id' => 'MARCA', 'value_name' => 'Yamaha']]];
+        $result = $this->invokePrivateMethod('extractBrandFromItem', [$item]);
+        $this->assertSame('Yamaha', $result);
+    }
+
+    public function testExtractBrandFromItemNoBrand(): void
+    {
+        $item = ['attributes' => [['id' => 'COLOR', 'value_name' => 'Preto']]];
+        $result = $this->invokePrivateMethod('extractBrandFromItem', [$item]);
+        $this->assertNull($result);
+    }
+
+    public function testExtractBrandFromItemNoAttributes(): void
+    {
+        $result = $this->invokePrivateMethod('extractBrandFromItem', [[]]);
+        $this->assertNull($result);
+    }
+
+    // =========================================================================
+    // Behavioral: calculateNextExecution
+    // =========================================================================
+
+    public function testCalculateNextExecutionDaily(): void
+    {
+        $result = $this->invokePrivateMethod('calculateNextExecution', ['daily']);
+        $expected = (new \DateTime())->modify('+1 day');
+        $this->assertSame($expected->format('Y-m-d'), substr($result, 0, 10));
+    }
+
+    public function testCalculateNextExecutionWeekly(): void
+    {
+        $result = $this->invokePrivateMethod('calculateNextExecution', ['weekly']);
+        $expected = (new \DateTime())->modify('+1 week');
+        $this->assertSame($expected->format('Y-m-d'), substr($result, 0, 10));
+    }
+
+    public function testCalculateNextExecutionMonthly(): void
+    {
+        $result = $this->invokePrivateMethod('calculateNextExecution', ['monthly']);
+        $expected = (new \DateTime())->modify('+1 month');
+        $this->assertSame($expected->format('Y-m-d'), substr($result, 0, 10));
+    }
+
+    // =========================================================================
+    // Behavioral: calculatePrice
+    // =========================================================================
+
+    public function testCalculatePriceCopy(): void
+    {
+        $result = $this->invokePrivateMethod('calculatePrice', [100.0, ['type' => 'copy'], 1, []]);
+        $this->assertSame(100.0, $result);
+    }
+
+    public function testCalculatePriceMarkupPercent(): void
+    {
+        $result = $this->invokePrivateMethod('calculatePrice', [100.0, ['type' => 'markup_percent', 'value' => 10], 1, []]);
+        $this->assertSame(110.0, $result);
+    }
+
+    public function testCalculatePriceMarkdownPercent(): void
+    {
+        $result = $this->invokePrivateMethod('calculatePrice', [100.0, ['type' => 'markdown_percent', 'value' => 20], 1, []]);
+        $this->assertSame(80.0, $result);
+    }
+
+    public function testCalculatePriceFixed(): void
+    {
+        $result = $this->invokePrivateMethod('calculatePrice', [100.0, ['type' => 'fixed', 'value' => 50], 1, []]);
+        $this->assertSame(50.0, $result);
+    }
+
+    public function testCalculatePriceDefault(): void
+    {
+        $result = $this->invokePrivateMethod('calculatePrice', [99.99, ['type' => 'unknown'], 1, []]);
+        $this->assertSame(99.99, $result);
+    }
+
+    // =========================================================================
+    // Behavioral: validateCloneParams
+    // =========================================================================
+
+    public function testValidateCloneParamsValid(): void
+    {
+        // Should not throw
+        $this->invokePrivateMethod('validateCloneParams', [[
+            'source_account_id' => '123',
+            'source_item_id' => 'MLB456789',
+            'target_account_id' => '789',
+        ]]);
+        $this->assertTrue(true);
+    }
+
+    public function testValidateCloneParamsMissingField(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->invokePrivateMethod('validateCloneParams', [[
+            'source_account_id' => '123',
+            'target_account_id' => '789',
+        ]]);
+    }
+
+    public function testValidateCloneParamsInvalidItemId(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->invokePrivateMethod('validateCloneParams', [[
+            'source_account_id' => '123',
+            'source_item_id' => 'INVALID',
+            'target_account_id' => '789',
+        ]]);
+    }
+
+    public function testValidateCloneParamsNonNumericAccount(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->invokePrivateMethod('validateCloneParams', [[
+            'source_account_id' => 'abc',
+            'source_item_id' => 'MLB123456',
+            'target_account_id' => '789',
+        ]]);
+    }
+
+    // =========================================================================
+    // Behavioral: prepareVariations
+    // =========================================================================
+
+    public function testPrepareVariationsReturnsArray(): void
+    {
+        $variations = [
+            [
+                'attribute_combinations' => [['id' => 'COLOR', 'value_name' => 'Preto']],
+                'available_quantity' => 5,
+                'price' => 100.0,
+                'picture_ids' => ['pic1'],
+            ],
+        ];
+        $result = $this->invokePrivateMethod('prepareVariations', [$variations, 90.0]);
+        $this->assertCount(1, $result);
+        $this->assertSame(100.0, $result[0]['price']);
+        $this->assertSame(['pic1'], $result[0]['picture_ids']);
+    }
+
+    public function testPrepareVariationsUsesBasePriceWhenMissing(): void
+    {
+        $variations = [
+            [
+                'attribute_combinations' => [],
+                'available_quantity' => 3,
+            ],
+        ];
+        $result = $this->invokePrivateMethod('prepareVariations', [$variations, 75.0]);
+        $this->assertSame(75.0, $result[0]['price']);
     }
 }

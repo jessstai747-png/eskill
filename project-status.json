@@ -170,8 +170,8 @@
                 "app/Controllers/CatalogCloneController.php",
                 "bin/catalog-clone-worker.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2025-07-25"
         },
         {
             "id": "CLONE-002",
