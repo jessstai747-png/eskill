@@ -23,7 +23,6 @@ require_once __DIR__ . '/../autoload.php';
 
 use App\Database;
 use App\Services\CloneABTestingService;
-use App\Services\MercadoLivreClient;
 
 // CLI options
 $options = getopt('', [
@@ -212,7 +211,9 @@ function processTest(CloneABTestingService $service, array $test, int $accountId
                 $syncResult = syncTestMetrics($service, $testId, $accountId);
                 
                 if ($syncResult['success']) {
-                    logMessage("Métricas sincronizadas: {$syncResult['synced']} itens atualizados");
+                    $synced = (int) ($syncResult['synced'] ?? 0);
+                    $total = (int) ($syncResult['total'] ?? 0);
+                    logMessage("Métricas sincronizadas: {$synced}/{$total}");
                 } else {
                     logMessage("Falha ao sincronizar métricas: " . ($syncResult['error'] ?? 'unknown'), 'ERROR');
                 }
@@ -227,37 +228,37 @@ function processTest(CloneABTestingService $service, array $test, int $accountId
             
             $winner = $service->determineWinner($testId);
             
-            if ($winner && isset($winner['winner'])) {
-                $confidence = round(($winner['confidence'] ?? 0) * 100, 1);
-                $winnerName = $winner['winner']['name'] ?? 'Unknown';
-                
-                logMessage("Teste #$testId: Vencedor detectado - '$winnerName' (confiança: $confidence%)");
-                
-                // Auto-complete se atingiu threshold
-                $threshold = (float) ($test['significance_threshold'] ?? 0.95);
-                if (($winner['confidence'] ?? 0) >= $threshold) {
-                    $minDays = (int) ($test['min_duration_days'] ?? 7);
-                    $startedAt = strtotime($test['started_at'] ?? 'now');
+            $winnerVariationId = $winner['variation_id'] ?? null;
+            $confidence = (float) ($winner['confidence'] ?? 0);
+
+            if ($winnerVariationId !== null) {
+                $winnerName = (string) ($winner['variation_name'] ?? 'Unknown');
+                logMessage("Teste #$testId: Vencedor detectado - '{$winnerName}' (confiança: {$confidence}%)");
+
+                // Auto-complete quando significativo e expirou a duração do teste
+                $durationDays = (int) ($test['duration_days'] ?? 7);
+                $startedAtRaw = $test['started_at'] ?? null;
+                $startedAt = is_string($startedAtRaw) ? strtotime($startedAtRaw) : false;
+
+                if (($winner['is_significant'] ?? false) && $startedAt !== false) {
                     $daysRunning = (time() - $startedAt) / 86400;
-                    
-                    if ($daysRunning >= $minDays) {
+                    if ($daysRunning >= $durationDays) {
                         logMessage("Teste #$testId atingiu critérios de conclusão automática");
-                        
+
                         if (!$dryRun) {
-                            $completeResult = $service->completeTest($testId);
-                            if ($completeResult['success']) {
-                                logMessage("Teste #$testId concluído automaticamente!");
-                            }
+                            $service->completeTest($testId);
+                            logMessage("Teste #$testId concluído automaticamente!");
                         } else {
                             logMessage("[DRY-RUN] Concluiria teste #$testId automaticamente");
                         }
                     } else {
-                        $remaining = ceil($minDays - $daysRunning);
-                        logVerbose("Teste #$testId precisa de mais $remaining dia(s) para conclusão automática");
+                        $remaining = (int) ceil($durationDays - $daysRunning);
+                        logVerbose("Teste #$testId precisa de mais {$remaining} dia(s) para conclusão automática");
                     }
                 }
             } else {
-                logVerbose("Teste #$testId: Ainda sem vencedor definido");
+                $reason = (string) ($winner['reason'] ?? 'Sem vencedor');
+                logVerbose("Teste #$testId: Ainda sem vencedor definido ({$reason})");
             }
         }
         
@@ -268,95 +269,18 @@ function processTest(CloneABTestingService $service, array $test, int $accountId
 
 function syncTestMetrics(CloneABTestingService $service, int $testId, int $accountId): array
 {
-    $db = Database::getInstance();
-    
-    // Buscar variações do teste
-    $stmt = $db->prepare("
-        SELECT v.id, v.name, e.clone_item_id
-        FROM clone_ab_test_variations v
-        JOIN clone_ab_test_entries e ON e.variation_id = v.id
-        WHERE v.test_id = :test_id
-    ");
-    $stmt->execute(['test_id' => $testId]);
-    $entries = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    
-    if (empty($entries)) {
-        return ['success' => true, 'synced' => 0, 'message' => 'No entries to sync'];
-    }
-    
-    $synced = 0;
-    $errors = 0;
-    
-    // Agrupar por item para buscar métricas
-    $itemIds = array_unique(array_column($entries, 'clone_item_id'));
-    
     try {
-        $client = new MercadoLivreClient($accountId);
-        
-        foreach (array_chunk($itemIds, 20) as $chunk) {
-            // Buscar métricas dos itens
-            $ids = implode(',', $chunk);
-            $response = $client->get("/items?ids=$ids&attributes=id,sold_quantity,available_quantity");
-            
-            if (!empty($response)) {
-                foreach ($response as $itemData) {
-                    if (!isset($itemData['body'])) continue;
-                    
-                    $item = $itemData['body'];
-                    $itemId = $item['id'];
-                    
-                    // Buscar visitas
-                    $visits = 0;
-                    try {
-                        $visitsData = $client->get("/items/$itemId/visits/time_window?last=30&unit=day");
-                        if (isset($visitsData['total_visits'])) {
-                            $visits = (int) $visitsData['total_visits'];
-                        }
-                    } catch (\Exception $e) {
-                        // Ignore visit fetch errors
-                    }
-                    
-                    // Atualizar entrada
-                    $updateStmt = $db->prepare("
-                        UPDATE clone_ab_test_entries 
-                        SET 
-                            visits = :visits,
-                            sales = :sales,
-                            revenue = COALESCE(revenue, 0),
-                            updated_at = NOW()
-                        WHERE clone_item_id = :item_id
-                    ");
-                    
-                    $updateStmt->execute([
-                        'visits' => $visits,
-                        'sales' => (int) ($item['sold_quantity'] ?? 0),
-                        'item_id' => $itemId
-                    ]);
-                    
-                    $synced++;
-                }
-            }
-            
-            // Rate limit
-            usleep(200000); // 200ms
-        }
-        
+        $results = $service->syncMetricsFromML($testId);
+        $total = count($results);
+        $synced = count(array_filter(
+            $results,
+            static fn(array $r): bool => (bool) ($r['success'] ?? false)
+        ));
+
+        return ['success' => true, 'synced' => $synced, 'total' => $total];
     } catch (\Exception $e) {
-        return ['success' => false, 'error' => $e->getMessage(), 'synced' => $synced];
+        return ['success' => false, 'error' => $e->getMessage(), 'synced' => 0, 'total' => 0];
     }
-    
-    // Recalcular métricas agregadas por variação
-    $db->prepare("
-        UPDATE clone_ab_test_variations v
-        SET 
-            visits = (SELECT COALESCE(SUM(visits), 0) FROM clone_ab_test_entries WHERE variation_id = v.id),
-            sales = (SELECT COALESCE(SUM(sales), 0) FROM clone_ab_test_entries WHERE variation_id = v.id),
-            revenue = (SELECT COALESCE(SUM(revenue), 0) FROM clone_ab_test_entries WHERE variation_id = v.id),
-            updated_at = NOW()
-        WHERE test_id = :test_id
-    ")->execute(['test_id' => $testId]);
-    
-    return ['success' => true, 'synced' => $synced];
 }
 
 function checkTestsForCompletion(\PDO $db): void
@@ -365,43 +289,38 @@ function checkTestsForCompletion(\PDO $db): void
     
     logVerbose("Verificando testes pendentes de conclusão");
     
-    // Buscar testes que atingiram duração máxima ou condições de auto-stop
+    // Buscar testes que atingiram a duração configurada (duration_days)
     $stmt = $db->query("
-        SELECT id, account_id, name, started_at, max_duration_days, auto_stop_on_significance
-        FROM clone_ab_tests 
+        SELECT id, account_id, name, started_at, duration_days
+        FROM clone_ab_tests
         WHERE status = 'running'
-        AND started_at IS NOT NULL
-        AND (
-            (max_duration_days IS NOT NULL AND DATEDIFF(NOW(), started_at) >= max_duration_days)
-            OR (auto_stop_on_significance = 1)
-        )
+          AND started_at IS NOT NULL
+          AND DATEDIFF(NOW(), started_at) >= duration_days
     ");
     
     $tests = $stmt->fetchAll(\PDO::FETCH_ASSOC);
     
     foreach ($tests as $test) {
         $testId = (int) $test['id'];
-        $maxDays = $test['max_duration_days'];
-        $daysRunning = (time() - strtotime($test['started_at'])) / 86400;
-        
-        // Verificar se atingiu duração máxima
-        if ($maxDays && $daysRunning >= $maxDays) {
-            logMessage("Teste #$testId '{$test['name']}' atingiu duração máxima de $maxDays dias");
-            
-            if (!$dryRun) {
-                try {
-                    $service = new CloneABTestingService((int) $test['account_id']);
-                    $result = $service->completeTest($testId);
-                    
-                    if ($result['success']) {
-                        logMessage("Teste #$testId concluído por tempo máximo");
-                    }
-                } catch (\Exception $e) {
-                    logMessage("Erro ao concluir teste #$testId: " . $e->getMessage(), 'ERROR');
+        $durationDays = (int) ($test['duration_days'] ?? 7);
+        logMessage("Teste #$testId '{$test['name']}' atingiu duração configurada de {$durationDays} dia(s)");
+
+        if (!$dryRun) {
+            try {
+                $service = new CloneABTestingService((int) $test['account_id']);
+                $winner = $service->determineWinner($testId);
+
+                if (($winner['is_significant'] ?? false) && (($winner['variation_id'] ?? null) !== null)) {
+                    $service->completeTest($testId);
+                    logMessage("Teste #$testId concluído automaticamente (significativo)");
+                } else {
+                    logVerbose("Teste #$testId não possui vencedor significativo no momento");
                 }
-            } else {
-                logMessage("[DRY-RUN] Concluiria teste #$testId por tempo máximo");
+            } catch (\Exception $e) {
+                logMessage("Erro ao concluir teste #$testId: " . $e->getMessage(), 'ERROR');
             }
+        } else {
+            logMessage("[DRY-RUN] Avaliaria conclusão do teste #$testId");
         }
     }
 }

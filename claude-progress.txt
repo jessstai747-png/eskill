@@ -6,6 +6,22 @@
 
 ---
 
+## Sessao: 2026-02-19 — CLONE-003: Clone A/B Testing (strict types, worker alinhado e testes unitarios)
+
+### Implementacao
+1. **CloneABTestingController.php** ajustado: adiciona `declare(strict_types=1)`, valida JSON de entrada (400 quando invalido), troca `catch (\Exception)` por `catch (\Throwable)` para cobrir TypeError sob strict_types
+2. **CloneABTestingService.php** ajustado: adiciona `declare(strict_types=1)` (mantendo logica), com cobertura DB-free focada em `determineWinner()`
+3. **clone-ab-testing-worker.php** refatorado: remove uso de schema/shape legados e passa a consumir o contrato real do service (`syncMetricsFromML()` + retorno de `determineWinner()` com `variation_id`, `variation_name`, `confidence`, `is_significant`, `reason`)
+4. **Testes Unit DB-free** criados:
+   - `CloneABTestingControllerTest.php` (estrutural)
+   - `CloneABTestingServiceTest.php` (comportamental: cenarios de vencedor/controle/amostra insuficiente/confianca)
+5. **phpunit.xml** atualizado: inclui explicitamente os 2 arquivos na suite Unit
+
+### Resultado
+- PHPUnit(Unit): 1318 tests, 2547 assertions, 40 skipped — ALL PASS
+- project-status.json: CLONE-003 passes:true
+- Observacao: ambiente segue sem MySQL (esperado); estrategia DB-free mantida
+
 ## Sessao: 2026-02-19 — CLONE-002: testes unitarios e tipagem para Clone avancado e templates
 
 ### Implementacao

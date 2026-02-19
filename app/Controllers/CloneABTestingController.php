@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Request;
@@ -52,7 +54,7 @@ class CloneABTestingController
                 'tests' => $tests,
                 'total' => count($tests),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -80,7 +82,7 @@ class CloneABTestingController
                 'status' => 'success',
                 'test' => $test,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -95,6 +97,12 @@ class CloneABTestingController
         header('Content-Type: application/json');
         
         $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!is_array($input)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'JSON inválido']);
+            return;
+        }
         
         if (empty($input['item_id'])) {
             http_response_code(400);
@@ -117,7 +125,7 @@ class CloneABTestingController
                 'message' => 'Teste A/B criado com sucesso',
                 'test_id' => $testId,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -140,7 +148,7 @@ class CloneABTestingController
                 'message' => 'Teste iniciado',
                 'test' => $test,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -163,7 +171,7 @@ class CloneABTestingController
                 'message' => 'Teste pausado',
                 'test' => $test,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -186,7 +194,7 @@ class CloneABTestingController
                 'message' => 'Teste finalizado',
                 'test' => $result,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -208,7 +216,7 @@ class CloneABTestingController
                 'status' => 'success',
                 'message' => 'Teste cancelado',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -232,7 +240,7 @@ class CloneABTestingController
                 http_response_code(400);
                 echo json_encode($result);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -258,7 +266,7 @@ class CloneABTestingController
                 'message' => "Métricas sincronizadas: {$success}/{$total}",
                 'results' => $results,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -280,7 +288,7 @@ class CloneABTestingController
                 'status' => 'success',
                 'winner' => $winner,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -295,6 +303,12 @@ class CloneABTestingController
         header('Content-Type: application/json');
         
         $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!is_array($input)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'JSON inválido']);
+            return;
+        }
         
         if (empty($input['item_id'])) {
             http_response_code(400);
@@ -304,16 +318,17 @@ class CloneABTestingController
         
         try {
             $service = new CloneABTestingService($this->accountId);
+            $count = isset($input['count']) ? (int) $input['count'] : 3;
             $variations = $service->generateTitleVariations(
                 $input['item_id'],
-                $input['count'] ?? 3
+                $count
             );
             
             echo json_encode([
                 'status' => 'success',
                 'variations' => $variations,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -328,6 +343,12 @@ class CloneABTestingController
         header('Content-Type: application/json');
         
         $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!is_array($input)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'JSON inválido']);
+            return;
+        }
         
         try {
             $service = new CloneABTestingService($this->accountId);
@@ -337,7 +358,7 @@ class CloneABTestingController
                 'status' => 'success',
                 'message' => 'Métricas registradas',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
