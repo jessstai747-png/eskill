@@ -6,6 +6,26 @@
 
 ---
 
+## Sessão: 2026-02-19 — AUTH-003: persistência de estado após validação ML
+
+### Objetivo
+Complementar a integração de refresh com API do Mercado Livre garantindo que falhas de validação em `/users/me` reflitam no estado operacional da conta no banco local.
+
+### Implementação
+1. **Persistência do resultado de validação no `ml_accounts`**
+   - Novo fluxo em `UnifiedTokenRefreshService` aplica o resultado da validação com `applyApiValidationOutcome()`.
+   - Em sucesso: força `status='active'`, zera `refresh_failure_count` e limpa `last_refresh_error`.
+   - Em falha: incrementa `refresh_failure_count`, grava `last_refresh_error` e atualiza `updated_at`.
+2. **Expiração automática em erros de autenticação**
+   - Nova regra `shouldExpireAccountFromValidationError()` marca conta como `expired` em erros auth-related (`401`, `unauthorized`, `invalid_token`, `missing_access_token`, etc).
+3. **Cobertura de testes unitários estruturais**
+   - Testes atualizados para validar presença da persistência pós-validação e da regra de expiração automática.
+
+### Validação
+- `php -l app/Services/UnifiedTokenRefreshService.php` ✅
+- `php -l tests/Unit/Services/UnifiedTokenRefreshServiceTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅
+
 ## Sessão: 2026-02-19 — AUTH-003: integração do refresh com API do Mercado Livre
 
 ### Objetivo

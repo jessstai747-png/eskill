@@ -128,6 +128,7 @@ class UnifiedTokenRefreshService
 
         if ($success) {
             $apiValidation = $this->validateAccountConnection($accountId);
+            $this->applyApiValidationOutcome($accountId, $apiValidation);
         }
 
         $message = $success ? 'Token renovado com sucesso' : 'Falha ao renovar token';
@@ -252,6 +253,7 @@ class UnifiedTokenRefreshService
 
                     $apiValidation = $this->validateAccountConnection($accountId);
                     $detail['api_validation'] = $apiValidation;
+                    $detail['status_after'] = $this->applyApiValidationOutcome($accountId, $apiValidation);
 
                     if ($apiValidation['status'] === 'ok') {
                         $results['api_validations_ok']++;
@@ -640,6 +642,83 @@ class UnifiedTokenRefreshService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Aplica no banco local o resultado da validação da API do Mercado Livre.
+     *
+     * @param array{status?: string, message?: string, error?: string} $apiValidation
+     */
+    private function applyApiValidationOutcome(int $accountId, array $apiValidation): string
+    {
+        $status = (string)($apiValidation['status'] ?? 'skipped');
+
+        if ($status === 'ok') {
+            try {
+                $stmt = $this->db->prepare(
+                    "UPDATE ml_accounts
+                    SET status = 'active',
+                        refresh_failure_count = 0,
+                        last_refresh_error = NULL,
+                        updated_at = NOW()
+                    WHERE id = :id"
+                );
+
+                $stmt->execute(['id' => $accountId]);
+            } catch (\Throwable $e) {
+                $this->log('warning', 'Falha ao atualizar estado da conta após validação API bem-sucedida', [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return 'active';
+        }
+
+        if ($status === 'failed') {
+            $errorMessage = (string)($apiValidation['error'] ?? $apiValidation['message'] ?? 'Falha na validação da API após refresh');
+            $errorMessage = trim($errorMessage) !== '' ? $errorMessage : 'Falha na validação da API após refresh';
+            $errorMessage = mb_substr($errorMessage, 0, 500);
+            $expireAccount = $this->shouldExpireAccountFromValidationError($errorMessage);
+
+            try {
+                $stmt = $this->db->prepare(
+                    "UPDATE ml_accounts
+                    SET refresh_failure_count = refresh_failure_count + 1,
+                        last_refresh_error = :error,
+                        status = CASE WHEN :expire = 1 THEN 'expired' ELSE status END,
+                        updated_at = NOW()
+                    WHERE id = :id"
+                );
+
+                $stmt->execute([
+                    'error' => $errorMessage,
+                    'expire' => $expireAccount ? 1 : 0,
+                    'id' => $accountId,
+                ]);
+            } catch (\Throwable $e) {
+                $this->log('warning', 'Falha ao persistir erro de validação da API após refresh', [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return $expireAccount ? 'expired' : 'active';
+        }
+
+        return 'active';
+    }
+
+    private function shouldExpireAccountFromValidationError(string $errorMessage): bool
+    {
+        $normalized = mb_strtolower($errorMessage);
+
+        return str_contains($normalized, '401')
+            || str_contains($normalized, 'unauthorized')
+            || str_contains($normalized, 'invalid token')
+            || str_contains($normalized, 'invalid_token')
+            || str_contains($normalized, 'invalid access token')
+            || str_contains($normalized, 'missing_access_token');
     }
     
     private function log(string $level, string $message, array $context = []): void

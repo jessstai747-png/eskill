@@ -388,6 +388,28 @@ class UnifiedTokenRefreshServiceTest extends TestCase
             'Deve integrar com MercadoLivreClient para validar API');
     }
 
+    public function test_persists_api_validation_outcome_in_ml_accounts(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString('applyApiValidationOutcome', $source,
+            'Deve aplicar resultado de validação da API no estado local da conta');
+        $this->assertStringContainsString('refresh_failure_count = refresh_failure_count + 1', $source,
+            'Falhas de validação da API devem incrementar contador de falhas');
+        $this->assertStringContainsString('last_refresh_error = :error', $source,
+            'Falhas de validação da API devem persistir último erro');
+    }
+
+    public function test_can_expire_account_on_auth_related_validation_errors(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString('shouldExpireAccountFromValidationError', $source,
+            'Deve existir regra para expirar conta em erros de autenticação pós-refresh');
+        $this->assertStringContainsString("missing_access_token", $source,
+            'Regra de expiração deve cobrir erros de token ausente/inválido');
+    }
+
     public function test_supports_env_toggle_for_api_validation(): void
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
