@@ -485,10 +485,12 @@
             "description": "Gerenciamento de pedidos do Mercado Livre",
             "files": [
                 "app\/Controllers\/OrderController.php",
-                "app\/Services\/OrderService.php"
+                "app\/Controllers\/OrdersController.php",
+                "app\/Services\/OrderService.php",
+                "tests\/Unit\/Services\/OrderServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "ORDERS-002",

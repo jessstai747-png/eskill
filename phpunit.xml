@@ -55,6 +55,54 @@
             <file>tests/Unit/Controllers/CloneAnalyticsControllerTest.php</file>
             <file>tests/Unit/Services/CloneHealthMonitorServiceTest.php</file>
             <file>tests/Unit/Services/CloneSyncServiceTest.php</file>
+            <file>tests/Unit/Services/OrderServiceTest.php</file>
+            <file>tests/Unit/Services/DynamicPricingServiceTest.php</file>
+            <file>tests/Unit/Services/AutoPricingOptimizerServiceTest.php</file>
+            <file>tests/Unit/Services/PriceRulesEngineServiceTest.php</file>
+            <file>tests/Unit/Services/PriceHistoryServiceTest.php</file>
+            <file>tests/Unit/Services/PriceAnalyticsServiceTest.php</file>
+            <file>tests/Unit/Services/ScheduledPriceServiceTest.php</file>
+            <file>tests/Unit/Services/ClaudeClientTest.php</file>
+            <file>tests/Unit/Services/AIPredictionsServiceTest.php</file>
+            <file>tests/Unit/Services/DeepResearchServiceTest.php</file>
+            <file>tests/Unit/Services/ChatbotAIServiceTest.php</file>
+            <file>tests/Unit/Services/CompetitorAnalysisServiceTest.php</file>
+            <file>tests/Unit/Services/AIImageAnalyzerServiceTest.php</file>
+            <file>tests/Unit/Services/QueueServiceUnitTest.php</file>
+            <file>tests/Unit/Controllers/AICenterControllerTest.php</file>
+            <file>tests/Unit/Controllers/CompetitorMonitorControllerTest.php</file>
+            <!-- Batch 3: Existing passing tests -->
+            <file>tests/Unit/Services/ValidationServiceTest.php</file>
+            <file>tests/Unit/Services/EncryptionServiceTest.php</file>
+            <file>tests/Unit/Services/SecurityServiceTest.php</file>
+            <file>tests/Unit/Services/TechSheetServiceTest.php</file>
+            <file>tests/Unit/Services/CacheServiceTest.php</file>
+            <file>tests/Unit/Services/SeoAnalyzerServiceTest.php</file>
+            <file>tests/Unit/Services/PricingStrategyServiceTest.php</file>
+            <file>tests/Unit/Services/EmailServiceTest.php</file>
+            <file>tests/Unit/Services/LoggerServiceTest.php</file>
+            <file>tests/Unit/Services/JwtServiceTest.php</file>
+            <file>tests/Unit/Services/UnifiedTokenRefreshServiceTest.php</file>
+            <file>tests/Unit/Services/MercadoLivreClientExtendedTest.php</file>
+            <file>tests/Unit/Services/MercadoLivreClientHeaderTokenTest.php</file>
+            <file>tests/Unit/Services/RealIntegrationsStructureTest.php</file>
+            <file>tests/Unit/Services/TechSheetBenchmarkServiceTest.php</file>
+            <file>tests/Unit/Controllers/UserManagementControllerTest.php</file>
+            <file>tests/Unit/Controllers/SeoControllerTest.php</file>
+            <file>tests/Unit/Controllers/BaseControllerActiveAccountIdTest.php</file>
+            <file>tests/Unit/Services/AI/AIProviderManagerTest.php</file>
+            <file>tests/Unit/Services/AI/DescriptionOptimizerTest.php</file>
+            <file>tests/Unit/Services/AI/TechSheetOptimizerTest.php</file>
+            <file>tests/Unit/Services/AI/TitleOptimizerTest.php</file>
+            <file>tests/Unit/Services/MercadoLivre/CategoriesApiServiceTest.php</file>
+            <file>tests/Unit/Services/SEO/CompatibilityServiceTest.php</file>
+            <file>tests/Unit/Services/SEO/ContextInjectorServiceTest.php</file>
+            <file>tests/Unit/Services/SEO/CoverageAndHiddenFieldsTest.php</file>
+            <file>tests/Unit/Services/SEO/KeywordSourceServiceTest.php</file>
+            <file>tests/Unit/Services/SEO/LongTailGeneratorServiceTest.php</file>
+            <file>tests/Unit/Services/SEO/SearchCoverageServiceTest.php</file>
+            <file>tests/Unit/Services/SEO/SEOOptimizerServiceTest.php</file>
+            <file>tests/Unit/Services/SEO/TokenManagerTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

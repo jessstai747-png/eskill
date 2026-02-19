@@ -6,6 +6,49 @@
 
 ---
 
+## Sessao: 2026-02-20 — ORDERS-001: Gerenciamento de pedidos do Mercado Livre
+
+### Implementacao
+- **OrderService.php**: Refatorado constructor com DI opcional (MercadoLivreClient + PDO + skipDbAutoConnect)
+  - Preserva backward compatibility total (params opcionais com default)
+  - Permite injecao de mocks para testes DB-free
+- **OrderController.php**: Adicionado `declare(strict_types=1)`
+- **OrdersController.php**: Adicionado `declare(strict_types=1)`
+- **OrderServiceTest.php**: Reescrito com 48 testes DB-free:
+  - Constructor/DI (3 testes)
+  - listOrders API success (7 testes: results, multiple, empty, pagination, limits)
+  - listOrders sort (3 testes: default, invalid field, ascending)
+  - listOrders search filter (2 testes: nickname, order ID)
+  - listOrders missing seller ID (1 teste)
+  - listOrders API error + fallback (2 testes)
+  - listOrders DB save (1 teste com mock PDO)
+  - listOrders normalization (2 testes: summary, non-array items)
+  - getOrder success (2 testes: API, DB cache)
+  - getOrder errors (3 testes: API error, DB fallback, no fallback)
+  - syncOrders success (2 testes: normal, limit cap)
+  - syncOrders errors (3 testes: no seller, API error, partial failure)
+  - API-only mode (2 testes)
+  - Security (4 testes: prepared stmts, sort validation, parameterized search, strict_types)
+  - Response structure (3 testes)
+  - Edge cases (5 testes)
+  - Offset handling (1 teste)
+- **phpunit.xml**: Adicionado OrderServiceTest.php ao Unit testsuite
+
+### Validacao
+- `php -l` — 4 arquivos sem erros de sintaxe
+- PHPUnit OrderServiceTest — 48 tests, 128 assertions, ALL PASS
+- PHPUnit full Unit suite — 2280 tests, 4857 assertions, 0 failures, 40 skipped
+
+### Arquivos modificados
+- app/Services/OrderService.php (constructor DI refactored)
+- app/Controllers/OrderController.php (strict_types)
+- app/Controllers/OrdersController.php (strict_types)
+- tests/Unit/Services/OrderServiceTest.php (48 testes DB-free)
+- phpunit.xml (OrderServiceTest no Unit suite)
+- project-status.json (ORDERS-001 passes=true)
+
+---
+
 ## Sessao: 2026-02-20 — CLONE-007: Integração ML API real no Health Monitor
 
 ### O que foi feito

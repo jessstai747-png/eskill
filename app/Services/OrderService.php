@@ -16,18 +16,34 @@ class OrderService
     private ?PDO $db;
     private ?int $accountId;
 
-    public function __construct(?int $accountId = null)
-    {
+    public function __construct(
+        ?int $accountId = null,
+        ?MercadoLivreClient $client = null,
+        ?PDO $db = null,
+        bool $skipDbAutoConnect = false
+    ) {
         $this->accountId = $accountId;
-        $this->client = new MercadoLivreClient($accountId);
-        try {
-            $this->db = Database::getInstance();
-        } catch (Throwable $e) {
+
+        if ($client !== null) {
+            $this->client = $client;
+        } else {
+            $this->client = new MercadoLivreClient($accountId);
+        }
+
+        if ($db !== null) {
+            $this->db = $db;
+        } elseif ($skipDbAutoConnect) {
             $this->db = null;
-            log_warning('OrderService: DB indisponível, operando em modo API-only', [
-                'service' => 'OrderService',
-                'error' => $e->getMessage(),
-            ]);
+        } else {
+            try {
+                $this->db = Database::getInstance();
+            } catch (Throwable $e) {
+                $this->db = null;
+                log_warning('OrderService: DB indisponível, operando em modo API-only', [
+                    'service' => 'OrderService',
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 
