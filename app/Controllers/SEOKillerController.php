@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Helpers\SessionHelper;
@@ -2474,10 +2476,10 @@ class SEOKillerController extends BaseController
                 return ['error' => 'Informe parâmetro q'];
             }
             
-            $limit = $this->request->getInt('limit', 10);
+            $categoryId = $this->request->get('category_id');
             
             $service = new KeywordSourceService($this->accountId);
-            return $service->getAutocompleteKeywords($query, $limit);
+            return $service->getAutocompleteKeywords($query, $categoryId);
         });
     }
 

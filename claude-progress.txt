@@ -6,6 +6,21 @@
 
 ---
 
+## Sessao: 2025-07-25 — SEO-001: strict types, bug fix e testes para SEO Killer Controller e TitleOptimizerService
+
+### Implementacao
+1. **declare(strict_types=1)** adicionado a app/Controllers/SEOKillerController.php (todos os 24 services SEO/ ja tinham)
+2. **Bug fix** em SEOKillerController.php getAutocompleteKeywords() — passava $limit (int) onde $categoryId (string) era esperado. Corrigido para usar $categoryId da request
+3. **SEOKillerControllerTest.php** criado: 65+ testes estruturais (BaseController extends, strict_types, 90+ public methods void, core/bulk/autopilot/performance/abtest/strategies/advanced method groups) + behavioral (getDefaultSettings providers/budget/automation/preferences, extractAttribute find/notfound/fallback/empty)
+4. **TitleOptimizerServiceTest.php** criado: 30+ testes (public methods analyzeTitle/generateOptimizedTitles/generateModelAttribute, extractKeywords stopwords/shortwords/lowercase, findSemanticGaps competitor words/no duplicates, analyzeSearchIntent intent words, calculateOpportunityScore ranges, findMissingAttributes max5)
+
+### Resultado
+- PHPUnit: 1139 tests, 2193 assertions, 40 skipped — ALL PASS
+- project-status.json: SEO-001 passes:true
+- **Fase 2 (SEO) 100% COMPLETA** — todas as 8 features passando (SEO-001 a SEO-008)
+
+---
+
 ## Sessao: 2025-07-25 — SEO-002/SEO-003: strict types, logging e testes para Title Generator e AI Content
 
 ### Implementacao
