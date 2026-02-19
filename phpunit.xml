@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+            <!-- Estes testes dependem de DB e precisam rodar no testsuite Integration -->
+            <exclude>tests/Unit/Services</exclude>
+            <exclude>tests/Unit/Controllers</exclude>
+            <exclude>tests/Unit/Integrations</exclude>
+            <exclude>tests/Unit/AuthTest.php</exclude>
+            <exclude>tests/Unit/AIIntegrationTest.php</exclude>
+            <exclude>tests/Unit/CloneAlertNotificationServiceTest.php</exclude>
+            <exclude>tests/Unit/CloneDuplicateDetectionServiceTest.php</exclude>
+            <exclude>tests/Unit/CloneRetryStrategyServiceTest.php</exclude>
+            <exclude>tests/Unit/QueueServiceTest.php</exclude>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+            <!-- Mantém compatibilidade com os testes existentes em tests/Unit que acessam DB -->
+            <directory>tests/Unit/Services</directory>
+            <directory>tests/Unit/Controllers</directory>
+            <directory>tests/Unit/Integrations</directory>
+            <file>tests/Unit/QueueServiceTest.php</file>
+            <file>tests/Unit/AuthTest.php</file>
+            <file>tests/Unit/AIIntegrationTest.php</file>
+            <file>tests/Unit/CloneAlertNotificationServiceTest.php</file>
+            <file>tests/Unit/CloneDuplicateDetectionServiceTest.php</file>
+            <file>tests/Unit/CloneRetryStrategyServiceTest.php</file>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+    </php>
+</phpunit>

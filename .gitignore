@@ -1,0 +1,50 @@
+# Dependências
+/vendor/
+/node_modules/
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.*.local
+
+# Logs
+/storage/logs/*.log
+*.log
+
+# Cache
+/storage/cache/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Backup
+*.sql
+*.bak
+*.backup
+storage/backups/
+
+# Temporários
+/tmp/
+/temp/
+
+# Security: sensitive files
+cookies.txt
+.env.test
+.env.testing
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
