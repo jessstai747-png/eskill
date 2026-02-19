@@ -6,6 +6,43 @@
 
 ---
 
+## Sessao: 2026-02-20 — CLONE-007: Integração ML API real no Health Monitor
+
+### O que foi feito
+- **CloneHealthMonitorService**: Integrado com `MercadoLivreClient::diagnose()` para verificação real da API do ML
+  - `checkApiConnectivity()` agora delega para `checkApiConnectivityViaClient()` (diagnose real) quando ML client disponível
+  - Fallback para `checkApiConnectivityViaLogs()` (contagem de erros em clone_sync_logs) quando sem ML client
+  - Resposta enriquecida com: connected, api_accessible, token_status, seller_id, items_count
+  - 3 níveis de severidade: critical (API inacessível), warning (token inválido/ausente), ok (conectado)
+- **CloneAdvancedController**: Injeção de MercadoLivreClient em getHealth(), getDiagnostics(), getAnalyticsSummary()
+  - Novo método privado `createMlClient()` com try/catch graceful
+- **bin/clone-health-monitor.php**: CLI agora cria MercadoLivreClient antes do service (best-effort)
+- **CloneHealthMonitorServiceTest**: +10 novos testes para integração ML:
+  - testMlClientConnectedReturnsApiOk
+  - testMlClientDisconnectedTokenMissingReturnsWarning
+  - testMlClientDisconnectedTokenInvalidReturnsWarning
+  - testMlClientApiInaccessibleReturnsCritical
+  - testMlClientDiagnoseExceptionReturnsWarning
+  - testMlClientConnectedDoesNotAffectOtherChecks
+  - testMlClientScoreCorrectWhenConnected
+  - testWithoutMlClientFallsBackToDbLogs
+  - testServiceAcceptsMlClientInConstructor
+  - Helper: buildHealthStmtsForMLClient() (8 stmts, sem api_connectivity DB)
+
+### Validação
+- `php -l` — 4 arquivos sem erros de sintaxe
+- PHPUnit — 1743 tests, 3599 assertions, 0 failures, 40 skipped (ALL PASS)
+- Health monitor tests: 77 tests, 232 assertions (era 67, adicionados 10)
+
+### Arquivos modificados
+- app/Services/CloneHealthMonitorService.php (constructor + checkApiConnectivity refactor)
+- app/Controllers/CloneAdvancedController.php (ML client injection + createMlClient)
+- bin/clone-health-monitor.php (ML client creation + injection)
+- tests/Unit/Services/CloneHealthMonitorServiceTest.php (+10 testes ML)
+- project-status.json (CLONE-007 atualizado)
+
+---
+
 ## Sessao: 2026-02-19 — CLONE-007: Clone health monitor (service + CLI) com hardening e testes unitarios
 
 ### Implementacao

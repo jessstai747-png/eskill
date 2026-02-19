@@ -10,6 +10,7 @@ use App\Services\CloneDataExportService;
 use App\Services\CloneHealthMonitorService;
 use App\Services\CloneBatchOperationsService;
 use App\Services\CloneItemManagerService;
+use App\Services\MercadoLivreClient;
 
 /**
  * CloneAdvancedController
@@ -330,7 +331,8 @@ class CloneAdvancedController
     public function getHealth(): void
     {
         try {
-            $health = new CloneHealthMonitorService($this->accountId);
+            $mlClient = $this->createMlClient();
+            $health = new CloneHealthMonitorService($this->accountId, null, $mlClient);
             $status = $health->getSystemHealth();
             $this->json($status);
         } catch (\Exception $e) {
@@ -345,7 +347,8 @@ class CloneAdvancedController
     public function getDiagnostics(): void
     {
         try {
-            $health = new CloneHealthMonitorService($this->accountId);
+            $mlClient = $this->createMlClient();
+            $health = new CloneHealthMonitorService($this->accountId, null, $mlClient);
             $diagnostics = $health->runDiagnostics();
             $this->json($diagnostics);
         } catch (\Exception $e) {
@@ -563,7 +566,8 @@ class CloneAdvancedController
             $manager = new CloneItemManagerService($this->accountId);
             $stats = $manager->getStats();
             
-            $health = new CloneHealthMonitorService($this->accountId);
+            $mlClient = $this->createMlClient();
+            $health = new CloneHealthMonitorService($this->accountId, null, $mlClient);
             $healthStatus = $health->getSystemHealth();
             
             $this->json([
@@ -671,5 +675,22 @@ class CloneAdvancedController
     {
         $input = file_get_contents('php://input');
         return json_decode($input, true) ?? [];
+    }
+
+    /**
+     * Cria instância de MercadoLivreClient para diagnose (best-effort).
+     * Retorna null se não for possível criar o client.
+     */
+    private function createMlClient(): ?MercadoLivreClient
+    {
+        try {
+            return new MercadoLivreClient($this->accountId > 0 ? $this->accountId : null);
+        } catch (\Throwable $e) {
+            log_debug('CloneAdvancedController: ML client indisponível', [
+                'error' => $e->getMessage(),
+                'account_id' => $this->accountId,
+            ]);
+            return null;
+        }
     }
 }

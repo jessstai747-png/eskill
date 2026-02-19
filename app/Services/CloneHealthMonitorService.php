@@ -49,11 +49,13 @@ class CloneHealthMonitorService
     private ?PDO $db;
     private int $accountId;
     private ?string $dbError = null;
+    private ?MercadoLivreClient $mlClient = null;
 
-    public function __construct(int $accountId = 0, ?PDO $db = null)
+    public function __construct(int $accountId = 0, ?PDO $db = null, ?MercadoLivreClient $mlClient = null)
     {
         $this->accountId = $accountId;
         $this->db = $db;
+        $this->mlClient = $mlClient;
 
         if ($this->db === null) {
             try {
@@ -485,11 +487,117 @@ class CloneHealthMonitorService
     }
 
     /**
-     * Verifica conectividade com API ML
+     * Verifica conectividade com API ML.
+     *
+     * Quando um MercadoLivreClient está disponível, executa diagnose() real
+     * (verifica token, API pública, autenticação, itens).
+     * Caso contrário, faz fallback para contagem de erros no clone_sync_logs.
      */
     private function checkApiConnectivity(): array
     {
-        // Verificar erros de API recentes
+        // Preferência: diagnose real via MercadoLivreClient
+        if ($this->mlClient !== null) {
+            return $this->checkApiConnectivityViaClient();
+        }
+
+        // Fallback: contagem de erros em clone_sync_logs
+        return $this->checkApiConnectivityViaLogs();
+    }
+
+    /**
+     * Diagnóstico real da API do Mercado Livre via MercadoLivreClient::diagnose().
+     */
+    private function checkApiConnectivityViaClient(): array
+    {
+        try {
+            /** @var MercadoLivreClient $client */
+            $client = $this->mlClient;
+            $diag = $client->diagnose();
+
+            $connected = (bool) ($diag['connected'] ?? false);
+            $apiAccessible = (bool) ($diag['api_accessible'] ?? false);
+            $tokenStatus = (string) ($diag['token_status'] ?? 'unknown');
+            $sellerId = $diag['seller_id'] ?? null;
+            $itemsCount = (int) ($diag['items_count'] ?? 0);
+            $error = $diag['error'] ?? null;
+
+            // Nível 1: API pública inacessível → critical
+            if (!$apiAccessible) {
+                return [
+                    'status' => 'critical',
+                    'value' => 'API inacessível',
+                    'errors' => null,
+                    'connected' => false,
+                    'api_accessible' => false,
+                    'token_status' => $tokenStatus,
+                    'seller_id' => null,
+                    'items_count' => 0,
+                    'message' => 'API do Mercado Livre inacessível',
+                    'error' => $error,
+                ];
+            }
+
+            // Nível 2: token inválido ou ausente → warning
+            if (!$connected) {
+                $reason = match ($tokenStatus) {
+                    'missing', 'unknown' => 'Token ausente ou não configurado',
+                    'invalid' => 'Token inválido — reautentique a conta',
+                    'error' => 'Erro ao validar token: ' . ($error ?? 'desconhecido'),
+                    default => 'Não conectado ao Mercado Livre',
+                };
+
+                return [
+                    'status' => 'warning',
+                    'value' => $tokenStatus,
+                    'errors' => null,
+                    'connected' => false,
+                    'api_accessible' => true,
+                    'token_status' => $tokenStatus,
+                    'seller_id' => null,
+                    'items_count' => 0,
+                    'message' => $reason,
+                    'error' => $error,
+                ];
+            }
+
+            // Nível 3: tudo OK
+            return [
+                'status' => 'ok',
+                'value' => 'conectado',
+                'errors' => 0,
+                'connected' => true,
+                'api_accessible' => true,
+                'token_status' => 'valid',
+                'seller_id' => $sellerId,
+                'items_count' => $itemsCount,
+                'message' => 'Conectividade API OK — seller ' . ($sellerId ?? '?') . ' (' . $itemsCount . ' itens)',
+            ];
+        } catch (\Throwable $e) {
+            log_warning('CloneHealthMonitorService: diagnose ML falhou', [
+                'error' => $e->getMessage(),
+                'account_id' => $this->accountId,
+            ]);
+
+            return [
+                'status' => 'warning',
+                'value' => 'erro',
+                'errors' => null,
+                'connected' => false,
+                'api_accessible' => false,
+                'token_status' => 'unknown',
+                'seller_id' => null,
+                'items_count' => 0,
+                'message' => 'Falha ao diagnosticar API: ' . $e->getMessage(),
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Fallback: verifica erros de API recentes via clone_sync_logs.
+     */
+    private function checkApiConnectivityViaLogs(): array
+    {
         try {
             if ($this->db === null) {
                 return [
@@ -546,7 +654,7 @@ class CloneHealthMonitorService
                 'message' => 'Conectividade API OK'
             ];
         } catch (\Throwable $e) {
-            log_debug('CloneHealthMonitorService: checkApiConnectivity indisponível', [
+            log_debug('CloneHealthMonitorService: checkApiConnectivityViaLogs indisponível', [
                 'error' => $e->getMessage(),
                 'account_id' => $this->accountId,
             ]);

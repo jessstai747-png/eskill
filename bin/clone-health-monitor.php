@@ -18,6 +18,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Services\CloneHealthMonitorService;
 use App\Services\EmailService;
+use App\Services\MercadoLivreClient;
 
 // Load environment
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
@@ -49,8 +50,19 @@ if (isset($options['account-id'])) {
     }
 }
 
+// Criar ML client para diagnóstico real da API (best-effort)
+$mlClient = null;
 try {
-    $service = new CloneHealthMonitorService($accountId);
+    $mlClient = new MercadoLivreClient($accountId > 0 ? $accountId : null);
+} catch (\Throwable $e) {
+    // ML client indisponível — fallback para logs DB
+    if ($verbose) {
+        echo "[info] ML client indisponível: {$e->getMessage()}\n";
+    }
+}
+
+try {
+    $service = new CloneHealthMonitorService($accountId, null, $mlClient);
     $health = $service->getSystemHealth();
 
     // Persistir check (best-effort)

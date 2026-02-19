@@ -1103,6 +1103,305 @@ class CloneHealthMonitorServiceTest extends TestCase
     }
 
     // =========================================================================
+    // ML CLIENT INTEGRATION — API CONNECTIVITY VIA MercadoLivreClient
+    // =========================================================================
+
+    /**
+     * Build 8-stmt sequence for getSystemHealth when ML client is injected.
+     * api_connectivity uses ML client (no DB stmt), so 6 DB checks + 2 metrics = 8.
+     *
+     * @param array<string, array|int|string|float|bool|null> $overrides
+     * @return PDOStatement[]
+     */
+    private function buildHealthStmtsForMLClient(array $overrides = []): array
+    {
+        return [
+            // Check 1: active_jobs
+            $this->createMockStmt(fetchColumnReturn: $overrides['active_jobs'] ?? 0),
+            // Check 2: stuck_jobs
+            $this->createMockStmt(fetchColumnReturn: $overrides['stuck_jobs'] ?? 0),
+            // Check 3: error_rate
+            $this->createMockStmt(fetchReturn: $overrides['error_rate'] ?? ['success' => 100, 'failed' => 0]),
+            // Check 4: queue_size
+            $this->createMockStmt(fetchColumnReturn: $overrides['queue_size'] ?? 0),
+            // Check 5: recent_activity
+            $this->createMockStmt(fetchColumnReturn: $overrides['recent_activity'] ?? date('Y-m-d H:i:s')),
+            // Check 6: workers
+            $this->createMockStmt(fetchColumnReturn: $overrides['workers'] ?? 1),
+            // Check 7: api_connectivity — uses ML client, NO DB stmt
+            // getQuickMetrics: 24h
+            $this->createMockStmt(fetchReturn: $overrides['metrics_24h'] ?? [
+                'jobs_24h' => 10, 'items_24h' => 100, 'success_24h' => 100, 'failed_24h' => 0,
+            ]),
+            // getQuickMetrics: 1h
+            $this->createMockStmt(fetchReturn: $overrides['metrics_1h'] ?? [
+                'jobs_1h' => 1, 'items_1h' => 10,
+            ]),
+        ];
+    }
+
+    /**
+     * @return MockObject&\App\Services\MercadoLivreClient
+     */
+    private function createMockMlClient(array $diagnoseReturn): MockObject
+    {
+        $mock = $this->createMock(\App\Services\MercadoLivreClient::class);
+        $mock->method('diagnose')->willReturn($diagnoseReturn);
+        return $mock;
+    }
+
+    private function createFailingMlClient(\Throwable $exception): MockObject
+    {
+        $mock = $this->createMock(\App\Services\MercadoLivreClient::class);
+        $mock->method('diagnose')->willThrowException($exception);
+        return $mock;
+    }
+
+    public function testMlClientConnectedReturnsApiOk(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => true,
+            'has_token' => true,
+            'account_id' => 123,
+            'token_source' => 'database',
+            'db_unavailable' => false,
+            'seller_id' => 456789,
+            'user_info' => ['nickname' => 'AWAMOTOS'],
+            'token_status' => 'valid',
+            'api_accessible' => true,
+            'items_count' => 42,
+            'error' => null,
+            'checks' => ['token' => true, 'public_api' => true, 'auth' => true, 'items' => true],
+            'token_valid' => true,
+            'public_api' => true,
+            'auth_ok' => true,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('ok', $health['checks']['api_connectivity']['status']);
+        $this->assertSame('conectado', $health['checks']['api_connectivity']['value']);
+        $this->assertTrue($health['checks']['api_connectivity']['connected']);
+        $this->assertTrue($health['checks']['api_connectivity']['api_accessible']);
+        $this->assertSame('valid', $health['checks']['api_connectivity']['token_status']);
+        $this->assertSame(456789, $health['checks']['api_connectivity']['seller_id']);
+        $this->assertSame(42, $health['checks']['api_connectivity']['items_count']);
+    }
+
+    public function testMlClientDisconnectedTokenMissingReturnsWarning(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => false,
+            'has_token' => false,
+            'account_id' => null,
+            'token_source' => 'none',
+            'db_unavailable' => false,
+            'seller_id' => null,
+            'user_info' => null,
+            'token_status' => 'missing',
+            'api_accessible' => true,
+            'items_count' => 0,
+            'error' => null,
+            'checks' => ['token' => false, 'public_api' => true, 'auth' => false, 'items' => false],
+            'token_valid' => false,
+            'public_api' => true,
+            'auth_ok' => false,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('warning', $health['checks']['api_connectivity']['status']);
+        $this->assertFalse($health['checks']['api_connectivity']['connected']);
+        $this->assertTrue($health['checks']['api_connectivity']['api_accessible']);
+        $this->assertSame('missing', $health['checks']['api_connectivity']['token_status']);
+        $this->assertStringContainsString('ausente', $health['checks']['api_connectivity']['message']);
+    }
+
+    public function testMlClientDisconnectedTokenInvalidReturnsWarning(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => false,
+            'has_token' => true,
+            'account_id' => 123,
+            'token_source' => 'database',
+            'db_unavailable' => false,
+            'seller_id' => null,
+            'user_info' => null,
+            'token_status' => 'invalid',
+            'api_accessible' => true,
+            'items_count' => 0,
+            'error' => 'Token expired',
+            'checks' => ['token' => false, 'public_api' => true, 'auth' => false, 'items' => false],
+            'token_valid' => false,
+            'public_api' => true,
+            'auth_ok' => false,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('warning', $health['checks']['api_connectivity']['status']);
+        $this->assertFalse($health['checks']['api_connectivity']['connected']);
+        $this->assertSame('invalid', $health['checks']['api_connectivity']['token_status']);
+        $this->assertStringContainsString('reautentique', $health['checks']['api_connectivity']['message']);
+    }
+
+    public function testMlClientApiInaccessibleReturnsCritical(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => false,
+            'has_token' => false,
+            'account_id' => null,
+            'token_source' => 'none',
+            'db_unavailable' => false,
+            'seller_id' => null,
+            'user_info' => null,
+            'token_status' => 'unknown',
+            'api_accessible' => false,
+            'items_count' => 0,
+            'error' => 'Connection timeout',
+            'checks' => ['token' => false, 'public_api' => false, 'auth' => false, 'items' => false],
+            'token_valid' => false,
+            'public_api' => false,
+            'auth_ok' => false,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('critical', $health['checks']['api_connectivity']['status']);
+        $this->assertFalse($health['checks']['api_connectivity']['connected']);
+        $this->assertFalse($health['checks']['api_connectivity']['api_accessible']);
+        $this->assertStringContainsString('inacessível', $health['checks']['api_connectivity']['message']);
+    }
+
+    public function testMlClientDiagnoseExceptionReturnsWarning(): void
+    {
+        $mlClient = $this->createFailingMlClient(
+            new \RuntimeException('Guzzle timeout')
+        );
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('warning', $health['checks']['api_connectivity']['status']);
+        $this->assertStringContainsString('Guzzle timeout', $health['checks']['api_connectivity']['message']);
+        $this->assertFalse($health['checks']['api_connectivity']['connected']);
+    }
+
+    public function testMlClientConnectedDoesNotAffectOtherChecks(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => true,
+            'has_token' => true,
+            'account_id' => 123,
+            'token_source' => 'database',
+            'db_unavailable' => false,
+            'seller_id' => 456,
+            'user_info' => ['nickname' => 'TEST'],
+            'token_status' => 'valid',
+            'api_accessible' => true,
+            'items_count' => 10,
+            'error' => null,
+            'checks' => ['token' => true, 'public_api' => true, 'auth' => true, 'items' => true],
+            'token_valid' => true,
+            'public_api' => true,
+            'auth_ok' => true,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient([
+            'stuck_jobs' => 2, // force critical on another check
+        ]));
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        // API is ok even though overall is critical
+        $this->assertSame('ok', $health['checks']['api_connectivity']['status']);
+        $this->assertSame('critical', $health['checks']['stuck_jobs']['status']);
+        $this->assertSame('critical', $health['status']);
+    }
+
+    public function testMlClientScoreCorrectWhenConnected(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => true,
+            'has_token' => true,
+            'account_id' => 123,
+            'token_source' => 'database',
+            'db_unavailable' => false,
+            'seller_id' => 456,
+            'user_info' => null,
+            'token_status' => 'valid',
+            'api_accessible' => true,
+            'items_count' => 5,
+            'error' => null,
+            'checks' => ['token' => true, 'public_api' => true, 'auth' => true, 'items' => true],
+            'token_valid' => true,
+            'public_api' => true,
+            'auth_ok' => true,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame(100, $health['score']);
+        $this->assertSame('healthy', $health['status']);
+    }
+
+    public function testWithoutMlClientFallsBackToDbLogs(): void
+    {
+        // This test verifies that without ML client, the DB log check is used (9 stmts)
+        $this->configurePrepareSequence($this->buildHealthStmts(['api_connectivity' => 0]));
+
+        $svc = new CloneHealthMonitorService(0, $this->pdo);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('ok', $health['checks']['api_connectivity']['status']);
+        $this->assertSame(0, $health['checks']['api_connectivity']['errors']);
+        // No ML-specific fields when using DB fallback
+        $this->assertArrayNotHasKey('connected', $health['checks']['api_connectivity']);
+    }
+
+    public function testServiceAcceptsMlClientInConstructor(): void
+    {
+        $mlClient = $this->createMock(\App\Services\MercadoLivreClient::class);
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $this->assertInstanceOf(CloneHealthMonitorService::class, $svc);
+    }
+
+    // =========================================================================
     // ASSERTION ALIAS (PHPUnit < 10 compat)
     // =========================================================================
 
