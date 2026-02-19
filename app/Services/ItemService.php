@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\MercadoLivreClient;
@@ -557,6 +559,10 @@ class ItemService
                 // If not in DB either, return the API error
                 return $item;
             } catch (\Exception $e) {
+                log_warning('ItemService: falha no fallback local para getItem', [
+                    'item_id' => $itemId,
+                    'error' => $e->getMessage(),
+                ]);
                 return $item;
             }
         }
@@ -569,7 +575,10 @@ class ItemService
                 }
             } catch (\Exception $e) {
                 // Description fetch is non-critical — item data is still valid without it
-                error_log("[ItemService] Failed to fetch description for {$itemId}: " . $e->getMessage());
+                log_warning('ItemService: falha ao buscar descrição do item', [
+                    'item_id' => $itemId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -603,7 +612,10 @@ class ItemService
                     }
                 }
             } catch (\Exception $e) {
-                // Ignorar erro de DB, retornar dados da API
+                log_warning('ItemService: falha ao enriquecer item com dados locais', [
+                    'item_id' => $itemId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

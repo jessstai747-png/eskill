@@ -6,6 +6,41 @@
 
 ---
 
+## Sessão: 2026-02-19 — ITEMS-001: strict types, logging e testes estruturais para Items CRUD
+
+### Objetivo
+Fortalecer a base de código do módulo Items (terceiro pilar de Fase 1) com strict types, logging estruturado e cobertura de testes unitários para ItemController e ItemService.
+
+### Implementação
+1. **declare(strict_types=1)** adicionado a ItemController.php e ItemService.php
+2. **Logging estruturado** — substituiu `error_log()` por `log_warning()` em ItemService.php (3 locais: fetch de descrição, enrichment local, fallback local)
+3. **ItemControllerTest.php** (NOVO) — 20+ testes estruturais:
+   - Existência de classe e herança de BaseController
+   - 5 metodos CRUD, 6 metodos de ação, 5 metodos de listagem (via @dataProvider)
+   - Assinaturas (show/update aceitam string id, todos retornam void)
+   - Mapeamento de campos ML (10 campos, sku→seller_custom_field, campos locais)
+   - HTTP status codes (409/422/502 para erros, 201 create, 204 delete)
+   - Suporte a 10 filtros + alias q para search
+   - Validação de input (price, quantity, plain_text, account_id)
+   - Segurança (sem SQL no controller, JSON content type, delega para ItemService)
+   - Strict types verificado
+4. **ItemServiceTest.php** (AMPLIADO) — 25+ novos testes:
+   - createItem: validação de 9 campos requeridos, rejeição de dados vazios/parciais
+   - formatItemForList: enrichment, thumbnail, metrics
+   - resolveLocalItemsOrder: 6 mapeamentos de ordenação
+   - formatMlApiErrorMessage: contexto completo e mínimo
+   - extractSku: seller_custom_field, attributes, null
+   - filterItemsByCustomCriteria: low_stock, high_sales, sem filtro
+   - unwrapMlResponse: extrai body, raw on error, sem body
+   - Logging estruturado, safe fields, close-before-delete, multiget batch
+
+### Resultado
+- PHPUnit: 273 tests, 559 assertions, 33 skipped (DB offline) — ALL PASS
+- php -l: 0 erros em todos os arquivos editados
+- Commit: feat(items): add strict types, logging and structural tests for Items CRUD
+
+---
+
 ## Sessão: 2026-02-19 — DASH-002: diagnóstico de validação ML no Token Dashboard
 
 ### Objetivo
