@@ -39,6 +39,13 @@ storage/backups/
 # Temporários
 /tmp/
 /temp/
+cleanup_junk.py
+
+# PHPUnit cache
+.phpunit.result.cache
+
+# Session files
+storage/tmp/sessions/
 
 # Security: sensitive files
 cookies.txt
