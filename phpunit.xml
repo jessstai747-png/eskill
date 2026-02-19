@@ -25,6 +25,7 @@
             <file>tests/Unit/Controllers/AuthControllerTest.php</file>
             <file>tests/Unit/Services/DashboardServiceTest.php</file>
             <file>tests/Unit/Services/ItemServiceTest.php</file>
+            <file>tests/Unit/Services/TwoFactorServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 class TwoFactorService
@@ -90,7 +92,7 @@ class TwoFactorService
 
         foreach ($secret as $char) {
             if (!isset($base32charsFlipped[$char])) return '';
-            $binaryString .= str_pad(base_convert($base32charsFlipped[$char], 10, 2), 5, '0', STR_PAD_LEFT);
+            $binaryString .= str_pad(base_convert((string) $base32charsFlipped[$char], 10, 2), 5, '0', STR_PAD_LEFT);
         }
 
         $binaryString = str_split($binaryString, 8);

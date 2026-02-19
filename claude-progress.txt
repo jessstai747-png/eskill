@@ -6,6 +6,38 @@
 
 ---
 
+## Sessão: 2026-02-19 — AUTH-004: strict types, tipo fix e testes comportamentais para 2FA
+
+### Objetivo
+Fortalecer TwoFactorService.php com strict types e testes comportamentais completos (TOTP é puro, sem DB).
+
+### Implementação
+1. **declare(strict_types=1)** adicionado a TwoFactorService.php
+2. **Bug de tipo corrigido**: `base_convert()` recebe string mas `$base32charsFlipped[$char]` é int — adicionado cast `(string)`
+3. **TwoFactorServiceTest.php** criado com 42 testes (todos comportamentais, não apenas estruturais):
+   - Strict types, instanciação
+   - generateSecret: 6 testes (default length, custom length, base32 chars, randomness, min length)
+   - QR code URL: 7 testes (format, otpauth, secret, company, issuer, totp, qrserver API)
+   - verifyCode: 5 testes (current time slice, bad code, empty code, window offset, return type)
+   - getCode via reflection: 4 testes (6 digits, deterministic, different secrets, different timestamps)
+   - base32Decode via reflection: 3 testes (known value "Hello", empty string, invalid chars)
+   - Structure: 3 testes (public methods, private methods, VALID_CHARACTERS constant)
+   - Method signatures: 5 testes (default values, parameter names, return types)
+   - No bad practices: 2 testes (no error_log, no var_dump)
+   - Security: 3 testes (random_int CSPRNG, HMAC-SHA1, 30s time slice)
+
+### Validação
+- php -l: Sintaxe OK em TwoFactorService.php e TwoFactorServiceTest.php
+- PHPUnit: 602 tests, 1063 assertions, 40 skipped — ALL PASS
+- phpunit.xml: TwoFactorServiceTest.php adicionado ao Unit suite
+
+### Status
+- AUTH-004: ✅ passes: true
+- **Fase 1 COMPLETA**: AUTH-001 ✅, AUTH-002 ✅, AUTH-003 ✅, AUTH-004 ✅, DASH-001 ✅, DASH-002 ✅, ITEMS-001 ✅
+- Próximo: Fase 2 (SEO)
+
+---
+
 ## Sessão: 2026-02-19 — AUTH-001: strict types, logging e testes estruturais para Auth Controller
 
 ### Objetivo
