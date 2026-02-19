@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Request;
 use App\Services\CloneROIAnalysisService;
-use Exception;
+use Throwable;
 
 /**
  * Clone ROI Analysis Controller
@@ -60,7 +62,7 @@ class CloneROIAnalysisController
                 'analysis' => $analysis,
             ]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -89,7 +91,7 @@ class CloneROIAnalysisController
                 'comparison' => $comparison,
             ]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -104,7 +106,13 @@ class CloneROIAnalysisController
         header('Content-Type: application/json');
 
         try {
-            $input = json_decode(file_get_contents('php://input'), true);
+            $raw = (string) file_get_contents('php://input');
+            $input = json_decode($raw, true);
+            if (!is_array($input)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'JSON inválido']);
+                return;
+            }
 
             $service = new CloneROIAnalysisService($this->accountId);
             $success = $service->recordMetrics($itemId, $input);
@@ -120,7 +128,7 @@ class CloneROIAnalysisController
                 'message' => 'Métricas registradas',
             ]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -135,8 +143,18 @@ class CloneROIAnalysisController
         header('Content-Type: application/json');
 
         try {
-            $input = json_decode(file_get_contents('php://input'), true);
-            $limit = (int)($input['limit'] ?? 50);
+            $raw = (string) file_get_contents('php://input');
+            $input = [];
+            if ($raw !== '') {
+                $decoded = json_decode($raw, true);
+                if (!is_array($decoded)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'JSON inválido']);
+                    return;
+                }
+                $input = $decoded;
+            }
+            $limit = (int) ($input['limit'] ?? 50);
 
             $service = new CloneROIAnalysisService($this->accountId);
             $result = $service->syncMetricsFromML($limit);
@@ -146,7 +164,7 @@ class CloneROIAnalysisController
                 'result' => $result,
             ]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -172,7 +190,7 @@ class CloneROIAnalysisController
                 'timeline' => $timeline,
             ]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }

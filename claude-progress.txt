@@ -6,6 +6,26 @@
 
 ---
 
+## Sessao: 2026-02-19 — CLONE-005: Clone ROI (analise de retorno) com strict types e testes unitarios
+
+### Implementacao
+1. **CloneROIAnalysisController.php** ajustado: adiciona `declare(strict_types=1)`, valida JSON em endpoints POST (400 quando invalido) e captura `Throwable` para cobrir TypeError sob strict_types
+2. **CloneROIAnalysisService.php** ajustado:
+   - adiciona `declare(strict_types=1)`
+   - corrige calculo do sumario para **incluir conversion_rate = 0.0** (evita pular valores zero)
+   - decode defensivo de `source_snapshot` (fallback para array vazio)
+   - substitui catches silenciosos por `log_warning` com contexto
+   - corrige query `getROIByPeriod()` evitando bind de `INTERVAL :days` (usa inteiro sanitizado 1..365)
+3. **Testes Unit DB-free** criados:
+   - `CloneROIAnalysisControllerTest.php` (estrutural)
+   - `CloneROIAnalysisServiceTest.php` (comportamental: sumario/indicadores/recomendacoes/top performers/underperformers)
+4. **phpunit.xml** atualizado: inclui explicitamente os 2 arquivos na suite Unit
+
+### Resultado
+- PHPUnit(Unit): 1363 tests, 2654 assertions, 40 skipped — ALL PASS
+- project-status.json: CLONE-005 passes:true
+- Observacao: ambiente segue sem MySQL (esperado); testes Unit continuam DB-free
+
 ## Sessao: 2026-02-19 — CLONE-004: Clone automação (scheduler/triggers) com strict types e testes unitarios
 
 ### Implementacao

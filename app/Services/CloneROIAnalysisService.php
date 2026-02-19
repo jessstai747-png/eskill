@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
 use PDO;
 use Exception;
+use Throwable;
 
 /**
  * Clone ROI Analysis Service
@@ -126,7 +129,7 @@ class CloneROIAnalysisService
                 $totalVisits += intval($item['visits']);
                 $totalSales += intval($item['sales']);
                 $totalRevenue += floatval($item['revenue']);
-                if ($item['conversion_rate']) {
+                if (($item['conversion_rate'] ?? null) !== null) {
                     $conversionRates[] = floatval($item['conversion_rate']);
                 }
             }
@@ -291,6 +294,9 @@ class CloneROIAnalysisService
         }
 
         $sourceSnapshot = json_decode($clone['source_snapshot'] ?? '{}', true);
+        if (!is_array($sourceSnapshot)) {
+            $sourceSnapshot = [];
+        }
 
         return [
             'clone' => [
@@ -399,13 +405,21 @@ class CloneROIAnalysisService
                     if ($catPerfAvg > 0) {
                         return ['value' => round($catPerfAvg, 2), 'source' => 'category_performance'];
                     }
-                } catch (Exception $e) {
-                    // tabela pode não existir
+                } catch (Throwable $e) {
+                    log_warning('CloneROIAnalysisService: category_performance indisponível', [
+                        'service' => self::class,
+                        'category_id' => $categoryId,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
             return ['value' => 0.0, 'source' => 'unavailable'];
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
+            log_warning('CloneROIAnalysisService: erro ao calcular benchmark de categoria', [
+                'service' => self::class,
+                'error' => $e->getMessage(),
+            ]);
             return ['value' => 0.0, 'source' => 'error'];
         }
     }
@@ -420,7 +434,10 @@ class CloneROIAnalysisService
         }
 
         // Calcular dias desde clonagem até agora
-        $clonedAt = strtotime($clone['cloned_at']);
+        $clonedAt = strtotime((string) ($clone['cloned_at'] ?? ''));
+        if ($clonedAt === false) {
+            return null;
+        }
         $daysSinceClone = (time() - $clonedAt) / 86400;
 
         return intval($daysSinceClone);
@@ -525,13 +542,17 @@ class CloneROIAnalysisService
                     foreach ($visitData['results'] ?? [] as $dayData) {
                         $visits += intval($dayData['total'] ?? $dayData['visits'] ?? 0);
                     }
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     // Fallback: endpoint alternativo
                     try {
                         $visitData = $client->get("/items/{$itemId}/visits", ['date_from' => date('Y-m-d', strtotime('-30 days'))]);
                         $visits = intval($visitData['total_visits'] ?? 0);
-                    } catch (Exception $e2) {
-                        // Sem dados de visitas
+                    } catch (Throwable $e2) {
+                        log_warning('CloneROIAnalysisService: falha ao obter visitas do item', [
+                            'service' => self::class,
+                            'item_id' => $itemId,
+                            'error' => $e2->getMessage(),
+                        ]);
                     }
                 }
 
@@ -555,8 +576,12 @@ class CloneROIAnalysisService
                                 }
                             }
                         }
-                    } catch (Exception $e) {
-                        // Sem dados de vendas
+                    } catch (Throwable $e) {
+                        log_warning('CloneROIAnalysisService: falha ao obter vendas do item', [
+                            'service' => self::class,
+                            'item_id' => $itemId,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
                 }
 
@@ -584,8 +609,12 @@ class CloneROIAnalysisService
                             }
                         }
                     }
-                } catch (Exception $e) {
-                    // Posição não disponível
+                } catch (Throwable $e) {
+                    log_warning('CloneROIAnalysisService: falha ao estimar posição do item', [
+                        'service' => self::class,
+                        'item_id' => $itemId,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
 
                 $this->recordMetrics($itemId, [
@@ -595,7 +624,12 @@ class CloneROIAnalysisService
                     'avg_position' => $avgPosition,
                 ]);
                 $synced++;
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
+                log_warning('CloneROIAnalysisService: erro ao sincronizar métricas', [
+                    'service' => self::class,
+                    'item_id' => $item['target_item_id'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
                 $errors++;
             }
 
@@ -625,6 +659,7 @@ class CloneROIAnalysisService
      */
     public function getROIByPeriod(int $days = 7): array
     {
+        $daysSql = max(1, min(365, (int) $days));
         $stmt = $this->db->prepare("
             SELECT 
                 DATE(ci.cloned_at) as date,
@@ -635,14 +670,11 @@ class CloneROIAnalysisService
             FROM cloned_items ci
             LEFT JOIN clone_item_metrics cim ON cim.cloned_item_id = ci.id
             WHERE ci.account_id = :account_id
-            AND ci.cloned_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+            AND ci.cloned_at >= DATE_SUB(NOW(), INTERVAL {$daysSql} DAY)
             GROUP BY DATE(ci.cloned_at)
             ORDER BY date ASC
         ");
-        $stmt->execute([
-            ':account_id' => $this->accountId,
-            ':days' => $days,
-        ]);
+        $stmt->execute([':account_id' => $this->accountId]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
