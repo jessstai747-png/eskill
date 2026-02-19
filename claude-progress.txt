@@ -6,6 +6,23 @@
 
 ---
 
+## Sessão: 2026-02-19 — Fase 1: AuthService com DI + Unit tests (sem MySQL)
+
+### Objetivo
+Avançar na Fase 1 (Core/Auth) viabilizando validação automática do comportamento do `AuthService` em ambiente sandbox sem MySQL, usando mocks (testsuite Unit).
+
+### Implementação
+1. **`AuthService` agora suporta injeção de dependências (DI) opcional**
+   - Construtor aceita `UserService`, `JwtService`, `RefreshTokenService` opcionais.
+   - Mantém compatibilidade: sem parâmetros, instancia dependências como antes.
+2. **Teste unitário real do `AuthService` (sem DB)**
+   - `tests/Unit/AuthServiceUnitTest.php` cobre: falha de login, `require_2fa`, sucesso (tokens), refresh inválido/válido e logout.
+
+### Validação
+- `php -l app/Services/AuthService.php` ✅
+- `php -l tests/Unit/AuthServiceUnitTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅
+
 ## Sessão: 2026-02-19 — Harness: Smoke test resiliente sem MySQL
 
 ### Objetivo
