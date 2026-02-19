@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\OrderService;
@@ -7,6 +9,7 @@ use App\Services\ItemService;
 use App\Services\QuestionService;
 use App\Services\NotificationService;
 use App\Services\StructuredLogService;
+use PDO;
 
 /**
  * Service to process Mercado Livre Webhooks
@@ -20,11 +23,37 @@ class MercadoLivreWebhookService
     private ?ItemService $itemService = null;
     private ?QuestionService $questionService = null;
     private ?NotificationService $notificationService = null;
+    private ?PDO $db = null;
+    private bool $skipDbAutoConnect;
 
-    public function __construct(int $accountId)
-    {
+    /**
+     * @param int $accountId ID da conta ML
+     * @param StructuredLogService|null $logger Logger (injetável para testes)
+     * @param OrderService|null $orderService (injetável para testes)
+     * @param ItemService|null $itemService (injetável para testes)
+     * @param QuestionService|null $questionService (injetável para testes)
+     * @param NotificationService|null $notificationService (injetável para testes)
+     * @param PDO|null $db Conexão ao banco (injetável para testes)
+     * @param bool $skipDbAutoConnect Se true, não conecta ao DB automaticamente
+     */
+    public function __construct(
+        int $accountId,
+        ?StructuredLogService $logger = null,
+        ?OrderService $orderService = null,
+        ?ItemService $itemService = null,
+        ?QuestionService $questionService = null,
+        ?NotificationService $notificationService = null,
+        ?PDO $db = null,
+        bool $skipDbAutoConnect = false
+    ) {
         $this->accountId = $accountId;
-        $this->logger = new StructuredLogService();
+        $this->logger = $logger ?? new StructuredLogService();
+        $this->orderService = $orderService;
+        $this->itemService = $itemService;
+        $this->questionService = $questionService;
+        $this->notificationService = $notificationService;
+        $this->db = $db;
+        $this->skipDbAutoConnect = $skipDbAutoConnect;
     }
 
     /**
@@ -246,20 +275,27 @@ class MercadoLivreWebhookService
     private function getUserIdFromAccount(): ?int
     {
         try {
-            $db = \App\Database::getInstance();
+            $db = $this->db;
+            if ($db === null && !$this->skipDbAutoConnect) {
+                $db = \App\Database::getInstance();
+            }
+            if ($db === null) {
+                return null;
+            }
             $stmt = $db->prepare("SELECT user_id FROM ml_accounts WHERE id = ?");
             $stmt->execute([$this->accountId]);
-            return (int)$stmt->fetchColumn() ?: null;
-        } catch(\Exception $e) {
+            $result = $stmt->fetchColumn();
+            return $result !== false && $result !== null ? (int)$result : null;
+        } catch (\Exception $e) {
             return null;
         }
     }
 
-    // Lazy Loaders
+    // Lazy Loaders (respeitam instâncias injetadas via construtor)
     
     private function getOrderService(): OrderService
     {
-        if (!$this->orderService) {
+        if ($this->orderService === null) {
             $this->orderService = new OrderService($this->accountId);
         }
         return $this->orderService;
@@ -267,7 +303,7 @@ class MercadoLivreWebhookService
 
     private function getItemService(): ItemService
     {
-        if (!$this->itemService) {
+        if ($this->itemService === null) {
             $this->itemService = new ItemService($this->accountId);
         }
         return $this->itemService;
@@ -275,13 +311,12 @@ class MercadoLivreWebhookService
     
     private function getTechSheetService(): \App\Services\TechSheetService
     {
-        // Assuming TechSheetService is in the same namespace or accessible
         return new \App\Services\TechSheetService($this->accountId);
     }
 
     private function getQuestionService(): QuestionService
     {
-        if (!$this->questionService) {
+        if ($this->questionService === null) {
             $this->questionService = new QuestionService($this->accountId);
         }
         return $this->questionService;
@@ -289,7 +324,7 @@ class MercadoLivreWebhookService
 
     private function getNotificationService(): NotificationService
     {
-        if (!$this->notificationService) {
+        if ($this->notificationService === null) {
             $this->notificationService = new NotificationService();
         }
         return $this->notificationService;

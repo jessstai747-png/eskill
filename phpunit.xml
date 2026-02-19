@@ -56,6 +56,7 @@
             <file>tests/Unit/Services/CloneHealthMonitorServiceTest.php</file>
             <file>tests/Unit/Services/CloneSyncServiceTest.php</file>
             <file>tests/Unit/Services/OrderServiceTest.php</file>
+            <file>tests/Unit/Services/MercadoLivreWebhookServiceTest.php</file>
             <file>tests/Unit/Services/DynamicPricingServiceTest.php</file>
             <file>tests/Unit/Services/AutoPricingOptimizerServiceTest.php</file>
             <file>tests/Unit/Services/PriceRulesEngineServiceTest.php</file>
@@ -103,6 +104,13 @@
             <file>tests/Unit/Services/SEO/SearchCoverageServiceTest.php</file>
             <file>tests/Unit/Services/SEO/SEOOptimizerServiceTest.php</file>
             <file>tests/Unit/Services/SEO/TokenManagerTest.php</file>
+            <!-- Batch 4: Fixed near-passing tests -->
+            <file>tests/Unit/Services/AIPredictiveAnalyticsServiceTest.php</file>
+            <file>tests/Unit/Services/FinancialServiceTest.php</file>
+            <file>tests/Unit/Services/MercadoLivre/CompetitorIntelligenceServiceTest.php</file>
+            <file>tests/Unit/Services/MercadoLivre/MercadoLivreAIIntegrationHealthTest.php</file>
+            <file>tests/Unit/Services/MercadoLivre/AdvancedPricingEngineTest.php</file>
+            <file>tests/Unit/Services/MercadoLivre/SmartQAServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

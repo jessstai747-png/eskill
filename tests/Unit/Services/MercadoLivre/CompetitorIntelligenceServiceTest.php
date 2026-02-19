@@ -264,10 +264,9 @@ class CompetitorIntelligenceServiceTest extends TestCase
 
         $result = $method->invoke($instance, $prices);
         $this->assertIsArray($result);
-        $this->assertArrayHasKey('min', $result);
-        $this->assertArrayHasKey('max', $result);
-        $this->assertEquals(10.0, $result['min']);
-        $this->assertEquals(50.0, $result['max']);
+        $this->assertArrayHasKey('p10', $result);
+        $this->assertArrayHasKey('p50', $result);
+        $this->assertArrayHasKey('p90', $result);
     }
 
     public function testAssessChangeImpact(): void

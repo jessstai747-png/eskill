@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use Tests\TestCase;
 use App\Services\AIImageAnalyzerService;
+use ReflectionClass;
 
 /**
  * Testes unitários para os métodos de integração real do AIImageAnalyzerService.
@@ -16,7 +17,8 @@ class AIImageAnalyzerServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new AIImageAnalyzerService();
+        $ref = new ReflectionClass(AIImageAnalyzerService::class);
+        $this->service = $ref->newInstanceWithoutConstructor();
     }
 
     // =============================
@@ -86,7 +88,7 @@ class AIImageAnalyzerServiceTest extends TestCase
         $method = new \ReflectionMethod(AIImageAnalyzerService::class, 'getRelativeLuminance');
         $method->setAccessible(true);
 
-        $luminance = $method->invoke($this->service, 0, 0, 0);
+        $luminance = $method->invoke($this->service, '#000000');
         $this->assertEqualsWithDelta(0.0, $luminance, 0.001);
     }
 
@@ -95,7 +97,7 @@ class AIImageAnalyzerServiceTest extends TestCase
         $method = new \ReflectionMethod(AIImageAnalyzerService::class, 'getRelativeLuminance');
         $method->setAccessible(true);
 
-        $luminance = $method->invoke($this->service, 255, 255, 255);
+        $luminance = $method->invoke($this->service, '#FFFFFF');
         $this->assertEqualsWithDelta(1.0, $luminance, 0.01);
     }
 
@@ -104,9 +106,9 @@ class AIImageAnalyzerServiceTest extends TestCase
         $method = new \ReflectionMethod(AIImageAnalyzerService::class, 'getRelativeLuminance');
         $method->setAccessible(true);
 
-        $dark = $method->invoke($this->service, 50, 50, 50);
-        $mid = $method->invoke($this->service, 128, 128, 128);
-        $light = $method->invoke($this->service, 200, 200, 200);
+        $dark = $method->invoke($this->service, '#323232');
+        $mid = $method->invoke($this->service, '#808080');
+        $light = $method->invoke($this->service, '#C8C8C8');
 
         $this->assertLessThan($mid, $dark);
         $this->assertLessThan($light, $mid);
@@ -121,7 +123,7 @@ class AIImageAnalyzerServiceTest extends TestCase
         $method = new \ReflectionMethod(AIImageAnalyzerService::class, 'calculateContrastRatio');
         $method->setAccessible(true);
 
-        $ratio = $method->invoke($this->service, [0, 0, 0], [255, 255, 255]);
+        $ratio = $method->invoke($this->service, '#000000', '#FFFFFF');
         $this->assertEqualsWithDelta(21.0, $ratio, 0.5);
     }
 
@@ -130,7 +132,7 @@ class AIImageAnalyzerServiceTest extends TestCase
         $method = new \ReflectionMethod(AIImageAnalyzerService::class, 'calculateContrastRatio');
         $method->setAccessible(true);
 
-        $ratio = $method->invoke($this->service, [128, 128, 128], [128, 128, 128]);
+        $ratio = $method->invoke($this->service, '#808080', '#808080');
         $this->assertEqualsWithDelta(1.0, $ratio, 0.01);
     }
 
@@ -139,8 +141,8 @@ class AIImageAnalyzerServiceTest extends TestCase
         $method = new \ReflectionMethod(AIImageAnalyzerService::class, 'calculateContrastRatio');
         $method->setAccessible(true);
 
-        $ab = $method->invoke($this->service, [255, 0, 0], [0, 0, 255]);
-        $ba = $method->invoke($this->service, [0, 0, 255], [255, 0, 0]);
+        $ab = $method->invoke($this->service, '#FF0000', '#0000FF');
+        $ba = $method->invoke($this->service, '#0000FF', '#FF0000');
         $this->assertEqualsWithDelta($ab, $ba, 0.01);
     }
 
@@ -151,8 +153,8 @@ class AIImageAnalyzerServiceTest extends TestCase
     public function testHasRequiredPublicMethods(): void
     {
         $methods = [
-            'analyzeImage',
-            'analyzeImageQuality',
+            'analyzeProductImage',
+            'analyzeBulkImages',
         ];
 
         foreach ($methods as $method) {

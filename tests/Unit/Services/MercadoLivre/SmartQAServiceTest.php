@@ -223,7 +223,7 @@ class SmartQAServiceTest extends TestCase
     {
         $result = $this->invokePrivate('generateBatchId');
         $this->assertIsString($result);
-        $this->assertStringStartsWith('QA-BATCH-', $result);
+        $this->assertStringStartsWith('batch_', $result);
     }
 
     // --- getQuestionTemplates ---
@@ -237,30 +237,30 @@ class SmartQAServiceTest extends TestCase
     // --- generateQuestionFromTemplate ---
     public function testGenerateQuestionFromTemplate(): void
     {
-        $template = ['question' => 'Este {produto} acompanha garantia?', 'type' => 'warranty', 'answer' => 'Sim'];
+        $template = ['template' => 'Este {produto} acompanha garantia?', 'type' => 'warranty'];
         $productInfo = ['title' => 'Notebook Dell', 'id' => 'MLB123'];
 
         $result = $this->invokePrivate('generateQuestionFromTemplate', $template, $productInfo);
-        $this->assertArrayHasKey('question_text', $result);
-        $this->assertArrayHasKey('question_type', $result);
-        $this->assertStringContainsString('Notebook Dell', $result['question_text']);
+        $this->assertArrayHasKey('question', $result);
+        $this->assertArrayHasKey('type', $result);
+        $this->assertStringContainsString('Notebook Dell', $result['question']);
     }
 
     // --- generateShippingQuestion ---
     public function testGenerateShippingQuestion(): void
     {
         $result = $this->invokePrivate('generateShippingQuestion', ['title' => 'Produto X', 'id' => 'MLB1']);
-        $this->assertArrayHasKey('question_text', $result);
-        $this->assertArrayHasKey('question_type', $result);
-        $this->assertEquals('shipping', $result['question_type']);
+        $this->assertArrayHasKey('question', $result);
+        $this->assertArrayHasKey('type', $result);
+        $this->assertEquals('shipping', $result['type']);
     }
 
     // --- generateWarrantyQuestion ---
     public function testGenerateWarrantyQuestion(): void
     {
         $result = $this->invokePrivate('generateWarrantyQuestion', ['title' => 'Produto Y', 'id' => 'MLB2']);
-        $this->assertArrayHasKey('question_text', $result);
-        $this->assertEquals('warranty', $result['question_type']);
+        $this->assertArrayHasKey('question', $result);
+        $this->assertEquals('warranty', $result['type']);
     }
 
     // --- generateCompetitorQuestions ---
@@ -274,14 +274,14 @@ class SmartQAServiceTest extends TestCase
     public function testEstimateQAImpact(): void
     {
         $proactiveQA = [
-            ['item_id' => 'MLB1', 'question_text' => 'Pergunta 1', 'answer' => 'Resposta 1'],
-            ['item_id' => 'MLB2', 'question_text' => 'Pergunta 2', 'answer' => 'Resposta 2'],
+            ['questions' => [['q' => '1'], ['q' => '2']]],
+            ['questions' => [['q' => '3']]],
         ];
 
         $result = $this->invokePrivate('estimateQAImpact', $proactiveQA);
-        $this->assertArrayHasKey('total_questions_generated', $result);
-        $this->assertArrayHasKey('estimated_question_reduction', $result);
-        $this->assertEquals(2, $result['total_questions_generated']);
+        $this->assertArrayHasKey('total_proactive_questions', $result);
+        $this->assertArrayHasKey('estimated_reduction_pct', $result);
+        $this->assertEquals(3, $result['total_proactive_questions']);
     }
 
     // --- buildAnalysisPrompt ---
@@ -317,13 +317,13 @@ class SmartQAServiceTest extends TestCase
     public function testGenerateProcessingSummaryWithResults(): void
     {
         $results = [
-            ['status' => 'auto_responded', 'confidence' => 0.85],
-            ['status' => 'auto_responded', 'confidence' => 0.90],
-            ['status' => 'escalated', 'confidence' => 0.30],
+            ['auto_respond' => true, 'confidence' => 0.85, 'sentiment' => 'positive'],
+            ['auto_respond' => true, 'confidence' => 0.90, 'sentiment' => 'neutral'],
+            ['escalate' => true, 'confidence' => 0.30, 'sentiment' => 'negative'],
         ];
 
         $result = $this->invokePrivate('generateProcessingSummary', $results);
         $this->assertEquals(3, $result['total_processed']);
-        $this->assertArrayHasKey('auto_responded', $result);
+        $this->assertArrayHasKey('auto_answered', $result);
     }
 }

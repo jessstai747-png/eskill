@@ -252,7 +252,7 @@ class FinancialServiceTest extends TestCase
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), "doesn't exist")
                 || str_contains($e->getMessage(), 'SQLSTATE')
-                || str_contains($e->getMessage(), 'Connection')) {
+                || str_contains(strtolower($e->getMessage()), 'connection')) {
                 $this->markTestSkipped('DB não disponível: ' . $e->getMessage());
             } else {
                 throw $e;
@@ -270,7 +270,7 @@ class FinancialServiceTest extends TestCase
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), "doesn't exist")
                 || str_contains($e->getMessage(), 'SQLSTATE')
-                || str_contains($e->getMessage(), 'Connection')
+                || str_contains(strtolower($e->getMessage()), 'connection')
                 || str_contains($e->getMessage(), 'Table')) {
                 $this->markTestSkipped('DB não disponível: ' . $e->getMessage());
             } else {

@@ -6,6 +6,48 @@
 
 ---
 
+## Sessao: 2026-02-20 — WEBHOOK-001: Webhooks do Mercado Livre
+
+### Implementacao
+- **MercadoLivreWebhookService.php**: Adicionado `declare(strict_types=1)`, refatorado constructor com DI
+  - 8 parametros opcionais: accountId, logger, orderService, itemService, questionService, notificationService, db, skipDbAutoConnect
+  - getUserIdFromAccount atualizado para usar DB injetado
+  - Lazy loaders respeitam instancias injetadas via construtor
+  - Backward compatibility total preservada
+- **MercadoLivreWebhookController.php**: Adicionado `declare(strict_types=1)`
+- **MercadoLivreWebhookServiceTest.php**: Criado com 43 testes DB-free:
+  - Constructor/DI (2 testes)
+  - Validacao de payload (4 testes: missing topic, missing resource, empty, missing both)
+  - Eventos de pedido (6 testes: success orders/orders_v2, API error, nested total, no userId, fallback total)
+  - Eventos de item (2 testes: success, resource parsing)
+  - Eventos de pergunta (4 testes: success com draft, sync error, draft fails gracefully, no userId)
+  - Eventos de claim/message (2 testes: fallback graceful)
+  - Topics nao-tratados (2 testes: success, varios topics)
+  - Event ID (2 testes: gerado, unico)
+  - Error handling (2 testes: catches exceptions, logs error)
+  - Resource parsing (2 testes: last segment, deep path)
+  - DB user lookup (2 testes: injected DB, exception returns null)
+  - Response structure (2 testes: success, error)
+  - Topic routing (3 testes: orders, items, questions)
+  - Multiple events (1 teste: sequencial)
+  - Security (3 testes: parameterized queries, strict_types service, strict_types controller)
+  - Edge cases (4 testes: null topic, empty topic, empty resource, payload logged)
+- **phpunit.xml**: Adicionado MercadoLivreWebhookServiceTest.php ao Unit testsuite
+
+### Validacao
+- `php -l` — 3 arquivos sem erros de sintaxe
+- PHPUnit MercadoLivreWebhookServiceTest — 43 tests, 79 assertions, ALL PASS
+- PHPUnit full Unit suite — 2482 tests, 5525 assertions, 0 failures, 42 skipped
+
+### Arquivos modificados
+- app/Services/MercadoLivreWebhookService.php (strict_types + DI constructor)
+- app/Controllers/MercadoLivreWebhookController.php (strict_types)
+- tests/Unit/Services/MercadoLivreWebhookServiceTest.php (43 testes DB-free)
+- phpunit.xml (MercadoLivreWebhookServiceTest no Unit suite)
+- project-status.json (WEBHOOK-001 passes=true)
+
+---
+
 ## Sessao: 2026-02-20 — ORDERS-001: Gerenciamento de pedidos do Mercado Livre
 
 ### Implementacao

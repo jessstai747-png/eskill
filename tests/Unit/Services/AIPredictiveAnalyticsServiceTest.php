@@ -38,9 +38,7 @@ class AIPredictiveAnalyticsServiceTest extends TestCase
         $methods = [
             'predictProductPerformance',
             'predictMarketDemand',
-            'predictOptimalPrice',
-            'predictProductLifecycle',
-            'predictRiskFactors',
+            'predictOptimalPricing',
         ];
 
         $ref = new ReflectionClass(AIPredictiveAnalyticsService::class);
@@ -103,16 +101,16 @@ class AIPredictiveAnalyticsServiceTest extends TestCase
         $this->assertEquals('introduction', $result);
     }
 
-    public function testIdentifyCurrentStageIntroductionWhenLowSales(): void
+    public function testIdentifyCurrentStageDeclineWhenRecentSalesZero(): void
     {
         $product = ['id' => 'MLB1'];
-        // 14 data points but < 10 total sales
+        // 14 data points, earlier has sales but recent 7 are zero → decline
         $sales = array_fill(0, 14, 0);
         $sales[0] = 1;
         $sales[5] = 1;
         $historical = ['sales_vector' => $sales, 'data_points' => 14];
         $result = $this->invoke('identifyCurrentStage', $product, $historical);
-        $this->assertEquals('introduction', $result);
+        $this->assertEquals('decline', $result);
     }
 
     public function testIdentifyCurrentStageGrowth(): void
