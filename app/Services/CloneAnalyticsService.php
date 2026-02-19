@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Database;
 use PDO;
+use DateTimeImmutable;
 
 /**
  * CloneAnalyticsService - Integração com Analytics Avançado
@@ -26,7 +27,6 @@ class CloneAnalyticsService
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
-        $this->ensureTablesExist();
     }
 
     /**
@@ -287,7 +287,7 @@ class CloneAnalyticsService
             ORDER BY processing_time_seconds
         ");
         $stmt->execute($params);
-        $times = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $times = array_map('floatval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
         $percentiles = $this->calculatePercentiles($times, [50, 90, 99]);
 
@@ -499,18 +499,25 @@ class CloneAnalyticsService
             )
         ");
 
+        $eventDataJson = json_encode(
+            $eventData,
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
+        );
+
         $stmt->execute([
             'account_id' => $this->accountId,
             'event_name' => $eventName,
-            'event_data' => json_encode($eventData),
+            'event_data' => $eventDataJson,
         ]);
     }
 
     /**
      * Obtém eventos de analytics
      */
-    public function getEvents(string $eventName = null, int $limit = 100): array
+    public function getEvents(?string $eventName = null, int $limit = 100): array
     {
+        $limitSql = max(1, min(500, (int) $limit));
+
         $params = [];
         $where = ['1=1'];
 
@@ -528,7 +535,7 @@ class CloneAnalyticsService
             SELECT * FROM clone_analytics_events
             WHERE " . implode(' AND ', $where) . "
             ORDER BY created_at DESC
-            LIMIT {$limit}
+            LIMIT {$limitSql}
         ";
 
         $stmt = $this->db->prepare($sql);
@@ -536,7 +543,8 @@ class CloneAnalyticsService
         $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($events as &$event) {
-            $event['event_data'] = json_decode($event['event_data'] ?? '{}', true);
+            $decoded = json_decode((string) ($event['event_data'] ?? ''), true);
+            $event['event_data'] = is_array($decoded) ? $decoded : [];
         }
 
         return $events;
@@ -571,50 +579,36 @@ class CloneAnalyticsService
     /**
      * Obtém período de comparação
      */
-    private function getComparisonPeriod(string $dateFrom): string
+    private function getComparisonPeriod(string $dateFrom, ?DateTimeImmutable $now = null): string
     {
-        $stmt = $this->db->prepare("
-            SELECT DATE_SUB(:date_from, INTERVAL DATEDIFF(NOW(), :date_from2) DAY) as prev_date
-        ");
-        $stmt->execute(['date_from' => $dateFrom, 'date_from2' => $dateFrom]);
-        return $stmt->fetchColumn();
+        $now = $now ?? new DateTimeImmutable('now');
+        $from = new DateTimeImmutable($dateFrom, $now->getTimezone());
+
+        $seconds = $now->getTimestamp() - $from->getTimestamp();
+        if ($seconds <= 0) {
+            $seconds = 86400;
+        }
+
+        $prevFrom = $from->modify('-' . $seconds . ' seconds');
+        return $prevFrom->format('Y-m-d H:i:s');
     }
 
     /**
      * Converte período em data
      */
-    private function parsePeriod(string $period): string
+    private function parsePeriod(string $period, ?DateTimeImmutable $now = null): string
     {
-        $map = [
-            '24h' => '1 DAY',
-            '7d' => '7 DAY',
-            '30d' => '30 DAY',
-            '90d' => '90 DAY',
-            '1y' => '1 YEAR',
-        ];
+        $now = $now ?? new DateTimeImmutable('now');
 
-        $interval = $map[$period] ?? '30 DAY';
-        
-        $stmt = $this->db->query("SELECT DATE_SUB(NOW(), INTERVAL {$interval}) as date_from");
-        return $stmt->fetchColumn();
-    }
+        $from = match ($period) {
+            '24h' => $now->modify('-24 hours'),
+            '7d' => $now->modify('-7 days'),
+            '30d' => $now->modify('-30 days'),
+            '90d' => $now->modify('-90 days'),
+            '1y' => $now->modify('-1 year'),
+            default => $now->modify('-30 days'),
+        };
 
-    /**
-     * Cria tabelas necessárias
-     */
-    private function ensureTablesExist(): void
-    {
-        $this->db->exec("
-            CREATE TABLE IF NOT EXISTS clone_analytics_events (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                account_id INT NULL,
-                event_name VARCHAR(100) NOT NULL,
-                event_data JSON NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_account (account_id),
-                INDEX idx_event_name (event_name),
-                INDEX idx_created (created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ");
+        return $from->format('Y-m-d H:i:s');
     }
 }

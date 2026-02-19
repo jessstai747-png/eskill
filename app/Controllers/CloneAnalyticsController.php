@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\CloneAnalyticsService;
+use DateTimeImmutable;
 
 /**
  * CloneAnalyticsController - API para Analytics Avançado
@@ -17,7 +18,7 @@ class CloneAnalyticsController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        $this->accountId = $_SESSION['account_id'] ?? null;
+        $this->accountId = $this->getActiveAccountId();
         $this->analyticsService = new CloneAnalyticsService($this->accountId);
     }
 
@@ -27,20 +28,12 @@ class CloneAnalyticsController extends BaseController
      */
     public function getDashboard(): void
     {
-        try {
-            $period = $this->request->get('period', '30d');
+        $this->withErrorHandling(function (): void {
+            $period = $this->getPeriodParam('period', '30d');
             $metrics = $this->analyticsService->getDashboardMetrics($period);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $metrics,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $metrics]);
+        }, __METHOD__);
     }
 
     /**
@@ -49,21 +42,13 @@ class CloneAnalyticsController extends BaseController
      */
     public function getKPIs(): void
     {
-        try {
-            $period = $this->request->get('period', '30d');
+        $this->withErrorHandling(function (): void {
+            $period = $this->getPeriodParam('period', '30d');
             $dateFrom = $this->parsePeriod($period);
             $kpis = $this->analyticsService->getKPIs($dateFrom);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $kpis,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $kpis]);
+        }, __METHOD__);
     }
 
     /**
@@ -72,21 +57,13 @@ class CloneAnalyticsController extends BaseController
      */
     public function getTrends(): void
     {
-        try {
-            $period = $this->request->get('period', '30d');
+        $this->withErrorHandling(function (): void {
+            $period = $this->getPeriodParam('period', '30d');
             $dateFrom = $this->parsePeriod($period);
             $trends = $this->analyticsService->getTrends($dateFrom);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $trends,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $trends]);
+        }, __METHOD__);
     }
 
     /**
@@ -95,21 +72,13 @@ class CloneAnalyticsController extends BaseController
      */
     public function getPerformance(): void
     {
-        try {
-            $period = $this->request->get('period', '30d');
+        $this->withErrorHandling(function (): void {
+            $period = $this->getPeriodParam('period', '30d');
             $dateFrom = $this->parsePeriod($period);
             $performance = $this->analyticsService->getPerformanceMetrics($dateFrom);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $performance,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $performance]);
+        }, __METHOD__);
     }
 
     /**
@@ -118,21 +87,13 @@ class CloneAnalyticsController extends BaseController
      */
     public function getBreakdown(): void
     {
-        try {
-            $period = $this->request->get('period', '30d');
+        $this->withErrorHandling(function (): void {
+            $period = $this->getPeriodParam('period', '30d');
             $dateFrom = $this->parsePeriod($period);
             $breakdown = $this->analyticsService->getBreakdown($dateFrom);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $breakdown,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $breakdown]);
+        }, __METHOD__);
     }
 
     /**
@@ -141,22 +102,14 @@ class CloneAnalyticsController extends BaseController
      */
     public function comparePeriods(): void
     {
-        try {
-            $period1 = $this->request->get('period1', '7d');
-            $period2 = $this->request->get('period2', '30d');
+        $this->withErrorHandling(function (): void {
+            $period1 = $this->getPeriodParam('period1', '7d');
+            $period2 = $this->getPeriodParam('period2', '30d');
 
             $comparison = $this->analyticsService->comparePeriods($period1, $period2);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $comparison,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $comparison]);
+        }, __METHOD__);
     }
 
     /**
@@ -165,21 +118,13 @@ class CloneAnalyticsController extends BaseController
      */
     public function getProjection(): void
     {
-        try {
+        $this->withErrorHandling(function (): void {
             $days = $this->request->getIntClamped('days', 1, 30, 7);
 
             $projection = $this->analyticsService->getProjection($days);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $projection,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $projection]);
+        }, __METHOD__);
     }
 
     /**
@@ -188,32 +133,23 @@ class CloneAnalyticsController extends BaseController
      */
     public function trackEvent(): void
     {
-        try {
-            $input = $this->request->json();
+        $this->withErrorHandling(function (): void {
+            $input = $this->request->json() ?? [];
 
-            if (empty($input['event_name'])) {
-                $this->jsonResponse([
-                    'success' => false,
-                    'error' => 'event_name é obrigatório',
-                ], 400);
-                return;
+            $eventName = trim((string) ($input['event_name'] ?? ''));
+            if ($eventName === '') {
+                $this->jsonError('event_name é obrigatório', 400);
             }
 
-            $this->analyticsService->trackEvent(
-                $input['event_name'],
-                $input['event_data'] ?? []
-            );
+            $eventData = $input['event_data'] ?? [];
+            if (!is_array($eventData)) {
+                $this->jsonError('event_data deve ser um objeto', 400);
+            }
 
-            $this->jsonResponse([
-                'success' => true,
-                'message' => 'Evento registrado',
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->analyticsService->trackEvent($eventName, $eventData);
+
+            $this->jsonSuccess([], 'Evento registrado');
+        }, __METHOD__);
     }
 
     /**
@@ -222,22 +158,14 @@ class CloneAnalyticsController extends BaseController
      */
     public function getEvents(): void
     {
-        try {
+        $this->withErrorHandling(function (): void {
             $eventName = $this->request->get('event_name');
-            $limit = $this->request->getInt('limit', 100);
+            $limit = $this->request->getIntClamped('limit', 1, 500, 100);
 
             $events = $this->analyticsService->getEvents($eventName, $limit);
 
-            $this->jsonResponse([
-                'success' => true,
-                'data' => $events,
-            ]);
-        } catch (\Exception $e) {
-            $this->jsonResponse([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+            $this->jsonSuccess(['data' => $events]);
+        }, __METHOD__);
     }
 
     /**
@@ -245,28 +173,24 @@ class CloneAnalyticsController extends BaseController
      */
     private function parsePeriod(string $period): string
     {
-        $map = [
-            '24h' => '1 DAY',
-            '7d' => '7 DAY',
-            '30d' => '30 DAY',
-            '90d' => '90 DAY',
-            '1y' => '1 YEAR',
-        ];
+        $now = new DateTimeImmutable('now');
 
-        $interval = $map[$period] ?? '30 DAY';
-        
-        $db = \App\Database::getInstance();
-        $stmt = $db->query("SELECT DATE_SUB(NOW(), INTERVAL {$interval}) as date_from");
-        return $stmt->fetchColumn();
+        $from = match ($period) {
+            '24h' => $now->modify('-24 hours'),
+            '7d' => $now->modify('-7 days'),
+            '30d' => $now->modify('-30 days'),
+            '90d' => $now->modify('-90 days'),
+            '1y' => $now->modify('-1 year'),
+            default => $now->modify('-30 days'),
+        };
+
+        return $from->format('Y-m-d H:i:s');
     }
 
-    /**
-     * Resposta JSON padronizada
-     */
-    private function jsonResponse(array $data, int $statusCode = 200): void
+    private function getPeriodParam(string $key, string $default): string
     {
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
+        $allowed = ['24h', '7d', '30d', '90d', '1y'];
+        $value = $this->request->getEnum($key, $allowed, $default);
+        return $value !== '' ? $value : $default;
     }
 }

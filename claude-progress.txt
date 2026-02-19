@@ -6,6 +6,30 @@
 
 ---
 
+## Sessao: 2026-02-19 — CLONE-006: Clone analytics (dashboards e metricas) com hardening e testes unitarios
+
+### Implementacao
+1. **CloneAnalyticsController.php** ajustado:
+   - padroniza respostas com `jsonSuccess/jsonError`
+   - encapsula excecoes com `withErrorHandling()` (inclui `PDOException`/`Throwable`)
+   - valida parametros `period/period1/period2` via enum (evita inputs invalidos)
+   - remove dependencia de DB no parse de periodo (usa `DateTimeImmutable`)
+   - clampa `limit` em `GET /events` (1..500) e valida `event_data` como objeto
+2. **CloneAnalyticsService.php** ajustado:
+   - remove DDL runtime (`ensureTablesExist`) — tabela ja existe via migrations
+   - parse de periodo e periodo anterior em PHP (sem `DATE_SUB()`/queries auxiliares)
+   - `getEvents()` tipado com `?string` e LIMIT clamped (1..500)
+   - percentis calculados com cast para float e `event_data` com JSON flags seguras
+3. **Testes Unit DB-free** criados:
+   - `CloneAnalyticsControllerTest.php` (estrutural)
+   - `CloneAnalyticsServiceTest.php` (helpers: parsePeriod, comparison window, percentiles)
+4. **phpunit.xml** atualizado: inclui explicitamente os 2 arquivos na suite Unit
+
+### Resultado
+- PHPUnit(Unit): 1380 tests, 2690 assertions, 40 skipped — ALL PASS
+- project-status.json: CLONE-006 passes:true
+- Observacao: ambiente segue sem MySQL (esperado); testes Unit continuam DB-free
+
 ## Sessao: 2026-02-19 — CLONE-005: Clone ROI (analise de retorno) com strict types e testes unitarios
 
 ### Implementacao
