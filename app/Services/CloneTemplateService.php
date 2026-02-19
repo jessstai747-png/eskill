@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -42,7 +44,7 @@ class CloneTemplateService
     /**
      * Obtém um template por ID ou slug
      */
-    public function getTemplate($idOrSlug): ?array
+    public function getTemplate(int|string|null $idOrSlug): ?array
     {
         $column = is_numeric($idOrSlug) ? 'id' : 'slug';
         

@@ -6,6 +6,20 @@
 
 ---
 
+## Sessao: 2026-02-19 — CLONE-002: testes unitarios e tipagem para Clone avancado e templates
+
+### Implementacao
+1. **CloneAdvancedControllerTest.php** criado: testes estruturais (strict_types, namespace, 28 endpoints publicos, propriedades principais)
+2. **CloneTemplateServiceTest.php** restaurado e refeito para ser **DB-free**: instancia via reflection sem executar construtor (evita conexao MySQL) e cobre regras de template (preco, estoque, titulo, skip catalog/non-catalog, post_clone_actions)
+3. **CloneTemplateService.php** ajustado: assinatura de `getTemplate()` tipada com union (`int|string|null`) para remover parametro implicito
+4. **phpunit.xml** atualizado: inclui explicitamente os 2 novos arquivos no testsuite Unit (diretorios Services/ e Controllers/ continuam excluidos por padrao)
+
+### Resultado
+- PHPUnit(Unit): 1294 tests, 2493 assertions, 40 skipped — ALL PASS
+- project-status.json: CLONE-002 passes:true
+- Observacao: MySQL indisponivel neste ambiente (testes DB continuam skipados)
+
+
 ## Sessao: 2025-07-25 — CLONE-001: strict types, bug fixes e testes para Catalog Clone
 
 ### Implementacao

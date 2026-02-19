@@ -1,293 +1,298 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use App\Services\CloneTemplateService;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 /**
- * Tests for CloneTemplateService
- * 
- * Note: These tests focus on the rule application logic which doesn't require DB.
- * DB-dependent tests would need migrations applied to test database.
+ * Behavioral tests for CloneTemplateService
+ *
+ * Importante: o construtor do service inicializa DB. Estes testes evitam o
+ * construtor e testam apenas a lógica pura de regras (sem I/O).
+ *
+ * @covers \App\Services\CloneTemplateService
  */
 class CloneTemplateServiceTest extends TestCase
 {
-    private CloneTemplateService $service;
+	private CloneTemplateService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = new CloneTemplateService();
-    }
+	protected function setUp(): void
+	{
+		$ref = new ReflectionClass(CloneTemplateService::class);
+		$instance = $ref->newInstanceWithoutConstructor();
+		$this->assertInstanceOf(CloneTemplateService::class, $instance);
+		$this->service = $instance;
+	}
 
-    /**
-     * @test
-     */
-    public function it_applies_copy_price_rule(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-        ];
+	public function testApplyTemplateRulesCopyPriceAndStock(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'copy',
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Test Product',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Test Product',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertEquals(100.00, $result['calculated']['final_price']);
-        $this->assertEquals(10, $result['calculated']['final_stock']);
-    }
+		$this->assertEquals(100.00, $result['calculated']['final_price']);
+		$this->assertSame(10, $result['calculated']['final_stock']);
+		$this->assertSame('Test Product', $result['calculated']['final_title']);
+		$this->assertFalse($result['should_skip']);
+	}
 
-    /**
-     * @test
-     */
-    public function it_applies_markup_percent_price_rule(): void
-    {
-        $template = [
-            'pricing_type' => 'markup_percent',
-            'pricing_value' => 30,
-            'stock_type' => 'copy',
-        ];
+	public function testApplyTemplateRulesMarkupPercentPriceRule(): void
+	{
+		$template = [
+			'pricing_type' => 'markup_percent',
+			'pricing_value' => 30,
+			'stock_type' => 'copy',
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Test Product',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Test Product',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertEquals(130.00, $result['calculated']['final_price']);
-    }
+		$this->assertEquals(130.00, $result['calculated']['final_price']);
+	}
 
-    /**
-     * @test
-     */
-    public function it_applies_markdown_percent_price_rule(): void
-    {
-        $template = [
-            'pricing_type' => 'markdown_percent',
-            'pricing_value' => 10,
-            'stock_type' => 'copy',
-        ];
+	public function testApplyTemplateRulesMarkdownPercentPriceRule(): void
+	{
+		$template = [
+			'pricing_type' => 'markdown_percent',
+			'pricing_value' => 10,
+			'stock_type' => 'copy',
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Test Product',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Test Product',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertEquals(90.00, $result['calculated']['final_price']);
-    }
+		$this->assertEquals(90.00, $result['calculated']['final_price']);
+	}
 
-    /**
-     * @test
-     */
-    public function it_applies_fixed_stock_rule(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'fixed',
-            'stock_value' => 5,
-        ];
+	public function testApplyTemplateRulesFixedStockRule(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'fixed',
+			'stock_value' => 5,
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 100,
-            'title' => 'Test Product',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 100,
+			'title' => 'Test Product',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertEquals(5, $result['calculated']['final_stock']);
-    }
+		$this->assertSame(5, $result['calculated']['final_stock']);
+	}
 
-    /**
-     * @test
-     */
-    public function it_applies_percentage_stock_rule(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'percentage',
-            'stock_value' => 50,
-        ];
+	public function testApplyTemplateRulesPercentageStockRule(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'percentage',
+			'stock_value' => 50,
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 100,
-            'title' => 'Test Product',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 100,
+			'title' => 'Test Product',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertEquals(50, $result['calculated']['final_stock']);
-    }
+		$this->assertSame(50, $result['calculated']['final_stock']);
+	}
 
-    /**
-     * @test
-     */
-    public function it_applies_title_prefix(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-            'title_prefix' => '[PROMO] ',
-        ];
+	public function testCalculateStockZeroRule(): void
+	{
+		$template = [
+			'stock_type' => 'zero',
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Test Product',
-        ];
+		$this->assertSame(0, $this->service->calculateStock(999, $template));
+	}
 
-        $result = $this->service->applyTemplateRules($template, $item);
+	public function testApplyTitleRulesPrefixAndSuffix(): void
+	{
+		$template = [
+			'title_prefix' => '[PROMO]',
+			'title_suffix' => '- Oferta',
+		];
 
-        $this->assertStringStartsWith('[PROMO]', $result['calculated']['final_title']);
-    }
+		$title = $this->service->applyTitleRules('Test Product', $template);
 
-    /**
-     * @test
-     */
-    public function it_applies_title_suffix(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-            'title_suffix' => ' - Oferta',
-        ];
+		$this->assertStringStartsWith('[PROMO]', $title);
+		$this->assertStringEndsWith('- Oferta', $title);
+	}
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Test Product',
-        ];
+	public function testApplyTitleRulesRemovePatterns(): void
+	{
+		$template = [
+			'title_remove_patterns' => json_encode(['/\\bTest\\b/i']),
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$title = $this->service->applyTitleRules('Test Product', $template);
+		$this->assertSame('Product', $title);
+	}
 
-        $this->assertStringEndsWith('- Oferta', $result['calculated']['final_title']);
-    }
+	public function testApplyTitleRulesTruncatesTo60Chars(): void
+	{
+		$template = [
+			'title_prefix' => '[NEW]',
+		];
 
-    /**
-     * @test
-     */
-    public function it_truncates_title_to_60_chars(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-            'title_prefix' => '[NEW] ',
-        ];
+		$title = $this->service->applyTitleRules(
+			'This Is A Very Long Product Title That Exceeds The Maximum Allowed Characters',
+			$template
+		);
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'This Is A Very Long Product Title That Exceeds The Maximum Allowed Characters',
-        ];
+		$this->assertLessThanOrEqual(60, mb_strlen($title));
+		$this->assertStringEndsWith('...', $title);
+	}
 
-        $result = $this->service->applyTemplateRules($template, $item);
+	public function testCalculatePriceRoundingTo099(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'pricing_round_to' => 0.99,
+		];
 
-        $this->assertLessThanOrEqual(60, strlen($result['calculated']['final_title']));
-    }
+		$this->assertEquals(99.99, $this->service->calculatePrice(100.00, $template));
+		$this->assertEquals(100.99, $this->service->calculatePrice(100.999, $template));
+	}
 
-    /**
-     * @test
-     */
-    public function it_skips_catalog_items_when_configured(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-            'skip_catalog_items' => true,
-        ];
+	public function testSkipsCatalogItemsWhenConfigured(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'copy',
+			'skip_catalog_items' => true,
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Catalog Product',
-            'catalog_product_id' => 'MLB12345678',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Catalog Product',
+			'catalog_product_id' => 'MLB12345678',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertTrue($result['should_skip']);
-        $this->assertNotNull($result['skip_reason']);
-    }
+		$this->assertTrue($result['should_skip']);
+		$this->assertNotEmpty($result['skip_reason']);
+	}
 
-    /**
-     * @test
-     */
-    public function it_skips_non_catalog_items_when_configured(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-            'skip_non_catalog_items' => true,
-        ];
+	public function testSkipsNonCatalogItemsWhenConfigured(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'copy',
+			'skip_non_catalog_items' => true,
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Non-Catalog Product',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Non-Catalog Product',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertTrue($result['should_skip']);
-    }
+		$this->assertTrue($result['should_skip']);
+		$this->assertNotEmpty($result['skip_reason']);
+	}
 
-    /**
-     * @test
-     */
-    public function it_returns_correct_structure(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-        ];
+	public function testReturnsExpectedStructure(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'copy',
+			'id' => 123,
+			'slug' => 'test-template',
+			'initial_status' => 'active',
+			'clone_description' => 0,
+			'clone_variations' => 1,
+		];
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Test Product',
-        ];
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Test Product',
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$result = $this->service->applyTemplateRules($template, $item);
 
-        $this->assertArrayHasKey('pricing_strategy', $result);
-        $this->assertArrayHasKey('stock_strategy', $result);
-        $this->assertArrayHasKey('options', $result);
-        $this->assertArrayHasKey('calculated', $result);
-        $this->assertArrayHasKey('should_skip', $result);
-        $this->assertArrayHasKey('post_clone_actions', $result);
-    }
+		$this->assertArrayHasKey('pricing_strategy', $result);
+		$this->assertArrayHasKey('stock_strategy', $result);
+		$this->assertArrayHasKey('options', $result);
+		$this->assertArrayHasKey('calculated', $result);
+		$this->assertArrayHasKey('should_skip', $result);
+		$this->assertArrayHasKey('post_clone_actions', $result);
 
-    /**
-     * @test
-     */
-    public function it_parses_post_clone_actions(): void
-    {
-        $template = [
-            'pricing_type' => 'copy',
-            'stock_type' => 'copy',
-            'post_clone_actions' => json_encode(['tech_sheet', 'seo_optimize']),
-        ];
+		$this->assertSame(123, $result['options']['template_id']);
+		$this->assertSame('test-template', $result['options']['template_slug']);
+		$this->assertFalse($result['options']['start_paused']);
+		$this->assertFalse($result['options']['clone_description']);
+		$this->assertTrue($result['options']['clone_variations']);
+	}
 
-        $item = [
-            'price' => 100.00,
-            'available_quantity' => 10,
-            'title' => 'Test Product',
-        ];
+	public function testParsesPostCloneActionsFromJson(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'copy',
+			'post_clone_actions' => json_encode(['tech_sheet', 'seo_optimize']),
+		];
 
-        $result = $this->service->applyTemplateRules($template, $item);
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Test Product',
+		];
 
-        $this->assertIsArray($result['post_clone_actions']);
-    }
+		$result = $this->service->applyTemplateRules($template, $item);
+
+		$this->assertSame(['tech_sheet', 'seo_optimize'], $result['post_clone_actions']);
+	}
+
+	public function testParsesPostCloneActionsInvalidJsonReturnsEmptyArray(): void
+	{
+		$template = [
+			'pricing_type' => 'copy',
+			'stock_type' => 'copy',
+			'post_clone_actions' => '{invalid-json',
+		];
+
+		$item = [
+			'price' => 100.00,
+			'available_quantity' => 10,
+			'title' => 'Test Product',
+		];
+
+		$result = $this->service->applyTemplateRules($template, $item);
+
+		$this->assertSame([], $result['post_clone_actions']);
+	}
 }
