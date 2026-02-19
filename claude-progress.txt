@@ -6,6 +6,28 @@
 
 ---
 
+## Sessão: 2026-02-19 — AUTH-003: validação estrita de identidade ML pós-refresh
+
+### Objetivo
+Complementar a integração com API do Mercado Livre impedindo que token renovado de conta incorreta permaneça ativo (drift entre contas ML).
+
+### Implementação
+1. **Validação de identidade da conta**
+   - `UnifiedTokenRefreshService` agora compara `ml_user_id` esperado no `ml_accounts` com o `id` retornado por `/users/me`.
+   - Em divergência, retorna falha explícita `ml_user_id_mismatch`.
+2. **Regra de expiração por mismatch**
+   - `shouldExpireAccountFromValidationError()` passou a considerar `ml_user_id_mismatch` como erro crítico de autenticação.
+   - Conta é marcada como `expired` quando aplicável.
+3. **Hardening de leitura no banco**
+   - Novo helper `getExpectedMlUserId()` com tratamento de erro e logging estruturado.
+4. **Teste unitário estrutural**
+   - Teste atualizado para verificar existência da validação de consistência de identidade após `/users/me`.
+
+### Validação
+- `php -l app/Services/UnifiedTokenRefreshService.php` ✅
+- `php -l tests/Unit/Services/UnifiedTokenRefreshServiceTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅
+
 ## Sessão: 2026-02-19 — AUTH-003: persistência de estado após validação ML
 
 ### Objetivo

@@ -410,6 +410,16 @@ class UnifiedTokenRefreshServiceTest extends TestCase
             'Regra de expiração deve cobrir erros de token ausente/inválido');
     }
 
+    public function test_validates_ml_identity_consistency_after_users_me(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString('getExpectedMlUserId', $source,
+            'Deve obter ml_user_id esperado da conta antes de sincronizar identidade');
+        $this->assertStringContainsString('ml_user_id_mismatch', $source,
+            'Deve falhar validação quando /users/me retornar ml_user_id diferente do esperado');
+    }
+
     public function test_supports_env_toggle_for_api_validation(): void
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');

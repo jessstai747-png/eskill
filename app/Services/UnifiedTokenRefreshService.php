@@ -596,6 +596,17 @@ class UnifiedTokenRefreshService
                 ];
             }
 
+            $expectedMlUserId = $this->getExpectedMlUserId($accountId);
+            if ($expectedMlUserId !== null && $expectedMlUserId !== '' && $expectedMlUserId !== $mlUserId) {
+                return [
+                    'status' => 'failed',
+                    'message' => 'Token validou com usuário ML diferente da conta esperada',
+                    'error' => 'ml_user_id_mismatch',
+                    'ml_user_id' => $mlUserId,
+                    'expected_ml_user_id' => $expectedMlUserId,
+                ];
+            }
+
             $nickname = (string)($me['nickname'] ?? '');
             $this->syncAccountIdentity($accountId, $mlUserId, $nickname !== '' ? $nickname : null);
 
@@ -718,7 +729,31 @@ class UnifiedTokenRefreshService
             || str_contains($normalized, 'invalid token')
             || str_contains($normalized, 'invalid_token')
             || str_contains($normalized, 'invalid access token')
-            || str_contains($normalized, 'missing_access_token');
+            || str_contains($normalized, 'missing_access_token')
+            || str_contains($normalized, 'ml_user_id_mismatch')
+            || str_contains($normalized, 'mismatch');
+    }
+
+    private function getExpectedMlUserId(int $accountId): ?string
+    {
+        try {
+            $stmt = $this->db->prepare('SELECT ml_user_id FROM ml_accounts WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $accountId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!is_array($row)) {
+                return null;
+            }
+
+            $value = (string)($row['ml_user_id'] ?? '');
+            return $value !== '' ? $value : null;
+        } catch (\Throwable $e) {
+            $this->log('warning', 'Falha ao obter ml_user_id esperado para validação de identidade', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
     
     private function log(string $level, string $message, array $context = []): void
