@@ -245,6 +245,30 @@ class UnifiedTokenRefreshServiceTest extends TestCase
         $this->assertStringContainsString('getRefreshFailures24h()', $source);
     }
 
+    public function test_health_metrics_includes_api_validation_failure_accounts(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString('accounts_with_api_validation_failures', $source);
+        $this->assertStringContainsString('getAccountsWithApiValidationFailures', $source);
+    }
+
+    public function test_health_metrics_includes_identity_mismatch_accounts(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString('accounts_with_identity_mismatch', $source);
+        $this->assertStringContainsString('ml_user_id_mismatch', $source);
+    }
+
+    public function test_health_metrics_includes_recent_validation_errors(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
+
+        $this->assertStringContainsString('recent_validation_errors', $source);
+        $this->assertStringContainsString('getRecentValidationErrors', $source);
+    }
+
     public function test_health_metrics_calculates_status(): void
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/UnifiedTokenRefreshService.php');
@@ -259,6 +283,7 @@ class UnifiedTokenRefreshServiceTest extends TestCase
 
         $this->assertStringContainsString("'critical'", $source);
         $this->assertStringContainsString("'warning'", $source);
+        $this->assertStringContainsString("'attention'", $source);
         $this->assertStringContainsString("'healthy'", $source);
     }
 

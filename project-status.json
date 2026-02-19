@@ -71,7 +71,7 @@
                 "app/Controllers/TokenDashboardController.php"
             ],
             "passes": false,
-            "last_tested": "2026-02-17"
+            "last_tested": "2026-02-19"
         },
         {
             "id": "SEO-001",

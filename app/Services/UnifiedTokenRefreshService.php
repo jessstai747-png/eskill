@@ -167,6 +167,10 @@ class UnifiedTokenRefreshService
             'failure_rate_24h' => 0,
             'accounts_with_failures' => $this->getAccountsWithConsecutiveFailures(3),
             'last_refresh_avg_hours' => $this->getAverageHoursSinceLastRefresh(),
+            'accounts_with_api_validation_failures' => $this->getAccountsWithApiValidationFailures(),
+            'accounts_with_identity_mismatch' => $this->getAccountsWithIdentityMismatch(),
+            'accounts_with_auth_errors' => $this->getAccountsWithAuthValidationErrors(),
+            'recent_validation_errors' => $this->getRecentValidationErrors(),
         ];
         
         // Calcular taxa de falha
@@ -501,18 +505,86 @@ class UnifiedTokenRefreshService
         
         return $result['avg_hours'] ? round((float)$result['avg_hours'], 2) : null;
     }
+
+    private function getAccountsWithApiValidationFailures(): int
+    {
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM ml_accounts
+             WHERE refresh_failure_count > 0
+             AND last_refresh_error IS NOT NULL
+             AND TRIM(last_refresh_error) != ''"
+        )->fetchColumn();
+    }
+
+    private function getAccountsWithIdentityMismatch(): int
+    {
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM ml_accounts
+             WHERE last_refresh_error IS NOT NULL
+             AND (
+                LOWER(last_refresh_error) LIKE '%ml_user_id_mismatch%'
+                OR LOWER(last_refresh_error) LIKE '%mismatch%'
+             )"
+        )->fetchColumn();
+    }
+
+    private function getAccountsWithAuthValidationErrors(): int
+    {
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM ml_accounts
+             WHERE last_refresh_error IS NOT NULL
+             AND (
+                LOWER(last_refresh_error) LIKE '%401%'
+                OR LOWER(last_refresh_error) LIKE '%unauthorized%'
+                OR LOWER(last_refresh_error) LIKE '%invalid token%'
+                OR LOWER(last_refresh_error) LIKE '%invalid_token%'
+                OR LOWER(last_refresh_error) LIKE '%invalid access token%'
+                OR LOWER(last_refresh_error) LIKE '%missing_access_token%'
+             )"
+        )->fetchColumn();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function getRecentValidationErrors(int $limit = 5): array
+    {
+        $safeLimit = max(1, min(20, $limit));
+        $stmt = $this->db->query(
+            "SELECT id, nickname, last_refresh_error, refresh_failure_count, updated_at
+             FROM ml_accounts
+             WHERE last_refresh_error IS NOT NULL
+             AND TRIM(last_refresh_error) != ''
+             ORDER BY updated_at DESC
+             LIMIT {$safeLimit}"
+        );
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     
     private function determineHealthStatus(array $metrics): string
     {
+        if ($metrics['accounts_with_identity_mismatch'] > 0) {
+            return 'critical';
+        }
+
+        if ($metrics['accounts_with_auth_errors'] >= 3) {
+            return 'critical';
+        }
+
         if ($metrics['failure_rate_24h'] >= 40) {
             return 'critical';
         }
         
-        if ($metrics['failure_rate_24h'] >= 20 || $metrics['expired_accounts'] >= 5) {
+        if (
+            $metrics['failure_rate_24h'] >= 20
+            || $metrics['expired_accounts'] >= 5
+            || $metrics['accounts_with_api_validation_failures'] >= 3
+        ) {
             return 'warning';
         }
         
-        if ($metrics['expiring_24h'] > 0) {
+        if ($metrics['expiring_24h'] > 0 || $metrics['accounts_with_api_validation_failures'] > 0) {
             return 'attention';
         }
         

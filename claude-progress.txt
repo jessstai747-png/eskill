@@ -6,6 +6,43 @@
 
 ---
 
+## Sessão: 2026-02-19 — DASH-002: diagnóstico de validação ML no Token Dashboard
+
+### Objetivo
+Integrar a telemetria de validação pós-refresh (`/users/me`) ao dashboard de tokens para visibilidade operacional de falhas de API/autenticação e mismatch de identidade ML.
+
+### Implementação
+1. **Métricas avançadas de validação no backend**
+   - `UnifiedTokenRefreshService::getHealthMetrics()` agora inclui:
+     - `accounts_with_api_validation_failures`
+     - `accounts_with_identity_mismatch`
+     - `accounts_with_auth_errors`
+     - `recent_validation_errors`
+   - `determineHealthStatus()` passou a considerar mismatch de identidade como crítico.
+2. **Diagnóstico por conta no endpoint de listagem**
+   - `TokenDashboardController::listAccounts()` agora suporta filtro `status=expiring` (24h).
+   - Suporte a aliases de ordenação do frontend (`name`, `failure_count`).
+   - Cada conta recebe:
+     - `api_validation_status`
+     - `diagnostic_label`
+     - `diagnostic_message`
+3. **Dashboard visual atualizado**
+   - `app/Views/dashboard/tokens.php` ganhou card de “Falhas de Validação API”.
+   - Alerta de saúde ajustado para status `healthy/attention/warning/critical`.
+   - Tabela passou a exibir coluna “Diagnóstico API”.
+   - Gráfico de status agora calcula “expirando” por `hours_until_expiration`.
+4. **Cobertura unitária estrutural**
+   - `tests/Unit/Services/UnifiedTokenRefreshServiceTest.php` atualizado para novas métricas.
+   - Novo `tests/Unit/Controllers/TokenDashboardControllerTest.php` para filtros/diagnóstico.
+
+### Validação
+- `php -l app/Services/UnifiedTokenRefreshService.php` ✅
+- `php -l app/Controllers/TokenDashboardController.php` ✅
+- `php -l app/Views/dashboard/tokens.php` ✅
+- `php -l tests/Unit/Services/UnifiedTokenRefreshServiceTest.php` ✅
+- `php -l tests/Unit/Controllers/TokenDashboardControllerTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅
+
 ## Sessão: 2026-02-19 — AUTH-003: validação estrita de identidade ML pós-refresh
 
 ### Objetivo
