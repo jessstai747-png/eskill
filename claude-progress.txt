@@ -6,6 +6,47 @@
 
 ---
 
+## Sessão: 2026-02-19 — Fase 0 concluída (baseline honesto)
+
+### Objetivo
+Concluir pendências da Fase 0 com limpeza final da raiz e normalização honesta do harness de features.
+
+### Implementação
+1. **Limpeza de artefatos lixo remanescentes na raiz**
+   - Removidos arquivos inválidos/artefatos de shell: `[applyOptimizations], [batchPipeline], [cleanupSnapshots], [compareVersions], [__construct], [fullPipeline], [getEnrichedItemData], [getHealthStatus], [getItemsForOptimization], [getItemStatus], [getOptimizationHistory], [getOptimizationStats], [optimizeWithContext], [rollbackOptimization], [trackImpact], [updateDescription], template_fallback, true, n;echo ( === ) ? FAIL:`.
+2. **Arquivamento de auditoria histórica**
+   - `AUDIT_MOCK_IMPLEMENTATIONS.md` movido para `docs/historico/AUDIT_MOCK_IMPLEMENTATIONS.md`.
+3. **Harness honesto de status**
+   - `project-status.json` normalizado: **73/73 features com `"passes": false`** (baseline real para retomada por testes reais).
+
+### Validação
+- `bash bin/init.sh` ✅ (com aviso conhecido de MySQL/PHPUnit no ambiente)
+- Verificação textual do `project-status.json`: 0 ocorrências de `"passes": true` e 73 ocorrências de `"passes": false` ✅
+- Verificação de arquivamento: `docs/historico/AUDIT_MOCK_IMPLEMENTATIONS.md` presente e arquivo removido da raiz ✅
+- Verificação de lixo de raiz: sem arquivos-alvo remanescentes ✅
+
+## Sessão: 2026-02-19 — Fase 0 iniciada (higiene de repositório)
+
+### Objetivo
+Iniciar implementação real pelo saneamento da base (remoção de ruído operacional e consolidação de documentação redundante).
+
+### Implementação
+1. **Consolidação de changelog**
+   - `CHANGELOG.md` atualizado com seção `1.8.7` registrando higiene de repositório e merge de hardening.
+2. **Limpeza de artefatos lixo na raiz**
+   - Removidos arquivos vazios sem função operacional: `AI`, `Apply`, `Enrich`, `logger`.
+3. **Remoção de documentação redundante/inflada**
+   - Removidos: `IMPLEMENTATION_100_COMPLETE.md`, `EXECUTIVE_SUMMARY.md`, `COMPLETION_CHECKLIST.md`, `FINAL_REPORT.txt`, `HARDENING_STATUS.md`, `STATUS_REPORT.md`, `SECURITY_CHANGELOG.md`.
+4. **Validação pós-mudança**
+   - `bash bin/init.sh` executado (estrutura/sintaxe crítica OK; ambiente com aviso de MySQL/PHPUnit sem DB).
+
+### Validação
+- `bash bin/init.sh` ✅
+- `php vendor/bin/phpunit` ⚠️ Falha no bootstrap por DB indisponível (`127.0.0.1:3307`, `app_test`)
+
+### Observações
+- Ainda pendente na Fase 0: normalização do `project-status.json` para baseline honesto e arquivamento histórico da auditoria mock em pasta dedicada.
+
 ## Sessão: 2026-02-18 — ML Integration Complementary: Rate Limiting, Token Refresh, Accounts, Notifications
 
 ### Objetivo

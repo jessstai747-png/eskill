@@ -16,7 +16,7 @@
                 "app/Controllers/AuthController.php",
                 "app/Services/AuthService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -27,7 +27,7 @@
                 "app/Services/MercadoLivreAuthService.php",
                 "app/Services/RefreshTokenService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -38,7 +38,7 @@
                 "bin/auto-token-refresh-worker.php",
                 "app/Services/UnifiedTokenRefreshService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -48,7 +48,7 @@
             "files": [
                 "app/Services/TwoFactorService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -60,7 +60,7 @@
                 "app/Services/DashboardService.php",
                 "app/Views/dashboard/"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -70,7 +70,7 @@
             "files": [
                 "app/Controllers/TokenDashboardController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -81,7 +81,7 @@
                 "app/Controllers/SEOKillerController.php",
                 "app/Services/SEO/"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -92,7 +92,7 @@
                 "app/Services/TitleGenerator/",
                 "app/Controllers/TitleGeneratorController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -103,7 +103,7 @@
                 "app/Controllers/SeoDescriptionController.php",
                 "app/Services/AIContentGeneratorService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -115,7 +115,7 @@
                 "app/Services/KeywordMinerService.php",
                 "app/Controllers/SeoKeywordsController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -126,7 +126,7 @@
                 "app/Controllers/SeoCoverageController.php",
                 "app/Services/GapHunterService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -136,7 +136,7 @@
             "files": [
                 "app/Controllers/SeoSynonymsController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -147,7 +147,7 @@
                 "app/Services/BulkSEOService.php",
                 "bin/bulk-seo-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -158,7 +158,7 @@
                 "bin/seo-performance-worker.php",
                 "app/Controllers/SeoOptimizationController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -170,7 +170,7 @@
                 "app/Controllers/CatalogCloneController.php",
                 "bin/catalog-clone-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -181,7 +181,7 @@
                 "app/Controllers/CloneAdvancedController.php",
                 "app/Services/CloneTemplateService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -193,7 +193,7 @@
                 "app/Services/CloneABTestingService.php",
                 "bin/clone-ab-testing-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -205,7 +205,7 @@
                 "app/Services/CloneAutomationService.php",
                 "bin/clone-automation-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -216,7 +216,7 @@
                 "app/Controllers/CloneROIAnalysisController.php",
                 "app/Services/CloneROIAnalysisService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -227,7 +227,7 @@
                 "app/Controllers/CloneAnalyticsController.php",
                 "app/Services/CloneAnalyticsService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -238,7 +238,7 @@
                 "bin/clone-health-monitor.php",
                 "app/Services/CloneHealthMonitorService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -249,7 +249,7 @@
                 "bin/clone-sync-worker.php",
                 "app/Services/CloneSyncService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -260,7 +260,7 @@
                 "app/Controllers/DynamicPricingController.php",
                 "app/Services/DynamicPricingService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -271,7 +271,7 @@
                 "bin/auto-pricing-optimizer.php",
                 "app/Services/AutoPricingOptimizerService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -282,7 +282,7 @@
                 "app/Services/PriceRulesEngineService.php",
                 "bin/rules-engine-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -293,7 +293,7 @@
                 "app/Services/PriceHistoryService.php",
                 "app/Services/PriceAnalyticsService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -304,7 +304,7 @@
                 "app/Services/ScheduledPriceService.php",
                 "bin/scheduled-price-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -315,7 +315,7 @@
                 "app/Services/ClaudeClient.php",
                 "app/Services/AI/"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -325,7 +325,7 @@
             "files": [
                 "app/Controllers/AICenterController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -336,7 +336,7 @@
                 "app/Controllers/AIPredictionsController.php",
                 "app/Services/AIPredictionsService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -348,7 +348,7 @@
                 "bin/ai-queue-monitor.php",
                 "app/Services/QueueService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -358,7 +358,7 @@
             "files": [
                 "app/Services/AIImageAnalyzerService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -369,7 +369,7 @@
                 "app/Controllers/DeepResearchController.php",
                 "app/Services/DeepResearchService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -380,7 +380,7 @@
                 "app/Controllers/ChatbotAIController.php",
                 "app/Services/ChatbotAIService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -391,7 +391,7 @@
                 "app/Controllers/CompetitorAnalysisController.php",
                 "app/Services/CompetitorAnalysisService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -402,7 +402,7 @@
                 "app/Controllers/CompetitorMonitorController.php",
                 "bin/competitor-monitor-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -413,7 +413,7 @@
                 "app/Controllers/ItemController.php",
                 "app/Services/ItemService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -423,7 +423,7 @@
             "files": [
                 "app/Controllers/BulkEditorController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -434,7 +434,7 @@
                 "app/Controllers/ListingBuilderController.php",
                 "app/Services/ListingBuilderService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -445,7 +445,7 @@
                 "app/Controllers/TechnicalSheetController.php",
                 "app/Services/TechSheetService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -456,7 +456,7 @@
                 "app/Controllers/EanController.php",
                 "app/Services/EanService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -467,7 +467,7 @@
                 "app/Controllers/StockSyncController.php",
                 "bin/stock-sync-worker.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -478,7 +478,7 @@
                 "app/Controllers/OrderController.php",
                 "app/Services/OrderService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -489,7 +489,7 @@
                 "app/Controllers/QuestionController.php",
                 "app/Services/QuestionService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -500,7 +500,7 @@
                 "app/Controllers/ShippingController.php",
                 "app/Services/ShippingService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -511,7 +511,7 @@
                 "app/Controllers/AdvancedReportController.php",
                 "app/Services/ReportService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -522,7 +522,7 @@
                 "app/Controllers/FinancialReportController.php",
                 "app/Services/FinancialService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -534,7 +534,7 @@
                 "app/Services/ExportService.php",
                 "app/Services/PdfService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -545,7 +545,7 @@
                 "bin/automated-reports-worker.php",
                 "bin/weekly-report.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -556,7 +556,7 @@
                 "app/Controllers/PushController.php",
                 "app/Services/PushNotificationService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -567,7 +567,7 @@
                 "app/Controllers/RealTimeNotificationController.php",
                 "app/Services/RealTimeNotificationService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -577,7 +577,7 @@
             "files": [
                 "app/Services/EmailService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -589,7 +589,7 @@
                 "app/Services/WhatsAppService.php",
                 "app/Services/TelegramService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -600,7 +600,7 @@
                 "app/Controllers/AccountHealthController.php",
                 "app/Services/AccountHealthService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -611,7 +611,7 @@
                 "app/Controllers/ErrorMonitoringController.php",
                 "app/Services/ErrorMonitoringService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -621,7 +621,7 @@
             "files": [
                 "app/Controllers/HealthController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -632,7 +632,7 @@
                 "app/Middleware/",
                 "app/Controllers/SecurityController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -642,7 +642,7 @@
             "files": [
                 "app/Services/RateLimitTrackerService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -652,7 +652,7 @@
             "files": [
                 "app/Services/EncryptionService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -663,7 +663,7 @@
                 "app/Services/AuditLogService.php",
                 "app/Services/AuditService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -674,7 +674,7 @@
                 "app/Controllers/MercadoLivreWebhookController.php",
                 "app/Services/MercadoLivreWebhookService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -685,7 +685,7 @@
                 "app/Controllers/PromotionController.php",
                 "app/Services/PromotionService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -696,7 +696,7 @@
                 "app/Controllers/BrandCentralController.php",
                 "app/Services/BrandCentralService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -707,7 +707,7 @@
                 "app/Controllers/BrandAnalyzerController.php",
                 "app/Services/BrandAnalyzerService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -717,7 +717,7 @@
             "files": [
                 "app/Controllers/MultiAccountController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -728,7 +728,7 @@
                 "app/Controllers/TrendsController.php",
                 "app/Services/TrendsService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -739,7 +739,7 @@
                 "app/Controllers/ClaimsController.php",
                 "app/Services/ClaimsService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -750,7 +750,7 @@
                 "app/Controllers/SettingsController.php",
                 "app/Services/SettingsService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -762,7 +762,7 @@
                 "app/Services/AdvancedRedisCacheService.php",
                 "app/Controllers/CacheController.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -773,7 +773,7 @@
                 "app/Controllers/ShopeeController.php",
                 "app/Services/ShopeeService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -784,7 +784,7 @@
                 "app/Controllers/AdsController.php",
                 "app/Services/AdsService.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -798,7 +798,7 @@
                 "app/Services/AI/Core/AIOptimizationEngine.php",
                 "app/Routes/api.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         },
         {
@@ -811,7 +811,7 @@
                 "app/Services/SEO/VersioningService.php",
                 "app/Routes/api.php"
             ],
-            "passes": true,
+            "passes": false,
             "last_tested": "2026-02-17"
         }
     ]
