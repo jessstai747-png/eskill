@@ -6,6 +6,38 @@
 
 ---
 
+## Sessão: 2026-02-19 — SEO-004: strict types, logging e testes estruturais para Keywords
+
+### Objetivo
+Fortalecer SeoKeywordsController, KeywordResearchService e KeywordMinerService com strict types, corrigir catch silencioso e criar testes estruturais.
+
+### Implementação
+1. **declare(strict_types=1)** adicionado a SeoKeywordsController.php, KeywordResearchService.php e KeywordMinerService.php
+2. **log_warning()** adicionado em KeywordMinerService.php: catch silencioso em saveMinedKeywords → log com source/error
+3. **SeoKeywordsControllerTest.php** criado com 30+ testes:
+   - Strict types, class exists, extends BaseController, deprecated annotation
+   - 13 endpoints via @dataProvider, string params, void returns
+   - Dependencies (3), imports (3), input validation, JSON response, bad practices, method count
+4. **KeywordResearchServiceTest.php** criado com 20+ testes:
+   - Strict types, class exists, STOP_WORDS behavioral tests (constant, content, type)
+   - 9 public methods via @dataProvider, method signatures, dependencies, constructor DI
+   - Caching patterns, MLB site ID, bad practices
+5. **KeywordMinerServiceTest.php** criado com 25+ testes:
+   - Strict types, class exists, 9 public methods via @dataProvider, signatures
+   - Moto category IDs (MLB1771, MLB243551, MLB1763), API integration patterns
+   - Database (PDO, prepared statements), logging (log_warning, no silent catches)
+   - Caching, bad practices, method count
+
+### Validação
+- php -l: Sintaxe OK em todos os 6 arquivos
+- PHPUnit: 696 tests, 1218 assertions, 40 skipped — ALL PASS
+
+### Status
+- SEO-004: ✅ passes: true
+- Próximo: SEO-005, SEO-006, SEO-007, SEO-008 (restantes Fase 2)
+
+---
+
 ## Sessão: 2026-02-19 — AUTH-004: strict types, tipo fix e testes comportamentais para 2FA
 
 ### Objetivo

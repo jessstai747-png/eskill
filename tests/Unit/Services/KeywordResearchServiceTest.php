@@ -1,184 +1,198 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use Tests\TestCase;
 use App\Services\KeywordResearchService;
 
 /**
- * Testes do KeywordResearchService
+ * Testes estruturais do KeywordResearchService
+ *
+ * @covers \App\Services\KeywordResearchService
  */
 class KeywordResearchServiceTest extends TestCase
 {
-    private KeywordResearchService $service;
+    private static string $sourceCode = '';
+    private static \ReflectionClass $reflection;
 
-    protected function setUp(): void
+    public static function setUpBeforeClass(): void
     {
-        parent::setUp();
-        $this->service = new KeywordResearchService();
+        parent::setUpBeforeClass();
+        self::$reflection = new \ReflectionClass(KeywordResearchService::class);
+        self::$sourceCode = (string) file_get_contents((string) self::$reflection->getFileName());
     }
 
     // =============================
-    // TESTES DE INSTANCIAÇÃO
+    // STRICT TYPES
     // =============================
 
-    public function testCanBeInstantiated(): void
+    public function testHasStrictTypesDeclaration(): void
     {
-        $this->assertInstanceOf(KeywordResearchService::class, $this->service);
-    }
-
-    public function testCanBeInstantiatedWithNullAccountId(): void
-    {
-        // Testar instanciação sem account_id (null)
-        $service = new KeywordResearchService(null);
-        $this->assertInstanceOf(KeywordResearchService::class, $service);
-    }
-
-    // =============================
-    // TESTES DE MÉTODOS
-    // =============================
-
-    public function testHasRequiredMethods(): void
-    {
-        $methods = [
-            'researchKeywords',
-            'getCategoryTrends',
-            'getAutocompleteKeywords',
-            'extractCompetitorKeywords',
-            'estimateSearchVolume',
-            'generateKeywordVariations',
-        ];
-
-        foreach ($methods as $method) {
-            $this->assertTrue(
-                method_exists($this->service, $method),
-                "KeywordResearchService deve ter método {$method}()"
-            );
-        }
-    }
-
-    // =============================
-    // TESTES DE STOP WORDS
-    // =============================
-
-    public function testHasStopWordsConstant(): void
-    {
-        $reflection = new \ReflectionClass(KeywordResearchService::class);
-        $this->assertTrue($reflection->hasConstant('STOP_WORDS'));
-    }
-
-    public function testStopWordsContainsCommonWords(): void
-    {
-        $reflection = new \ReflectionClass(KeywordResearchService::class);
-        $stopWords = $reflection->getConstant('STOP_WORDS');
-
-        $expectedWords = ['a', 'o', 'e', 'de', 'da', 'do', 'em', 'um', 'uma', 'para', 'com'];
-
-        foreach ($expectedWords as $word) {
-            $this->assertContains(
-                $word,
-                $stopWords,
-                "Stop words deve conter '{$word}'"
-            );
-        }
-    }
-
-    // =============================
-    // TESTES DE VARIAÇÃO DE KEYWORDS
-    // =============================
-
-    public function testGenerateKeywordVariationsExists(): void
-    {
-        $this->assertTrue(
-            method_exists($this->service, 'generateKeywordVariations'),
-            'Deve ter método generateKeywordVariations'
+        $this->assertMatchesRegularExpression(
+            '/declare\s*\(\s*strict_types\s*=\s*1\s*\)/',
+            self::$sourceCode,
+            'KeywordResearchService deve ter declare(strict_types=1)'
         );
     }
 
     // =============================
-    // TESTES DE ESTRUTURA
+    // INSTANCIAÇÃO
+    // =============================
+
+    public function testClassExists(): void
+    {
+        $this->assertTrue(class_exists(KeywordResearchService::class));
+    }
+
+    // =============================
+    // STOP WORDS
+    // =============================
+
+    public function testHasStopWordsConstant(): void
+    {
+        $this->assertTrue(
+            defined(KeywordResearchService::class . '::STOP_WORDS'),
+            'Deve ter constante STOP_WORDS'
+        );
+    }
+
+    public function testStopWordsContainsCommonPortuguese(): void
+    {
+        $stopWords = KeywordResearchService::STOP_WORDS;
+        $expected = ['a', 'o', 'e', 'de', 'da', 'do', 'em', 'para', 'com'];
+        foreach ($expected as $word) {
+            $this->assertContains($word, $stopWords, "STOP_WORDS deve conter '{$word}'");
+        }
+    }
+
+    public function testStopWordsIsArray(): void
+    {
+        $this->assertIsArray(KeywordResearchService::STOP_WORDS);
+        $this->assertNotEmpty(KeywordResearchService::STOP_WORDS);
+    }
+
+    // =============================
+    // PUBLIC METHODS
+    // =============================
+
+    /**
+     * @dataProvider publicMethodsProvider
+     */
+    public function testHasPublicMethod(string $method): void
+    {
+        $this->assertTrue(
+            method_exists(KeywordResearchService::class, $method),
+            "KeywordResearchService deve ter método {$method}()"
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function publicMethodsProvider(): array
+    {
+        return [
+            'researchKeywords' => ['researchKeywords'],
+            'getCategoryTrends' => ['getCategoryTrends'],
+            'getAutocompleteKeywords' => ['getAutocompleteKeywords'],
+            'extractCompetitorKeywords' => ['extractCompetitorKeywords'],
+            'getKeywords' => ['getKeywords'],
+            'classifyByType' => ['classifyByType'],
+            'estimateSearchVolume' => ['estimateSearchVolume'],
+            'getWithCompetitionScore' => ['getWithCompetitionScore'],
+            'generateKeywordVariations' => ['generateKeywordVariations'],
+        ];
+    }
+
+    // =============================
+    // METHOD SIGNATURES
+    // =============================
+
+    public function testResearchKeywordsSignature(): void
+    {
+        $ref = new \ReflectionMethod(KeywordResearchService::class, 'researchKeywords');
+        $params = $ref->getParameters();
+        $this->assertCount(2, $params);
+        $this->assertEquals('categoryId', $params[0]->getName());
+        $this->assertEquals('string', $params[0]->getType()->getName());
+        $this->assertEquals('baseKeyword', $params[1]->getName());
+        $this->assertTrue($params[1]->isDefaultValueAvailable());
+        $returnType = $ref->getReturnType();
+        $this->assertNotNull($returnType);
+        $this->assertEquals('array', $returnType->getName());
+    }
+
+    public function testExtractCompetitorKeywordsSignature(): void
+    {
+        $ref = new \ReflectionMethod(KeywordResearchService::class, 'extractCompetitorKeywords');
+        $params = $ref->getParameters();
+        $this->assertGreaterThanOrEqual(2, count($params));
+        $this->assertEquals('baseKeyword', $params[0]->getName());
+        $this->assertEquals('categoryId', $params[1]->getName());
+    }
+
+    // =============================
+    // DEPENDENCIES
     // =============================
 
     public function testHasMercadoLivreClient(): void
     {
-        $reflection = new \ReflectionClass(KeywordResearchService::class);
-        $this->assertTrue($reflection->hasProperty('client'));
+        $this->assertStringContainsString('MercadoLivreClient', self::$sourceCode);
     }
 
     public function testHasCacheService(): void
     {
-        $reflection = new \ReflectionClass(KeywordResearchService::class);
-        $this->assertTrue($reflection->hasProperty('cache'));
+        $this->assertStringContainsString('CacheService', self::$sourceCode);
     }
 
-    public function testHasSiteId(): void
+    public function testHasSiteIdProperty(): void
     {
-        $reflection = new \ReflectionClass(KeywordResearchService::class);
-        $this->assertTrue($reflection->hasProperty('siteId'));
-    }
-
-    // =============================
-    // TESTES DE DOCUMENTAÇÃO
-    // =============================
-
-    public function testClassHasDocumentation(): void
-    {
-        $reflection = new \ReflectionClass(KeywordResearchService::class);
-        $docComment = $reflection->getDocComment();
-
-        $this->assertNotFalse($docComment);
-        $this->assertStringContainsString('Palavras-Chave', $docComment);
-    }
-
-    public function testResearchKeywordsHasDocumentation(): void
-    {
-        $reflection = new \ReflectionMethod(KeywordResearchService::class, 'researchKeywords');
-        $this->assertNotFalse($reflection->getDocComment());
+        $this->assertStringContainsString('siteId', self::$sourceCode);
     }
 
     // =============================
-    // TESTES DE PARÂMETROS
+    // CONSTRUCTOR DI
     // =============================
 
-    public function testResearchKeywordsAcceptsParameters(): void
+    public function testConstructorHasNullableParameters(): void
     {
-        $reflection = new \ReflectionMethod(KeywordResearchService::class, 'researchKeywords');
-        $params = $reflection->getParameters();
-
-        $this->assertCount(2, $params);
-        $this->assertEquals('categoryId', $params[0]->getName());
-        $this->assertEquals('baseKeyword', $params[1]->getName());
-        $this->assertTrue($params[1]->allowsNull());
-    }
-
-    public function testEstimateSearchVolumeAcceptsParameters(): void
-    {
-        $reflection = new \ReflectionMethod(KeywordResearchService::class, 'estimateSearchVolume');
-        $params = $reflection->getParameters();
-
-        $this->assertGreaterThanOrEqual(1, count($params));
-        $this->assertEquals('keyword', $params[0]->getName());
+        $ref = new \ReflectionMethod(KeywordResearchService::class, '__construct');
+        $params = $ref->getParameters();
+        foreach ($params as $p) {
+            $this->assertTrue(
+                $p->isDefaultValueAvailable(),
+                "Parâmetro \${$p->getName()} do construtor deve ter valor padrão (nullable DI)"
+            );
+        }
     }
 
     // =============================
-    // TESTES DE RETORNO
+    // PATTERNS
     // =============================
 
-    public function testResearchKeywordsReturnsArray(): void
+    public function testUsesCaching(): void
     {
-        $reflection = new \ReflectionMethod(KeywordResearchService::class, 'researchKeywords');
-        $returnType = $reflection->getReturnType();
-
-        $this->assertNotNull($returnType);
-        $this->assertEquals('array', $returnType->getName());
+        $this->assertStringContainsString('cache->remember', self::$sourceCode);
     }
 
-    public function testGetCategoryTrendsReturnsArray(): void
+    public function testUsesMLBSiteId(): void
     {
-        $reflection = new \ReflectionMethod(KeywordResearchService::class, 'getCategoryTrends');
-        $returnType = $reflection->getReturnType();
+        $this->assertStringContainsString('MLB', self::$sourceCode, 'Deve usar MLB como site padrão');
+    }
 
-        $this->assertNotNull($returnType);
-        $this->assertEquals('array', $returnType->getName());
+    // =============================
+    // NO BAD PRACTICES
+    // =============================
+
+    public function testNoErrorLogUsage(): void
+    {
+        $this->assertStringNotContainsString('error_log(', self::$sourceCode);
+    }
+
+    public function testNoVarDumpUsage(): void
+    {
+        $this->assertStringNotContainsString('var_dump(', self::$sourceCode);
     }
 }

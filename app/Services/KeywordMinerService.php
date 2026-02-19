@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -429,7 +431,10 @@ class KeywordMinerService
                 ]);
                 $saved++;
             } catch (\Exception $e) {
-                // Ignorar erros de duplicata
+                log_warning('Falha ao salvar keyword minerada', [
+                    'source' => $source,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

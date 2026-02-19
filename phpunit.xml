@@ -26,6 +26,9 @@
             <file>tests/Unit/Services/DashboardServiceTest.php</file>
             <file>tests/Unit/Services/ItemServiceTest.php</file>
             <file>tests/Unit/Services/TwoFactorServiceTest.php</file>
+            <file>tests/Unit/Controllers/SeoKeywordsControllerTest.php</file>
+            <file>tests/Unit/Services/KeywordResearchServiceTest.php</file>
+            <file>tests/Unit/Services/KeywordMinerServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
