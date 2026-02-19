@@ -53,6 +53,8 @@
             <file>tests/Unit/Controllers/CloneROIAnalysisControllerTest.php</file>
             <file>tests/Unit/Services/CloneAnalyticsServiceTest.php</file>
             <file>tests/Unit/Controllers/CloneAnalyticsControllerTest.php</file>
+            <file>tests/Unit/Services/CloneHealthMonitorServiceTest.php</file>
+            <file>tests/Unit/Services/CloneSyncServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

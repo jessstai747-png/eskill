@@ -236,10 +236,11 @@
             "description": "Clone health monitor — saúde e status dos itens clonados",
             "files": [
                 "bin/clone-health-monitor.php",
-                "app/Services/CloneHealthMonitorService.php"
+                "app/Services/CloneHealthMonitorService.php",
+                "tests/Unit/Services/CloneHealthMonitorServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2025-06-28"
         },
         {
             "id": "CLONE-008",
@@ -247,10 +248,11 @@
             "description": "Clone sync — sincronização contínua entre contas",
             "files": [
                 "bin/clone-sync-worker.php",
-                "app/Services/CloneSyncService.php"
+                "app/Services/CloneSyncService.php",
+                "tests/Unit/Services/CloneSyncServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2025-06-28"
         },
         {
             "id": "PRICE-001",

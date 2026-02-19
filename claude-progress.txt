@@ -6,6 +6,30 @@
 
 ---
 
+## Sessao: 2026-02-19 — CLONE-007: Clone health monitor (service + CLI) com hardening e testes unitarios
+
+### Implementacao
+1. **CloneHealthMonitorService.php** ajustado:
+   - tolera DB indisponível (retorna status `critical`, `score=0` e issue estruturada)
+   - remove SQL frágil com `INTERVAL :param` (usa cutoff calculado em PHP)
+   - padroniza payload para dashboard: `status` em `healthy|warning|critical` e `checks.*.value`
+   - adiciona `score` (0..100) e `issues` estruturado derivado dos checks
+   - adiciona checks de **atividade recente** e **espaço em disco**
+   - envolve queries em `try/catch` com logs (best-effort quando tabelas/DB falham)
+2. **clone-health-monitor.php** refatorado:
+   - passa a consumir o `CloneHealthMonitorService` como fonte única de verdade
+   - adiciona flags `--json` e `--account-id` (filtro por `target_account_id`)
+   - alertas por email/telegram agora usam `issues` estruturados e incluem tabela de checks
+   - exit code: `1` quando status `critical`, `0` caso contrário
+3. **Testes Unit DB-free** criados:
+   - `CloneHealthMonitorServiceTest.php` (DB offline, status geral, score e issues)
+4. **phpunit.xml** atualizado: inclui explicitamente o teste do health monitor na suite Unit
+
+### Resultado
+- PHPUnit(Unit): 1384 tests, 2719 assertions, 40 skipped — ALL PASS
+- project-status.json: CLONE-007 passes:true
+- Observacao: ambiente segue sem MySQL (Integration pulado); testes Unit continuam DB-free
+
 ## Sessao: 2026-02-19 — CLONE-006: Clone analytics (dashboards e metricas) com hardening e testes unitarios
 
 ### Implementacao
