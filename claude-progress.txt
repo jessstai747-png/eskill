@@ -6,6 +6,31 @@
 
 ---
 
+## Sessão: 2026-02-19 — AUTH-002: MercadoLivreAuthService testável sem MySQL (Unit)
+
+### Objetivo
+Finalizar a refatoração do `MercadoLivreAuthService` para suportar DI + conexão lazy ao banco, e adicionar testes Unit para o fluxo de sessão (state/PKCE) sem depender de MySQL/rede.
+
+### Implementação
+1. **Refactor: DB lazy via `pdo()`**
+   - Removidos os usos remanescentes de `$this->db->...` e padronizado para `$this->pdo()->...`.
+   - `ensureValidToken()` agora registra `warning` (sem bloquear) se falhar ao atualizar o status no DB.
+2. **Bootstrap PHPUnit: sessão em sandbox**
+   - `tests/bootstrap.php` agora configura `session.save_path` para `storage/tmp/sessions` (o ambiente atual tem `/tmp` read-only).
+   - Desativa cookies e cache limiter para evitar warnings de headers/sessão durante CLI.
+3. **Testes Unit para OAuth state/PKCE**
+   - Novo `tests/Unit/MercadoLivreAuthServiceUnitTest.php` cobrindo:
+     - parâmetros obrigatórios na URL de autorização
+     - persistência de `state` na sessão
+     - persistência do PKCE verifier por `state`
+     - exceções em `exchangeCodeForTokens()` com state inválido e sem `code_verifier`
+
+### Validação
+- `php -l app/Services/MercadoLivreAuthService.php` ✅
+- `php -l tests/bootstrap.php` ✅
+- `php -l tests/Unit/MercadoLivreAuthServiceUnitTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅
+
 ## Sessão: 2026-02-19 — Fase 1: AuthService com DI + Unit tests (sem MySQL)
 
 ### Objetivo
