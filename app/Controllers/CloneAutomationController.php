@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Request;
 use App\Services\CloneAutomationService;
 use Exception;
+use Throwable;
 
 /**
  * Clone Automation Controller
@@ -57,7 +60,7 @@ class CloneAutomationController
                 'rules' => $rules,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -72,7 +75,12 @@ class CloneAutomationController
         header('Content-Type: application/json');
         
         try {
-            $input = json_decode(file_get_contents('php://input'), true);
+            $raw = (string) file_get_contents('php://input');
+            $input = json_decode($raw, true);
+
+            if (!is_array($input)) {
+                throw new Exception('JSON inválido');
+            }
             
             if (empty($input['name'])) {
                 throw new Exception('Nome da regra é obrigatório');
@@ -89,7 +97,7 @@ class CloneAutomationController
                 'rule' => $rule,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(400);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -118,7 +126,7 @@ class CloneAutomationController
                 'rule' => $rule,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -133,7 +141,12 @@ class CloneAutomationController
         header('Content-Type: application/json');
         
         try {
-            $input = json_decode(file_get_contents('php://input'), true);
+            $raw = (string) file_get_contents('php://input');
+            $input = json_decode($raw, true);
+
+            if (!is_array($input)) {
+                throw new Exception('JSON inválido');
+            }
             
             $service = new CloneAutomationService($this->accountId);
             
@@ -152,7 +165,7 @@ class CloneAutomationController
                 'rule' => $rule,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(400);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -182,7 +195,7 @@ class CloneAutomationController
                 'message' => 'Regra excluída',
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -212,7 +225,7 @@ class CloneAutomationController
                 'message' => 'Regra ativada',
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -242,7 +255,7 @@ class CloneAutomationController
                 'message' => 'Regra pausada',
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -257,7 +270,16 @@ class CloneAutomationController
         header('Content-Type: application/json');
         
         try {
-            $input = json_decode(file_get_contents('php://input'), true);
+            $raw = (string) file_get_contents('php://input');
+            $input = [];
+            if ($raw !== '') {
+                $decoded = json_decode($raw, true);
+                if (!is_array($decoded)) {
+                    throw new Exception('JSON inválido');
+                }
+                $input = $decoded;
+            }
+
             $dryRun = !empty($input['dry_run']);
             
             $service = new CloneAutomationService($this->accountId);
@@ -268,7 +290,7 @@ class CloneAutomationController
                 'results' => $results,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(400);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -291,7 +313,7 @@ class CloneAutomationController
                 'preview' => $results,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(400);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -323,7 +345,7 @@ class CloneAutomationController
                 'history' => $history,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -346,7 +368,7 @@ class CloneAutomationController
                 'stats' => $stats,
             ]);
             
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }

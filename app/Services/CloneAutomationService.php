@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
 use PDO;
 use Exception;
+use Throwable;
 
 /**
  * Clone Automation Service
@@ -61,22 +64,56 @@ class CloneAutomationService
         $templateId = $data['template_id'] ?? null;
         
         // Filtros
+        $categories = $data['categories'] ?? [];
+        if (!is_array($categories)) {
+            $categories = [];
+        }
+
+        $brands = $data['brands'] ?? [];
+        if (!is_array($brands)) {
+            $brands = [];
+        }
+
+        $excludeKeywords = $data['exclude_keywords'] ?? [];
+        if (!is_array($excludeKeywords)) {
+            $excludeKeywords = [];
+        }
+
+        $includeKeywords = $data['include_keywords'] ?? [];
+        if (!is_array($includeKeywords)) {
+            $includeKeywords = [];
+        }
+
+        $onlyCatalog = (bool) ($data['only_catalog'] ?? false);
+        $onlyAvailable = (bool) ($data['only_available'] ?? true);
+
         $filters = [
-            'categories' => $data['categories'] ?? [],
-            'brands' => $data['brands'] ?? [],
+            'categories' => $categories,
+            'brands' => $brands,
             'min_price' => $data['min_price'] ?? null,
             'max_price' => $data['max_price'] ?? null,
-            'exclude_keywords' => $data['exclude_keywords'] ?? [],
-            'include_keywords' => $data['include_keywords'] ?? [],
-            'only_catalog' => $data['only_catalog'] ?? false,
-            'only_available' => $data['only_available'] ?? true,
+            'exclude_keywords' => $excludeKeywords,
+            'include_keywords' => $includeKeywords,
+            'only_catalog' => $onlyCatalog,
+            'only_available' => $onlyAvailable,
         ];
         
         // Configurações de trigger
+        $daysOfWeek = $data['days_of_week'] ?? [1, 2, 3, 4, 5];
+        if (!is_array($daysOfWeek)) {
+            $daysOfWeek = [1, 2, 3, 4, 5];
+        }
+        $daysOfWeek = array_values(array_filter(array_map('intval', $daysOfWeek), static function (int $day): bool {
+            return $day >= 1 && $day <= 7;
+        }));
+        if ($daysOfWeek === []) {
+            $daysOfWeek = [1, 2, 3, 4, 5];
+        }
+
         $triggerConfig = [
             'frequency' => $frequency,
             'run_at' => $data['run_at'] ?? '03:00',
-            'days_of_week' => $data['days_of_week'] ?? [1, 2, 3, 4, 5],
+            'days_of_week' => $daysOfWeek,
             'price_drop_percent' => $data['price_drop_percent'] ?? 10,
             'stock_threshold' => $data['stock_threshold'] ?? 5,
         ];
@@ -105,9 +142,9 @@ class CloneAutomationService
             ':source_id' => $sourceId,
             ':target_account_id' => $targetAccountId,
             ':template_id' => $templateId,
-            ':filters' => json_encode($filters),
-            ':trigger_config' => json_encode($triggerConfig),
-            ':limits' => json_encode($limits),
+            ':filters' => $this->encodeJson($filters),
+            ':trigger_config' => $this->encodeJson($triggerConfig),
+            ':limits' => $this->encodeJson($limits),
             ':status' => self::STATUS_ACTIVE,
         ]);
         
@@ -135,15 +172,15 @@ class CloneAutomationService
         // Campos JSON
         if (isset($data['filters'])) {
             $updates[] = "filters = :filters";
-            $params[':filters'] = json_encode($data['filters']);
+            $params[':filters'] = $this->encodeJson(is_array($data['filters']) ? $data['filters'] : []);
         }
         if (isset($data['trigger_config'])) {
             $updates[] = "trigger_config = :trigger_config";
-            $params[':trigger_config'] = json_encode($data['trigger_config']);
+            $params[':trigger_config'] = $this->encodeJson(is_array($data['trigger_config']) ? $data['trigger_config'] : []);
         }
         if (isset($data['limits'])) {
             $updates[] = "limits = :limits";
-            $params[':limits'] = json_encode($data['limits']);
+            $params[':limits'] = $this->encodeJson(is_array($data['limits']) ? $data['limits'] : []);
         }
         
         if (empty($updates)) {
@@ -180,9 +217,9 @@ class CloneAutomationService
         $rule = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($rule) {
-            $rule['filters'] = json_decode($rule['filters'], true) ?? [];
-            $rule['trigger_config'] = json_decode($rule['trigger_config'], true) ?? [];
-            $rule['limits'] = json_decode($rule['limits'], true) ?? [];
+            $rule['filters'] = $this->decodeJson(is_string($rule['filters'] ?? null) ? $rule['filters'] : null);
+            $rule['trigger_config'] = $this->decodeJson(is_string($rule['trigger_config'] ?? null) ? $rule['trigger_config'] : null);
+            $rule['limits'] = $this->decodeJson(is_string($rule['limits'] ?? null) ? $rule['limits'] : null);
         }
         
         return $rule ?: null;
@@ -224,9 +261,9 @@ class CloneAutomationService
         $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($rules as &$rule) {
-            $rule['filters'] = json_decode($rule['filters'], true) ?? [];
-            $rule['trigger_config'] = json_decode($rule['trigger_config'], true) ?? [];
-            $rule['limits'] = json_decode($rule['limits'], true) ?? [];
+            $rule['filters'] = $this->decodeJson(is_string($rule['filters'] ?? null) ? $rule['filters'] : null);
+            $rule['trigger_config'] = $this->decodeJson(is_string($rule['trigger_config'] ?? null) ? $rule['trigger_config'] : null);
+            $rule['limits'] = $this->decodeJson(is_string($rule['limits'] ?? null) ? $rule['limits'] : null);
         }
         
         return $rules;
@@ -364,7 +401,14 @@ class CloneAutomationService
             } else {
                 $items = [];
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
+            log_warning('CloneAutomationService: erro ao buscar itens da fonte', [
+                'service' => self::class,
+                'rule_id' => $rule['id'] ?? null,
+                'source_type' => $rule['source_type'] ?? null,
+                'source_id' => $rule['source_id'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
             return [];
         }
         
@@ -372,55 +416,21 @@ class CloneAutomationService
         $filteredItems = [];
         
         foreach ($items as $item) {
-            // Filtro de marca
-            if (!empty($filters['brands'])) {
-                $itemBrand = $this->extractBrand($item);
-                if (!in_array($itemBrand, $filters['brands'])) {
-                    continue;
-                }
+            if (!is_array($item)) {
+                continue;
             }
-            
-            // Filtro de keywords excludentes
-            if (!empty($filters['exclude_keywords'])) {
-                $title = strtolower($item['title'] ?? '');
-                $excluded = false;
-                foreach ($filters['exclude_keywords'] as $kw) {
-                    if (strpos($title, strtolower($kw)) !== false) {
-                        $excluded = true;
-                        break;
-                    }
-                }
-                if ($excluded) continue;
+
+            $itemId = (string) ($item['id'] ?? '');
+            if ($itemId === '') {
+                continue;
             }
-            
-            // Filtro de keywords obrigatórias
-            if (!empty($filters['include_keywords'])) {
-                $title = strtolower($item['title'] ?? '');
-                $included = false;
-                foreach ($filters['include_keywords'] as $kw) {
-                    if (strpos($title, strtolower($kw)) !== false) {
-                        $included = true;
-                        break;
-                    }
-                }
-                if (!$included) continue;
-            }
-            
-            // Filtro de catálogo
-            if ($filters['only_catalog'] && empty($item['catalog_product_id'])) {
+
+            if (!$this->shouldIncludeItem($item, is_array($filters) ? $filters : [])) {
                 continue;
             }
             
-            // Filtro de disponibilidade
-            if ($filters['only_available']) {
-                $status = $item['status'] ?? '';
-                if ($status !== 'active') {
-                    continue;
-                }
-            }
-            
             // Verificar se já foi clonado
-            if ($this->wasAlreadyCloned($item['id'], $rule['id'])) {
+            if ($this->wasAlreadyCloned($itemId, (int) $rule['id'])) {
                 continue;
             }
             
@@ -436,9 +446,15 @@ class CloneAutomationService
     private function extractBrand(array $item): string
     {
         $attributes = $item['attributes'] ?? [];
+        if (!is_array($attributes)) {
+            return '';
+        }
         foreach ($attributes as $attr) {
-            if ($attr['id'] === 'BRAND') {
-                return $attr['value_name'] ?? '';
+            if (!is_array($attr)) {
+                continue;
+            }
+            if (($attr['id'] ?? null) === 'BRAND') {
+                return (string) ($attr['value_name'] ?? '');
             }
         }
         return '';
@@ -458,7 +474,7 @@ class CloneAutomationService
             ':item_id' => $itemId,
         ]);
         
-        return $stmt->fetchColumn() > 0;
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     /**
@@ -482,33 +498,52 @@ class CloneAutomationService
         
         foreach ($items as $item) {
             try {
-                $cloneResult = $cloneService->cloneItem(
-                    $item['id'],
-                    $targetAccountId,
-                    $templateId ? ['template_id' => $templateId] : []
-                );
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $itemId = (string) ($item['id'] ?? '');
+                if ($itemId === '') {
+                    $results['items_failed']++;
+                    $results['errors'][] = [
+                        'item_id' => null,
+                        'error' => 'Item inválido: id ausente',
+                    ];
+                    continue;
+                }
+
+                $params = [
+                    'source_item_id' => $itemId,
+                    'target_account_id' => (int) $targetAccountId,
+                ];
+                if ($templateId !== null && $templateId !== '') {
+                    // CatalogCloneService usa o campo template_slug, mas o template loader aceita int|string
+                    $params['template_slug'] = $templateId;
+                }
+
+                $cloneResult = $cloneService->cloneItem($params);
                 
-                if (!empty($cloneResult['new_item_id'])) {
+                if (($cloneResult['status'] ?? null) === 'success' && !empty($cloneResult['target_item_id'])) {
                     $results['items_cloned']++;
                     $results['cloned'][] = [
-                        'source_id' => $item['id'],
-                        'new_id' => $cloneResult['new_item_id'],
+                        'source_id' => $itemId,
+                        'new_id' => (string) $cloneResult['target_item_id'],
                     ];
                     
                     // Registrar item clonado
-                    $this->recordClonedItem($rule['id'], $item['id'], $cloneResult['new_item_id']);
+                    $this->recordClonedItem((int) $rule['id'], $itemId, (string) $cloneResult['target_item_id']);
                 } else {
                     $results['items_failed']++;
                     $results['errors'][] = [
-                        'item_id' => $item['id'],
-                        'error' => $cloneResult['error'] ?? 'Unknown error',
+                        'item_id' => $itemId,
+                        'error' => $cloneResult['message'] ?? ($cloneResult['error'] ?? 'Unknown error'),
                     ];
                 }
                 
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $results['items_failed']++;
                 $results['errors'][] = [
-                    'item_id' => $item['id'],
+                    'item_id' => is_array($item) ? (string) ($item['id'] ?? '') : null,
                     'error' => $e->getMessage(),
                 ];
             }
@@ -580,7 +615,6 @@ class CloneAutomationService
      */
     public function getRulesDueForExecution(): array
     {
-        $now = date('Y-m-d H:i:s');
         $currentHour = date('H:i');
         $dayOfWeek = date('N'); // 1 = Monday, 7 = Sunday
         
@@ -592,7 +626,7 @@ class CloneAutomationService
                 r.last_executed_at IS NULL 
                 OR (
                     TIMESTAMPDIFF(HOUR, r.last_executed_at, NOW()) >= 
-                    JSON_UNQUOTE(JSON_EXTRACT(r.limits, '$.cooldown_hours'))
+                    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(r.limits, '$.cooldown_hours')), 24)
                 )
             )
         ");
@@ -602,27 +636,16 @@ class CloneAutomationService
         $duRules = [];
         
         foreach ($rules as $rule) {
-            $config = json_decode($rule['trigger_config'], true) ?? [];
-            $runAt = $config['run_at'] ?? '03:00';
-            $daysOfWeek = $config['days_of_week'] ?? [1, 2, 3, 4, 5];
-            $frequency = $config['frequency'] ?? self::FREQ_DAILY;
-            
-            // Verificar dia da semana
-            if (!in_array((int)$dayOfWeek, $daysOfWeek)) {
+            $triggerConfig = $this->decodeJson(is_string($rule['trigger_config'] ?? null) ? $rule['trigger_config'] : null);
+
+            if (!$this->isRuleScheduledNow($triggerConfig, (int) $dayOfWeek, (string) $currentHour)) {
                 continue;
             }
-            
-            // Verificar hora (com margem de 30 minutos)
-            $runAtTime = strtotime($runAt);
-            $currentTime = strtotime($currentHour);
-            $diff = abs($currentTime - $runAtTime);
-            
-            if ($diff <= 1800) { // 30 minutos de margem
-                $rule['filters'] = json_decode($rule['filters'], true) ?? [];
-                $rule['trigger_config'] = json_decode($rule['trigger_config'], true) ?? [];
-                $rule['limits'] = json_decode($rule['limits'], true) ?? [];
-                $duRules[] = $rule;
-            }
+
+            $rule['filters'] = $this->decodeJson(is_string($rule['filters'] ?? null) ? $rule['filters'] : null);
+            $rule['trigger_config'] = $triggerConfig;
+            $rule['limits'] = $this->decodeJson(is_string($rule['limits'] ?? null) ? $rule['limits'] : null);
+            $duRules[] = $rule;
         }
         
         return $duRules;
@@ -659,10 +682,124 @@ class CloneAutomationService
         $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($logs as &$log) {
-            $log['errors'] = json_decode($log['errors'], true) ?? [];
+            $log['errors'] = $this->decodeJson(is_string($log['errors'] ?? null) ? $log['errors'] : null);
         }
         
         return $logs;
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     */
+    private function shouldIncludeItem(array $item, array $filters): bool
+    {
+        $brands = $filters['brands'] ?? [];
+        if (is_array($brands) && $brands !== []) {
+            $itemBrand = $this->extractBrand($item);
+            if (!in_array($itemBrand, $brands, true)) {
+                return false;
+            }
+        }
+
+        $title = strtolower((string) ($item['title'] ?? ''));
+
+        $excludeKeywords = $filters['exclude_keywords'] ?? [];
+        if (is_array($excludeKeywords)) {
+            foreach ($excludeKeywords as $kw) {
+                $needle = strtolower((string) $kw);
+                if ($needle !== '' && strpos($title, $needle) !== false) {
+                    return false;
+                }
+            }
+        }
+
+        $includeKeywords = $filters['include_keywords'] ?? [];
+        if (is_array($includeKeywords) && $includeKeywords !== []) {
+            $included = false;
+            foreach ($includeKeywords as $kw) {
+                $needle = strtolower((string) $kw);
+                if ($needle !== '' && strpos($title, $needle) !== false) {
+                    $included = true;
+                    break;
+                }
+            }
+            if (!$included) {
+                return false;
+            }
+        }
+
+        $onlyCatalog = (bool) ($filters['only_catalog'] ?? false);
+        if ($onlyCatalog && empty($item['catalog_product_id'])) {
+            return false;
+        }
+
+        $onlyAvailable = (bool) ($filters['only_available'] ?? false);
+        if ($onlyAvailable) {
+            $status = (string) ($item['status'] ?? '');
+            if ($status !== 'active') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $triggerConfig
+     */
+    private function isRuleScheduledNow(array $triggerConfig, int $dayOfWeek, string $currentHour): bool
+    {
+        $daysOfWeek = $triggerConfig['days_of_week'] ?? [1, 2, 3, 4, 5];
+        if (!is_array($daysOfWeek)) {
+            $daysOfWeek = [1, 2, 3, 4, 5];
+        }
+
+        if (!in_array($dayOfWeek, array_map('intval', $daysOfWeek), true)) {
+            return false;
+        }
+
+        $runAt = (string) ($triggerConfig['run_at'] ?? '03:00');
+        $runAtTime = strtotime($runAt);
+        $currentTime = strtotime($currentHour);
+        if ($runAtTime === false || $currentTime === false) {
+            return false;
+        }
+
+        $diff = abs($currentTime - $runAtTime);
+        return $diff <= 1800;
+    }
+
+    /**
+     * @param array<string, mixed> $value
+     */
+    private function encodeJson(array $value): string
+    {
+        $json = json_encode($value, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            throw new Exception('Falha ao serializar JSON');
+        }
+        return $json;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodeJson(?string $json): array
+    {
+        if ($json === null || $json === '') {
+            return [];
+        }
+
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            log_warning('CloneAutomationService: falha ao decodificar JSON', [
+                'service' => self::class,
+                'json_error' => json_last_error_msg(),
+            ]);
+            return [];
+        }
+
+        return $decoded;
     }
 
     /**

@@ -6,6 +6,27 @@
 
 ---
 
+## Sessao: 2026-02-19 — CLONE-004: Clone automação (scheduler/triggers) com strict types e testes unitarios
+
+### Implementacao
+1. **CloneAutomationController.php** ajustado: adiciona `declare(strict_types=1)`, valida JSON de entrada (400 quando invalido) e troca `catch (\Exception)` por `catch (\Throwable)`
+2. **CloneAutomationService.php** ajustado:
+   - adiciona `declare(strict_types=1)`
+   - corrige integracao com `CatalogCloneService::cloneItem(array $params)` (antes estava chamando com assinatura errada)
+   - interpreta retorno real do clone (`status=success` + `target_item_id`)
+   - remove catch silencioso em busca de itens e adiciona `log_warning` com contexto
+   - extrai helpers deterministas para permitir testes DB-free (filtros e agendamento)
+3. **clone-automation-worker.php** ajustado: adiciona strict_types, tipa propriedades, captura `Throwable` e substitui catches silenciosos de notificacao por logs warning (best-effort)
+4. **Testes Unit DB-free** criados:
+   - `CloneAutomationControllerTest.php` (estrutural)
+   - `CloneAutomationServiceTest.php` (comportamental: filtros, schedule window, JSON decode)
+5. **phpunit.xml** atualizado: inclui explicitamente os 2 arquivos na suite Unit
+
+### Resultado
+- PHPUnit(Unit): 1346 tests, 2607 assertions, 40 skipped — ALL PASS
+- project-status.json: CLONE-004 passes:true
+- Observacao: ambiente segue sem MySQL (esperado); testes Unit continuam DB-free
+
 ## Sessao: 2026-02-19 — CLONE-003: Clone A/B Testing (strict types, worker alinhado e testes unitarios)
 
 ### Implementacao

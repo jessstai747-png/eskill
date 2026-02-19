@@ -1,6 +1,8 @@
 #!/usr/bin/env php
 <?php
 
+declare(strict_types=1);
+
 /**
  * Clone Automation Worker
  * 
@@ -21,8 +23,8 @@ use App\Database;
 
 class CloneAutomationWorker
 {
-    private $db;
-    private $startTime;
+    private \PDO $db;
+    private float $startTime;
     private bool $verbose;
 
     public function __construct(bool $verbose = false)
@@ -56,7 +58,7 @@ class CloneAutomationWorker
             $this->log("Itens clonados: {$totalCloned}");
             $this->log("Tempo: {$elapsed}s");
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->log("ERRO: " . $e->getMessage(), 'error');
         }
     }
@@ -79,8 +81,8 @@ class CloneAutomationWorker
             $notifier = null;
             try {
                 $notifier = new CloneNotificationService($accountId);
-            } catch (Exception $e) {
-                // Notificações não configuradas
+            } catch (Throwable $e) {
+                $this->log('CloneNotificationService indisponível: ' . $e->getMessage(), 'warning');
             }
 
             foreach ($rules as $rule) {
@@ -114,12 +116,12 @@ class CloneAutomationWorker
                                 ],
                                 $failed > 0 ? 'warning' : 'info'
                             );
-                        } catch (Exception $e) {
-                            // Ignorar erro de notificação
+                        } catch (Throwable $e) {
+                            $this->log('Falha ao notificar execução: ' . $e->getMessage(), 'warning');
                         }
                     }
 
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     $this->log("    ERRO na regra {$rule['id']}: " . $e->getMessage(), 'error');
 
                     // Notificar erro
@@ -129,14 +131,14 @@ class CloneAutomationWorker
                                 "Erro na automação: {$rule['name']}",
                                 $e->getMessage()
                             );
-                        } catch (Exception $ne) {
-                            // Ignorar
+                        } catch (Throwable $ne) {
+                            $this->log('Falha ao notificar alerta crítico: ' . $ne->getMessage(), 'warning');
                         }
                     }
                 }
             }
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->log("ERRO na conta #{$accountId}: " . $e->getMessage(), 'error');
         }
 
@@ -163,14 +165,20 @@ class CloneAutomationWorker
             echo "[{$timestamp}] [{$prefix}] {$message}\n";
         }
 
-        // Log em arquivo
-        $logDir = __DIR__ . '/../storage/logs';
-        if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
-        }
+        // Log em arquivo (melhor esforço)
+        try {
+            $logDir = __DIR__ . '/../storage/logs';
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0755, true);
+            }
 
-        $logFile = $logDir . '/clone-automation-' . date('Y-m-d') . '.log';
-        file_put_contents($logFile, "[{$timestamp}] [{$prefix}] {$message}\n", FILE_APPEND);
+            $logFile = $logDir . '/clone-automation-' . date('Y-m-d') . '.log';
+            file_put_contents($logFile, "[{$timestamp}] [{$prefix}] {$message}\n", FILE_APPEND);
+        } catch (Throwable $e) {
+            if ($this->verbose) {
+                fwrite(STDERR, "[{$timestamp}] [WARNING] Falha ao escrever log: {$e->getMessage()}\n");
+            }
+        }
     }
 }
 
