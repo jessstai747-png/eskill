@@ -25,6 +25,7 @@ BOLD='\033[1m'
 
 ERRORS=0
 WARNINGS=0
+DB_OK=0
 
 function header() {
     echo ""
@@ -194,8 +195,10 @@ function check_database() {
     " 2>/dev/null)
 
     if [[ "$db_check" == "OK" ]]; then
+        DB_OK=1
         check_pass "Conexão MySQL OK"
     else
+        DB_OK=0
         check_warn "MySQL: ${db_check#FAIL:}"
     fi
 }
@@ -207,14 +210,30 @@ function check_tests() {
     section "5. Testes"
 
     if [ -f "$PROJECT_DIR/vendor/bin/phpunit" ]; then
-        local test_result=$(cd "$PROJECT_DIR" && php vendor/bin/phpunit --no-coverage --colors=never 2>&1 | tail -5)
-        if echo "$test_result" | grep -q "OK"; then
-            check_pass "PHPUnit: $test_result"
-        elif echo "$test_result" | grep -q "FAILURES"; then
-            check_warn "PHPUnit: Alguns testes falhando"
-            echo "         $test_result"
+        # Unit testsuite: deve rodar mesmo sem MySQL
+        local unit_result=$(cd "$PROJECT_DIR" && php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never 2>&1 | tail -10)
+        if echo "$unit_result" | grep -q "OK"; then
+            check_pass "PHPUnit(Unit): $unit_result"
+        elif echo "$unit_result" | grep -q "FAILURES"; then
+            check_warn "PHPUnit(Unit): Alguns testes falhando"
+            echo "         $unit_result"
         else
-            check_warn "PHPUnit: $test_result"
+            check_warn "PHPUnit(Unit): $unit_result"
+        fi
+
+        # Integration testsuite: só roda se o MySQL estiver acessível
+        if [ "${DB_OK:-0}" -eq 1 ]; then
+            local integration_result=$(cd "$PROJECT_DIR" && php vendor/bin/phpunit --testsuite Integration --no-coverage --colors=never 2>&1 | tail -10)
+            if echo "$integration_result" | grep -q "OK"; then
+                check_pass "PHPUnit(Integration): $integration_result"
+            elif echo "$integration_result" | grep -q "FAILURES"; then
+                check_warn "PHPUnit(Integration): Alguns testes falhando"
+                echo "         $integration_result"
+            else
+                check_warn "PHPUnit(Integration): $integration_result"
+            fi
+        else
+            check_warn "PHPUnit(Integration): pulado (MySQL indisponível neste ambiente)"
         fi
     else
         check_warn "PHPUnit não instalado (vendor/bin/phpunit)"

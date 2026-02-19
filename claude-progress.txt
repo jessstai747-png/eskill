@@ -6,6 +6,23 @@
 
 ---
 
+## Sessão: 2026-02-19 — Harness: Smoke test resiliente sem MySQL
+
+### Objetivo
+Desbloquear validação incremental no ambiente sandbox onde o MySQL não está disponível, permitindo rodar PHPUnit (Unit) sem falhar no bootstrap.
+
+### Implementação
+1. **`bin/init.sh` agora roda PHPUnit por testsuite**
+    - Sempre executa `--testsuite Unit` (não exige MySQL).
+    - Executa `--testsuite Integration` **apenas** quando a conectividade MySQL estiver OK.
+    - Quando MySQL está indisponível, registra aviso e pula Integration sem “mascarar” resultado.
+
+### Validação
+- `bash bin/init.sh` ✅
+   - MySQL: ⚠️ indisponível (esperado neste ambiente)
+   - PHPUnit(Unit): ✅ OK (com skips esperados)
+   - PHPUnit(Integration): ⚠️ pulado (MySQL indisponível)
+
 ## Sessão: 2026-02-19 — Fase 0 concluída (baseline honesto)
 
 ### Objetivo
