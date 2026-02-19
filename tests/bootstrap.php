@@ -35,6 +35,26 @@ if (file_exists($localEnv)) {
 $_ENV['APP_ENV'] = 'testing';
 $_ENV['CACHE_ENABLED'] = false; // Disable cache in tests
 
+// Make sessions safe in CLI tests even when there is output before session_start().
+// PHPUnit may emit output (logs) during the run, and some services depend on $_SESSION.
+// Disabling cookies and cache limiter prevents "headers already sent" warnings.
+// Also, force save_path to a writable directory (sandbox environments may have read-only /var/lib/php/sessions
+// and even a read-only /tmp). Use project storage for maximum portability.
+$sessionSavePath = realpath(__DIR__ . '/../storage') ?: (__DIR__ . '/../storage');
+$sessionSavePath = rtrim($sessionSavePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'sessions';
+if (!is_dir($sessionSavePath)) {
+    @mkdir($sessionSavePath, 0775, true);
+}
+@ini_set('session.save_path', $sessionSavePath);
+@ini_set('session.use_cookies', '0');
+@ini_set('session.use_only_cookies', '0');
+@ini_set('session.cache_limiter', '');
+@ini_set('session.cache_expire', '0');
+
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
+
 // Mock session if needed
 if (!isset($_SESSION)) {
     $_SESSION = [];

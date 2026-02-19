@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -10,12 +12,26 @@ use App\Database;
 class MercadoLivreAuthService
 {
     private array $config;
-    private \PDO $db;
+    private ?\PDO $db;
 
-    public function __construct()
+    public function __construct(?\PDO $db = null, ?array $config = null)
     {
-        $this->config = \App\Core\Config::getInstance()->all();
-        $this->db = Database::getInstance();
+        $this->config = $config ?? \App\Core\Config::getInstance()->all();
+        $this->db = $db;
+    }
+
+    private function pdo(): \PDO
+    {
+        if ($this->db instanceof \PDO) {
+            return $this->db;
+        }
+
+        try {
+            $this->db = Database::getInstance();
+            return $this->db;
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Database unavailable for MercadoLivreAuthService', 0, $e);
+        }
     }
     
     /**
@@ -32,7 +48,7 @@ class MercadoLivreAuthService
         ?int $executionTimeMs = null
     ): void {
         try {
-            $stmt = $this->db->prepare("
+            $stmt = $this->pdo()->prepare("
                 INSERT INTO token_refresh_audit (
                     account_id, action, details, http_code, error_message,
                     expires_at_before, expires_at_after, execution_time_ms
@@ -204,13 +220,13 @@ class MercadoLivreAuthService
         }
 
         // Inserir ou atualizar ml_accounts
-        $stmt = $this->db->prepare('SELECT id FROM ml_accounts WHERE ml_user_id = :ml_user_id LIMIT 1');
+        $stmt = $this->pdo()->prepare('SELECT id FROM ml_accounts WHERE ml_user_id = :ml_user_id LIMIT 1');
         $stmt->execute(['ml_user_id' => $mlUserId]);
         $existing = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if ($existing) {
             $accountId = (int)$existing['id'];
-            $update = $this->db->prepare("UPDATE ml_accounts SET
+            $update = $this->pdo()->prepare("UPDATE ml_accounts SET
                 user_id = :user_id,
                 nickname = :nickname,
                 email = :email,
@@ -233,7 +249,7 @@ class MercadoLivreAuthService
                 'id' => $accountId
             ]);
         } else {
-            $insert = $this->db->prepare("INSERT INTO ml_accounts
+            $insert = $this->pdo()->prepare("INSERT INTO ml_accounts
                 (user_id, ml_user_id, nickname, email, site_id, access_token, refresh_token, token_expires_at, status, tokens_encrypted, created_at, updated_at)
                 VALUES
                 (:user_id, :ml_user_id, :nickname, :email, :site_id, :access_token, :refresh_token, :expires_at, 'active', :tokens_encrypted, NOW(), NOW())");
@@ -250,7 +266,7 @@ class MercadoLivreAuthService
                 'tokens_encrypted' => $tokensEncrypted,
             ]);
 
-            $accountId = (int)$this->db->lastInsertId();
+            $accountId = (int)$this->pdo()->lastInsertId();
         }
 
         unset($_SESSION['ml_oauth_state']);
@@ -274,7 +290,7 @@ class MercadoLivreAuthService
         );
         
         // Atualizar last_oauth_connection_at
-        $this->db->prepare(
+        $this->pdo()->prepare(
             'UPDATE ml_accounts SET last_oauth_connection_at = NOW() WHERE id = :id'
         )->execute(['id' => $accountId]);
 
@@ -290,7 +306,7 @@ class MercadoLivreAuthService
         $startTime = microtime(true);
         
         // Recuperar refresh token e expirar atual
-        $stmt = $this->db->prepare('SELECT refresh_token, tokens_encrypted, token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
+        $stmt = $this->pdo()->prepare('SELECT refresh_token, tokens_encrypted, token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $accountId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
@@ -422,7 +438,7 @@ class MercadoLivreAuthService
             );
             
             // Atualizar contador de falhas e último erro
-            $this->db->prepare(
+            $this->pdo()->prepare(
                 'UPDATE ml_accounts 
                 SET refresh_failure_count = refresh_failure_count + 1, 
                     last_refresh_error = :error,
@@ -469,7 +485,7 @@ class MercadoLivreAuthService
             }
         }
 
-        $upd = $this->db->prepare('UPDATE ml_accounts SET access_token = :access_token, refresh_token = :refresh_token, token_expires_at = :expires_at, tokens_encrypted = :tokens_encrypted, status = :status, last_refresh_at = NOW(), refresh_failure_count = 0, last_refresh_error = NULL, updated_at = NOW() WHERE id = :id');
+        $upd = $this->pdo()->prepare('UPDATE ml_accounts SET access_token = :access_token, refresh_token = :refresh_token, token_expires_at = :expires_at, tokens_encrypted = :tokens_encrypted, status = :status, last_refresh_at = NOW(), refresh_failure_count = 0, last_refresh_error = NULL, updated_at = NOW() WHERE id = :id');
         $upd->execute([
             'access_token' => $storeAccess,
             'refresh_token' => $storeRefresh,
@@ -508,7 +524,7 @@ class MercadoLivreAuthService
      */
     public function ensureValidToken(int $accountId, int $bufferMinutes = 60): bool
     {
-        $stmt = $this->db->prepare('SELECT token_expires_at, status FROM ml_accounts WHERE id = :id LIMIT 1');
+        $stmt = $this->pdo()->prepare('SELECT token_expires_at, status FROM ml_accounts WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $accountId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
@@ -532,19 +548,34 @@ class MercadoLivreAuthService
         $refreshed = $this->refreshToken($accountId);
         if ($refreshed) {
             try {
-                $upd = $this->db->prepare("UPDATE ml_accounts SET status = 'active', updated_at = NOW() WHERE id = :id");
+                $upd = $this->pdo()->prepare("UPDATE ml_accounts SET status = 'active', updated_at = NOW() WHERE id = :id");
                 $upd->execute(['id' => $accountId]);
             } catch (\Throwable $e) {
                 // não bloquear se não conseguir atualizar status
+                try {
+                    (new StructuredLogService())->warning('Falha ao atualizar status ml_accounts para active', [
+                        'account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ]);
+                } catch (\Throwable $ignored) {
+                    // último recurso: não bloquear fluxo
+                }
             }
             return true;
         }
 
         try {
-            $upd = $this->db->prepare("UPDATE ml_accounts SET status = 'expired', updated_at = NOW() WHERE id = :id");
+            $upd = $this->pdo()->prepare("UPDATE ml_accounts SET status = 'expired', updated_at = NOW() WHERE id = :id");
             $upd->execute(['id' => $accountId]);
         } catch (\Throwable $e) {
-            // ignorar
+            try {
+                (new StructuredLogService())->warning('Falha ao atualizar status ml_accounts para expired', [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+            } catch (\Throwable $ignored) {
+                // não bloquear fluxo
+            }
         }
 
         return false;
@@ -590,7 +621,7 @@ class MercadoLivreAuthService
      */
     public function tokenNeedsRefresh(int $accountId, int $bufferMinutes = 30): bool
     {
-        $stmt = $this->db->prepare('SELECT token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
+        $stmt = $this->pdo()->prepare('SELECT token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $accountId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
@@ -610,7 +641,7 @@ class MercadoLivreAuthService
      */
     public function getTokenStatus(int $accountId): array
     {
-        $stmt = $this->db->prepare('
+        $stmt = $this->pdo()->prepare('
             SELECT id, ml_user_id, nickname, token_expires_at, status, last_token_refresh
             FROM ml_accounts WHERE id = :id LIMIT 1
         ');
