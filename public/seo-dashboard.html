@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel SEO Profissional</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: var(--primary-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .progress {
+            background: rgba(255,255,255,0.1);
+            height: 10px;
+            border-radius: 5px;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--success-color), var(--warning-color));
+        }
+
+        .btn-seo {
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-seo:hover {
+            background: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .nav-tabs .nav-link {
+            color: rgba(255,255,255,0.7);
+            border: none;
+            background: transparent;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--card-bg);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .table-dark {
+            background: var(--card-bg);
+        }
+
+        .table-dark th,
+        .table-dark td {
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .badge-seo {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            border-width: 0.3rem;
+        }
+
+        .alert-seo {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        .gap-indicator {
+            width: 100%;
+            height: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .gap-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--danger-color), var(--warning-color), var(--success-color));
+            transition: width 0.5s ease;
+        }
+
+        .semantic-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .semantic-tag {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid var(--secondary-color);
+            border-radius: 20px;
+            padding: 5px 15px;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .semantic-tag:hover {
+            background: var(--secondary-color);
+            transform: scale(1.1);
+        }
+
+        .model-suggestion {
+            background: rgba(39, 174, 96, 0.1);
+            border-left: 4px solid var(--success-color);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .optimization-score {
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .score-high {
+            background: var(--success-color);
+        }
+
+        .score-medium {
+            background: var(--warning-color);
+        }
+
+        .score-low {
+            background: var(--danger-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <div class="mt-3">Processando otimização SEO...</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>
+                SEO Profissional ML
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text">
+                    <i class="fas fa-user-circle me-2"></i>
+                    <span id="userAccount">Carregando...</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-4">
+        <!-- Metrics Dashboard -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <i class="fas fa-tachometer-alt fa-2x mb-2"></i>
+                    <div class="metric-value" id="optimizationScore">--</div>
+                    <div class="metric-label">Score SEO</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" style="width: 0%" id="scoreProgress"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <i class="fas fa-key fa-2x mb-2"></i>
+                    <div class="metric-value" id="keywordCount">--</div>
+                    <div class="metric-label">Keywords Otimizadas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <i class="fas fa-chart-line fa-2x mb-2"></i>
+                    <div class="metric-value" id="gapReduction">--%</div>
+                    <div class="metric-label">Redução de Lacunas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <i class="fas fa-rocket fa-2x mb-2"></i>
+                    <div class="metric-value" id="roiImpact">--%</div>
+                    <div class="metric-label">Impacto ROI</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Tabs -->
+        <div class="row">
+            <div class="col-12">
+                <ul class="nav nav-tabs" id="seoTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">
+                            <i class="fas fa-search me-2"></i>Análise de Produto
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="title-tab" data-bs-toggle="tab" data-bs-target="#title" type="button" role="tab">
+                            <i class="fas fa-heading me-2"></i>Otimização de Título
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="gaps-tab" data-bs-toggle="tab" data-bs-target="#gaps" type="button" role="tab">
+                            <i class="fas fa-gaps me-2"></i>Lacunas de Keywords
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="semantic-tab" data-bs-toggle="tab" data-bs-target="#semantic" type="button" role="tab">
+                            <i class="fas fa-brain me-2"></i>Análise Semântica
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="model-tab" data-bs-toggle="tab" data-bs-target="#model" type="button" role="tab">
+                            <i class="fas fa-tag me-2"></i>Atributo Modelo
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring" type="button" role="tab">
+                            <i class="fas fa-chart-area me-2"></i>Monitoramento
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="seoTabContent">
+                    <!-- Product Analysis Tab -->
+                    <div class="tab-pane fade show active" id="analysis" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-search me-2"></i>Análise SEO Completa</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="productId" class="form-label">ID do Produto ML</label>
+                                            <input type="text" class="form-control" id="productId" placeholder="MLB1234567890">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="productTitle" class="form-label">Título do Produto</label>
+                                            <textarea class="form-control" id="productTitle" rows="3" placeholder="Digite o título completo do produto..."></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="productCategory" class="form-label">Categoria</label>
+                                            <select class="form-control" id="productCategory">
+                                                <option value="">Selecione...</option>
+                                                <option value="MLB1055">Celulares e Smartphones</option>
+                                                <option value="MLB1648">Informática</option>
+                                                <option value="MLB5726">Eletrodomésticos</option>
+                                                <option value="MLB1039">Moda e Acessórios</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="productDescription" class="form-label">Descrição</label>
+                                            <textarea class="form-control" id="productDescription" rows="6" placeholder="Descrição atual do produto..."></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="targetKeywords" class="form-label">Keywords Alvo</label>
+                                            <input type="text" class="form-control" id="targetKeywords" placeholder="smartphone, iphone, celulares">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-4">
+                                    <button class="btn btn-seo btn-lg" onclick="analyzeProduct()">
+                                        <i class="fas fa-magic me-2"></i>Analisar Produto
+                                    </button>
+                                </div>
+
+                                <!-- Results Section -->
+                                <div id="analysisResults" style="display: none;" class="mt-4">
+                                    <h6><i class="fas fa-chart-pie me-2"></i>Resultados da Análise</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="optimization-score" id="analysisScore">
+                                                Score: 0
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <canvas id="analysisChart" class="chart-container"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <h6><i class="fas fa-list me-2"></i>Ações Recomendadas</h6>
+                                        <div id="actionList"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Title Optimization Tab -->
+                    <div class="tab-pane fade" id="title" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-heading me-2"></i>Otimização de Título</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="titleInput" class="form-label">Título Atual</label>
+                                            <input type="text" class="form-control" id="titleInput" placeholder="Digite o título atual...">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="titleCategory" class="form-label">Categoria</label>
+                                            <select class="form-control" id="titleCategory">
+                                                <option value="">Selecione...</option>
+                                                <option value="MLB1055">Celulares e Smartphones</option>
+                                                <option value="MLB1648">Informática</option>
+                                                <option value="MLB5726">Eletrodomésticos</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Caracteres: <span id="charCount">0</span></label>
+                                            <div class="progress">
+                                                <div class="progress-bar" id="charProgress" style="width: 0%"></div>
+                                            </div>
+                                            <small class="text-muted">Ideal: 45-60 caracteres</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-seo" onclick="optimizeTitle()">
+                                    <i class="fas fa-wand-magic-sparkles me-2"></i>Otimizar Título
+                                </button>
+
+                                <div id="titleResults" class="mt-4" style="display: none;">
+                                    <h6><i class="fas fa-lightbulb me-2"></i>Sugestões Otimizadas</h6>
+                                    <div id="suggestedTitles"></div>
+                                    
+                                    <h6 class="mt-3"><i class="fas fa-microscope me-2"></i>Análise de Lacunas</h6>
+                                    <div id="titleGaps"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keyword Gaps Tab -->
+                    <div class="tab-pane fade" id="gaps" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-gaps me-2"></i>Análise de Lacunas de Keywords</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="gapProductId" class="form-label">ID do Produto</label>
+                                            <input type="text" class="form-control" id="gapProductId" placeholder="MLB1234567890">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="competitorCount" class="form-label">Número de Concorrentes</label>
+                                            <select class="form-control" id="competitorCount">
+                                                <option value="5">5 Concorrentes</option>
+                                                <option value="10" selected>10 Concorrentes</option>
+                                                <option value="15">15 Concorrentes</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-seo" onclick="analyzeKeywordGaps()">
+                                    <i class="fas fa-search-plus me-2"></i>Analisar Lacunas
+                                </button>
+
+                                <div id="gapResults" class="mt-4" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Lacunas Críticas</h6>
+                                            <div id="criticalGaps"></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-chart-bar me-2"></i>Análise Comparativa</h6>
+                                            <canvas id="gapChart"></canvas>
+                                        </div>
+                                    </div>
+                                    <h6 class="mt-3"><i class="fas fa-route me-2"></i>Oportunidades de Cauda Longa</h6>
+                                    <div id="longTailOpportunities"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Semantic Analysis Tab -->
+                    <div class="tab-pane fade" id="semantic" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-brain me-2"></i>Análise Semântica Avançada</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="semanticInput" class="form-label">Texto para Análise</label>
+                                    <textarea class="form-control" id="semanticInput" rows="4" placeholder="Cole o título e descrição do produto..."></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="semanticCategory" class="form-label">Categoria</label>
+                                            <select class="form-control" id="semanticCategory">
+                                                <option value="">Selecione...</option>
+                                                <option value="MLB1055">Celulares e Smartphones</option>
+                                                <option value="MLB1648">Informática</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="semanticType" class="form-label">Tipo de Análise</label>
+                                            <select class="form-control" id="semanticType">
+                                                <option value="structure">Estrutura Semântica</option>
+                                                <option value="expansion">Expansão de Keywords</option>
+                                                <option value="cohesion">Coesão Semântica</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-seo" onclick="analyzeSemantic()">
+                                    <i class="fas fa-network-wired me-2"></i>Analisar Semântica
+                                </button>
+
+                                <div id="semanticResults" class="mt-4" style="display: none;">
+                                    <h6><i class="fas fa-cloud me-2"></i>Nuvem Semântica</h6>
+                                    <div class="semantic-cloud" id="semanticCloud"></div>
+                                    
+                                    <h6 class="mt-3"><i class="fas fa-sitemap me-2"></i>Clusters Conceituais</h6>
+                                    <div id="semanticClusters"></div>
+                                    
+                                    <h6 class="mt-3"><i class="fas fa-bullseye me-2"></i>Mapeamento de Intenção</h6>
+                                    <div id="intentMapping"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model Attribute Tab -->
+                    <div class="tab-pane fade" id="model" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-tag me-2"></i>Otimização do Campo Modelo</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="modelTitle" class="form-label">Título do Produto</label>
+                                            <input type="text" class="form-control" id="modelTitle" placeholder="Título completo...">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="currentModel" class="form-label">Modelo Atual</label>
+                                            <input type="text" class="form-control" id="currentModel" placeholder="Modelo atual (se houver)">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="modelCategory" class="form-label">Categoria</label>
+                                            <select class="form-control" id="modelCategory">
+                                                <option value="">Selecione...</option>
+                                                <option value="MLB1055">Celulares e Smartphones</option>
+                                                <option value="MLB1648">Informática</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="brandInput" class="form-label">Marca</label>
+                                            <input type="text" class="form-control" id="brandInput" placeholder="Marca do produto">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <button class="btn btn-seo w-100" onclick="extractModel()">
+                                            <i class="fas fa-search me-2"></i>Extrair Modelo
+                                        </button>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button class="btn btn-seo w-100" onclick="optimizeModel()">
+                                            <i class="fas fa-cog me-2"></i>Otimizar Modelo
+                                        </button>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button class="btn btn-seo w-100" onclick="validateModel()">
+                                            <i class="fas fa-check-circle me-2"></i>Validar Modelo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="modelResults" class="mt-4" style="display: none;">
+                                    <h6><i class="fas fa-lightbulb me-2"></i>Sugestões de Modelo</h6>
+                                    <div id="modelSuggestions"></div>
+                                    
+                                    <h6 class="mt-3"><i class="fas fa-chart-line me-2"></i>Análise de Padrões</h6>
+                                    <div id="modelPatterns"></div>
+                                    
+                                    <h6 class="mt-3"><i class="fas fa-check-double me-2"></i>Validação</h6>
+                                    <div id="modelValidation"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monitoring Tab -->
+                    <div class="tab-pane fade" id="monitoring" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Monitoramento Contínuo</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="monitoringProducts" class="form-label">IDs dos Produtos</label>
+                                            <textarea class="form-control" id="monitoringProducts" rows="3" placeholder="MLB123, MLB456, MLB789 (um por linha)"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="timeRange" class="form-label">Período</label>
+                                            <select class="form-control" id="timeRange">
+                                                <option value="7d">Últimos 7 dias</option>
+                                                <option value="30d" selected>Últimos 30 dias</option>
+                                                <option value="90d">Últimos 90 dias</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-seo" onclick="startMonitoring()">
+                                    <i class="fas fa-play me-2"></i>Iniciar Monitoramento
+                                </button>
+
+                                <div id="monitoringResults" class="mt-4" style="display: none;">
+                                    <h6><i class="fas fa-chart-line me-2"></i>Tendências de Otimização</h6>
+                                    <canvas id="monitoringChart"></canvas>
+                                    
+                                    <div class="row mt-4">
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-exclamation-circle me-2"></i>Alertas</h6>
+                                            <div id="monitoringAlerts"></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-trophy me-2"></i>Melhorias Detectadas</h6>
+                                            <div id="monitoringImprovements"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="seo-dashboard.js"></script>
+</body>
+</html>

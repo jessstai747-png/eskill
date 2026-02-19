@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<ruleset name="MercadoLivreManager">
+    <description>PHP CodeSniffer config for Mercado Livre Manager</description>
+    
+    <!-- Paths to check -->
+    <file>app</file>
+    <file>public</file>
+    <file>config</file>
+    
+    <!-- Exclude paths -->
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>storage/*</exclude-pattern>
+    <exclude-pattern>node_modules/*</exclude-pattern>
+    <exclude-pattern>*.blade.php</exclude-pattern>
+    
+    <!-- Arguments -->
+    <arg name="colors"/>
+    <arg value="sp"/>
+    <arg name="extensions" value="php"/>
+    
+    <!-- Use PSR-12 Standard (Modern PHP) -->
+    <rule ref="PSR12">
+        <!-- Allow opening brace on same line for closures -->
+        <exclude name="PSR12.Functions.ReturnTypeDeclaration.SpaceBeforeColon"/>
+    </rule>
+    
+    <!-- Additional rules for clean code -->
+    <rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
+    <rule ref="Generic.CodeAnalysis.EmptyStatement"/>
+    <rule ref="Generic.CodeAnalysis.UnusedFunctionParameter"/>
+    <rule ref="Generic.Commenting.Todo"/>
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="150"/>
+        </properties>
+    </rule>
+    
+    <!-- Security rules -->
+    <rule ref="Generic.PHP.ForbiddenFunctions">
+        <properties>
+            <property name="forbiddenFunctions" type="array">
+                <element key="eval" value="null"/>
+                <element key="exec" value="shell_exec"/>
+                <element key="print_r" value="var_dump"/>
+                <element key="var_dump" value="null"/>
+                <element key="die" value="exit"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

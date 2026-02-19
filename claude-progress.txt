@@ -1,8 +1,42 @@
 # Claude Progress — eskill.com.br
 
-> Este arquivo é atualizado automaticamente por agentes IA ao final de cada sessã o.
+> Este arquivo é atualizado automaticamente por agentes IA ao final de cada sessão.
 > NUNCA delete entradas anteriores. Apenas adicione novas no topo.
 > Formato: mais recente primeiro (ordem cronológica reversa).
+
+---
+
+## Sessão: 2026-02-19 — AUTH-001: strict types, logging e testes estruturais para Auth Controller
+
+### Objetivo
+Fortalecer AuthController.php com strict types, corrigir catches silenciosos e ampliar cobertura de testes estruturais.
+
+### Implementação
+1. **declare(strict_types=1)** adicionado a AuthController.php (AuthService.php já tinha)
+2. **log_warning()** adicionado a 2 catches silenciosos:
+   - mobileLogin: `// Ignore log error` → log_warning com contexto
+   - deleteAccount: `// Tabela pode não existir, ignorar` → log_warning com table/account_id/error
+3. **AuthControllerTest.php** ampliado de 15 para 50+ testes com @dataProvider:
+   - Core methods (9), 2FA methods (4), OAuth methods (4), Account management (5)
+   - Method signatures com type hints (int $accountId em disconnect/syncAccount/getSyncStatus/deleteAccount)
+   - Void return types (login/doLogin/logout/register/doRegister)
+   - Dependencies (5 properties privadas)
+   - Imports (7 use statements)
+   - Security patterns (session_start, session_regenerate_id, Log::security, CSRF, audit log)
+   - Error handling (Log::error, log_warning, no error_log, no var_dump)
+   - OAuth patterns (exchangeCodeForTokens, getAuthUrl)
+   - Account management patterns (transactions, AccountSyncService, session cleanup)
+   - Remember me, mobile token, HTTP response codes, documentation
+
+### Validação
+- php -l: Sintaxe OK em AuthController.php e AuthControllerTest.php
+- PHPUnit: 560 tests, 1006 assertions, 40 skipped — ALL PASS
+- Última suíte completa: ITEMS-001 + DASH-001 + AUTH-001 integrados
+
+### Status
+- AUTH-001: ✅ passes: true
+- Fase 1 pendente: AUTH-004 (2FA)
+- Próximo: AUTH-004 — TwoFactorService strict types e testes
 
 ---
 

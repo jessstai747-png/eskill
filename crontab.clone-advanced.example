@@ -1,0 +1,80 @@
+# =============================================================================
+# Crontab para Clone Advanced Features
+# =============================================================================
+# 
+# Instalação:
+#   crontab -e
+#   (cole o conteúdo abaixo)
+#
+# Ou adicione ao crontab existente:
+#   cat crontab.clone-advanced.example >> /tmp/cron && crontab /tmp/cron
+#
+# =============================================================================
+
+# Variáveis de ambiente
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=admin@eskill.com.br
+PROJECT_PATH=/home/eskill/htdocs/eskill.com.br
+
+# =============================================================================
+# WORKERS DE CLONE AVANÇADO
+# =============================================================================
+
+# A/B Testing Worker - Sincroniza métricas a cada 5 minutos
+*/5 * * * * cd $PROJECT_PATH && php bin/clone-ab-testing-worker.php --once >> storage/logs/cron-ab-testing.log 2>&1
+
+# ROI Sync Worker - Sincroniza ROI a cada hora
+0 * * * * cd $PROJECT_PATH && php bin/clone-roi-sync-worker.php --once >> storage/logs/cron-roi-sync.log 2>&1
+
+# Seller Recommendations Worker - Atualiza recomendações 2x ao dia
+0 6,18 * * * cd $PROJECT_PATH && php bin/clone-seller-recommendations-worker.php --once >> storage/logs/cron-seller-recommendations.log 2>&1
+
+# =============================================================================
+# WORKERS DE CLONE EXISTENTES (referência)
+# =============================================================================
+
+# Clone Worker principal - Processa jobs de clonagem
+*/2 * * * * cd $PROJECT_PATH && php bin/catalog-clone-worker.php --once >> storage/logs/cron-clone-worker.log 2>&1
+
+# Automation Worker - Executa regras de automação
+*/10 * * * * cd $PROJECT_PATH && php bin/clone-automation-worker.php --once >> storage/logs/cron-automation.log 2>&1
+
+# Health Monitor - Monitora saúde dos clones
+*/15 * * * * cd $PROJECT_PATH && php bin/clone-health-monitor.php --once >> storage/logs/cron-health.log 2>&1
+
+# Post Actions Worker - Ações pós-clonagem
+*/5 * * * * cd $PROJECT_PATH && php bin/clone-post-actions-worker.php --once >> storage/logs/cron-post-actions.log 2>&1
+
+# Alert Monitor - Monitora alertas
+*/10 * * * * cd $PROJECT_PATH && php bin/clone-alert-monitor.php --once >> storage/logs/cron-alerts.log 2>&1
+
+# =============================================================================
+# MANUTENÇÃO
+# =============================================================================
+
+# Limpeza de dados antigos - 1x por semana (domingo 3h)
+0 3 * * 0 cd $PROJECT_PATH && php bin/cleanup-clone-data.php --days=90 >> storage/logs/cron-cleanup.log 2>&1
+
+# Relatório de métricas - Diário às 23h
+0 23 * * * cd $PROJECT_PATH && php bin/generate-clone-metrics-report.php --email >> storage/logs/cron-metrics-report.log 2>&1
+
+# Rotação de logs - Diário às 4h
+0 4 * * * find $PROJECT_PATH/storage/logs -name "*.log" -mtime +30 -delete
+
+# =============================================================================
+# NOTAS
+# =============================================================================
+# 
+# Para verificar se os jobs estão rodando:
+#   tail -f storage/logs/cron-*.log
+#
+# Para executar manualmente com debug:
+#   php bin/clone-ab-testing-worker.php --once --verbose
+#   php bin/clone-roi-sync-worker.php --once --verbose
+#   php bin/clone-seller-recommendations-worker.php --once --verbose
+#
+# Para ver status dos workers:
+#   ps aux | grep clone
+#
+# =============================================================================

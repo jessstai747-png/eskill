@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercado Livre Manager - Acesso</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+        .access-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+        }
+        .btn-access {
+            margin: 0.5rem;
+            min-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="access-card">
+        <div class="text-center mb-4">
+            <i class="bi bi-shop display-1 text-primary"></i>
+            <h1 class="mt-3">Mercado Livre Manager</h1>
+            <p class="text-muted">Sistema de Gestão Multi-Contas</p>
+        </div>
+
+        <div class="mb-4">
+            <h5><i class="bi bi-box-arrow-in-right"></i> Acesso ao Sistema</h5>
+            <div class="d-grid gap-2">
+                <a href="/auth/login" class="btn btn-primary btn-lg btn-access">
+                    <i class="bi bi-box-arrow-in-right"></i> Fazer Login
+                </a>
+                <a href="/auth/register" class="btn btn-outline-primary btn-lg btn-access">
+                    <i class="bi bi-person-plus"></i> Criar Conta
+                </a>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="mb-4">
+            <h5><i class="bi bi-speedometer2"></i> Dashboard</h5>
+            <div class="d-grid gap-2">
+                <a href="/dashboard" class="btn btn-success btn-access">
+                    <i class="bi bi-house"></i> Dashboard Principal
+                </a>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="mb-4">
+            <h5><i class="bi bi-tools"></i> Ferramentas de Diagnóstico</h5>
+            <div class="d-grid gap-2">
+                <a href="/check.php" class="btn btn-info btn-sm btn-access">
+                    <i class="bi bi-check-circle"></i> Verificação Rápida
+                </a>
+                <a href="/diagnostic.php" class="btn btn-info btn-sm btn-access">
+                    <i class="bi bi-clipboard-check"></i> Diagnóstico Completo
+                </a>
+                <a href="/quick_test.php" class="btn btn-info btn-sm btn-access">
+                    <i class="bi bi-lightning"></i> Teste Rápido
+                </a>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="text-center">
+            <small class="text-muted">
+                <strong>Versão:</strong> 1.0.0<br>
+                <strong>PHP:</strong> <?= phpversion() ?><br>
+                <a href="/dashboard/help" class="text-decoration-none">
+                    <i class="bi bi-question-circle"></i> Ajuda
+                </a>
+            </small>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

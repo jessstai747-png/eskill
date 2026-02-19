@@ -1,0 +1,482 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Services\CatalogCloneMonitoringService;
+use App\Services\FeatureFlagService;
+use App\Services\LoggingService;
+use App\Services\NotificationService;
+use App\Services\AdvancedMonitoringService;
+
+/**
+ * Controller para Dashboard de Monitoramento do Sistema V8.1
+ * Inclui monitoramento avançado de sistema e clonagem
+ */
+class MonitoringController extends BaseController
+{
+    private CatalogCloneMonitoringService $monitoring;
+    private FeatureFlagService $featureFlags;
+    private LoggingService $logger;
+    private NotificationService $notifications;
+    private AdvancedMonitoringService $advancedMonitoring;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->monitoring = new CatalogCloneMonitoringService();
+        $this->featureFlags = new FeatureFlagService();
+        $this->logger = new LoggingService();
+        $this->notifications = new NotificationService();
+        $this->advancedMonitoring = new AdvancedMonitoringService();
+
+        // Verificar se usuário tem permissão de admin
+        if (!$this->isAdmin()) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Acesso negado']);
+            exit;
+        }
+    }
+
+    /**
+     * Dashboard principal de monitoramento
+     */
+    public function dashboard(): void
+    {
+        require_once __DIR__ . '/../Views/monitoring/dashboard.php';
+    }
+
+    /**
+     * API: Métricas em tempo real
+     */
+    public function realTimeMetrics(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $metrics = $this->monitoring->getRealTimeMetrics();
+            echo json_encode([
+                'success' => true,
+                'data' => $metrics,
+                'timestamp' => time()
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Erro ao obter métricas: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * API: Verificar alertas
+     */
+    public function checkAlerts(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $alerts = $this->monitoring->checkAlerts();
+            $logAlerts = $this->logger->checkLogAlerts();
+
+            $allAlerts = array_merge($alerts, $logAlerts);
+
+            echo json_encode([
+                'success' => true,
+                'alerts' => $allAlerts,
+                'count' => count($allAlerts),
+                'timestamp' => time()
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Erro ao verificar alertas: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * API: Relatório de performance
+     */
+    public function performanceReport(): void
+    {
+        header('Content-Type: application/json');
+
+        $days = $this->request->getInt('days', 7);
+
+        try {
+            $startDate = date('Y-m-d', strtotime("-{$days} days"));
+            $endDate = date('Y-m-d');
+            $report = $this->monitoring->getPerformanceReport($startDate, $endDate);
+            echo json_encode([
+                'success' => true,
+                'data' => $report,
+                'period_days' => $days,
+                'timestamp' => time()
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Erro ao gerar relatório: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * API: Gerenciar feature flags
+     */
+    public function featureFlags(): void
+    {
+        header('Content-Type: application/json');
+
+        if ($this->request->method() === 'GET') {
+            // Listar flags
+            $flags = $this->featureFlags->getAllFlags();
+            echo json_encode([
+                'success' => true,
+                'data' => $flags
+            ]);
+        } elseif ($this->request->method() === 'POST') {
+            // Atualizar flag
+            $input = $this->request->json();
+
+            if (!isset($input['flag_name']) || !isset($input['enabled'])) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Parâmetros inválidos']);
+                return;
+            }
+
+            $success = $this->featureFlags->setEnabled($input['flag_name'], (bool)$input['enabled']);
+
+            if ($success) {
+                $this->logger->info(
+                    LoggingService::CATEGORY_SYSTEM,
+                    'Feature flag alterada',
+                    [
+                        'flag' => $input['flag_name'],
+                        'enabled' => (bool)$input['enabled'],
+                        'user_id' => $this->getUserId()
+                    ]
+                );
+
+                echo json_encode(['success' => true]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Erro ao atualizar flag']);
+            }
+        }
+    }
+
+    /**
+     * API: Logs do sistema
+     */
+    public function systemLogs(): void
+    {
+        header('Content-Type: application/json');
+
+        $filters = [
+            'level' => $this->request->get('level'),
+            'category' => $this->request->get('category'),
+            'date_from' => $this->request->get('date_from'),
+            'date_to' => $this->request->get('date_to'),
+            'message' => $this->request->get('message')
+        ];
+
+        // Remove filtros vazios
+        $filters = array_filter($filters);
+
+        $limit = $this->request->getIntClamped('limit', 50, 1, 500);
+        $offset = $this->request->getInt('offset', 0);
+
+        try {
+            $logs = $this->logger->searchLogs($filters, $limit, $offset);
+
+            echo json_encode([
+                'success' => true,
+                'data' => $logs,
+                'filters' => $filters,
+                'pagination' => [
+                    'limit' => $limit,
+                    'offset' => $offset,
+                    'returned' => count($logs)
+                ]
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Erro ao buscar logs: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * API: Status de saúde do sistema
+     */
+    public function healthCheck(): void
+    {
+        header('Content-Type: application/json');
+
+        $health = [
+            'status' => 'ok',
+            'timestamp' => time(),
+            'checks' => []
+        ];
+
+        try {
+            // Verificar DB
+            $dbCheck = $this->checkDatabase();
+            $health['checks']['database'] = $dbCheck;
+
+            // Verificar feature flags
+            $flagsCheck = $this->checkFeatureFlags();
+            $health['checks']['feature_flags'] = $flagsCheck;
+
+            // Verificar jobs em fila
+            $queueCheck = $this->checkJobQueue();
+            $health['checks']['job_queue'] = $queueCheck;
+
+            // Status geral
+            $allOk = $dbCheck['status'] === 'ok' &&
+                $flagsCheck['status'] === 'ok' &&
+                $queueCheck['status'] === 'ok';
+
+            if (!$allOk) {
+                $health['status'] = 'degraded';
+                http_response_code(503);
+            }
+
+            echo json_encode($health);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error',
+                'error' => $e->getMessage(),
+                'timestamp' => time()
+            ]);
+        }
+    }
+
+    /**
+     * Verifica saúde do banco de dados
+     */
+    private function checkDatabase(): array
+    {
+        try {
+            $start = microtime(true);
+            $this->monitoring->getRealTimeMetrics();
+            $responseTime = (microtime(true) - $start) * 1000;
+
+            return [
+                'status' => 'ok',
+                'response_time_ms' => round($responseTime, 2)
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Verifica feature flags
+     */
+    private function checkFeatureFlags(): array
+    {
+        try {
+            $flags = $this->featureFlags->getAllFlags();
+
+            return [
+                'status' => 'ok',
+                'flags_count' => count($flags),
+                'cloning_enabled' => $this->featureFlags->isCloningEnabled()
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Verifica fila de jobs
+     */
+    private function checkJobQueue(): array
+    {
+        try {
+            $metrics = $this->monitoring->getRealTimeMetrics();
+            $pending = $metrics['basic_stats']['pending_jobs'] ?? 0;
+
+            return [
+                'status' => $pending > 100 ? 'warning' : 'ok',
+                'pending_jobs' => $pending,
+                'message' => $pending > 100 ? 'Muitos jobs pendentes' : 'Fila normal'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    // ===== ADVANCED MONITORING V8.1 METHODS =====
+
+    /**
+     * Advanced System Metrics API
+     * GET /api/monitoring/system-metrics
+     */
+    public function systemMetrics(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $metrics = $this->advancedMonitoring->collectSystemMetrics();
+            echo json_encode([
+                'success' => true,
+                'metrics' => $metrics,
+                'timestamp' => date('Y-m-d H:i:s')
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * System Health Check API
+     * GET /api/monitoring/health-advanced
+     */
+    public function healthAdvanced(): void
+    {
+        header('Content-Type: application/json');
+
+        $health = $this->advancedMonitoring->getHealthStatus();
+
+        if ($health['status'] === 'critical') {
+            http_response_code(503); // Service Unavailable
+        } elseif ($health['status'] === 'poor') {
+            http_response_code(429); // Too Many Requests
+        } else {
+            http_response_code(200);
+        }
+
+        echo json_encode($health);
+    }
+
+    /**
+     * System Alerts API
+     * GET /api/monitoring/system-alerts
+     */
+    public function systemAlerts(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $alerts = $this->advancedMonitoring->getActiveAlerts();
+            echo json_encode([
+                'success' => true,
+                'alerts' => $alerts,
+                'count' => count($alerts)
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Performance Analytics API
+     * GET /api/monitoring/performance-advanced
+     */
+    public function performanceAdvanced(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $timeframe = $this->request->get('timeframe', '1 hour');
+            $analytics = $this->advancedMonitoring->getPerformanceAnalytics($timeframe);
+
+            echo json_encode([
+                'success' => true,
+                'analytics' => $analytics,
+                'timeframe' => $timeframe
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Log Request Performance (middleware)
+     */
+    public function logRequestPerformance(array $requestData): void
+    {
+        try {
+            $this->advancedMonitoring->logRequestPerformance($requestData);
+        } catch (\Exception $e) {
+            // Silent fail for performance logging
+            log_warning('Falha ao registrar performance de requisição', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Comprehensive Performance Metrics API (Phase 4)
+     * GET /api/monitoring/metrics
+     */
+    public function metrics(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $metricsService = new \App\Services\PerformanceMetricsService();
+            $metrics = $metricsService->getMetrics();
+
+            echo json_encode([
+                'success' => true,
+                'metrics' => $metrics
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Limpa métricas antigas
+     */
+    public function clean(): void
+    {
+        $days = $this->request->getInt('days', 30);
+
+        $deleted = $this->advancedMonitoring->cleanOldMetrics($days);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'deleted' => $deleted,
+            'days' => $days,
+        ]);
+    }
+}

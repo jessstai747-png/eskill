@@ -1,0 +1,234 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Mercado Livre Manager API",
+    "description": "Enterprise e-commerce platform API with AI, analytics, and competitive intelligence",
+    "version": "5.0.0",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Production API"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Analytics",
+      "description": "Advanced analytics and forecasting"
+    },
+    {
+      "name": "Notifications",
+      "description": "Real-time notifications via SSE"
+    },
+    {
+      "name": "Monitoring",
+      "description": "Performance metrics and system health"
+    },
+    {
+      "name": "Jobs",
+      "description": "Background job management"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard data and preferences"
+    }
+  ],
+  "paths": {
+    "/analytics/dashboard": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get comprehensive analytics dashboard",
+        "description": "Returns sales, profit, inventory, forecast, and trends data",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["7days", "30days", "90days", "year"],
+              "default": "30days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Analytics data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sales": {"type": "object"},
+                        "profit": {"type": "object"},
+                        "inventory": {"type": "object"},
+                        "forecast": {"type": "array"},
+                        "trends": {"type": "object"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/forecast": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get sales forecast",
+        "description": "Predicts future sales using linear regression",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sales forecast"
+          }
+        }
+      }
+    },
+    "/notifications/stream": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "SSE notification stream",
+        "description": "Server-Sent Events endpoint for real-time notifications",
+        "responses": {
+          "200": {
+            "description": "Event stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/test": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Send test notification",
+        "responses": {
+          "200": {
+            "description": "Test notification sent"
+          }
+        }
+      }
+    },
+    "/monitoring/metrics": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Get performance metrics",
+        "description": "Returns cache, queue, LLM, database, and system metrics",
+        "responses": {
+          "200": {
+            "description": "Performance metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "metrics": {
+                      "type": "object",
+                      "properties": {
+                        "cache": {"type": "object"},
+                        "queue": {"type": "object"},
+                        "llm": {"type": "object"},
+                        "database": {"type": "object"},
+                        "system": {"type": "object"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/stats": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "Get job queue statistics",
+        "responses": {
+          "200": {
+            "description": "Job statistics"
+          }
+        }
+      }
+    },
+    "/dashboard/accounts": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get user accounts",
+        "description": "Returns all ML accounts for current user",
+        "responses": {
+          "200": {
+            "description": "Account list"
+          }
+        }
+      }
+    },
+    "/dashboard/switch-account": {
+      "post": {
+        "tags": ["Dashboard"],
+        "summary": "Switch active account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "account_id": {
+                    "type": "integer"
+                  }
+                },
+                "required": ["account_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account switched"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "PHPSESSID"
+      }
+    }
+  },
+  "security": [
+    {
+      "sessionAuth": []
+    }
+  ]
+}

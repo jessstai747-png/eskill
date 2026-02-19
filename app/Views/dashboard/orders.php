@@ -1,0 +1,799 @@
+<?php
+/**
+ * Dashboard de Pedidos - Versão Moderna
+ * Integrado com o layout moderno (sidebar, temas, etc.)
+ */
+?>
+
+<!-- Custom CSS for Orders Page -->
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-paid {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-confirmed {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .status-ready_to_ship,
+    .status-ready-to-ship {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-shipped {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .status-delivered {
+        background: #c3e6cb;
+        color: #155724;
+    }
+
+    .status-cancelled {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-unknown {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .order-row {
+        transition: background-color 0.2s;
+    }
+
+    .order-row:hover {
+        background-color: var(--hover-bg, #f8f9fa);
+    }
+
+    .order-id {
+        font-weight: 600;
+        color: var(--primary-color, #3483fa);
+    }
+
+    .chart-container {
+        position: relative;
+        height: 200px;
+    }
+
+    .filters-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .filter-btn.active {
+        background-color: var(--primary-color, #3483fa);
+        color: white;
+    }
+
+    .export-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+
+    .export-btn:hover {
+        background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        color: white;
+    }
+
+    .modal-order-header {
+        background: linear-gradient(135deg, #3483fa 0%, #2d3748 100%);
+        color: white;
+    }
+
+    .order-detail-section {
+        background: var(--card-bg, #f8f9fa);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .order-detail-section h6 {
+        color: var(--text-primary, #2d3748);
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .product-thumb {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        background: #e9ecef;
+    }
+
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+
+        .card {
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+    }
+</style>
+
+<!-- Header -->
+<!-- Header -->
+<?php
+$title = 'Central de Pedidos';
+$subtitle = 'Gerencie todos os pedidos de suas contas em um só lugar';
+$breadcrumbs = [['label' => 'Vendas', 'url' => ''], ['label' => 'Pedidos', 'url' => '']];
+$actions = '
+    <div class="dropdown">
+        <button class="btn btn-primary d-flex align-items-center gap-2 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-download"></i> Exportar
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#" onclick="exportOrders(\'csv\')"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Excel (CSV)</a></li>
+            <li><a class="dropdown-item" href="#" onclick="exportOrders(\'pdf\')"><i class="bi bi-file-earmark-pdf me-2"></i>PDF</a></li>
+            <li><a class="dropdown-item" href="#" onclick="window.print()"><i class="bi bi-printer me-2"></i>Imprimir</a></li>
+        </ul>
+    </div>
+';
+include __DIR__ . '/../layouts/modern/partials/page-header.php';
+?>
+
+<!-- KPIs -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon primary">
+            <i class="bi bi-currency-dollar"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="kpi-revenue">R$ 0,00</h3>
+            <p>Faturamento</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon info">
+            <i class="bi bi-bag-check"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="kpi-total">0</h3>
+            <p>Total de Pedidos</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon warning">
+            <i class="bi bi-hourglass-split"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="kpi-pending">0</h3>
+            <p>Pendentes</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon info">
+            <i class="bi bi-truck"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="kpi-shipped">0</h3>
+            <p>Enviados</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon success">
+            <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="kpi-delivered">0</h3>
+            <p>Entregues</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon danger">
+            <i class="bi bi-x-circle"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="kpi-cancelled">0</h3>
+            <p>Cancelados</p>
+        </div>
+    </div>
+</div>
+                <div class="icon-box bg-gradient-danger text-white me-3"><i class="bi bi-x-circle"></i></div>
+                <div>
+                    <div class="h3 fw-bold mb-0" id="kpi-cancelled">0</div>
+                    <div class="text-muted small">Cancelados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-8 mb-3">
+        <div class="card filters-card h-100">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Vendas nos Últimos 7 Dias</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="salesChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Status dos Pedidos</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="statusChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4 no-print">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="row align-items-end">
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label small">Conta</label>
+                        <select class="form-select form-select-sm" id="filter-account">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label small">Status</label>
+                        <select class="form-select form-select-sm" id="filter-status">
+                            <option value="">Todos</option>
+                            <option value="paid">Pago</option>
+                            <option value="confirmed">Confirmado</option>
+                            <option value="ready_to_ship">Pronto p/ Enviar</option>
+                            <option value="shipped">Enviado</option>
+                            <option value="delivered">Entregue</option>
+                            <option value="cancelled">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label small">Data Inicial</label>
+                        <input type="date" class="form-control form-control-sm" id="filter-date-from">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label small">Data Final</label>
+                        <input type="date" class="form-control form-control-sm" id="filter-date-to">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label small">Buscar</label>
+                        <input type="text" class="form-control form-control-sm" id="filter-search" placeholder="ID ou comprador...">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <button class="btn btn-primary btn-sm w-100" onclick="loadOrders()">
+                            <i class="bi bi-search me-1"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <span class="me-2 small text-muted">Filtros rápidos:</span>
+                    <button class="btn btn-sm btn-outline-secondary me-1 filter-btn" data-days="7">7 dias</button>
+                    <button class="btn btn-sm btn-outline-secondary me-1 filter-btn active" data-days="30">30 dias</button>
+                    <button class="btn btn-sm btn-outline-secondary me-1 filter-btn" data-days="90">90 dias</button>
+                    <button class="btn btn-sm btn-outline-secondary filter-btn" data-days="365">1 ano</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Lista de Pedidos</h5>
+                <span class="badge bg-primary" id="orders-count">0 pedidos</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Data</th>
+                                <th>Comprador</th>
+                                <th>Itens</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Conta</th>
+                                <th class="no-print">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody">
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="spinner-border text-primary"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">
+                        Mostrando <span id="showing-from">0</span>-<span id="showing-to">0</span> de <span id="total-orders">0</span>
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header modal-order-header">
+                <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>Pedido <span id="modal-order-id"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modal-order-body">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary"></div>
+                </div>
+            </div>
+            <div class="modal-footer no-print">
+                <button type="button" class="btn btn-outline-secondary" onclick="printOrder()"><i class="bi bi-printer me-1"></i>Imprimir</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    async function requestJson(url, options = {}) {
+        if (window.ApiClient) return window.ApiClient.request(url, options);
+        const resp = await fetch(url, { credentials: 'include', ...options });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
+    }
+
+    function normalizeExternalUrl(url) {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        if (/^(data:|blob:)/i.test(trimmed)) return trimmed;
+        if (trimmed.startsWith('//')) return window.location.protocol + trimmed;
+        if (/^http:\/\//i.test(trimmed)) return trimmed.replace(/^http:\/\//i, 'https://');
+        return trimmed;
+    }
+
+    let allOrders = [],
+        currentPage = 1,
+        ordersPerPage = 20,
+        salesChart = null,
+        statusChart = null,
+        currentOrder = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeDateFilters();
+        loadAccounts();
+        loadOrders();
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const days = parseInt(this.dataset.days);
+                const dateFrom = new Date();
+                dateFrom.setDate(dateFrom.getDate() - days);
+                document.getElementById('filter-date-from').value = dateFrom.toISOString().split('T')[0];
+                document.getElementById('filter-date-to').value = new Date().toISOString().split('T')[0];
+                loadOrders();
+            });
+        });
+
+        document.getElementById('filter-search').addEventListener('keypress', e => {
+            if (e.key === 'Enter') loadOrders();
+        });
+    });
+
+    function initializeDateFilters() {
+        const today = new Date(),
+            thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        document.getElementById('filter-date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('filter-date-to').value = today.toISOString().split('T')[0];
+    }
+
+    function loadAccounts() {
+        requestJson('/api/auth/accounts').then(accounts => {
+            const select = document.getElementById('filter-account');
+            accounts.forEach(acc => {
+                if (acc.status === 'active') select.innerHTML += `<option value="${acc.id}">${acc.nickname || 'Conta ' + acc.id}</option>`;
+            });
+        }).catch(err => console.log('Erro:', err));
+    }
+
+    function loadOrders() {
+        const params = new URLSearchParams({
+            limit: 200
+        });
+        ['account_id:filter-account', 'status:filter-status', 'date_from:filter-date-from', 'date_to:filter-date-to'].forEach(p => {
+            const [key, id] = p.split(':');
+            const val = document.getElementById(id).value;
+            if (val) params.append(key, val);
+        });
+        const search = document.getElementById('filter-search').value;
+
+        document.getElementById('orders-tbody').innerHTML = '<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>';
+
+        requestJson(`/api/orders/all?${params.toString()}`).then(data => {
+            if (data.error) {
+                document.getElementById('orders-tbody').innerHTML = `<tr><td colspan="8" class="text-center py-4"><div class="alert alert-danger mb-0">${data.error}</div></td></tr>`;
+                return;
+            }
+
+            allOrders = data.results || [];
+            if (search) {
+                const s = search.toLowerCase();
+                allOrders = allOrders.filter(o => String(o.id).includes(s) || (o.buyer?.nickname || '').toLowerCase().includes(s));
+            }
+
+            updateKPIs();
+            updateCharts();
+            renderOrders();
+        }).catch(error => {
+            document.getElementById('orders-tbody').innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="alert alert-danger mb-0">Erro ao carregar</div></td></tr>';
+        });
+    }
+
+    function updateKPIs() {
+        let revenue = 0,
+            pending = 0,
+            shipped = 0,
+            delivered = 0,
+            cancelled = 0;
+        allOrders.forEach(o => {
+            revenue += parseFloat(o.total_amount || 0);
+            const s = (o.status || '').toLowerCase();
+            if (['paid', 'confirmed', 'ready_to_ship'].includes(s)) pending++;
+            else if (s === 'shipped') shipped++;
+            else if (s === 'delivered') delivered++;
+            else if (s === 'cancelled') cancelled++;
+        });
+        document.getElementById('kpi-revenue').textContent = formatCurrency(revenue);
+        document.getElementById('kpi-total').textContent = allOrders.length;
+        document.getElementById('kpi-pending').textContent = pending;
+        document.getElementById('kpi-shipped').textContent = shipped;
+        document.getElementById('kpi-delivered').textContent = delivered;
+        document.getElementById('kpi-cancelled').textContent = cancelled;
+    }
+
+    function updateCharts() {
+        const salesByDay = {},
+            today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            salesByDay[d.toISOString().split('T')[0]] = {
+                orders: 0,
+                revenue: 0
+            };
+        }
+        allOrders.forEach(o => {
+            const od = new Date(o.date_created).toISOString().split('T')[0];
+            if (salesByDay[od]) {
+                salesByDay[od].orders++;
+                salesByDay[od].revenue += parseFloat(o.total_amount || 0);
+            }
+        });
+
+        const labels = Object.keys(salesByDay).map(d => new Date(d).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit'
+        }));
+        const ordersData = Object.values(salesByDay).map(d => d.orders);
+        const revenueData = Object.values(salesByDay).map(d => d.revenue);
+
+        // Check if salesChart canvas exists before initializing
+        const salesCanvas = document.getElementById('salesChart');
+        if (!salesCanvas) {
+            console.warn('salesChart canvas element not found');
+            return;
+        }
+
+        if (salesChart) salesChart.destroy();
+        salesChart = new Chart(salesCanvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                        label: 'Pedidos',
+                        data: ordersData,
+                        borderColor: '#3483fa',
+                        backgroundColor: 'rgba(52,131,250,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Faturamento',
+                        data: revenueData,
+                        borderColor: '#00a650',
+                        borderDash: [5, 5],
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    },
+                    y1: {
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+
+        const statusCounts = {};
+        allOrders.forEach(o => {
+            const s = o.status || 'unknown';
+            statusCounts[s] = (statusCounts[s] || 0) + 1;
+        });
+
+        // Check if statusChart canvas exists before initializing
+        const statusCanvas = document.getElementById('statusChart');
+        if (!statusCanvas) {
+            console.warn('statusChart canvas element not found');
+            return;
+        }
+
+        if (statusChart) statusChart.destroy();
+        statusChart = new Chart(statusCanvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(statusCounts).map(getStatusLabel),
+                datasets: [{
+                    data: Object.values(statusCounts),
+                    backgroundColor: Object.keys(statusCounts).map(getStatusColor),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderOrders() {
+        const start = (currentPage - 1) * ordersPerPage,
+            end = start + ordersPerPage;
+        const page = allOrders.slice(start, end);
+
+        if (page.length === 0) {
+            document.getElementById('orders-tbody').innerHTML = '<tr><td colspan="8" class="text-center py-5"><i class="bi bi-inbox text-muted" style="font-size:3rem"></i><p class="text-muted mt-2 mb-0">Nenhum pedido</p></td></tr>';
+            return;
+        }
+
+        document.getElementById('orders-tbody').innerHTML = page.map(o => {
+            const date = o.date_created ? new Date(o.date_created).toLocaleDateString('pt-BR') : '-';
+            const time = o.date_created ? new Date(o.date_created).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            }) : '';
+            const buyer = o.buyer?.nickname || o.buyer?.first_name || 'Comprador';
+            const status = o.status || 'unknown';
+            return `<tr class="order-row">
+                <td><span class="order-id">#${o.id}</span></td>
+                <td><div>${date}</div><small class="text-muted">${time}</small></td>
+                <td><div class="d-flex align-items-center"><div class="bg-light rounded-circle p-2 me-2"><i class="bi bi-person"></i></div><span>${escapeHtml(buyer)}</span></div></td>
+                <td><span class="badge bg-light text-dark">${o.order_items?.length || 0} item(s)</span></td>
+                <td><strong>${formatCurrency(o.total_amount || 0)}</strong></td>
+                <td><span class="status-badge status-${status.toLowerCase().replace('_', '-')}">${getStatusLabel(status)}</span></td>
+                <td><small class="text-muted">${escapeHtml(o.account_nickname || 'Conta')}</small></td>
+                <td class="no-print"><button class="btn btn-sm btn-outline-primary" onclick="viewOrder(${o.id})" title="Ver"><i class="bi bi-eye"></i></button></td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('showing-from').textContent = start + 1;
+        document.getElementById('showing-to').textContent = Math.min(end, allOrders.length);
+        document.getElementById('total-orders').textContent = allOrders.length;
+        document.getElementById('orders-count').textContent = `${allOrders.length} pedidos`;
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(allOrders.length / ordersPerPage);
+        if (totalPages <= 1) {
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        let html = `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="goToPage(${currentPage - 1})"><i class="bi bi-chevron-left"></i></a></li>`;
+        for (let i = 1; i <= Math.min(totalPages, 5); i++) html += `<li class="page-item ${currentPage === i ? 'active' : ''}"><a class="page-link" href="#" onclick="goToPage(${i})">${i}</a></li>`;
+        if (totalPages > 5) html += `<li class="page-item disabled"><span class="page-link">...</span></li><li class="page-item ${currentPage === totalPages ? 'active' : ''}"><a class="page-link" href="#" onclick="goToPage(${totalPages})">${totalPages}</a></li>`;
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="goToPage(${currentPage + 1})"><i class="bi bi-chevron-right"></i></a></li>`;
+        document.getElementById('pagination').innerHTML = html;
+    }
+
+    function goToPage(page) {
+        const totalPages = Math.ceil(allOrders.length / ordersPerPage);
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        renderOrders();
+    }
+
+    function viewOrder(orderId) {
+        document.getElementById('modal-order-id').textContent = '#' + orderId;
+        document.getElementById('modal-order-body').innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+        new bootstrap.Modal(document.getElementById('orderModal')).show();
+
+        requestJson(`/api/orders/${orderId}`).then(order => {
+            currentOrder = order;
+            const buyer = order.buyer || {},
+                shipping = order.shipping || {},
+                payments = order.payments || [],
+                items = order.order_items || [];
+
+            document.getElementById('modal-order-body').innerHTML = `
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="order-detail-section">
+                            <h6><i class="bi bi-info-circle"></i>Informações</h6>
+                            <table class="table table-sm mb-0">
+                                <tr><td class="text-muted">Status:</td><td><span class="status-badge status-${(order.status || 'unknown').toLowerCase()}">${getStatusLabel(order.status)}</span></td></tr>
+                                <tr><td class="text-muted">Data:</td><td>${order.date_created ? new Date(order.date_created).toLocaleString('pt-BR') : '-'}</td></tr>
+                                <tr><td class="text-muted">Total:</td><td><strong class="text-primary">${formatCurrency(order.total_amount || 0)}</strong></td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="order-detail-section">
+                            <h6><i class="bi bi-person"></i>Comprador</h6>
+                            <table class="table table-sm mb-0">
+                                <tr><td class="text-muted">Nome:</td><td>${escapeHtml(buyer.first_name || '')} ${escapeHtml(buyer.last_name || '')}</td></tr>
+                                <tr><td class="text-muted">Nickname:</td><td>${escapeHtml(buyer.nickname || '-')}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="order-detail-section">
+                    <h6><i class="bi bi-box"></i>Itens (${items.length})</h6>
+                    <table class="table table-sm">
+                        <thead><tr><th></th><th>Produto</th><th>Qtd</th><th>Preço</th><th>Total</th></tr></thead>
+                        <tbody>${items.map(i => `<tr>
+                            <td><img src="${normalizeExternalUrl(i.item?.thumbnail) || ''}" class="product-thumb" onerror="this.style.display='none'"></td>
+                            <td><div class="fw-semibold">${escapeHtml(i.item?.title || 'Produto')}</div><small class="text-muted">${i.item?.id || ''}</small></td>
+                            <td>${i.quantity || 1}</td>
+                            <td>${formatCurrency(i.unit_price || 0)}</td>
+                            <td><strong>${formatCurrency((i.unit_price || 0) * (i.quantity || 1))}</strong></td>
+                        </tr>`).join('')}</tbody>
+                    </table>
+                </div>
+                <div class="order-detail-section">
+                    <h6><i class="bi bi-truck"></i>Envio</h6>
+                    <table class="table table-sm mb-0">
+                        <tr><td class="text-muted">Status:</td><td>${shipping.status || '-'}</td></tr>
+                        <tr><td class="text-muted">Tipo:</td><td>${shipping.shipment_type || '-'}</td></tr>
+                    </table>
+                </div>
+            `;
+        }).catch(() => {
+            document.getElementById('modal-order-body').innerHTML = '<div class="alert alert-danger">Erro ao carregar</div>';
+        });
+    }
+
+    function exportOrders(format) {
+        const params = new URLSearchParams({
+            account_id: document.getElementById('filter-account').value,
+            status: document.getElementById('filter-status').value,
+            date_from: document.getElementById('filter-date-from').value,
+            date_to: document.getElementById('filter-date-to').value
+        });
+
+        if (format === 'pdf') {
+            window.open(`/api/pdf/orders?${params}`, '_blank');
+        } else {
+            const csv = 'ID;Data;Comprador;Itens;Total;Status;Conta\n' + allOrders.map(o => [o.id, o.date_created ? new Date(o.date_created).toLocaleString('pt-BR') : '', o.buyer?.nickname || '', o.order_items?.length || 0, (o.total_amount || 0).toFixed(2).replace('.', ','), getStatusLabel(o.status), o.account_nickname || ''].map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+            const blob = new Blob(['\ufeff' + csv], {
+                type: 'text/csv;charset=utf-8;'
+            });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `pedidos_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+    }
+
+    function printOrder() {
+        const w = window.open('', '_blank');
+        const orderId = document.getElementById('modal-order-id').textContent;
+        const orderBody = document.getElementById('modal-order-body').innerHTML;
+        w.document.write('<html><head><title>Pedido ' + orderId + '</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><style>body{padding:20px}.order-detail-section{background:#f8f9fa;border-radius:8px;padding:15px;margin-bottom:15px}</style></head><body><h2>Pedido ' + orderId + '</h2>' + orderBody + '<script>window.onload=function(){window.print()}<\/script></body></html>');
+        w.document.close();
+    }
+
+    function formatCurrency(v) {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(v);
+    }
+
+    function getStatusLabel(s) {
+        return {
+            paid: 'Pago',
+            confirmed: 'Confirmado',
+            ready_to_ship: 'Pronto p/ Enviar',
+            shipped: 'Enviado',
+            delivered: 'Entregue',
+            cancelled: 'Cancelado'
+        }[(s || '').toLowerCase()] || s;
+    }
+
+    function getStatusColor(s) {
+        return {
+            paid: '#28a745',
+            confirmed: '#17a2b8',
+            ready_to_ship: '#ffc107',
+            shipped: '#007bff',
+            delivered: '#28a745',
+            cancelled: '#dc3545'
+        }[(s || '').toLowerCase()] || '#6c757d';
+    }
+
+    function escapeHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = t || '';
+        return d.innerHTML;
+    }
+</script>

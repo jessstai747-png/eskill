@@ -1,0 +1,12 @@
+{
+    "clone_worker": {
+        "failures": 3,
+        "last_alert": 1770949780,
+        "last_failure": "health_check: stale_log"
+    },
+    "clone_post_actions": {
+        "failures": 3,
+        "last_alert": 1770949780,
+        "last_failure": "health_check: stale_log"
+    }
+}

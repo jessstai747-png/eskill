@@ -1,0 +1,353 @@
+# 🤖 Long-Running Agents - Diagrama de Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         USUÁRIO / API CLIENT                            │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         AgentController                                 │
+│  POST /api/agent/projects/start                                         │
+│  POST /api/agent/projects/{id}/session                                  │
+│  GET  /api/agent/projects/{id}/status                                   │
+│  POST /api/agent/projects/{id}/test                                     │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         AgentService                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Orquestrador Principal                                          │   │
+│  │ - startProject()                                                │   │
+│  │ - runCodingSession()                                            │   │
+│  │ - testFeature()                                                 │   │
+│  │ - getProjectStatus()                                            │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└──┬─────────────────┬─────────────────┬─────────────────┬────────────────┘
+   │                 │                 │                 │
+   │                 │                 │                 │
+   ▼                 ▼                 ▼                 ▼
+┌─────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
+│Initializer  │ │CodingAgent   │ │TestingAgent  │ │FeatureList       │
+│Agent        │ │              │ │              │ │Manager           │
+├─────────────┤ ├──────────────┤ ├──────────────┤ ├──────────────────┤
+│- Setup      │ │- Get         │ │- Run e2e     │ │- Save features   │
+│  inicial    │ │  bearings    │ │  tests       │ │- Get next        │
+│- Gerar      │ │- Choose ONE  │ │- Browser     │ │- Mark complete   │
+│  features   │ │  feature     │ │  automation  │ │- Statistics      │
+│- Criar      │ │- Implement   │ │- API tests   │ │                  │
+│  init.sh    │ │- Test e2e    │ │- Performance │ │                  │
+│- Git init   │ │- Commit      │ │- Console     │ │                  │
+└──────┬──────┘ └──────┬───────┘ └──────┬───────┘ └────────┬─────────┘
+       │               │                │                  │
+       │               │                │                  │
+       │               ▼                │                  │
+       │        ┌──────────────┐        │                  │
+       │        │Progress      │        │                  │
+       │        │Tracker       │        │                  │
+       │        ├──────────────┤        │                  │
+       │        │- Log         │        │                  │
+       │        │  sessions    │        │                  │
+       │        │- Update      │        │                  │
+       │        │  progress    │        │                  │
+       │        │- Metrics     │        │                  │
+       │        └──────┬───────┘        │                  │
+       │               │                │                  │
+       ▼               ▼                ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        STORAGE LAYER                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────┐   │
+│  │ MySQL Database   │  │ Git Repository   │  │ File System        │   │
+│  ├──────────────────┤  ├──────────────────┤  ├────────────────────┤   │
+│  │agent_projects    │  │- Commits         │  │feature_list.json   │   │
+│  │agent_features    │  │- Branches        │  │claude-progress.txt │   │
+│  │agent_sessions    │  │- History         │  │init.sh             │   │
+│  │agent_progress_log│  │                  │  │README.md           │   │
+│  └──────────────────┘  └──────────────────┘  └────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════
+                         WORKFLOW DE SESSÃO
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 1. START PROJECT (Initializer Agent)                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+                    ┌────────────────────────┐
+                    │ Expand Requirements    │
+                    │ → 100+ Features        │
+                    └───────────┬────────────┘
+                                │
+                                ▼
+                    ┌────────────────────────┐
+                    │ Create Files:          │
+                    │ - feature_list.json    │
+                    │ - init.sh              │
+                    │ - claude-progress.txt  │
+                    └───────────┬────────────┘
+                                │
+                                ▼
+                    ┌────────────────────────┐
+                    │ Git: Initial Commit    │
+                    └───────────┬────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 2. CODING SESSION N (Coding Agent)                                     │
+└─────────────────────────────────────────────────────────────────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │ Get Bearings:           │
+                    │ - pwd                   │
+                    │ - git log               │
+                    │ - cat progress.txt      │
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │ Read feature_list.json  │
+                    │ Choose ONE feature      │
+                    │ (highest priority)      │
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │ Run init.sh             │
+                    │ Test existing features  │
+                    │ (smoke tests)           │
+                    └────────────┬────────────┘
+                                 │
+                                 │
+                        ┌────────▼────────┐
+                        │ Any bugs?       │
+                        └────────┬────────┘
+                                 │
+                    ┌────────────┼────────────┐
+                    │            │            │
+                    ▼            ▼            │
+                ┌───────┐    ┌───────┐       │
+                │ YES   │    │  NO   │       │
+                └───┬───┘    └───┬───┘       │
+                    │            │            │
+                    ▼            │            │
+            ┌──────────────┐     │            │
+            │ Fix bugs     │     │            │
+            │ first        │     │            │
+            └──────┬───────┘     │            │
+                   │             │            │
+                   └─────────────┼────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │ Implement Feature       │
+                    │ (incremental)           │
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │ Run End-to-End Tests    │
+                    │ (follow feature steps)  │
+                    └────────────┬────────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │ Tests passed?   │
+                        └────────┬────────┘
+                                 │
+                    ┌────────────┼────────────┐
+                    │            │            │
+                    ▼            ▼            │
+                ┌───────┐    ┌───────┐       │
+                │ YES   │    │  NO   │       │
+                └───┬───┘    └───┬───┘       │
+                    │            │            │
+                    │            ▼            │
+                    │    ┌──────────────┐    │
+                    │    │ Mark as      │    │
+                    │    │ In Progress  │    │
+                    │    │ (not passing)│    │
+                    │    └──────┬───────┘    │
+                    │           │            │
+                    ▼           │            │
+            ┌──────────────┐    │            │
+            │ Mark as      │    │            │
+            │ PASSING      │    │            │
+            └──────┬───────┘    │            │
+                   │            │            │
+                   └────────────┼────────────┘
+                                │
+                    ┌───────────▼─────────────┐
+                    │ Git Commit              │
+                    │ (descriptive message)   │
+                    └───────────┬─────────────┘
+                                │
+                    ┌───────────▼─────────────┐
+                    │ Update progress.txt     │
+                    │ (session summary)       │
+                    └───────────┬─────────────┘
+                                │
+                                ▼
+                        ┌───────────────┐
+                        │ More features?│
+                        └───────┬───────┘
+                                │
+                    ┌───────────┼───────────┐
+                    │           │           │
+                    ▼           ▼           │
+                ┌──────┐    ┌──────┐       │
+                │ YES  │    │  NO  │       │
+                └──┬───┘    └──┬───┘       │
+                   │           │           │
+                   │           ▼           │
+                   │    ┌─────────────┐    │
+                   │    │ Project     │    │
+                   │    │ Complete!   │    │
+                   │    └─────────────┘    │
+                   │                       │
+                   └───────────────────────┘
+                           │
+                           ▼
+                   ┌───────────────┐
+                   │ Next Session  │
+                   └───────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════
+                       FEATURE LIFECYCLE
+═══════════════════════════════════════════════════════════════════════════
+
+  ┌─────────────┐
+  │  Feature    │
+  │  Created    │ ◄─── Initializer Agent gera features
+  │ passes=false│
+  └──────┬──────┘
+         │
+         ▼
+  ┌─────────────┐
+  │  Chosen by  │ ◄─── Coding Agent escolhe por prioridade
+  │ CodingAgent │
+  └──────┬──────┘
+         │
+         ▼
+  ┌─────────────┐
+  │Implementing │ ◄─── Código sendo escrito
+  └──────┬──────┘
+         │
+         ▼
+  ┌─────────────┐
+  │   Testing   │ ◄─── Testing Agent valida
+  │             │
+  └──────┬──────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+┌───────┐ ┌───────┐
+│Tests  │ │Tests  │
+│Pass   │ │Fail   │
+└───┬───┘ └───┬───┘
+    │         │
+    │         └────┐
+    │              │
+    ▼              ▼
+┌─────────────┐ ┌─────────────┐
+│passes=true  │ │Need Fixes   │
+│Feature      │ │Try Again    │
+│Complete ✓   │ │             │
+└─────────────┘ └─────┬───────┘
+                      │
+                      └─────► Back to Implementing
+
+
+═══════════════════════════════════════════════════════════════════════════
+                         DATA FLOW
+═══════════════════════════════════════════════════════════════════════════
+
+User Request
+     │
+     ▼
+AgentController
+     │
+     ▼
+AgentService ─────┬─────► InitializerAgent ───► Creates Files
+     │            │                                    │
+     │            │                                    ▼
+     │            │                            FeatureListManager
+     │            │                                    │
+     │            │                                    ▼
+     │            │                               MySQL DB
+     │            │
+     │            ├─────► CodingAgent ────────► Implements
+     │            │            │
+     │            │            └────────────────► Commits
+     │            │                                    │
+     │            │                                    ▼
+     │            │                            ProgressTracker
+     │            │                                    │
+     │            │                                    ▼
+     │            │                         Updates progress.txt
+     │            │
+     │            └─────► TestingAgent ─────► Validates
+     │                         │
+     │                         └──────────────► Browser/API
+     │                                              Tests
+     ▼
+Response to User
+
+
+═══════════════════════════════════════════════════════════════════════════
+                    PROJECT DIRECTORY STRUCTURE
+═══════════════════════════════════════════════════════════════════════════
+
+storage/agent_projects/
+└── {project_id}/
+    ├── .git/                    # Git repository
+    │   ├── commits/
+    │   └── logs/
+    │
+    ├── src/                     # Source code
+    │   ├── Controllers/
+    │   ├── Services/
+    │   ├── Models/
+    │   └── Views/
+    │
+    ├── tests/                   # Tests
+    │   ├── Unit/
+    │   └── Feature/
+    │
+    ├── config/                  # Configuration
+    │   └── app.php
+    │
+    ├── public/                  # Public assets
+    │   ├── index.php
+    │   ├── css/
+    │   └── js/
+    │
+    ├── feature_list.json        # ⭐ Feature tracking
+    │   [{
+    │     "id": "F1",
+    │     "category": "functional",
+    │     "description": "User can do X",
+    │     "steps": [...],
+    │     "passes": false,
+    │     "priority": "high"
+    │   }]
+    │
+    ├── claude-progress.txt      # ⭐ Progress log
+    │   Session #1 - 2025-12-21
+    │   Feature: F1
+    │   Status: Completed ✓
+    │   ...
+    │
+    ├── init.sh                  # ⭐ Initialization script
+    │   #!/bin/bash
+    │   composer install
+    │   php -S localhost:8000
+    │
+    └── README.md                # Documentation
+        Project overview
+        Features
+        Setup instructions
+
+
+═══════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mysql_test:
+    image: mysql:8.0
+    container_name: ml_mysql_test
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass_test
+      MYSQL_DATABASE: app_test
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "127.0.0.1:3307:3306" # bind only to localhost
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  mysql_test_data:
+    name: ml_mysql_test_data

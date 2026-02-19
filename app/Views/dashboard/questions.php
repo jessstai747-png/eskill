@@ -1,0 +1,364 @@
+<?php
+$title = 'Perguntas';
+$subtitle = 'Gerencie as perguntas dos seus anúncios';
+$actions = '
+    <div class="d-flex gap-2">
+        <select class="form-select form-select-sm" id="accountFilter" style="width: auto;">
+            <option value="all">Todas as Contas</option>
+            <option value="">Conta Atual</option>
+        </select>
+        <select class="form-select form-select-sm" id="questionFilter" style="width: auto;">
+            <option value="all">Todas as Perguntas</option>
+            <option value="unanswered" selected>Não Respondidas</option>
+            <option value="answered">Respondidas</option>
+        </select>
+        <div class="form-check form-switch d-flex align-items-center gap-2 border px-2 rounded bg-white">
+            <input class="form-check-input" type="checkbox" id="sortByUrgency" onchange="loadQuestions()">
+            <label class="form-check-label small fw-semibold" for="sortByUrgency">Priorizar Urgentes</label>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="loadQuestions()">
+            <i class="bi bi-arrow-clockwise"></i> Atualizar
+        </button>
+    </div>
+';
+include __DIR__ . '/../layouts/modern/partials/page-header.php';
+?>
+
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+</style>
+
+<!-- Stats Cards -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon primary">
+            <i class="bi bi-chat-dots"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="totalQuestions">-</h3>
+            <p>Total de Perguntas</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon warning">
+            <i class="bi bi-clock"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="pendingQuestions">-</h3>
+            <p>Aguardando Resposta</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon success">
+            <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="answeredQuestions">-</h3>
+            <p>Respondidas</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon info">
+            <i class="bi bi-stopwatch"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="avgResponseTime">-</h3>
+            <p>Tempo Médio</p>
+        </div>
+    </div>
+</div>
+
+<!-- Questions List -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40%">Pergunta</th>
+                        <th>Conta</th>
+                        <th>Produto</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="questionsList">
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="text-muted mt-2 mb-0">Carregando perguntas...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Answer Modal -->
+<div class="modal fade" id="answerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-reply me-2"></i>Responder Pergunta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Pergunta:</label>
+                    <p id="modalQuestionText" class="bg-light p-3 rounded"></p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Sua Resposta:</label>
+                    <textarea class="form-control" id="answerText" rows="4" placeholder="Digite sua resposta..."></textarea>
+                    <div class="form-text">Use respostas profissionais e completas para melhorar sua reputação.</div>
+                </div>
+                <div class="mb-3">
+                <div class="mb-3">
+                    <label class="form-label">Respostas Rápidas:</label>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="insertQuickAnswer('Olá! Sim, temos disponível em estoque. Pode comprar!')">Disponível</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="insertQuickAnswer('Olá! O prazo de envio é de 1 a 2 dias úteis após confirmação do pagamento.')">Prazo Envio</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="insertQuickAnswer('Olá! Oferecemos garantia de 3 meses contra defeitos de fabricação.')">Garantia</button>
+                    </div>
+                    <!-- AI Draft Button -->
+                    <button class="btn btn-sm btn-outline-primary w-100" onclick="generateDraft()" id="btnDraft">
+                        <i class="bi bi-magic me-1"></i> Gerar Resposta com IA
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitAnswer()">
+                    <i class="bi bi-send me-1"></i>Enviar Resposta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+let currentQuestionId = null;
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadQuestions();
+    loadStats();
+});
+
+document.getElementById('questionFilter').addEventListener('change', loadQuestions);
+document.getElementById('accountFilter').addEventListener('change', loadQuestions);
+
+async function loadStats() {
+    try {
+        const { data } = await ApiClient.json('/api/questions/stats');
+        
+        if (data.success) {
+            document.getElementById('totalQuestions').textContent = data.total || 0;
+            document.getElementById('pendingQuestions').textContent = data.pending || 0;
+            document.getElementById('answeredQuestions').textContent = data.answered || 0;
+            document.getElementById('avgResponseTime').textContent = data.avg_response_time || '-';
+        }
+    } catch (e) {
+        console.error('Erro ao carregar estatísticas:', e);
+    }
+}
+
+async function loadQuestions() {
+    const filter = document.getElementById('questionFilter').value;
+    const accountFilter = document.getElementById('accountFilter').value;
+    const tbody = document.getElementById('questionsList');
+    
+    const sort = document.getElementById('sortByUrgency')?.checked ? 'urgency_desc' : '';
+
+    try {
+        const { data } = await ApiClient.json(`/api/questions?status=${filter}&sort=${sort}&account_id=${accountFilter}`);
+        
+        if (data.questions && data.questions.length > 0) {
+            tbody.innerHTML = data.questions.map(q => {
+                // Sentiment Logic
+                let sentimentIcon = '';
+                if (q.sentiment === 'negative' || q.sentiment === 'angry') sentimentIcon = '<span title="Cliente Insatisfeito">😡</span>';
+                else if (q.sentiment === 'positive') sentimentIcon = '<span title="Cliente Feliz">😍</span>';
+                else if (q.sentiment === 'neutral') sentimentIcon = '<span title="Neutro">😐</span>';
+                
+                // Intent Badge
+                let intentBadge = '';
+                if (q.intent) {
+                    const intentColors = {
+                        'shipping': 'text-bg-warning',
+                        'technical': 'text-bg-info',
+                        'price': 'text-bg-success',
+                        'stock': 'text-bg-primary',
+                        'warranty': 'text-bg-danger'
+                    };
+                    const color = intentColors[q.intent] || 'text-bg-secondary';
+                    intentBadge = `<span class="badge ${color} ms-1" style="font-size: 0.7em">${q.intent.toUpperCase()}</span>`;
+                }
+                
+                // Urgency Highlight
+                const isUrgent = (q.urgency > 70);
+                const rowClass = isUrgent ? 'table-danger' : '';
+
+                return `
+                <tr class="${rowClass}">
+                    <td>
+                        <div class="fw-semibold">
+                            ${sentimentIcon} ${escapeHtml(q.text)}
+                            ${intentBadge}
+                        </div>
+                        <small class="text-muted">De: ${q.from_user || 'Anônimo'}</small>
+                        ${isUrgent ? '<small class="text-danger fw-bold ms-2">URGENTE</small>' : ''}
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">${escapeHtml(q.account?.name || 'Conta ' + q.account_id)}</span>
+                    </td>
+                    <td>
+                        <a href="#" class="text-decoration-none">${escapeHtml(q.item_title || 'Produto')}</a>
+                    </td>
+                    <td class="text-muted small">${formatDate(q.date_created)}</td>
+                    <td>
+                        <span class="badge ${q.status === 'ANSWERED' ? 'bg-success' : 'bg-warning'}">
+                            ${q.status === 'ANSWERED' ? 'Respondida' : 'Pendente'}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        ${q.status !== 'ANSWERED' ? `
+                            <button class="btn btn-sm btn-primary" onclick="openAnswerModal(${q.id}, '${escapeHtml(q.text)}')">
+                                <i class="bi bi-reply"></i> Responder
+                            </button>
+                        ` : `
+                            <button class="btn btn-sm btn-outline-secondary" onclick="viewAnswer(${q.id})">
+                                <i class="bi bi-eye"></i> Ver
+                            </button>
+                        `}
+                    </td>
+                </tr>
+            `}).join('');
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="bi bi-chat-dots fs-1"></i>
+                        <p class="mt-2 mb-0">Nenhuma pergunta encontrada</p>
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (e) {
+        console.error('Erro ao carregar perguntas:', e);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar perguntas</td></tr>`;
+    }
+}
+
+function openAnswerModal(questionId, questionText) {
+    currentQuestionId = questionId;
+    document.getElementById('modalQuestionText').textContent = questionText;
+    document.getElementById('answerText').value = '';
+    // Reset AI button state
+    const btn = document.getElementById('btnDraft');
+    btn.innerHTML = '<i class="bi bi-magic me-1"></i> Gerar Resposta com IA';
+    btn.disabled = false;
+    
+    new bootstrap.Modal(document.getElementById('answerModal')).show();
+}
+
+function insertQuickAnswer(text) {
+    document.getElementById('answerText').value = text;
+}
+
+async function generateDraft() {
+    if (!currentQuestionId) return;
+    
+    const btn = document.getElementById('btnDraft');
+    const originalText = btn.innerHTML;
+    const txtArea = document.getElementById('answerText');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Gerando...';
+    txtArea.placeholder = "Aguarde, a IA está escrevendo...";
+    
+    try {
+        const { data } = await ApiClient.json(`/api/questions/${currentQuestionId}/draft`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        
+        if (data.success && data.draft) {
+            txtArea.value = data.draft;
+            // Highlight capability
+            txtArea.classList.add('border-primary');
+            setTimeout(() => txtArea.classList.remove('border-primary'), 2000);
+        } else {
+            alert('Erro ao gerar rascunho: ' + (data.error || 'Erro desconhecido'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Falha na comunicação com a IA.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function submitAnswer() {
+    const answer = document.getElementById('answerText').value.trim();
+    
+    if (!answer) {
+        alert('Digite uma resposta');
+        return;
+    }
+    
+    try {
+        const { data } = await ApiClient.json(`/api/questions/${currentQuestionId}/answer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ answer })
+        });
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('answerModal')).hide();
+            loadQuestions();
+            loadStats();
+            // Show toast success
+            // Assuming Toast is available or simple alert
+            alert('Resposta enviada com sucesso!');
+        } else {
+            alert('Erro: ' + (data.error || 'Erro ao enviar resposta'));
+        }
+    } catch (e) {
+        alert('Erro ao enviar resposta');
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>

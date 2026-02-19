@@ -1,0 +1,7 @@
+{
+    "audio": "test-audio.mp3",
+    "config": {
+        "duration": 1,
+        "format": "mp4"
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "test": "npm run test:e2e",
+    "test:e2e": "mkdir -p .tmp/playwright-transform-cache-0 && TMPDIR=.tmp playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0"
+  }
+}

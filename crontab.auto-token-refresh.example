@@ -1,0 +1,64 @@
+# Crontab Configuration - Auto Token Refresh & Data Sync
+# 
+# Este arquivo configura execução automática do worker de refresh de tokens
+# e sincronização de dados com Mercado Livre e Mercado Pago
+#
+# INSTALAÇÃO:
+# 1. Copie este arquivo: cp crontab.auto-token-refresh.example /tmp/crontab-temp
+# 2. Edite o path: nano /tmp/crontab-temp
+# 3. Instale: crontab /tmp/crontab-temp
+# 4. Verifique: crontab -l
+
+# ============================================================================
+# AUTO TOKEN REFRESH & DATA SYNC WORKER
+# ============================================================================
+# Executa a cada 30 minutos
+# - Renova tokens que expiram nas próximas 2 horas
+# - Sincroniza itens ativos
+# - Sincroniza pedidos dos últimos 7 dias
+# - Sincroniza perguntas não respondidas
+# - Sincroniza pagamentos Mercado Pago (se habilitado)
+*/30 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/bin/auto-token-refresh-worker.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/auto-token-refresh.log 2>&1
+
+# ============================================================================
+# TOKEN HEALTH MONITOR (Opcional - Monitoramento adicional)
+# ============================================================================
+# Executa a cada 6 horas para verificar saúde dos tokens
+# Envia alertas se tokens estão prestes a expirar sem renovação
+0 */6 * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/bin/token-health-monitor.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/token-health.log 2>&1
+
+# ============================================================================
+# FULL DATA SYNC (Opcional - Sincronização completa diária)
+# ============================================================================
+# Executa às 03:00 AM todos os dias
+# Sincronização completa de todos os dados (pode demorar mais)
+# 0 3 * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/bin/full-sync-worker.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/full-sync.log 2>&1
+
+# ============================================================================
+# LOG ROTATION (Recomendado)
+# ============================================================================
+# Limpa logs antigos a cada domingo às 04:00 AM
+0 4 * * 0 find /home/eskill/htdocs/eskill.com.br/storage/logs -name "*.log" -mtime +30 -delete
+
+# ============================================================================
+# VARIÁVEIS DE AMBIENTE (Se necessário)
+# ============================================================================
+# Descomente e configure se precisar de variáveis específicas
+# PATH=/usr/local/bin:/usr/bin:/bin
+# MERCADO_PAGO_ENABLED=true
+# TOKEN_REFRESH_MARGIN_MINUTES=120
+
+# ============================================================================
+# NOTIFICAÇÕES (Opcional)
+# ============================================================================
+# Para receber emails quando cron falhar, adicione:
+# MAILTO=seu-email@dominio.com
+
+# ============================================================================
+# NOTAS IMPORTANTES
+# ============================================================================
+# 1. Ajuste os paths de acordo com sua instalação
+# 2. Certifique-se que o PHP está no PATH correto (/usr/bin/php)
+# 3. Logs são salvos em storage/logs/
+# 4. O worker usa file locking para evitar execuções concorrentes
+# 5. Rate limiting automático entre contas (0.5s delay)

@@ -1,0 +1,68 @@
+/* Notification Toast Styles */
+.notification-toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-left: 4px solid #4CAF50;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    animation: slideIn 0.3s ease;
+}
+
+.notification-toast:hover {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+.notification-icon {
+    font-size: 32px;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.notification-message {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .notification-toast {
+        background: #2d2d2d;
+        border-left-color: #66BB6A;
+    }
+    
+    .notification-title {
+        color: #fff;
+    }
+    
+    .notification-message {
+        color: #ccc;
+    }
+}

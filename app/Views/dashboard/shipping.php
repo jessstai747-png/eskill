@@ -1,0 +1,210 @@
+<?php
+$title = 'Expedição & Logística';
+$subtitle = 'Gerencie separação e envio de pedidos';
+include __DIR__ . '/../layouts/modern/partials/page-header.php';
+?>
+
+<!-- Picking List Generator Widget -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-primary">
+                    <i class="bi bi-box-seam"></i> Gerador de Picking List
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i> Selecione os pedidos "Prontos para Envio" abaixo para gerar a lista de separação.
+                </div>
+                
+                <!-- Filter Controls -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="shipping-filter-status">
+                            <option value="ready_to_ship" selected>Pronto para Envio</option>
+                            <option value="paid">Pago (Aguardando NFe)</option>
+                            <option value="shipped">Enviado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8 d-flex align-items-end">
+                        <button class="btn btn-primary" onclick="shippingManager.loadOrders()">
+                            <i class="bi bi-filter"></i> Filtrar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div id="shipping-actions" class="d-none bg-light p-3 rounded mb-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><span id="selected-count">0</span> pedidos selecionados</span>
+                    <div>
+                        <button class="btn btn-dark me-2" onclick="shippingManager.generatePickingList()">
+                            <i class="bi bi-file-earmark-pdf"></i> Gerar Picking List
+                        </button>
+                        <button class="btn btn-outline-secondary" disabled title="Em breve">
+                            <i class="bi bi-printer"></i> Imprimir Etiquetas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th width="40"><input type="checkbox" class="form-check-input" id="select-all"></th>
+                                <th>Pedido</th>
+                                <th>Itens</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shipping-orders-list">
+                            <!-- Populated via JS -->
+                            <tr><td colspan="5" class="text-center py-4">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    async function requestJson(url, options = {}) {
+        if (window.ApiClient) return window.ApiClient.request(url, options);
+        const resp = await fetch(url, { credentials: 'include', ...options });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
+    }
+
+    const shippingManager = {
+        orders: [],
+        init: function() {
+            this.loadOrders();
+            this.setupListeners();
+        },
+        
+        setupListeners: function() {
+            document.getElementById('select-all').addEventListener('change', (e) => {
+                const checkboxes = document.querySelectorAll('.order-checkbox');
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                this.updateSelection();
+            });
+        },
+
+        loadOrders: async function() {
+            const status = document.getElementById('shipping-filter-status').value;
+            const container = document.getElementById('shipping-orders-list');
+            
+            container.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
+
+            try {
+                // Reusing standard Orders API but filtering client-side or assume endpoint supports filter
+                // Actually, let's use the existing orders API and filter client-side for "Phase 2 MVP"
+                const data = await requestJson('/api/orders/all?status=' + status); // assuming API supports status param or we filter
+                
+                this.orders = data.results || [];
+                
+                // Client-side filter if API ignores param (defensive coding)
+                const filtered = this.orders.filter(o => o.status === status);
+                
+                this.renderOrders(filtered);
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar pedidos</td></tr>';
+            }
+        },
+
+        renderOrders: function(orders) {
+            const container = document.getElementById('shipping-orders-list');
+            if (orders.length === 0) {
+                container.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhum pedido encontrado com este status.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            orders.forEach(order => {
+                const date = new Date(order.date_created).toLocaleDateString('pt-BR');
+                let orderItems = [];
+
+                if (Array.isArray(order.order_items)) {
+                    orderItems = order.order_items;
+                } else if (Array.isArray(order.items)) {
+                    orderItems = order.items;
+                } else if (typeof order.items === 'string' && order.items !== '') {
+                    try {
+                        orderItems = JSON.parse(order.items);
+                    } catch (e) {
+                        orderItems = [];
+                    }
+                }
+
+                const itemsCount = orderItems.length;
+                
+                html += `
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input order-checkbox" value="${order.id}" onchange="shippingManager.updateSelection()"></td>
+                        <td>
+                            <strong>#${order.id}</strong><br>
+                            <span class="small text-muted">${order.buyer?.nickname || 'Comprador'}</span>
+                        </td>
+                        <td>${itemsCount} item(s)</td>
+                        <td>${date}</td>
+                        <td><span class="badge bg-secondary">${order.status}</span></td>
+                    </tr>
+                `;
+            });
+            container.innerHTML = html;
+            this.updateSelection(); // Reset selection count
+        },
+
+        updateSelection: function() {
+            const selected = document.querySelectorAll('.order-checkbox:checked').length;
+            document.getElementById('selected-count').textContent = selected;
+            
+            const actionContainer = document.getElementById('shipping-actions');
+            if (selected > 0) {
+                actionContainer.classList.remove('d-none');
+            } else {
+                actionContainer.classList.add('d-none');
+            }
+        },
+
+        generatePickingList: async function() {
+            const selected = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
+            if (selected.length === 0) return;
+
+            // Trigger download via POST
+            try {
+                const response = await fetch('/api/shipping/picking-list', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ order_ids: selected })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `picking_list_${new Date().toISOString().slice(0,10)}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    
+                    Toast.success('Picking List gerada com sucesso!');
+                } else {
+                    Toast.error('Erro ao gerar Picking List');
+                }
+            } catch (e) {
+                console.error(e);
+                Toast.error('Erro de conexão');
+            }
+        }
+    };
+
+    // Auto-init
+    document.addEventListener('DOMContentLoaded', () => shippingManager.init());
+</script>

@@ -1,0 +1,36 @@
+# Mercado Livre Manager - Configuração Apache
+# Rewrite Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirecionar para index.php se o arquivo não existir
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Segurança
+<IfModule mod_headers.c>
+    # HSTS — forçar HTTPS (habilitar quando SSL ativo)
+    Header always set Strict-Transport-Security "max-age=86400; includeSubDomains"
+    
+    # NOTA: demais headers de segurança (CSP, X-Frame-Options, etc.)
+    # são configurados em public/index.php para evitar duplicação.
+</IfModule>
+
+# Configurações PHP
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+
+# Desabilitar listagem de diretórios
+Options -Indexes
+
+# Proteger arquivos sensíveis
+<FilesMatch "\.(env|log|sql|md|json|xml|yml|yaml|lock|bak|dist|sh)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

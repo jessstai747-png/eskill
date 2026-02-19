@@ -1,0 +1,35 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/home/eskill/htdocs/eskill.com.br/logs/.e6f4fda29c2c72feda02a685a819d7b71d3d2257-audit.json",
+    "files": [
+        {
+            "date": 1770394338028,
+            "name": "/home/eskill/htdocs/eskill.com.br/logs/mcp-puppeteer-2026-02-06.log",
+            "hash": "a70f3bc11c207a49477577b2d95f0c0df7abaffdebc142dcd6e062cd61805514"
+        },
+        {
+            "date": 1770512996674,
+            "name": "/home/eskill/htdocs/eskill.com.br/logs/mcp-puppeteer-2026-02-08.log",
+            "hash": "c88a6b5374253e24a19c23704f52e8aab0e99d38499c935f95412bcc3b238292"
+        },
+        {
+            "date": 1770602577051,
+            "name": "/home/eskill/htdocs/eskill.com.br/logs/mcp-puppeteer-2026-02-09.log",
+            "hash": "fb7fc9239a4bd5d769f27a97fe7a98cc7a2b5309a6bb0765468d4f59d82715fb"
+        },
+        {
+            "date": 1771019310941,
+            "name": "/home/eskill/htdocs/eskill.com.br/logs/mcp-puppeteer-2026-02-13.log",
+            "hash": "5218aa12ae27f4591dbda629fb439df78345b3ba3eca700e85e4f86eae379e9a"
+        },
+        {
+            "date": 1771091601031,
+            "name": "/home/eskill/htdocs/eskill.com.br/logs/mcp-puppeteer-2026-02-14.log",
+            "hash": "d46fa5f6f6a5f3b6663ad7f33d57efd5d98cbcde690aa0e05fdf03ad2ea00faf"
+        }
+    ],
+    "hashType": "sha256"
+}

@@ -1,0 +1,23 @@
+# Configuração de Cron para Sistema de Clonagem Agendada
+# Adicionar ao crontab do usuário: crontab -e
+
+# Processar jobs de clonagem a cada minuto
+* * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/process_jobs.php >> storage/logs/jobs.log 2>&1
+
+# Processar agendamentos de clonagem a cada minuto
+* * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/process_schedules.php >> storage/logs/schedules.log 2>&1
+
+# Limpeza de logs antigos (diário às 2:00)
+0 2 * * * find /home/eskill/htdocs/eskill.com.br/storage/logs/ -name "*.log" -mtime +7 -delete
+
+# Exemplos de horários específicos:
+# 0 9 * * * - Diário às 9:00
+# 0 9 * * 1 - Semanalmente às segundas 9:00  
+# 0 9 1 * * - Mensalmente no dia 1 às 9:00
+
+# Para instalar:
+# 1. Copie as linhas desejadas
+# 2. Execute: crontab -e
+# 3. Cole as linhas no arquivo que abrir
+# 4. Salve e saia (:wq no vim)
+# 5. Verifique com: crontab -l

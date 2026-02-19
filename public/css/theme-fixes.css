@@ -1,0 +1,291 @@
+/* Additional CSS fixes for theme and layout */
+
+/* CRITICAL FIX: Prevent giant avatar from breaking layout */
+.user-avatar,
+.sidebar .user-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    position: relative !important;
+    display: block !important;
+}
+
+.user-avatar img,
+.user-avatar .avatar-img,
+.sidebar .user-avatar img,
+.sidebar .user-avatar .avatar-img {
+    width: 40px !important;
+    height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    display: block !important;
+}
+
+/* CRITICAL FIX: Ensure panels/modals from sidebar don't break main content layout */
+.ai-insights-panel,
+.contextual-help-container,
+.keyboard-shortcuts-overlay,
+.keyboard-shortcuts-modal,
+#ai-insights-panel,
+#contextual-help-container,
+#keyboard-shortcuts-overlay {
+    position: fixed !important;
+    z-index: 1000 !important;
+}
+
+/* Ensure modals don't affect document flow */
+.modal {
+    position: fixed !important;
+}
+
+/* CRITICAL FIX: Ensure main-content is always correctly positioned */
+/* This fix works whether main-content is inside or outside dashboard-wrapper */
+body>.main-content,
+.dashboard-wrapper~.main-content,
+.main-content {
+    position: fixed !important;
+    top: 0 !important;
+    left: var(--nav-width, 260px) !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    z-index: 1 !important;
+    background-color: var(--bg-body, #f4f6f9) !important;
+}
+
+/* Ensure dashboard-wrapper doesn't interfere */
+.dashboard-wrapper {
+    position: relative !important;
+    min-height: 0 !important;
+    height: auto !important;
+}
+
+/* Sidebar remains fixed */
+.sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    height: 100vh !important;
+    width: var(--nav-width, 260px) !important;
+    z-index: 50 !important;
+}
+
+/* Fix dropdown menus in sidebar */
+.sidebar .dropdown-menu {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    margin-top: 0.5rem;
+}
+
+.sidebar .dropdown-item {
+    color: var(--text-color);
+    padding: 0.5rem 1rem;
+}
+
+.sidebar .dropdown-item:hover {
+    background-color: var(--bg-body);
+}
+
+.sidebar .dropdown-toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sidebar .dropdown-toggle:hover {
+    color: white;
+}
+
+/* Fix theme toggle button in header */
+#theme-toggle {
+    transition: transform 0.2s, color 0.2s;
+}
+
+#theme-toggle:hover {
+    transform: scale(1.1);
+    color: var(--color-primary);
+}
+
+/* Ensure proper spacing in topbar */
+.topbar .user-menu {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Fix notification bell styling */
+.notification-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Improve card shadows with theme */
+.card {
+    box-shadow: var(--shadow-sm);
+}
+
+.card:hover {
+    box-shadow: var(--shadow);
+}
+
+/* Fix widget drag handle visibility */
+.widget-drag-handle {
+    color: var(--text-muted);
+}
+
+.widget-drag-handle:hover {
+    color: var(--text-color);
+}
+
+/* Ensure modals work with all themes */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* Fix Bootstrap dropdown in dark themes */
+[data-theme="dark"] .dropdown-menu,
+[data-theme="blue"] .dropdown-menu,
+[data-theme="purple"] .dropdown-menu,
+[data-theme="green"] .dropdown-menu,
+[data-theme="high-contrast"] .dropdown-menu {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .dropdown-item,
+[data-theme="blue"] .dropdown-item,
+[data-theme="purple"] .dropdown-item,
+[data-theme="green"] .dropdown-item,
+[data-theme="high-contrast"] .dropdown-item {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="blue"] .dropdown-item:hover,
+[data-theme="purple"] .dropdown-item:hover,
+[data-theme="green"] .dropdown-item:hover,
+[data-theme="high-contrast"] .dropdown-item:hover {
+    background-color: var(--bg-body);
+    color: var(--text-color);
+}
+
+/* Fix topbar in all themes */
+.topbar {
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Ensure sidebar dropdowns work properly */
+.sidebar .nav-item .dropdown {
+    width: 100%;
+}
+
+.sidebar .dropdown-menu {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 0.5rem;
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 768px) {
+    .sidebar .dropdown-menu {
+        position: static;
+        left: auto;
+        margin-left: 0;
+        margin-top: 0.5rem;
+    }
+}
+
+/* Fix widget collapse button */
+.widget-control-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.widget-control-btn:hover {
+    color: var(--text-color);
+    transform: scale(1.1);
+}
+
+/* Ensure proper text colors in cards */
+.card-header {
+    color: var(--text-color);
+}
+
+.card-body {
+    color: var(--text-color);
+}
+
+/* Fix input fields in all themes */
+input,
+textarea,
+select {
+    background-color: var(--bg-card);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    background-color: var(--bg-card);
+    color: var(--text-color);
+    border-color: var(--color-primary);
+}
+
+/* Fix placeholder text */
+::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+/* Ensure proper button colors */
+.btn {
+    transition: all 0.2s;
+}
+
+/* Fix toast notifications */
+.toast {
+    background-color: var(--bg-card);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.toast-header {
+    background-color: var(--bg-card);
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.toast-body {
+    color: var(--text-color);
+}

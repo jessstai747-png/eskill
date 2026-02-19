@@ -1,0 +1,64 @@
+# Cron Jobs para Mercado Livre Manager
+
+# Executar scheduler a cada 5 minutos
+*/5 * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/scheduler.php >> storage/logs/scheduler.log 2>&1
+
+# Executar backup diário às 2h da manhã
+0 2 * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/backup.sh >> storage/logs/backup.log 2>&1
+
+# Limpar logs antigos semanalmente (domingo às 3h)
+0 3 * * 0 cd /home/eskill/htdocs/eskill.com.br && php scripts/clean_old_logs.php >> storage/logs/maintenance.log 2>&1
+
+# Sincronizar pedidos a cada 10 minutos
+*/10 * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/poll_orders.php >> storage/logs/orders_sync.log 2>&1
+
+# Verificar saúde do sistema a cada hora
+0 * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/health_check.php >> storage/logs/health.log 2>&1
+
+# Processar fila de jobs (clonagem, sync, etc) a cada minuto
+* * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/process_jobs.php >> storage/logs/jobs.log 2>&1
+
+# ============================================
+# EAN System Jobs
+# ============================================
+
+# Expirar compras pendentes a cada 5 minutos
+*/5 * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/cron_expire_purchases.php >> storage/logs/ean_expire.log 2>&1
+
+# Enviar relatório diário de EANs às 8h
+0 8 * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/cron_ean_daily_report.php >> storage/logs/ean_report.log 2>&1
+
+# Instruções de instalação:
+# 1. Editar este arquivo para ajustar os caminhos absolutos
+# 2. Executar: crontab -e
+# 3. Copiar as linhas acima (sem esta seção de instruções)
+# 4. Salvar e sair
+# 5. Verificar: crontab -l
+
+# PHASE 11: Jobs de manutenção (recomendados)
+# Limpeza de refresh tokens expirados/revogados - rodar diariamente às 03:30
+30 3 * * * cd /home/eskill/htdocs/eskill.com.br && php bin/cleanup-refresh-tokens.php 30 >> storage/logs/cleanup-refresh-tokens.log 2>&1
+
+# Monitor de falhas de autenticação (rodar a cada 5 minutos)
+*/5 * * * * cd /home/eskill/htdocs/eskill.com.br && php bin/monitor-auth-failures.php >> storage/logs/monitor-auth-failures.log 2>&1
+
+# ============================================
+# TOKEN REFRESH AUTOMÁTICO (IMPORTANTE!)
+# ============================================
+# Renovar tokens do Mercado Livre a cada hora
+# Isso evita que o usuário precise reconectar manualmente
+0 * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/refresh_ml_tokens.php >> storage/logs/token_refresh.log 2>&1
+
+# ============================================
+# CLONADOR DE ANÚNCIOS EM LOTE
+# ============================================
+# Worker de clonagem - processa jobs de clonagem de anúncios
+# Roda a cada minuto para processar itens pendentes
+* * * * * cd /home/eskill/htdocs/eskill.com.br && php bin/catalog-clone-worker.php --limit=50 >> storage/logs/catalog-clone-worker.log 2>&1
+
+# Worker de ações pós-clone (ficha técnica, SEO, precificação)
+# Roda a cada 2 minutos para não sobrecarregar a API
+*/2 * * * * cd /home/eskill/htdocs/eskill.com.br && php bin/clone-post-actions-worker.php --limit=20 >> storage/logs/clone-post-actions-worker.log 2>&1
+
+# Limpar jobs de clone antigos (mais de 30 dias) - semanal domingo 4h
+0 4 * * 0 cd /home/eskill/htdocs/eskill.com.br && php -r "require 'autoload.php'; \$db=App\Database::getInstance(); \$db->exec('DELETE FROM catalog_clone_job_items WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY); DELETE FROM catalog_clone_jobs WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY) AND status IN (\"completed\",\"failed\",\"cancelled\");');" >> storage/logs/clone-cleanup.log 2>&1

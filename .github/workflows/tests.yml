@@ -1,0 +1,68 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: meli_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, json, mysql, redis
+        coverage: none
+    
+    - name: Copy .env
+      run: cp .env.example .env
+
+    - name: Configure test env
+      run: |
+        {
+          echo "APP_ENV=testing"
+          echo "APP_DEBUG=false"
+          echo "DB_CONNECTION=mysql"
+          echo "DB_HOST=127.0.0.1"
+          echo "DB_PORT=3306"
+          echo "DB_DATABASE=meli_test"
+          echo "DB_USERNAME=root"
+          echo "DB_PASSWORD=root"
+        } >> .env
+    
+    - name: Install Dependencies
+      run: composer install --prefer-dist --no-progress
+    
+    - name: Run Migrations
+      run: |
+        php scripts/migrate_notifications.php
+        php scripts/migrate_monitoring.php
+        php scripts/migrate_competitor_tracking.php
+    
+    - name: Run Tests
+      run: ./vendor/bin/phpunit --testsuite Unit
+    
+    - name: Run Integration Tests
+      run: ./vendor/bin/phpunit --testsuite Integration

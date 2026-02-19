@@ -1,0 +1,124 @@
+<!-- Dashboard Opportunities View -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1">Oportunidades</h4>
+        <p class="text-muted mb-0">Descubra produtos com alto potencial de vendas</p>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="scanOpportunities()">
+        <i class="bi bi-search"></i> Buscar Oportunidades
+    </button>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-gem me-2"></i>Oportunidades Encontradas</h6>
+            </div>
+            <div class="card-body" id="opportunitiesList">
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-gem fs-1"></i>
+                    <p class="mt-2 mb-0">Clique em "Buscar Oportunidades" para começar</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-filter me-2"></i>Filtros</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small">Categoria</label>
+                    <select class="form-select form-select-sm" id="categoryFilter">
+                        <option value="">Selecione uma categoria</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">Margem Mínima</label>
+                    <input type="number" class="form-control form-control-sm" id="minMargin" value="20" min="0" max="100">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">Vendas Mínimas/Mês</label>
+                    <input type="number" class="form-control form-control-sm" id="minSales" value="10" min="0">
+                </div>
+                <button class="btn btn-primary w-100" onclick="scanOpportunities()">Aplicar Filtros</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Dicas</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Busque produtos com alta demanda</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Analise a concorrência antes de investir</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Verifique a margem de lucro</li>
+                    <li><i class="bi bi-check-circle text-success me-2"></i>Considere o tempo de entrega</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+async function requestJson(url, options = {}) {
+    if (window.ApiClient) return window.ApiClient.request(url, options);
+    const resp = await fetch(url, { credentials: 'include', ...options });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return resp.json();
+}
+
+async function scanOpportunities() {
+    const container = document.getElementById('opportunitiesList');
+    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 mb-0">Buscando oportunidades...</p></div>';
+    
+    try {
+        const category = document.getElementById('categoryFilter').value;
+        const minMargin = document.getElementById('minMargin').value;
+        const minSales = document.getElementById('minSales').value;
+        
+        const data = await requestJson(`/api/opportunities/scan?category=${category}&min_margin=${minMargin}&min_sales=${minSales}`);
+        
+        if (data.opportunities && data.opportunities.length > 0) {
+            container.innerHTML = data.opportunities.map(opp => `
+                <div class="border rounded p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${opp.title}</h6>
+                            <p class="text-muted small mb-2">${opp.category_name}</p>
+                            <div class="d-flex gap-3 small">
+                                <span class="text-success"><i class="bi bi-graph-up"></i> ${opp.estimated_sales}/mês</span>
+                                <span class="text-primary"><i class="bi bi-cash"></i> Margem: ${opp.margin}%</span>
+                                <span class="text-warning"><i class="bi bi-people"></i> ${opp.competitors} concorrentes</span>
+                            </div>
+                        </div>
+                        <a href="/research?q=${encodeURIComponent(opp.title)}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-search"></i> Pesquisar
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1"></i><p class="mt-2 mb-0">Nenhuma oportunidade encontrada com os filtros atuais</p></div>';
+        }
+    } catch (e) {
+        container.innerHTML = '<div class="text-center py-5 text-danger">Erro ao buscar oportunidades</div>';
+    }
+}
+
+// Load categories
+requestJson('/api/categories').then(data => {
+    const select = document.getElementById('categoryFilter');
+    if (data.categories) {
+        data.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            select.appendChild(option);
+        });
+    }
+});
+</script>

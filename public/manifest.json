@@ -1,0 +1,51 @@
+{
+    "name": "Mercado Livre Manager",
+    "short_name": "ML Manager",
+    "description": "Sistema de gestão multi-contas Mercado Livre com análise SEO, pedidos e otimização de anúncios",
+    "start_url": "/dashboard",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#0d6efd",
+    "theme_color": "#0d6efd",
+    "scope": "/",
+    "lang": "pt-BR",
+    "categories": [
+        "business",
+        "productivity",
+        "shopping"
+    ],
+    "icons": [
+        {
+            "src": "/icons/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/apple-touch-icon.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icons/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [],
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "share_target": {
+        "action": "/dashboard/share",
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "params": {
+            "title": "title",
+            "text": "text",
+            "url": "url"
+        }
+    }
+}

@@ -1,0 +1,7 @@
+Este arquivo deve ser substituído por um ícone PNG real.
+Para gerar os ícones, use uma ferramenta como:
+- https://realfavicongenerator.net/
+- https://www.favicon-generator.org/
+
+Ou crie manualmente:
+convert favicon.svg -resize 144x144 icon-144x144.png

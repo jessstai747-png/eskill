@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Testing
+tests/
+test-results/
+playwright-report/
+.phpunit.cache/
+phpunit.xml
+phpcs.xml
+phpmd.xml
+playwright.config.ts
+
+# Development files
+.env
+.env.example
+.env.testing
+docker-compose.yml
+cookies.txt
+create_real_token.php
+create_test_account.php
+test_*.php
+real_auth.php
+
+# Git
+.git/
+.github/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Documentation (removida no Dockerfile mas excluída do contexto de build)
+docs/
+examples/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and cache (são criados em runtime)
+storage/logs/*
+storage/cache/*
+!storage/logs/.gitkeep
+!storage/cache/.gitkeep
+
+# Misc
+*.md
+releases*.json

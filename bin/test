@@ -1,0 +1,151 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * CLI para executar testes
+ * 
+ * Uso:
+ *   ./bin/test                    # Rodar todos os testes
+ *   ./bin/test --unit             # Apenas testes unitários
+ *   ./bin/test --integration      # Apenas testes de integração
+ *   ./bin/test --coverage         # Com coverage
+ *   ./bin/test --filter=TestName  # Filtrar por nome
+ *   ./bin/test --ai               # Apenas testes de IA
+ */
+
+$rootPath = dirname(__DIR__);
+
+// Cores para output
+$colors = [
+    'reset' => "\033[0m",
+    'green' => "\033[32m",
+    'yellow' => "\033[33m",
+    'red' => "\033[31m",
+    'blue' => "\033[34m",
+    'cyan' => "\033[36m",
+];
+
+function colorize($text, $color) {
+    global $colors;
+    return $colors[$color] . $text . $colors['reset'];
+}
+
+// Banner
+echo "\n";
+echo colorize("╔═══════════════════════════════════════╗\n", 'cyan');
+echo colorize("║   Mercado Livre Manager - Test Suite ║\n", 'cyan');
+echo colorize("╚═══════════════════════════════════════╝\n", 'cyan');
+echo "\n";
+
+// Parse argumentos
+$args = array_slice($argv, 1);
+$options = [
+    'unit' => false,
+    'integration' => false,
+    'coverage' => false,
+    'filter' => null,
+    'ai' => false,
+    'verbose' => false,
+];
+
+foreach ($args as $arg) {
+    if ($arg === '--unit') {
+        $options['unit'] = true;
+    } elseif ($arg === '--integration') {
+        $options['integration'] = true;
+    } elseif ($arg === '--coverage') {
+        $options['coverage'] = true;
+    } elseif ($arg === '--ai') {
+        $options['ai'] = true;
+    } elseif ($arg === '--verbose' || $arg === '-v') {
+        $options['verbose'] = true;
+    } elseif (strpos($arg, '--filter=') === 0) {
+        $options['filter'] = substr($arg, 9);
+    } elseif ($arg === '--help' || $arg === '-h') {
+        showHelp();
+        exit(0);
+    }
+}
+
+function showHelp() {
+    echo "Uso: ./bin/test [opções]\n\n";
+    echo "Opções:\n";
+    echo "  --unit          Rodar apenas testes unitários\n";
+    echo "  --integration   Rodar apenas testes de integração\n";
+    echo "  --ai            Rodar apenas testes de IA\n";
+    echo "  --coverage      Gerar relatório de cobertura\n";
+    echo "  --filter=NAME   Filtrar testes por nome\n";
+    echo "  --verbose, -v   Output verboso\n";
+    echo "  --help, -h      Mostrar esta ajuda\n\n";
+    echo "Exemplos:\n";
+    echo "  ./bin/test\n";
+    echo "  ./bin/test --unit\n";
+    echo "  ./bin/test --ai --verbose\n";
+    echo "  ./bin/test --filter=TitleOptimizer\n";
+}
+
+// Construir comando PHPUnit
+$command = 'vendor/bin/phpunit';
+
+// Escolher suite
+if ($options['ai']) {
+    echo colorize("🤖 Rodando testes de IA...\n\n", 'blue');
+    $command .= ' tests/Unit/Services/AI/';
+} elseif ($options['unit'] && !$options['integration']) {
+    echo colorize("🧪 Rodando testes unitários...\n\n", 'blue');
+    $command .= ' tests/Unit/';
+} elseif ($options['integration'] && !$options['unit']) {
+    echo colorize("🔗 Rodando testes de integração...\n\n", 'blue');
+    $command .= ' tests/Integration/';
+} else {
+    echo colorize("🚀 Rodando todos os testes...\n\n", 'blue');
+    $command .= ' tests/';
+}
+
+// Adicionar filtro
+if ($options['filter']) {
+    echo colorize("🔍 Filtro: {$options['filter']}\n\n", 'yellow');
+    $command .= " --filter={$options['filter']}";
+}
+
+// Adicionar coverage
+if ($options['coverage']) {
+    echo colorize("📊 Gerando relatório de cobertura...\n\n", 'yellow');
+    $command .= ' --coverage-html storage/coverage';
+}
+
+// Adicionar testdox para output bonito
+if (!$options['verbose']) {
+    $command .= ' --testdox';
+} else {
+    $command .= ' --verbose';
+}
+
+// Adicionar cores
+$command .= ' --colors=always';
+
+// Executar
+$startTime = microtime(true);
+chdir($rootPath);
+passthru($command, $exitCode);
+$duration = microtime(true) - $startTime;
+
+// Resumo
+echo "\n";
+echo str_repeat("─", 50) . "\n";
+
+if ($exitCode === 0) {
+    echo colorize("✓ Todos os testes passaram!", 'green');
+} else {
+    echo colorize("✗ Alguns testes falharam", 'red');
+}
+
+echo " " . colorize("(Tempo: " . round($duration, 2) . "s)", 'cyan') . "\n";
+
+if ($options['coverage']) {
+    echo "\n" . colorize("📊 Relatório de cobertura: storage/coverage/index.html", 'blue') . "\n";
+}
+
+echo "\n";
+
+exit($exitCode);

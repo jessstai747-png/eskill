@@ -1,0 +1,10 @@
+[program:ml_worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /home/eskill/htdocs/eskill.com.br/bin/worker.php
+autostart=true
+autorestart=true
+user=eskill
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/home/eskill/htdocs/eskill.com.br/storage/logs/worker.log
+stopwaitsecs=3600

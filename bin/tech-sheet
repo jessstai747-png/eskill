@@ -1,0 +1,761 @@
+#!/usr/bin/env php
+<?php
+/**
+ * 🔧 Tech Sheet CLI - Ferramenta de linha de comando
+ * 
+ * Comandos disponíveis:
+ *   analyze       Analisa itens pendentes
+ *   suggestions   Gera sugestões em lote
+ *   approve       Aprova sugestões automaticamente
+ *   apply         Aplica sugestões aprovadas
+ *   stats         Mostra estatísticas
+ *   export        Exporta dados
+ *   circuit       Gerencia circuit breaker
+ * 
+ * Uso: php bin/tech-sheet <comando> [opções]
+ * 
+ * Exemplos:
+ *   php bin/tech-sheet analyze --account=1 --limit=100
+ *   php bin/tech-sheet suggestions --account=1 --category=MLB1234
+ *   php bin/tech-sheet approve --min-confidence=80
+ *   php bin/tech-sheet apply --account=1 --dry-run
+ *   php bin/tech-sheet stats --account=1
+ *   php bin/tech-sheet export --format=csv --output=/tmp/export.csv
+ *   php bin/tech-sheet circuit --status
+ */
+
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../autoload.php';
+
+use Dotenv\Dotenv;
+use App\Database;
+use App\Services\TechSheetService;
+use App\Services\TechSheetAnalyticsService;
+use App\Services\TechSheetExportService;
+use App\Services\TechSheetAutoOptimizerService;
+use App\Services\CircuitBreakerService;
+use App\Services\LoggingService;
+
+// Carregar variáveis de ambiente
+$dotenv = Dotenv::createImmutable(dirname(__DIR__));
+$dotenv->safeLoad();
+
+// Cores ANSI
+define('C_RESET', "\033[0m");
+define('C_GREEN', "\033[32m");
+define('C_RED', "\033[31m");
+define('C_YELLOW', "\033[33m");
+define('C_BLUE', "\033[34m");
+define('C_CYAN', "\033[36m");
+define('C_BOLD', "\033[1m");
+
+/**
+ * CLI principal
+ */
+class TechSheetCLI
+{
+    private array $args;
+    private array $options;
+    private ?LoggingService $logger = null;
+
+    public function __construct(array $argv)
+    {
+        $this->parseArguments($argv);
+        $this->logger = new LoggingService();
+    }
+
+    private function parseArguments(array $argv): void
+    {
+        $this->args = [];
+        $this->options = [];
+
+        // Remove o nome do script
+        array_shift($argv);
+
+        foreach ($argv as $arg) {
+            if (strpos($arg, '--') === 0) {
+                // Opção longa
+                $parts = explode('=', substr($arg, 2), 2);
+                $key = $parts[0];
+                $value = $parts[1] ?? true;
+                $this->options[$key] = $value;
+            } elseif (strpos($arg, '-') === 0) {
+                // Opção curta
+                $key = substr($arg, 1);
+                $this->options[$key] = true;
+            } else {
+                $this->args[] = $arg;
+            }
+        }
+    }
+
+    public function run(): int
+    {
+        $command = $this->args[0] ?? 'help';
+
+        try {
+            return match ($command) {
+                'analyze' => $this->analyze(),
+                'suggestions' => $this->generateSuggestions(),
+                'smart-fill' => $this->smartFill(),
+                'approve' => $this->approveSuggestions(),
+                'apply' => $this->applySuggestions(),
+                'stats' => $this->showStats(),
+                'export' => $this->export(),
+                'circuit' => $this->circuitBreaker(),
+                'help', '--help', '-h' => $this->showHelp(),
+                default => $this->unknownCommand($command),
+            };
+        } catch (\Exception $e) {
+            $this->error("Erro: " . $e->getMessage());
+            return 1;
+        }
+    }
+
+    /**
+     * Comando: analyze
+     * Analisa itens pendentes de análise
+     */
+    private function analyze(): int
+    {
+        $accountId = $this->getAccountId();
+        $limit = (int)($this->options['limit'] ?? 50);
+        $force = isset($this->options['force']);
+
+        $this->header("📊 Analisando Ficha Técnica");
+        $this->info("Conta: {$accountId} | Limite: {$limit} | Forçar: " . ($force ? 'Sim' : 'Não'));
+        $this->line();
+
+        $service = new TechSheetService($accountId);
+        $db = Database::getInstance();
+
+        // Buscar itens
+        $freshnessHours = $force ? 0 : 24;
+        $sql = "
+            SELECT i.ml_item_id, i.title, i.category_id
+            FROM items i
+            LEFT JOIN tech_sheet_item_summary s 
+                ON s.account_id = i.account_id AND s.item_id = i.ml_item_id
+            WHERE i.account_id = :account_id
+              AND i.status = 'active'
+              AND (
+                  s.item_id IS NULL 
+                  OR s.total_available = 0
+                  OR s.last_analyzed_at < DATE_SUB(NOW(), INTERVAL :hours HOUR)
+              )
+            ORDER BY s.item_id IS NULL DESC, s.last_analyzed_at ASC
+            LIMIT :limit
+        ";
+
+        $stmt = $db->prepare($sql);
+        $stmt->bindValue(':account_id', $accountId, \PDO::PARAM_INT);
+        $stmt->bindValue(':hours', $freshnessHours, \PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($items)) {
+            $this->success("✓ Todos os itens já estão analisados!");
+            return 0;
+        }
+
+        $this->info("Encontrados " . count($items) . " itens para análise");
+        $this->line();
+
+        $analyzed = 0;
+        $errors = 0;
+
+        foreach ($items as $index => $item) {
+            $itemId = $item['ml_item_id'];
+            $title = mb_substr($item['title'], 0, 50);
+            $progress = sprintf("[%d/%d]", $index + 1, count($items));
+
+            echo C_CYAN . $progress . C_RESET . " Analisando {$itemId}... ";
+
+            try {
+                $result = $service->getItem($itemId);
+                if (isset($result['error'])) {
+                    echo C_RED . "✗ " . ($result['message'] ?? 'Erro') . C_RESET . PHP_EOL;
+                    $errors++;
+                } else {
+                    $completeness = $result['summary']['completeness_percent'] ?? 0;
+                    echo C_GREEN . "✓ {$completeness}%" . C_RESET . PHP_EOL;
+                    $analyzed++;
+                }
+            } catch (\Exception $e) {
+                echo C_RED . "✗ " . $e->getMessage() . C_RESET . PHP_EOL;
+                $errors++;
+            }
+
+            // Rate limit
+            usleep(200000); // 200ms
+        }
+
+        $this->line();
+        $this->success("Analisados: {$analyzed} | Erros: {$errors}");
+
+        return $errors > 0 ? 1 : 0;
+    }
+
+    /**
+     * Comando: suggestions
+     * Gera sugestões em lote
+     */
+    private function generateSuggestions(): int
+    {
+        $accountId = $this->getAccountId();
+        $limit = (int)($this->options['limit'] ?? 30);
+        $categoryId = $this->options['category'] ?? null;
+        $sources = $this->options['sources'] ?? 'title,benchmark,ai';
+
+        $this->header("💡 Gerando Sugestões");
+        $this->info("Conta: {$accountId} | Limite: {$limit}");
+        if ($categoryId) {
+            $this->info("Categoria: {$categoryId}");
+        }
+        $this->line();
+
+        $service = new TechSheetService($accountId);
+        $db = Database::getInstance();
+
+        // Buscar itens com gaps
+        $sql = "
+            SELECT s.item_id, i.title, s.missing_required, s.missing_filter
+            FROM tech_sheet_item_summary s
+            INNER JOIN items i ON i.ml_item_id = s.item_id AND i.account_id = s.account_id
+            WHERE s.account_id = :account_id
+              AND i.status = 'active'
+              AND (s.missing_required > 0 OR s.missing_filter > 0)
+        ";
+        
+        if ($categoryId) {
+            $sql .= " AND i.category_id = :category_id";
+        }
+        
+        $sql .= " ORDER BY s.missing_required DESC, s.missing_filter DESC LIMIT :limit";
+
+        $stmt = $db->prepare($sql);
+        $stmt->bindValue(':account_id', $accountId, \PDO::PARAM_INT);
+        if ($categoryId) {
+            $stmt->bindValue(':category_id', $categoryId);
+        }
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($items)) {
+            $this->success("✓ Nenhum item precisa de sugestões!");
+            return 0;
+        }
+
+        $this->info("Gerando sugestões para " . count($items) . " itens");
+        $this->line();
+
+        $generated = 0;
+        $totalSuggestions = 0;
+
+        foreach ($items as $index => $item) {
+            $itemId = $item['item_id'];
+            $progress = sprintf("[%d/%d]", $index + 1, count($items));
+
+            echo C_CYAN . $progress . C_RESET . " {$itemId}... ";
+
+            try {
+                $result = $service->generateSuggestions($itemId);
+                $count = count($result['suggestions'] ?? []);
+                echo C_GREEN . "✓ {$count} sugestões" . C_RESET . PHP_EOL;
+                $generated++;
+                $totalSuggestions += $count;
+            } catch (\Exception $e) {
+                echo C_RED . "✗ " . $e->getMessage() . C_RESET . PHP_EOL;
+            }
+
+            usleep(300000); // 300ms
+        }
+
+        $this->line();
+        $this->success("Processados: {$generated} | Sugestões geradas: {$totalSuggestions}");
+
+        return 0;
+    }
+
+    /**
+     * Comando: smart-fill
+     * Preenche lacunas usando múltiplas fontes SEO
+     */
+    private function smartFill(): int
+    {
+        $accountId = $this->getAccountId();
+        $limit = (int)($this->options['limit'] ?? 30);
+        $sources = $this->options['sources'] ?? 'title,description,benchmark,autocomplete,trends';
+        $minConfidence = (int)($this->options['min-confidence'] ?? 50);
+
+        $this->header("🎯 Smart Fill - Preenchimento Inteligente de Lacunas");
+        $this->info("Conta: {$accountId} | Limite: {$limit} | Confiança mín: {$minConfidence}%");
+        $this->info("Fontes: {$sources}");
+        $this->line();
+
+        $sourcesArray = array_map('trim', explode(',', $sources));
+        $db = Database::getInstance();
+
+        // Buscar itens com lacunas
+        $sql = "
+            SELECT s.item_id, i.title, s.missing_required, s.missing_filter
+            FROM tech_sheet_item_summary s
+            INNER JOIN items i ON i.ml_item_id = s.item_id AND i.account_id = s.account_id
+            WHERE s.account_id = :account_id
+              AND i.status = 'active'
+              AND (s.missing_required > 0 OR s.missing_filter > 0)
+            ORDER BY s.missing_required DESC, s.missing_filter DESC
+            LIMIT :limit
+        ";
+
+        $stmt = $db->prepare($sql);
+        $stmt->bindValue(':account_id', $accountId, \PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($items)) {
+            $this->success("✓ Nenhum item com lacunas encontrado!");
+            return 0;
+        }
+
+        $this->info("Processando " . count($items) . " itens com lacunas");
+        $this->line();
+
+        // Importar o serviço
+        require_once __DIR__ . '/../app/Services/TechSheetSmartGapFillerService.php';
+        $service = new \App\Services\TechSheetSmartGapFillerService($accountId);
+
+        $processed = 0;
+        $totalSuggestions = 0;
+        $totalGapsCovered = 0;
+
+        foreach ($items as $index => $item) {
+            $itemId = $item['item_id'];
+            $gaps = ($item['missing_required'] ?? 0) + ($item['missing_filter'] ?? 0);
+            $progress = sprintf("[%d/%d]", $index + 1, count($items));
+
+            echo C_CYAN . $progress . C_RESET . " {$itemId} ({$gaps} gaps)... ";
+
+            try {
+                $result = $service->fillGaps($itemId, [
+                    'sources' => $sourcesArray,
+                    'min_confidence' => $minConfidence,
+                    'max_suggestions' => 3,
+                ]);
+
+                if ($result['success'] ?? false) {
+                    $saved = $result['saved_count'] ?? 0;
+                    $covered = $result['gaps_covered'] ?? 0;
+                    $sourcesUsed = implode(',', array_keys($result['sources_used'] ?? []));
+                    
+                    echo C_GREEN . "✓ {$saved} sugestões ({$covered} gaps)" . C_RESET;
+                    if ($sourcesUsed) {
+                        echo " via " . C_BLUE . $sourcesUsed . C_RESET;
+                    }
+                    echo PHP_EOL;
+                    
+                    $processed++;
+                    $totalSuggestions += $saved;
+                    $totalGapsCovered += $covered;
+                } else {
+                    echo C_RED . "✗ " . ($result['error'] ?? 'Erro') . C_RESET . PHP_EOL;
+                }
+            } catch (\Exception $e) {
+                echo C_RED . "✗ " . $e->getMessage() . C_RESET . PHP_EOL;
+            }
+
+            usleep(200000); // 200ms
+        }
+
+        $this->line();
+        $this->success("Processados: {$processed} | Sugestões: {$totalSuggestions} | Gaps cobertos: {$totalGapsCovered}");
+
+        return 0;
+    }
+
+    /**
+     * Comando: approve
+     * Aprova sugestões automaticamente
+     */
+    private function approveSuggestions(): int
+    {
+        $accountId = $this->getAccountId();
+        $minConfidence = (int)($this->options['min-confidence'] ?? 80);
+        $limit = (int)($this->options['limit'] ?? 100);
+        $dryRun = isset($this->options['dry-run']);
+
+        $this->header("✅ Aprovando Sugestões");
+        $this->info("Conta: {$accountId} | Confiança mínima: {$minConfidence}% | Limite: {$limit}");
+        if ($dryRun) {
+            $this->warn("MODO DRY-RUN: Nenhuma alteração será feita");
+        }
+        $this->line();
+
+        $db = Database::getInstance();
+
+        // Buscar sugestões pendentes com alta confiança
+        $stmt = $db->prepare("
+            SELECT s.*, i.title
+            FROM tech_sheet_suggestions s
+            INNER JOIN items i ON i.ml_item_id = s.item_id AND i.account_id = s.account_id
+            WHERE s.account_id = :account_id
+              AND s.status = 'pending'
+              AND s.confidence >= :min_confidence
+            ORDER BY s.confidence DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':account_id', $accountId, \PDO::PARAM_INT);
+        $stmt->bindValue(':min_confidence', $minConfidence, \PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        $suggestions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($suggestions)) {
+            $this->success("✓ Nenhuma sugestão pendente com confiança ≥{$minConfidence}%");
+            return 0;
+        }
+
+        $this->info("Encontradas " . count($suggestions) . " sugestões para aprovar");
+        $this->line();
+
+        $approved = 0;
+
+        foreach ($suggestions as $sug) {
+            $info = sprintf(
+                "%s | %s = %s (%d%%)",
+                $sug['item_id'],
+                $sug['attribute_id'],
+                mb_substr($sug['suggested_value'], 0, 30),
+                $sug['confidence']
+            );
+            
+            echo C_CYAN . "→" . C_RESET . " {$info}... ";
+
+            if (!$dryRun) {
+                $stmt = $db->prepare("
+                    UPDATE tech_sheet_suggestions 
+                    SET status = 'approved', 
+                        decided_at = NOW(),
+                        notes = CONCAT(COALESCE(notes, ''), ' [CLI auto-approve]')
+                    WHERE id = :id
+                ");
+                $stmt->execute(['id' => $sug['id']]);
+            }
+
+            echo C_GREEN . "✓" . C_RESET . PHP_EOL;
+            $approved++;
+        }
+
+        $this->line();
+        $this->success("Aprovadas: {$approved}" . ($dryRun ? " (dry-run)" : ""));
+
+        return 0;
+    }
+
+    /**
+     * Comando: apply
+     * Aplica sugestões aprovadas no Mercado Livre
+     */
+    private function applySuggestions(): int
+    {
+        $accountId = $this->getAccountId();
+        $limit = (int)($this->options['limit'] ?? 50);
+        $dryRun = isset($this->options['dry-run']);
+
+        $this->header("🚀 Aplicando Sugestões Aprovadas");
+        $this->info("Conta: {$accountId} | Limite: {$limit}");
+        if ($dryRun) {
+            $this->warn("MODO DRY-RUN: Nenhuma alteração será feita no ML");
+        }
+        $this->line();
+
+        $service = new TechSheetService($accountId);
+        $db = Database::getInstance();
+
+        // Buscar itens com sugestões aprovadas
+        $stmt = $db->prepare("
+            SELECT DISTINCT item_id
+            FROM tech_sheet_suggestions
+            WHERE account_id = :account_id
+              AND status = 'approved'
+            ORDER BY updated_at ASC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':account_id', $accountId, \PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        $items = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        if (empty($items)) {
+            $this->success("✓ Nenhuma sugestão aprovada pendente de aplicação");
+            return 0;
+        }
+
+        $this->info("Aplicando sugestões em " . count($items) . " itens");
+        $this->line();
+
+        $applied = 0;
+        $errors = 0;
+
+        foreach ($items as $index => $itemId) {
+            $progress = sprintf("[%d/%d]", $index + 1, count($items));
+            echo C_CYAN . $progress . C_RESET . " {$itemId}... ";
+
+            if ($dryRun) {
+                echo C_YELLOW . "⏭ (dry-run)" . C_RESET . PHP_EOL;
+                continue;
+            }
+
+            try {
+                $result = $service->applyApproved($itemId);
+                if ($result['success'] ?? false) {
+                    $count = $result['applied_count'] ?? 0;
+                    echo C_GREEN . "✓ {$count} aplicados" . C_RESET . PHP_EOL;
+                    $applied++;
+                } else {
+                    echo C_RED . "✗ " . ($result['error'] ?? 'Erro') . C_RESET . PHP_EOL;
+                    $errors++;
+                }
+            } catch (\Exception $e) {
+                echo C_RED . "✗ " . $e->getMessage() . C_RESET . PHP_EOL;
+                $errors++;
+            }
+
+            usleep(500000); // 500ms entre requisições
+        }
+
+        $this->line();
+        $this->success("Aplicados: {$applied} | Erros: {$errors}");
+
+        return $errors > 0 ? 1 : 0;
+    }
+
+    /**
+     * Comando: stats
+     * Mostra estatísticas da conta
+     */
+    private function showStats(): int
+    {
+        $accountId = $this->getAccountId();
+
+        $this->header("📈 Estatísticas da Ficha Técnica");
+        $this->info("Conta: {$accountId}");
+        $this->line();
+
+        $analytics = new TechSheetAnalyticsService($accountId);
+        $overview = $analytics->getOverview();
+
+        echo C_BOLD . "Visão Geral:" . C_RESET . PHP_EOL;
+        echo "  Total de Itens:           " . C_CYAN . number_format($overview['total_items']) . C_RESET . PHP_EOL;
+        echo "  Itens Analisados:         " . C_CYAN . number_format($overview['analyzed_items']) . C_RESET;
+        echo " (" . round($overview['analysis_coverage'], 1) . "%)" . PHP_EOL;
+        echo "  Completude Média:         " . $this->colorByScore($overview['avg_completeness']) . PHP_EOL;
+        echo "  Itens com Gaps Críticos:  " . C_RED . number_format($overview['items_with_critical_gaps']) . C_RESET . PHP_EOL;
+        echo "  Itens ≥80% Completos:     " . C_GREEN . number_format($overview['items_above_80']) . C_RESET . PHP_EOL;
+        echo "  Itens <50% Completos:     " . C_RED . number_format($overview['items_below_50']) . C_RESET . PHP_EOL;
+
+        $this->line();
+
+        // Sugestões
+        $db = Database::getInstance();
+        $stmt = $db->prepare("
+            SELECT status, COUNT(*) as count
+            FROM tech_sheet_suggestions
+            WHERE account_id = :account_id
+            GROUP BY status
+        ");
+        $stmt->execute(['account_id' => $accountId]);
+        $suggestions = $stmt->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+        echo C_BOLD . "Sugestões:" . C_RESET . PHP_EOL;
+        echo "  Pendentes:   " . C_YELLOW . ($suggestions['pending'] ?? 0) . C_RESET . PHP_EOL;
+        echo "  Aprovadas:   " . C_BLUE . ($suggestions['approved'] ?? 0) . C_RESET . PHP_EOL;
+        echo "  Aplicadas:   " . C_GREEN . ($suggestions['applied'] ?? 0) . C_RESET . PHP_EOL;
+        echo "  Rejeitadas:  " . C_RED . ($suggestions['rejected'] ?? 0) . C_RESET . PHP_EOL;
+
+        return 0;
+    }
+
+    /**
+     * Comando: export
+     * Exporta dados
+     */
+    private function export(): int
+    {
+        $accountId = $this->getAccountId();
+        $format = $this->options['format'] ?? 'json';
+        $output = $this->options['output'] ?? null;
+
+        $this->header("📤 Exportando Dados");
+        $this->info("Conta: {$accountId} | Formato: {$format}");
+        $this->line();
+
+        $exporter = new TechSheetExportService($accountId);
+        
+        $options = [
+            'include_gaps' => isset($this->options['include-gaps']),
+            'include_suggestions' => !isset($this->options['no-suggestions']),
+            'status' => $this->options['status'] ?? null,
+            'category_id' => $this->options['category'] ?? null,
+        ];
+
+        $content = match ($format) {
+            'csv' => $exporter->exportReportToCSV($options),
+            'json' => $exporter->exportReportToJSON($options),
+            default => throw new \InvalidArgumentException("Formato inválido: {$format}"),
+        };
+
+        if ($output) {
+            file_put_contents($output, $content);
+            $this->success("✓ Exportado para: {$output}");
+        } else {
+            echo $content;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Comando: circuit
+     * Gerencia Circuit Breaker
+     */
+    private function circuitBreaker(): int
+    {
+        $this->header("🔌 Circuit Breaker");
+
+        $cb = new CircuitBreakerService('mercadolivre_api');
+        $stats = $cb->getStats();
+
+        if (isset($this->options['reset'])) {
+            $cb->forceReset();
+            $this->success("✓ Circuit breaker resetado!");
+            return 0;
+        }
+
+        // Mostrar status
+        $state = $stats['current_state'];
+        $stateColor = match ($state) {
+            'closed' => C_GREEN,
+            'open' => C_RED,
+            'half_open' => C_YELLOW,
+            default => C_RESET,
+        };
+
+        echo "Estado:          " . $stateColor . strtoupper($state) . C_RESET . PHP_EOL;
+        echo "Falhas:          " . $stats['failure_count'] . PHP_EOL;
+        echo "Taxa de Erro 1h: " . $stats['error_rate_1h'] . "%" . PHP_EOL;
+        echo "Requisições 1h:  " . $stats['requests_1h'] . PHP_EOL;
+        echo "Última Falha:    " . ($stats['last_failure_at'] ?? 'N/A') . PHP_EOL;
+        echo "Último Sucesso:  " . ($stats['last_success_at'] ?? 'N/A') . PHP_EOL;
+
+        $this->line();
+        $this->info("Use --reset para forçar reset do circuit breaker");
+
+        return 0;
+    }
+
+    /**
+     * Comando: help
+     */
+    private function showHelp(): int
+    {
+        echo C_BOLD . "🔧 Tech Sheet CLI" . C_RESET . PHP_EOL;
+        echo "Ferramenta de linha de comando para gerenciar Ficha Técnica" . PHP_EOL;
+        $this->line();
+
+        echo C_BOLD . "Uso:" . C_RESET . PHP_EOL;
+        echo "  php bin/tech-sheet <comando> [opções]" . PHP_EOL;
+        $this->line();
+
+        echo C_BOLD . "Comandos:" . C_RESET . PHP_EOL;
+        echo "  " . C_CYAN . "analyze" . C_RESET . "       Analisa itens pendentes" . PHP_EOL;
+        echo "  " . C_CYAN . "suggestions" . C_RESET . "   Gera sugestões em lote" . PHP_EOL;
+        echo "  " . C_CYAN . "smart-fill" . C_RESET . "    🎯 Preenche lacunas com múltiplas fontes SEO" . PHP_EOL;
+        echo "  " . C_CYAN . "approve" . C_RESET . "       Aprova sugestões automaticamente" . PHP_EOL;
+        echo "  " . C_CYAN . "apply" . C_RESET . "         Aplica sugestões aprovadas no ML" . PHP_EOL;
+        echo "  " . C_CYAN . "stats" . C_RESET . "         Mostra estatísticas" . PHP_EOL;
+        echo "  " . C_CYAN . "export" . C_RESET . "        Exporta dados (CSV/JSON)" . PHP_EOL;
+        echo "  " . C_CYAN . "circuit" . C_RESET . "       Gerencia circuit breaker" . PHP_EOL;
+        $this->line();
+
+        echo C_BOLD . "Opções Globais:" . C_RESET . PHP_EOL;
+        echo "  --account=ID    ID da conta (obrigatório)" . PHP_EOL;
+        echo "  --limit=N       Limite de itens a processar" . PHP_EOL;
+        echo "  --dry-run       Simula execução sem alterar dados" . PHP_EOL;
+        $this->line();
+
+        echo C_BOLD . "Exemplos:" . C_RESET . PHP_EOL;
+        echo "  php bin/tech-sheet analyze --account=1 --limit=100" . PHP_EOL;
+        echo "  php bin/tech-sheet smart-fill --account=1 --sources=title,benchmark,autocomplete" . PHP_EOL;
+        echo "  php bin/tech-sheet approve --account=1 --min-confidence=85" . PHP_EOL;
+        echo "  php bin/tech-sheet apply --account=1 --dry-run" . PHP_EOL;
+        echo "  php bin/tech-sheet export --account=1 --format=csv --output=/tmp/export.csv" . PHP_EOL;
+
+        return 0;
+    }
+
+    private function unknownCommand(string $command): int
+    {
+        $this->error("Comando desconhecido: {$command}");
+        $this->info("Use 'php bin/tech-sheet help' para ver comandos disponíveis");
+        return 1;
+    }
+
+    private function getAccountId(): int
+    {
+        $accountId = $this->options['account'] ?? null;
+        if (!$accountId) {
+            throw new \InvalidArgumentException("Opção --account=ID é obrigatória");
+        }
+        return (int)$accountId;
+    }
+
+    // Helpers de output
+    private function header(string $text): void
+    {
+        echo PHP_EOL . C_BOLD . C_BLUE . $text . C_RESET . PHP_EOL;
+        echo str_repeat('─', 50) . PHP_EOL;
+    }
+
+    private function info(string $text): void
+    {
+        echo C_CYAN . "ℹ" . C_RESET . " {$text}" . PHP_EOL;
+    }
+
+    private function success(string $text): void
+    {
+        echo C_GREEN . "✓" . C_RESET . " {$text}" . PHP_EOL;
+    }
+
+    private function warn(string $text): void
+    {
+        echo C_YELLOW . "⚠" . C_RESET . " {$text}" . PHP_EOL;
+    }
+
+    private function error(string $text): void
+    {
+        echo C_RED . "✗" . C_RESET . " {$text}" . PHP_EOL;
+    }
+
+    private function line(): void
+    {
+        echo PHP_EOL;
+    }
+
+    private function colorByScore(float $score): string
+    {
+        $color = match (true) {
+            $score >= 80 => C_GREEN,
+            $score >= 60 => C_YELLOW,
+            default => C_RED,
+        };
+        return $color . round($score, 1) . "%" . C_RESET;
+    }
+}
+
+// Executar CLI
+$cli = new TechSheetCLI($argv);
+exit($cli->run());

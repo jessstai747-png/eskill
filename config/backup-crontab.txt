@@ -1,0 +1,14 @@
+# Automated Backup Crontab
+# Add these lines to crontab with: crontab -e
+
+# Database backup - Daily at 2 AM
+0 2 * * * /home/eskill/htdocs/eskill.com.br/scripts/backup-database.sh >> /var/log/backup-db.log 2>&1
+
+# File backup - Daily at 3 AM
+0 3 * * * /home/eskill/htdocs/eskill.com.br/scripts/backup-files.sh >> /var/log/backup-files.log 2>&1
+
+# Restore test - Weekly on Sunday at 4 AM
+0 4 * * 0 /home/eskill/htdocs/eskill.com.br/scripts/test-restore.sh >> /var/log/restore-test.log 2>&1
+
+# Backup cleanup - Monthly on 1st at 5 AM (optional extra cleanup)
+0 5 1 * * find /var/backups -type f -mtime +30 -delete

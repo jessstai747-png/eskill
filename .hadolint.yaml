@@ -1,0 +1,16 @@
+rules:
+  DL3008:
+    level: warning
+  DL3009:
+    level: warning
+  DL3015:
+    level: warning
+  DL3018:
+    level: warning
+  DL3059:
+    level: ignore
+  SC2086:
+    level: warning
+trustedRegistries:
+  - docker.io
+  - ghcr.io

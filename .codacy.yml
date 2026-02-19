@@ -1,0 +1,86 @@
+# Codacy Configuration for Mercado Livre Manager
+# https://docs.codacy.com/repositories-configure/codacy-configuration-file/
+
+---
+engines:
+  # PHP Analysis
+  phpcs:
+    enabled: true
+    config_path: phpcs.xml
+  phpmd:
+    enabled: true
+    config_path: phpmd.xml
+  
+  # Security Analysis
+  trivy:
+    enabled: true
+  semgrep:
+    enabled: true
+  
+  # JavaScript/CSS Analysis
+  eslint-8:
+    enabled: true
+  stylelint:
+    enabled: true
+  
+  # Docker Analysis
+  hadolint:
+    enabled: true
+  
+  # JSON/YAML Validation
+  jackson:
+    enabled: true
+  
+  # Markdown Linting (documentation)
+  markdownlint:
+    enabled: true
+  
+  # Shell Script Analysis
+  shellcheck:
+    enabled: true
+  
+  # SQL Analysis
+  sqlint:
+    enabled: true
+
+  # Complexity Analysis
+  lizard:
+    enabled: true
+
+exclude_paths:
+  - vendor/**
+  - node_modules/**
+  - storage/**
+  - tests/**
+  - playwright-report/**
+  - test-results/**
+  - "*.min.js"
+  - "*.min.css"
+  - public/assets/vendor/**
+
+languages:
+  php:
+    extensions:
+      - ".php"
+  javascript:
+    extensions:
+      - ".js"
+  css:
+    extensions:
+      - ".css"
+  yaml:
+    extensions:
+      - ".yml"
+      - ".yaml"
+  json:
+    extensions:
+      - ".json"
+  markdown:
+    extensions:
+      - ".md"
+  shell:
+    extensions:
+      - ".sh"
+  sql:
+    extensions:
+      - ".sql"

@@ -1,0 +1,56 @@
+# Bulk SEO Worker - Cron Configuration
+# 
+# Este crontab processa jobs Bulk SEO que ficaram em status "queued"
+# (fallback para ambientes onde exec() não funciona).
+#
+# Como usar:
+# 1. Copie este arquivo para o local desejado
+# 2. Edite os caminhos abaixo conforme seu ambiente
+# 3. Execute: crontab crontab.bulk-seo.example
+#
+# Ou adicione manualmente ao crontab existente:
+# crontab -e
+
+# ============================================================================
+# BULK SEO WORKER
+# ============================================================================
+
+# Opção 1: Processa 1 job queued a cada 2 minutos (recomendado)
+# Mais leve, evita sobrecarga
+*/2 * * * * cd /path/to/project && php bin/bulk-seo-worker.php --once >> storage/logs/bulk-seo-worker.log 2>&1
+
+# Opção 2: Processa todos os jobs queued a cada minuto
+# Mais agressivo, processa lotes inteiros
+# * * * * * php /path/to/bin/bulk-seo-worker.php --process-queued >> /path/to/storage/logs/bulk-seo-cron.log 2>&1
+
+# Opção 3: Recuperar jobs stuck (presos em 'processing' > 1 hora) - executar a cada hora
+0 * * * * cd /path/to/project && php bin/bulk-seo-worker.php --recover-stuck >> storage/logs/bulk-seo-worker.log 2>&1
+
+# ============================================================================
+# EXEMPLOS DE CONFIGURAÇÃO
+# ============================================================================
+
+# Ambiente de desenvolvimento (caminho completo, modo --once)
+# */2 * * * * cd /home/eskill/htdocs/eskill.com.br && php bin/bulk-seo-worker.php --once >> storage/logs/bulk-seo-worker.log 2>&1
+
+# Ambiente de produção (com usuário www-data, modo --once)
+# */2 * * * * su -s /bin/bash www-data -c "cd /var/www/html && php bin/bulk-seo-worker.php --once >> storage/logs/bulk-seo-worker.log 2>&1"
+
+# Com limite de memória e tempo
+# * * * * * php -d memory_limit=256M -d max_execution_time=300 /path/to/bin/bulk-seo-worker.php --process-queued >> /path/to/storage/logs/bulk-seo-cron.log 2>&1
+
+# ============================================================================
+# NOTAS
+# ============================================================================
+#
+# - O worker processa até 10 jobs por execução
+# - Cada job processa itens com rate limit de 250ms entre chamadas
+# - Jobs muito grandes podem demorar - o cron continua do onde parou
+# - Logs são salvos em storage/logs/bulk-seo-worker.log (pelo worker)
+# - Logs do cron são salvos no arquivo especificado no comando
+#
+# Para verificar jobs pendentes:
+# php bin/bulk-seo-worker.php --process-queued
+#
+# Para processar um job específico:
+# php bin/bulk-seo-worker.php bulk_seo_xyz123_1706574123

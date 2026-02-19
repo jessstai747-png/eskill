@@ -1,0 +1,33 @@
+# Proteger raiz do projeto — redirecionar tudo para public/
+# Este .htaccess só é necessário se o DocumentRoot apontar para a raiz do projeto
+# em vez de para a pasta public/. O ideal é configurar o VirtualHost corretamente.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirecionar tudo para public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ /public/$1 [L]
+</IfModule>
+
+# Bloquear acesso direto a arquivos sensíveis
+<FilesMatch "\.(env|log|sql|md|json|xml|yml|yaml|lock|bak|dist|sh|php|txt)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Permitir apenas index.php em public/
+<Files "index.php">
+    Order deny,allow
+    Allow from all
+</Files>
+
+# Bloquear diretórios sensíveis explicitamente
+<IfModule mod_rewrite.c>
+    RewriteRule ^(app|config|database|storage|vendor|tests|bin|scripts|docs|api|\.git|\.github)(/|$) - [F,L]
+    RewriteRule ^(composer\.(json|lock)|phpunit\.xml|phpcs\.xml|phpmd\.xml|docker-compose\.yml|Dockerfile|\.env) - [F,L]
+    RewriteRule ^(cookies\\.txt|create_real_token\\.php|real_auth\\.php|test_oauth\\.php|test_ml_api\\.php|test_env\\.php|worker\\.php) - [F,L]
+</IfModule>
+
+# Desabilitar listagem de diretórios
+Options -Indexes

@@ -1,0 +1,169 @@
+# ==============================================================================
+# Docker Compose - Produção
+# Mercado Livre Manager
+#
+# Uso:
+#   docker compose -f docker-compose.production.yml up -d
+#   docker compose -f docker-compose.production.yml logs -f app
+#   docker compose -f docker-compose.production.yml exec app php bin/migrate.php --status
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # App - PHP 8.2 + Apache (principal)
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: ml_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=database
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app_storage:/var/www/html/storage
+    networks:
+      - ml_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ============================================================================
+  # Cron Scheduler - mesma imagem, roda crons em vez de Apache
+  # ============================================================================
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: ml_cron
+    restart: unless-stopped
+    entrypoint: /bin/bash
+    command: >
+      -c "
+        # Instalar crontab de produção
+        cp /var/www/html/current_crontab /etc/cron.d/ml-crons
+        chmod 0644 /etc/cron.d/ml-crons
+        crontab /etc/cron.d/ml-crons
+        # Iniciar cron em foreground
+        cron -f
+      "
+    user: root
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=database
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app_storage:/var/www/html/storage
+    networks:
+      - ml_network
+
+  # ============================================================================
+  # MySQL 8.0
+  # ============================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: ml_mysql
+    restart: unless-stopped
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --innodb-buffer-pool-size=256M
+      --max-connections=200
+      --slow-query-log=1
+      --long-query-time=2
+      --slow-query-log-file=/var/log/mysql/slow.log
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootpass_prod}"
+      MYSQL_DATABASE: "${DB_DATABASE:-mercadolivre_db}"
+      MYSQL_USER: "${DB_USERNAME:-app_user}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_logs:/var/log/mysql
+    networks:
+      - ml_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpass_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ============================================================================
+  # Redis - Cache e Queue
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ml_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --requirepass "${REDIS_PASSWORD:-}"
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ml_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+# ==============================================================================
+# Volumes persistentes
+# ==============================================================================
+volumes:
+  mysql_data:
+    name: ml_mysql_data
+  mysql_logs:
+    name: ml_mysql_logs
+  redis_data:
+    name: ml_redis_data
+  app_storage:
+    name: ml_app_storage
+
+# ==============================================================================
+# Network isolada
+# ==============================================================================
+networks:
+  ml_network:
+    name: ml_network
+    driver: bridge

@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Services;
+
+use App\Services\MercadoLivreClient;
+use App\Database;
+use PDO;
+
+class ClaimsService
+{
+    private MercadoLivreClient $client;
+    private PDO $db;
+    private ?int $accountId;
+
+    public function __construct(?int $accountId = null)
+    {
+        $this->accountId = $accountId;
+        $this->client = new MercadoLivreClient($accountId);
+        $this->db = Database::getInstance();
+    }
+
+    /**
+     * Get claims with filters
+     */
+    public function getClaims(string $type = 'to_seller', int $limit = 50, int $offset = 0): array
+    {
+        // Try local DB first (if implemented)
+        // For now, fetch from API directly to ensure freshness
+        try {
+            $params = [
+                'limit' => $limit,
+                'offset' => $offset,
+                'status' => 'opened' // Filter by status instead of type
+            ];
+            
+            // Use correct endpoint: /post-purchase/v1/claims
+            $response = $this->client->get('/post-purchase/v1/claims', $params);
+            
+            if (isset($response['error'])) {
+                 return ['error' => $response['message'] ?? 'Failed to fetch claims'];
+            }
+            
+            return $response;
+            
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get single claim details
+     */
+    public function getClaim(string $claimId): array
+    {
+         // API Fetch
+         $response = $this->client->get("/v1/claims/{$claimId}");
+         
+         if (isset($response['id'])) {
+             $this->syncClaimToDatabase($response);
+         }
+         
+         return $response;
+    }
+
+    /**
+     * Sync single claim to local database
+     */
+    public function syncClaim(string $claimId): bool
+    {
+        $claim = $this->getClaim($claimId);
+        if (isset($claim['id'])) {
+             return true; // Saved in getClaim
+        }
+        return false;
+    }
+
+    /**
+     * Send message to claim
+     */
+    public function sendMessage(string $claimId, string $message, array $attachments = []): array
+    {
+        // /v1/claims/{claimId}/messages
+        $payload = [
+            'receiver_role' => 'complainant', // or mediator? defaulting to replying to buyer
+            'message' => $message,
+            'attachments' => $attachments
+        ];
+        
+        return $this->client->post("/v1/claims/{$claimId}/messages", $payload);
+    }
+
+    private function syncClaimToDatabase(array $claim): void
+    {
+        $sql = "
+            INSERT INTO ml_claims (
+                id, order_id, account_id, type, status, stage, reason, 
+                amount, currency_id, date_created, last_updated, raw_data
+            ) VALUES (
+                :id, :order_id, :account_id, :type, :status, :stage, :reason, 
+                :amount, :currency_id, :date_created, :last_updated, :raw_data
+            )
+            ON DUPLICATE KEY UPDATE
+                status = VALUES(status),
+                stage = VALUES(stage),
+                amount = VALUES(amount),
+                last_updated = VALUES(last_updated),
+                raw_data = VALUES(raw_data),
+                updated_at = CURRENT_TIMESTAMP
+        ";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            
+            $stmt->execute([
+                ':id' => $claim['id'],
+                ':order_id' => $claim['order_id'],
+                ':account_id' => $this->accountId,
+                ':type' => $claim['type'],
+                ':status' => $claim['status'],
+                ':stage' => $claim['stage'],
+                ':reason' => $claim['reason'],
+                ':amount' => $claim['amount_claimed']['amount'],
+                ':currency_id' => $claim['amount_claimed']['currency_id'],
+                ':date_created' => date('Y-m-d H:i:s', strtotime($claim['date_created'])),
+                ':last_updated' => date('Y-m-d H:i:s', strtotime($claim['last_updated'])),
+                ':raw_data' => json_encode($claim)
+            ]);
+
+        } catch (\Exception $e) {
+            log_error('Falha ao sincronizar reclamação no banco', [
+                'service' => 'ClaimsService',
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+}

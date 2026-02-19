@@ -1,0 +1,14 @@
+{
+    "clone_worker": {
+        "last_attempt": 1771291803,
+        "last_exit_code": 0,
+        "last_status": "ok",
+        "updated_at": "2026-02-17T02:30:03+01:00"
+    },
+    "clone_post_actions": {
+        "last_attempt": 1771291803,
+        "last_exit_code": 0,
+        "last_status": "ok",
+        "updated_at": "2026-02-17T02:30:04+01:00"
+    }
+}

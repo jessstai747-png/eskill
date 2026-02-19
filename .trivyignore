@@ -1,0 +1,10 @@
+# Trivy Ignore Rules
+# ==================
+# .env is a local-only file (never committed to Git via .gitignore)
+# storage/backups/ contains encrypted env backups (also gitignored)
+
+# Local environment file - expected to contain secrets
+.env
+
+# Backup files - gitignored, local only
+storage/backups/

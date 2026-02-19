@@ -1,0 +1,859 @@
+<?php
+
+namespace App\Services;
+
+use App\Database;
+use PDO;
+
+/**
+ * AdsService - Serviço de Publicidade MercadoLivre
+ *
+ * Integração com API de Advertising do Mercado Livre
+ * Gerencia campanhas, métricas e otimizações de Product Ads
+ */
+class AdsService extends MercadoLivreClient
+{
+    private PDO $db;
+
+    private function isList(array $value): bool
+    {
+        if ($value === []) {
+            return true;
+        }
+
+        return array_keys($value) === range(0, count($value) - 1);
+    }
+
+    public function __construct(?int $accountId = null)
+    {
+        parent::__construct($accountId);
+        $this->db = Database::getInstance();
+    }
+
+    /**
+     * Obtém todas as campanhas de publicidade da conta via API
+     * Retorna array com 'campaigns' e '_meta' indicando fonte dos dados
+     */
+    public function getCampaigns(string $status = 'active'): array
+    {
+        $meta = [
+            'data_source' => 'unknown',
+            'fetched_at' => date('Y-m-d H:i:s'),
+            'account_id' => $this->accountId,
+        ];
+
+        try {
+            // Sem token válido - ir direto para cache
+            if (!$this->ensureValidAccessToken()) {
+                $campaigns = $this->getCachedCampaigns($status);
+                $meta['data_source'] = 'local_cache';
+                $meta['reason'] = 'missing_or_expired_token';
+                return ['campaigns' => $campaigns, '_meta' => $meta];
+            }
+
+            $userId = $this->getSellerId();
+            if (!$userId) {
+                $campaigns = $this->getCachedCampaigns($status);
+                $meta['data_source'] = 'local_cache';
+                $meta['reason'] = 'seller_id_not_found';
+                return ['campaigns' => $campaigns, '_meta' => $meta];
+            }
+
+            // Primeiro tenta Product Ads (endpoint mais novo / específico)
+            $productAdsEndpoint = "/advertising/advertisers/{$userId}/product_ads/campaigns";
+            $productAdsResponse = $this->get($productAdsEndpoint, [
+                'status' => $status,
+            ]);
+
+            if ($this->isList($productAdsResponse)) {
+                $campaigns = $productAdsResponse;
+                $this->cacheCampaigns($campaigns);
+                $meta['data_source'] = 'mercadolivre_api_product_ads';
+                $meta['api_endpoint'] = $productAdsEndpoint;
+                return ['campaigns' => $campaigns, '_meta' => $meta];
+            }
+
+            if (isset($productAdsResponse['error']) || isset($productAdsResponse['status'])) {
+                $meta['product_ads_error'] = $productAdsResponse['message'] ?? ($productAdsResponse['error'] ?? 'unknown');
+                if (isset($productAdsResponse['status'])) {
+                    $meta['product_ads_status'] = (int)$productAdsResponse['status'];
+                }
+            }
+
+            $response = $this->get("/advertising/campaigns", [
+                'user_id' => $userId,
+                'status' => $status
+            ]);
+
+            if (isset($response['error'])) {
+                $campaigns = $this->getCachedCampaigns($status);
+                $meta['data_source'] = 'local_cache';
+                $meta['reason'] = 'api_error';
+                $meta['api_error'] = $response['message'] ?? ($response['error'] ?? 'unknown');
+                return ['campaigns' => $campaigns, '_meta' => $meta];
+            }
+
+            $campaigns = [];
+            if (isset($response['results']) && is_array($response['results'])) {
+                $campaigns = $response['results'];
+            } elseif ($this->isList($response)) {
+                $campaigns = $response;
+            }
+
+            if (!empty($campaigns)) {
+                $this->cacheCampaigns($campaigns);
+                $meta['data_source'] = 'mercadolivre_api';
+                return ['campaigns' => $campaigns, '_meta' => $meta];
+            }
+
+            // API retornou erro - usar fallback
+            $campaigns = $this->getCachedCampaigns($status);
+            $meta['data_source'] = 'local_cache';
+            $meta['reason'] = 'empty_api_response';
+            return ['campaigns' => $campaigns, '_meta' => $meta];
+
+        } catch (\Exception $e) {
+            log_warning('Erro ao buscar campanhas de Ads', [
+                'service' => 'AdsService',
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
+            $campaigns = $this->getCachedCampaigns($status);
+            $meta['data_source'] = 'local_cache';
+            $meta['reason'] = 'exception';
+            $meta['error'] = $e->getMessage();
+            return ['campaigns' => $campaigns, '_meta' => $meta];
+        }
+    }
+
+    /**
+     * Cria nova campanha de Product Ads
+     */
+    public function createCampaign(array $data): array
+    {
+        try {
+            $payload = [
+                'name' => $data['name'],
+                'type' => $data['type'] ?? 'product_ad',
+                'status' => $data['status'] ?? 'paused',
+                'budget' => [
+                    'daily_budget' => $data['daily_budget'] ?? 50.00,
+                    'type' => $data['budget_type'] ?? 'daily',
+                ],
+                'items' => $data['items'] ?? [],
+                'bidding_strategy' => $data['bidding_strategy'] ?? 'automatic',
+            ];
+
+            $response = $this->post("/advertising/campaigns", $payload);
+
+            if (isset($response['error'])) {
+                return ['success' => false, 'error' => $response['message'] ?? 'Erro ao criar campanha'];
+            }
+
+            // Salvar campanha criada localmente
+            $this->saveCampaignLocal($response);
+
+            return [
+                'success' => true,
+                'campaign_id' => $response['id'] ?? null,
+                'status' => $response['status'] ?? 'paused',
+                'details' => $response,
+            ];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Atualiza orçamento de campanha
+     */
+    public function updateCampaignBudget(string $campaignId, float $newBudget): array
+    {
+        try {
+            $payload = [
+                'budget' => [
+                    'daily_budget' => $newBudget,
+                    'type' => 'daily',
+                ],
+            ];
+
+            $response = $this->put("/advertising/campaigns/{$campaignId}/budget", $payload);
+
+            if (isset($response['error'])) {
+                return ['success' => false, 'error' => $response['message'] ?? 'Erro ao atualizar orçamento'];
+            }
+
+            // Atualizar cache local
+            $this->updateCampaignLocalBudget($campaignId, $newBudget);
+
+            return [
+                'success' => true,
+                'campaign_id' => $campaignId,
+                'new_budget' => $newBudget,
+                'details' => $response,
+            ];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Pausa/ativa campanha
+     */
+    public function updateCampaignStatus(string $campaignId, string $status): array
+    {
+        try {
+            $payload = ['status' => $status];
+            $response = $this->put("/advertising/campaigns/{$campaignId}/status", $payload);
+
+            if (isset($response['error'])) {
+                return ['success' => false, 'error' => $response['message'] ?? 'Erro ao atualizar status'];
+            }
+
+            // Atualizar cache local
+            $this->updateCampaignLocalStatus($campaignId, $status);
+
+            return [
+                'success' => true,
+                'campaign_id' => $campaignId,
+                'status' => $status,
+                'details' => $response,
+            ];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Obtém relatório detalhado de campanha
+     */
+    public function getCampaignReport(string $campaignId, string $dateFrom, string $dateTo): array
+    {
+        try {
+            $params = [
+                'campaign_id' => $campaignId,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'metrics' => 'cost,clicks,impressions,sold_quantity,amount,conversions',
+            ];
+
+            $response = $this->get("/advertising/reports/detailed", $params);
+
+            if (isset($response['error'])) {
+                // Tentar buscar métricas do cache
+                return $this->getCachedReport($campaignId, $dateFrom, $dateTo);
+            }
+
+            // Salvar métricas em cache para histórico
+            $this->cacheReportMetrics($campaignId, $response);
+
+            $total = $response['total'] ?? null;
+            if (!is_array($total) && isset($response['body']['total']) && is_array($response['body']['total'])) {
+                $total = $response['body']['total'];
+            }
+            if (!is_array($total)) {
+                $total = [];
+            }
+
+            return [
+                'campaign_id' => $campaignId,
+                'period' => ['from' => $dateFrom, 'to' => $dateTo],
+                'metrics' => [
+                    'investment' => $total['cost'] ?? 0,
+                    'revenue' => $total['amount'] ?? 0,
+                    'clicks' => $total['clicks'] ?? 0,
+                    'impressions' => $total['impressions'] ?? 0,
+                    'conversions' => $total['conversions'] ?? 0,
+                    'sold_quantity' => $total['sold_quantity'] ?? 0,
+                ],
+                'calculated_metrics' => $this->calculateAdMetrics($total),
+                'daily_breakdown' => $response['results'] ?? ($response['body']['results'] ?? []),
+            ];
+        } catch (\Exception $e) {
+            log_warning('Erro ao obter relatório de campanha', [
+                'service' => 'AdsService',
+                'campaign_id' => $campaignId,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->getCachedReport($campaignId, $dateFrom, $dateTo);
+        }
+    }
+
+    /**
+     * Obtém bonificações disponíveis para Product Ads
+     */
+    public function getAvailableBonuses(): array
+    {
+        try {
+            $userId = $this->getSellerId();
+            if (!$userId) {
+                return ['total' => 0, 'bonuses' => []];
+            }
+            $response = $this->get("/advertising/bonuses", ['seller_id' => $userId]);
+
+            if (isset($response['error'])) {
+                return ['total' => 0, 'bonuses' => []];
+            }
+
+            return [
+                'total' => count($response['results'] ?? []),
+                'bonuses' => $this->formatBonuses($response['results'] ?? []),
+            ];
+        } catch (\Exception $e) {
+            log_warning('Erro ao obter bonificações de Ads', [
+                'service' => 'AdsService',
+                'error' => $e->getMessage(),
+            ]);
+            return ['total' => 0, 'bonuses' => []];
+        }
+    }
+
+    /**
+     * Obtém sugestões de lance (bid) para itens
+     */
+    public function getBidSuggestions(array $itemIds): array
+    {
+        $suggestions = [];
+
+        foreach ($itemIds as $itemId) {
+            try {
+                $response = $this->get("/advertising/items/{$itemId}/bid_suggestions");
+
+                $suggestions[$itemId] = [
+                    'suggested_bid' => $response['suggested_bid'] ?? 0,
+                    'min_bid' => $response['min_bid'] ?? 0,
+                    'max_bid' => $response['max_bid'] ?? 0,
+                    'competitive_range' => $response['competitive_range'] ?? [],
+                ];
+            } catch (\Exception $e) {
+                $suggestions[$itemId] = [
+                    'suggested_bid' => 0,
+                    'min_bid' => 0,
+                    'max_bid' => 0,
+                    'competitive_range' => [],
+                ];
+            }
+        }
+
+        return $suggestions;
+    }
+
+    /**
+     * Obtém métricas gerais (ROAS, ACOS, Investimento)
+     * Implementação real com dados do banco e API
+     * Retorna array com métricas e '_meta' indicando fonte dos dados
+     */
+    public function getMetrics(string $period = 'last_30_days'): array
+    {
+        $meta = [
+            'data_source' => 'unknown',
+            'fetched_at' => date('Y-m-d H:i:s'),
+            'period' => $period,
+        ];
+
+        try {
+            $metrics = [
+                'investment' => 0.0,
+                'revenue' => 0.0,
+                'clicks' => 0,
+                'impressions' => 0,
+                'acos' => 0,
+                'roas' => 0,
+                'cpc' => 0,
+                'ctr' => 0
+            ];
+
+            // 1. Verificar se temos token válido
+            $apiAvailable = $this->ensureValidAccessToken();
+
+            // 2. Tentar obter da API de reports
+            $dateFrom = $this->getDateFromPeriod($period);
+            $dateTo = date('Y-m-d');
+            $apiSuccess = false;
+
+            if ($apiAvailable) {
+                try {
+                    $userId = $this->getSellerId();
+                    if (!$userId) {
+                        throw new \RuntimeException('seller_id_not_found');
+                    }
+
+                    // Tentativa 1: Product Ads (quando disponível)
+                    $productAdsEndpoint = "/advertising/advertisers/{$userId}/product_ads/reports";
+                    $productAdsReport = $this->get($productAdsEndpoint, [
+                        'date_from' => $dateFrom,
+                        'date_to' => $dateTo,
+                        'metrics' => 'cost,clicks,impressions,sold_quantity,amount'
+                    ]);
+
+                    if (!isset($productAdsReport['error'])) {
+                        $total = $productAdsReport['total'] ?? null;
+                        if (!is_array($total) && isset($productAdsReport['body']['total']) && is_array($productAdsReport['body']['total'])) {
+                            $total = $productAdsReport['body']['total'];
+                        }
+                        if (is_array($total)) {
+                            $metrics['investment'] = (float)($total['cost'] ?? 0);
+                            $metrics['revenue'] = (float)($total['amount'] ?? 0);
+                            $metrics['clicks'] = (int)($total['clicks'] ?? 0);
+                            $metrics['impressions'] = (int)($total['impressions'] ?? 0);
+                            $apiSuccess = true;
+                            $meta['data_source'] = 'mercadolivre_api_product_ads';
+                            $meta['api_endpoint'] = $productAdsEndpoint;
+                        }
+                    } else {
+                        $meta['product_ads_error'] = $productAdsReport['message'] ?? ($productAdsReport['error'] ?? 'unknown');
+                        if (isset($productAdsReport['status'])) {
+                            $meta['product_ads_status'] = (int)$productAdsReport['status'];
+                        }
+                    }
+
+                    // Tentativa 2: endpoint legado
+                    $report = $this->get("/advertising/reports", [
+                        'user_id' => $userId,
+                        'date_from' => $dateFrom,
+                        'date_to' => $dateTo,
+                        'metrics' => 'cost,clicks,impressions,sold_quantity,amount'
+                    ]);
+
+                    if (!$apiSuccess && !isset($report['error'])) {
+                        $total = $report['total'] ?? null;
+                        if (!is_array($total) && isset($report['body']['total']) && is_array($report['body']['total'])) {
+                            $total = $report['body']['total'];
+                        }
+                        if (is_array($total)) {
+                            $metrics['investment'] = (float)($total['cost'] ?? 0);
+                            $metrics['revenue'] = (float)($total['amount'] ?? 0);
+                            $metrics['clicks'] = (int)($total['clicks'] ?? 0);
+                            $metrics['impressions'] = (int)($total['impressions'] ?? 0);
+                            $apiSuccess = true;
+                            $meta['data_source'] = 'mercadolivre_api';
+                            $meta['api_endpoint'] = '/advertising/reports';
+                        }
+                    } elseif (!$apiSuccess && (isset($report['error']) || isset($report['status']))) {
+                        $meta['api_error'] = $report['message'] ?? ($report['error'] ?? 'unknown');
+                        if (isset($report['status'])) {
+                            $meta['api_status'] = (int)$report['status'];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $meta['api_error'] = $e->getMessage();
+                }
+            } else {
+                $meta['reason'] = 'missing_or_expired_token';
+            }
+
+            // 3. Se não conseguiu dados da API, buscar do cache/banco
+            if (!$apiSuccess) {
+                $cached = $this->getCachedMetrics($period);
+                if (!empty($cached)) {
+                    $metrics = array_merge($metrics, $cached);
+                    $meta['data_source'] = 'local_cache';
+                    $meta['cache_age'] = $cached['_cache_age'] ?? 'unknown';
+                } else {
+                    $meta['data_source'] = 'no_data';
+                }
+            }
+
+            // 4. Calcular métricas derivadas
+            if ($metrics['revenue'] > 0) {
+                $metrics['acos'] = round(($metrics['investment'] / $metrics['revenue']) * 100, 2);
+                $metrics['roas'] = round($metrics['revenue'] / max($metrics['investment'], 0.01), 2);
+            }
+
+            if ($metrics['impressions'] > 0) {
+                $metrics['ctr'] = round(($metrics['clicks'] / $metrics['impressions']) * 100, 2);
+            }
+
+            if ($metrics['clicks'] > 0) {
+                $metrics['cpc'] = round($metrics['investment'] / $metrics['clicks'], 2);
+            }
+
+            return array_merge($metrics, ['_meta' => $meta]);
+
+        } catch (\Exception $e) {
+            log_error('Erro ao calcular métricas de ADS', [
+                'service' => 'AdsService',
+                'period' => $period,
+                'error' => $e->getMessage(),
+            ]);
+            $meta['data_source'] = 'error';
+            $meta['error'] = $e->getMessage();
+            return [
+                'investment' => 0.0, 'revenue' => 0.0, 'acos' => 0, 'roas' => 0,
+                'clicks' => 0, 'impressions' => 0, 'cpc' => 0, 'ctr' => 0,
+                '_meta' => $meta
+            ];
+        }
+    }
+
+    // ==================== MÉTODOS DE CACHE LOCAL ====================
+
+    /**
+     * Salva campanhas em cache local (banco)
+     */
+    private function cacheCampaigns(array $campaigns): void
+    {
+        try {
+            $this->ensureAdsTable();
+
+            foreach ($campaigns as $campaign) {
+                $stmt = $this->db->prepare("
+                    INSERT INTO ads_campaigns_cache
+                    (account_id, campaign_id, name, status, daily_budget, type, data, updated_at)
+                    VALUES (:account_id, :campaign_id, :name, :status, :budget, :type, :data, NOW())
+                    ON DUPLICATE KEY UPDATE
+                        name = VALUES(name),
+                        status = VALUES(status),
+                        daily_budget = VALUES(daily_budget),
+                        type = VALUES(type),
+                        data = VALUES(data),
+                        updated_at = NOW()
+                ");
+
+                $stmt->execute([
+                    'account_id' => $this->accountId,
+                    'campaign_id' => $campaign['id'] ?? '',
+                    'name' => $campaign['name'] ?? '',
+                    'status' => $campaign['status'] ?? 'unknown',
+                    'budget' => $campaign['budget']['daily_budget'] ?? $campaign['budget'] ?? 0,
+                    'type' => $campaign['type'] ?? 'product_ad',
+                    'data' => json_encode($campaign)
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_warning('Erro ao cachear campanhas de Ads', [
+                'service' => 'AdsService',
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Obtém campanhas do cache local
+     */
+    private function getCachedCampaigns(string $status = 'active'): array
+    {
+        try {
+            $this->ensureAdsTable();
+
+            $sql = "SELECT * FROM ads_campaigns_cache WHERE account_id = :account_id";
+            $params = ['account_id' => $this->accountId];
+
+            if ($status !== 'all') {
+                $sql .= " AND status = :status";
+                $params['status'] = $status;
+            }
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $cached = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_map(function($row) {
+                $data = json_decode($row['data'] ?? '{}', true);
+                return array_merge($data, [
+                    'id' => $row['campaign_id'],
+                    'name' => $row['name'],
+                    'status' => $row['status'],
+                    'budget' => $row['daily_budget'],
+                    'type' => $row['type'],
+                    '_cached' => true,
+                    '_cached_at' => $row['updated_at']
+                ]);
+            }, $cached);
+
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Salva campanha criada localmente
+     */
+    private function saveCampaignLocal(array $campaign): void
+    {
+        $this->cacheCampaigns([$campaign]);
+    }
+
+    /**
+     * Atualiza budget local
+     */
+    private function updateCampaignLocalBudget(string $campaignId, float $budget): void
+    {
+        try {
+            $stmt = $this->db->prepare("
+                UPDATE ads_campaigns_cache
+                SET daily_budget = :budget, updated_at = NOW()
+                WHERE account_id = :account_id AND campaign_id = :campaign_id
+            ");
+            $stmt->execute([
+                'budget' => $budget,
+                'account_id' => $this->accountId,
+                'campaign_id' => $campaignId
+            ]);
+        } catch (\Exception $e) {
+            // Ignore
+        }
+    }
+
+    /**
+     * Atualiza status local
+     */
+    private function updateCampaignLocalStatus(string $campaignId, string $status): void
+    {
+        try {
+            $stmt = $this->db->prepare("
+                UPDATE ads_campaigns_cache
+                SET status = :status, updated_at = NOW()
+                WHERE account_id = :account_id AND campaign_id = :campaign_id
+            ");
+            $stmt->execute([
+                'status' => $status,
+                'account_id' => $this->accountId,
+                'campaign_id' => $campaignId
+            ]);
+        } catch (\Exception $e) {
+            // Ignore
+        }
+    }
+
+    /**
+     * Cache de métricas de relatório
+     */
+    private function cacheReportMetrics(string $campaignId, array $report): void
+    {
+        try {
+            $this->ensureAdsTable();
+
+            $stmt = $this->db->prepare("
+                INSERT INTO ads_metrics_history
+                (account_id, campaign_id, date, cost, revenue, clicks, impressions, conversions, data)
+                VALUES (:account_id, :campaign_id, CURDATE(), :cost, :revenue, :clicks, :impressions, :conversions, :data)
+                ON DUPLICATE KEY UPDATE
+                    cost = VALUES(cost),
+                    revenue = VALUES(revenue),
+                    clicks = VALUES(clicks),
+                    impressions = VALUES(impressions),
+                    conversions = VALUES(conversions),
+                    data = VALUES(data)
+            ");
+
+            $stmt->execute([
+                'account_id' => $this->accountId,
+                'campaign_id' => $campaignId,
+                'cost' => $report['total']['cost'] ?? 0,
+                'revenue' => $report['total']['amount'] ?? 0,
+                'clicks' => $report['total']['clicks'] ?? 0,
+                'impressions' => $report['total']['impressions'] ?? 0,
+                'conversions' => $report['total']['conversions'] ?? 0,
+                'data' => json_encode($report)
+            ]);
+        } catch (\Exception $e) {
+            log_warning('Erro ao cachear métricas de Ads', [
+                'service' => 'AdsService',
+                'campaign_id' => $campaignId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Obtém relatório do cache
+     */
+    private function getCachedReport(string $campaignId, string $dateFrom, string $dateTo): array
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT
+                    SUM(cost) as total_cost,
+                    SUM(revenue) as total_revenue,
+                    SUM(clicks) as total_clicks,
+                    SUM(impressions) as total_impressions,
+                    SUM(conversions) as total_conversions
+                FROM ads_metrics_history
+                WHERE account_id = :account_id
+                AND campaign_id = :campaign_id
+                AND date BETWEEN :date_from AND :date_to
+            ");
+
+            $stmt->execute([
+                'account_id' => $this->accountId,
+                'campaign_id' => $campaignId,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo
+            ]);
+
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($result && $result['total_cost'] > 0) {
+                return [
+                    'campaign_id' => $campaignId,
+                    'period' => ['from' => $dateFrom, 'to' => $dateTo],
+                    'metrics' => [
+                        'investment' => (float)$result['total_cost'],
+                        'revenue' => (float)$result['total_revenue'],
+                        'clicks' => (int)$result['total_clicks'],
+                        'impressions' => (int)$result['total_impressions'],
+                        'conversions' => (int)$result['total_conversions'],
+                    ],
+                    'calculated_metrics' => $this->calculateAdMetrics([
+                        'cost' => $result['total_cost'],
+                        'amount' => $result['total_revenue'],
+                        'clicks' => $result['total_clicks'],
+                        'impressions' => $result['total_impressions'],
+                    ]),
+                    '_cached' => true
+                ];
+            }
+        } catch (\Exception $e) {
+            // Ignore
+        }
+
+        return $this->getEmptyReport();
+    }
+
+    /**
+     * Obtém métricas agregadas do cache
+     */
+    private function getCachedMetrics(string $period): array
+    {
+        try {
+            $dateFrom = $this->getDateFromPeriod($period);
+
+            $stmt = $this->db->prepare("
+                SELECT
+                    SUM(cost) as investment,
+                    SUM(revenue) as revenue,
+                    SUM(clicks) as clicks,
+                    SUM(impressions) as impressions
+                FROM ads_metrics_history
+                WHERE account_id = :account_id
+                AND date >= :date_from
+            ");
+
+            $stmt->execute([
+                'account_id' => $this->accountId,
+                'date_from' => $dateFrom
+            ]);
+
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return [
+                'investment' => (float)($result['investment'] ?? 0),
+                'revenue' => (float)($result['revenue'] ?? 0),
+                'clicks' => (int)($result['clicks'] ?? 0),
+                'impressions' => (int)($result['impressions'] ?? 0),
+            ];
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    // ==================== MÉTODOS UTILITÁRIOS ====================
+
+    private function calculateAdMetrics(array $data): array
+    {
+        $investment = (float)($data['cost'] ?? $data['investment'] ?? 0);
+        $revenue = (float)($data['amount'] ?? $data['revenue'] ?? 0);
+        $clicks = (int)($data['clicks'] ?? 0);
+        $impressions = (int)($data['impressions'] ?? 0);
+
+        return [
+            'acos' => $revenue > 0 ? round(($investment / $revenue) * 100, 2) : 0,
+            'roas' => $investment > 0 ? round($revenue / $investment, 2) : 0,
+            'cpc' => $clicks > 0 ? round($investment / $clicks, 2) : 0,
+            'ctr' => $impressions > 0 ? round(($clicks / $impressions) * 100, 2) : 0,
+        ];
+    }
+
+    private function formatBonuses(array $bonuses): array
+    {
+        return array_map(function ($bonus) {
+            return [
+                'id' => $bonus['id'] ?? null,
+                'amount' => $bonus['amount'] ?? 0,
+                'currency' => $bonus['currency'] ?? 'BRL',
+                'expiration_date' => $bonus['expiration_date'] ?? null,
+                'status' => $bonus['status'] ?? 'available',
+                'description' => $bonus['description'] ?? '',
+            ];
+        }, $bonuses);
+    }
+
+    private function getDateFromPeriod(string $period): string
+    {
+        return match($period) {
+            'today' => date('Y-m-d'),
+            'yesterday' => date('Y-m-d', strtotime('-1 day')),
+            'last_7_days' => date('Y-m-d', strtotime('-7 days')),
+            'last_30_days' => date('Y-m-d', strtotime('-30 days')),
+            'last_90_days' => date('Y-m-d', strtotime('-90 days')),
+            default => date('Y-m-d', strtotime('-30 days'))
+        };
+    }
+
+    private function getEmptyReport(): array
+    {
+        return [
+            'campaign_id' => null,
+            'period' => ['from' => null, 'to' => null],
+            'metrics' => [
+                'investment' => 0,
+                'revenue' => 0,
+                'clicks' => 0,
+                'impressions' => 0,
+                'conversions' => 0,
+                'sold_quantity' => 0,
+            ],
+            'calculated_metrics' => [
+                'acos' => 0,
+                'roas' => 0,
+                'cpc' => 0,
+                'ctr' => 0,
+            ],
+            'daily_breakdown' => [],
+        ];
+    }
+
+    /**
+     * Garante que as tabelas de cache existem
+     */
+    private function ensureAdsTable(): void
+    {
+        try {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS ads_campaigns_cache (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT UNSIGNED NOT NULL,
+                    campaign_id VARCHAR(100) NOT NULL,
+                    name VARCHAR(255),
+                    status VARCHAR(50) DEFAULT 'unknown',
+                    daily_budget DECIMAL(10,2) DEFAULT 0,
+                    type VARCHAR(50) DEFAULT 'product_ad',
+                    data JSON,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uk_account_campaign (account_id, campaign_id),
+                    INDEX idx_account_status (account_id, status)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS ads_metrics_history (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT UNSIGNED NOT NULL,
+                    campaign_id VARCHAR(100) NOT NULL,
+                    date DATE NOT NULL,
+                    cost DECIMAL(12,2) DEFAULT 0,
+                    revenue DECIMAL(12,2) DEFAULT 0,
+                    clicks INT DEFAULT 0,
+                    impressions INT DEFAULT 0,
+                    conversions INT DEFAULT 0,
+                    data JSON,
+                    UNIQUE KEY uk_account_campaign_date (account_id, campaign_id, date),
+                    INDEX idx_account_date (account_id, date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        } catch (\Exception $e) {
+            // Tabelas podem já existir
+        }
+    }
+}

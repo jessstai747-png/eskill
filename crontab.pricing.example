@@ -1,0 +1,44 @@
+# Crontab de exemplo para o Módulo de Precificação Inteligente
+# Instalar com: crontab crontab.pricing.example
+# Ou adicionar manualmente as linhas abaixo ao crontab existente
+
+# ═══════════════════════════════════════════════════════════════════════════
+# WORKER DE PRECIFICAÇÃO AUTOMÁTICA
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Executar a cada hora - processa regras de pricing e atualiza preços
+0 * * * * cd /home/eskill/htdocs/eskill.com.br && php bin/pricing-worker.php --verbose >> storage/logs/pricing-worker.log 2>&1
+
+# Executar a cada 6 horas - atualiza cache de concorrentes
+0 */6 * * * cd /home/eskill/htdocs/eskill.com.br && php bin/pricing-worker.php --competitor-only >> storage/logs/pricing-competitor.log 2>&1
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ALERTAS DE MARGEM
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Executar diariamente às 8h - gera relatório de alertas de margem
+0 8 * * * cd /home/eskill/htdocs/eskill.com.br && php bin/pricing-worker.php --alerts-only >> storage/logs/pricing-alerts.log 2>&1
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LIMPEZA E MANUTENÇÃO
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Executar semanalmente (domingo às 3h) - limpa logs antigos
+0 3 * * 0 find /home/eskill/htdocs/eskill.com.br/storage/logs/pricing-*.log -mtime +30 -delete
+
+# ═══════════════════════════════════════════════════════════════════════════
+# NOTAS
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Opções do pricing-worker.php:
+#   --account=ID     Processar apenas conta específica
+#   --dry-run        Simular sem aplicar alterações
+#   --verbose        Output detalhado
+#   --alerts-only    Gerar apenas alertas (não processar regras)
+#   --competitor-only Atualizar apenas cache de concorrentes
+#
+# Para testar manualmente:
+#   php bin/pricing-worker.php --dry-run --verbose
+#
+# Para ver logs em tempo real:
+#   tail -f storage/logs/pricing-worker.log

@@ -1,0 +1,58 @@
+# Auth Failure Monitor - Cron Job Configuration
+# 
+# Este arquivo contém exemplos de configurações cron para o monitor de falhas de autenticação.
+# Escolha a frequência que melhor se adequa ao seu ambiente.
+
+# ============================================================================
+# RECOMENDADO: Executar a cada 15 minutos
+# Fornece proteção rápida contra ataques de força bruta
+# ============================================================================
+*/15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/monitor-auth-failures.php >> /var/log/auth-monitor.log 2>&1
+
+# ============================================================================
+# ALTERNATIVA: Executar a cada hora
+# Adequado para ambientes com menor risco de ataques
+# ============================================================================
+# 0 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/monitor-auth-failures.php >> /var/log/auth-monitor.log 2>&1
+
+# ============================================================================
+# ALTA FREQUÊNCIA: Executar a cada 5 minutos
+# Para ambientes de alto risco ou com histórico de ataques
+# ============================================================================
+# */5 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/monitor-auth-failures.php >> /var/log/auth-monitor.log 2>&1
+
+# ============================================================================
+# COM VERBOSE: Para debug e monitoramento detalhado
+# Use temporariamente para verificar o comportamento do script
+# ============================================================================
+# */15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/monitor-auth-failures.php --verbose >> /var/log/auth-monitor-verbose.log 2>&1
+
+# ============================================================================
+# ROTAÇÃO DE LOG
+# Adicione entrada para rotacionar o log do monitor (crie arquivo /etc/logrotate.d/auth-monitor)
+# ============================================================================
+# /var/log/auth-monitor.log {
+#     daily
+#     rotate 30
+#     compress
+#     delaycompress
+#     missingok
+#     notifempty
+#     create 0640 www-data www-data
+# }
+
+# ============================================================================
+# INSTALAÇÃO
+# ============================================================================
+# 1. Edite as configurações acima conforme necessário
+# 2. Copie a linha desejada
+# 3. Execute: crontab -e
+# 4. Cole a linha no crontab
+# 5. Salve e saia
+#
+# Para verificar se foi instalado corretamente:
+#   crontab -l
+#
+# Para ver logs do cron:
+#   grep CRON /var/log/syslog
+#   tail -f /var/log/auth-monitor.log
