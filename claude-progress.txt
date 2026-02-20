@@ -6,6 +6,32 @@
 
 ---
 
+## Sessao: 2026-02-20 — HOTFIX: login 500 por DI no AuthController
+
+### Implementado
+- `app/Core/Container.php` — ajuste na resolução de dependências via reflection
+  - Quando um parâmetro tipado por classe não puder ser resolvido, o container agora usa valor default quando disponível (ex.: `?PDO $db = null`).
+  - Fallback adicional para `null` quando o tipo permite nulo.
+  - Mantido comportamento de erro para dependências obrigatórias sem fallback.
+- `tests/Unit/ContainerTest.php` — novo teste de regressão
+  - `testOptionalTypedDependencyFallsBackToDefault()` valida que `?PDO $db = null` não dispara erro `Cannot resolve dependency 'dsn'`.
+
+### Diagnóstico aplicado
+- Causa raiz do 500 em `/login`: o container tentava instanciar `PDO` automaticamente ao resolver `MercadoLivreAuthService`, falhando no argumento escalar obrigatório `dsn`.
+- Evidência: log estruturado do router em `storage/logs/app.log` com `Cannot resolve dependency 'dsn'` para `App\\Controllers\\AuthController::login`.
+
+### Validação
+- `php -l app/Core/Container.php` ✅
+- `php -l tests/Unit/ContainerTest.php` ✅
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/ContainerTest.php` ✅ (3 testes, 6 assertions)
+- `php vendor/bin/phpunit --testsuite Unit` ✅ (2793 testes, 6451 assertions, 42 skipped)
+
+### Impacto
+- Remove falha de instanciação por DI no fluxo de autenticação.
+- Compatível com serviços que usam dependências opcionais tipadas (PDO e similares).
+
+---
+
 ## Sessao: 2026-02-20 — GOV-002: Integração ML para Account Governance
 
 ### Implementado

@@ -119,7 +119,19 @@ class Container
             $type = $parameter->getType();
 
             if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
-                $dependencies[] = $this->get($type->getName());
+                $dependencyClass = $type->getName();
+
+                try {
+                    $dependencies[] = $this->get($dependencyClass);
+                } catch (\Throwable $e) {
+                    if ($parameter->isDefaultValueAvailable()) {
+                        $dependencies[] = $parameter->getDefaultValue();
+                    } elseif ($type->allowsNull()) {
+                        $dependencies[] = null;
+                    } else {
+                        throw new \Exception("Cannot resolve dependency '{$parameter->name}'", 0, $e);
+                    }
+                }
             } else {
                 if ($parameter->isDefaultValueAvailable()) {
                     $dependencies[] = $parameter->getDefaultValue();

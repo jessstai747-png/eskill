@@ -12,6 +12,12 @@ class DependentServiceStub {
         $this->service = $service;
     }
 }
+class OptionalPdoServiceStub {
+    public ?\PDO $db;
+    public function __construct(?\PDO $db = null) {
+        $this->db = $db;
+    }
+}
 
 class ContainerTest extends TestCase
 {
@@ -36,5 +42,14 @@ class ContainerTest extends TestCase
 
         $this->assertSame($instance1, $result1);
         $this->assertSame($result1, $result2);
+    }
+
+    public function testOptionalTypedDependencyFallsBackToDefault(): void
+    {
+        $container = new Container();
+        $instance = $container->get(OptionalPdoServiceStub::class);
+
+        $this->assertInstanceOf(OptionalPdoServiceStub::class, $instance);
+        $this->assertNull($instance->db);
     }
 }
