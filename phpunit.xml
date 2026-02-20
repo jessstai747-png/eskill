@@ -61,6 +61,8 @@
             <file>tests/Unit/Services/ShippingServiceTest.php</file>
             <file>tests/Unit/Services/ClaimsServiceTest.php</file>
             <file>tests/Unit/Services/SettingsServiceTest.php</file>
+            <file>tests/Unit/Services/AuditServiceTest.php</file>
+            <file>tests/Unit/Services/RateLimitTrackerServiceTest.php</file>
             <file>tests/Unit/Services/DynamicPricingServiceTest.php</file>
             <file>tests/Unit/Services/AutoPricingOptimizerServiceTest.php</file>
             <file>tests/Unit/Services/PriceRulesEngineServiceTest.php</file>
@@ -76,6 +78,7 @@
             <file>tests/Unit/Services/QueueServiceUnitTest.php</file>
             <file>tests/Unit/Controllers/AICenterControllerTest.php</file>
             <file>tests/Unit/Controllers/CompetitorMonitorControllerTest.php</file>
+            <file>tests/Unit/Controllers/BulkEditorControllerTest.php</file>
             <!-- Batch 3: Existing passing tests -->
             <file>tests/Unit/Services/ValidationServiceTest.php</file>
             <file>tests/Unit/Services/EncryptionServiceTest.php</file>

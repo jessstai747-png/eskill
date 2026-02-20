@@ -217,6 +217,29 @@ class AdvancedRedisCacheService
     }
 
     /**
+     * Set an expiration time (in seconds) for a key.
+     */
+    public function expire(string $key, int $ttlSeconds): bool
+    {
+        if (!$this->isConnected) {
+            return false;
+        }
+
+        try {
+            return (bool) $this->redis->expire($key, $ttlSeconds);
+        } catch (Exception $e) {
+            $this->stats['errors']++;
+            log_warning('Erro no Redis EXPIRE', [
+                'service' => 'AdvancedRedisCacheService',
+                'key' => $key,
+                'ttl' => $ttlSeconds,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Increment counter
      */
     public function increment(string $key, int $value = 1): int {

@@ -6,6 +6,71 @@
 
 ---
 
+## Sessao: 2026-02-20 — SEC-002 + SEC-004: Rate limiting + Audit log
+
+### Implementado
+- **SEC-002 (Rate limiting)**
+   - `app/Services/RateLimitTrackerService.php`: adicionada expiração (TTL) nos contadores minuto/hora/dia para evitar crescimento infinito de chaves no Redis
+   - `app/Services/AdvancedRedisCacheService.php`: novo método `expire()` para suportar TTL via wrapper
+   - `tests/Unit/Services/RateLimitTrackerServiceTest.php`: testes atualizados para validar chamadas de `expire()`
+- **SEC-004 (Audit log)**
+   - `app/Services/AuditLogService.php`: schema unificado do `audit_logs` (inclui `details`, `old_value`, `new_value`) + ALTER best-effort para tabelas legadas
+   - `app/Services/AuditService.php`: inserção e schema alinhados ao schema unificado; insert agora preenche `details/old/new`, `user_agent`, `data` e `created_at`
+   - `tests/Unit/Services/AuditServiceTest.php`: testes DB-free cobrindo ambos services
+
+### Validacao
+- `php -l` — arquivos alterados sem erros
+- PHPUnit `--testsuite Unit` — **2660 tests, 5934 assertions, 0 failures, 42 skipped**
+
+### Status
+- Features passing: 55/73
+
+## Sessao: 2026-02-20 — ITEMS-002: Bulk Editor estabilizado (alias compat + testes)
+
+### Implementado
+- **BulkEditorController.php**
+  - Adicionado `ACTION_ALIASES` para compatibilidade retroativa:
+    - `price_increase_percent` -> `price_increase`
+    - `price_decrease_percent` -> `price_decrease`
+    - `status_pause` -> `pause`
+    - `status_activate` -> `activate`
+  - Adicionado `ACTIONS_REQUIRING_NUMERIC_VALUE` para validação centralizada de `value`
+  - `applyUpdates()` agora normaliza ação antes de validar/processar
+  - `previewChanges()` agora normaliza ação e retorna erro claro para ação inválida
+  - `calculateChange()` agora normaliza ação para suportar aliases legados
+  - Novo método privado `normalizeAction(?string $action): ?string`
+- **bulk.php (view do editor em massa)**
+  - Ajustados valores do select para ações canônicas:
+    - `price_increase`, `price_decrease`, `pause`, `activate`
+  - Mantida UX atual sem regressão de fluxo
+- **Novo teste unitário**
+  - `tests/Unit/Controllers/BulkEditorControllerTest.php` (9 testes, 44 assertions)
+  - Cobertura de:
+    - existência de métodos públicos principais
+    - estrutura esperada da classe
+    - whitelist de ações canônicas
+    - normalização de aliases
+    - regras de cálculo (preço/estoque/status)
+    - fallback de ação inválida
+- **phpunit.xml**
+  - Adicionado `tests/Unit/Controllers/BulkEditorControllerTest.php` na suite `Unit`
+
+### Validação
+- `php -l app/Controllers/BulkEditorController.php` -> OK
+- `php -l app/Views/dashboard/items/bulk.php` -> OK
+- `php -l tests/Unit/Controllers/BulkEditorControllerTest.php` -> OK
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Controllers/BulkEditorControllerTest.php`
+  - 9 tests, 44 assertions, 0 failures
+- `php vendor/bin/phpunit --testsuite Unit`
+  - 2660 tests, 5934 assertions, 0 failures, 42 skipped
+
+### Status
+- `project-status.json` atualizado: **ITEMS-002 passes=true**, `last_tested=2026-02-20`
+- Features passing: 56/73
+- Features remaining: 17
+
+---
+
 ## Sessao: 2026-02-20 — CLAIMS-001 + SETTINGS-001: Claims & Settings DI
 
 ### Implementado

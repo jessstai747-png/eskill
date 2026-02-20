@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Exception;
@@ -25,8 +27,13 @@ class RateLimitTrackerService
     private const ALERT_THRESHOLD = 80;
     private const CRITICAL_THRESHOLD = 95;
 
-    public function __construct()
+    public function __construct(?AdvancedRedisCacheService $redis = null)
     {
+        if ($redis !== null) {
+            $this->redis = $redis;
+            return;
+        }
+
         $this->redis = new AdvancedRedisCacheService();
 
         $health = $this->redis->healthCheck();
@@ -44,16 +51,25 @@ class RateLimitTrackerService
         $minute = date('Y-m-d H:i', $timestamp);
         $hour = date('Y-m-d H', $timestamp);
         $day = date('Y-m-d', $timestamp);
+
+        $minuteKey = "rate_limit:{$provider}:minute:{$minute}";
+        $hourKey = "rate_limit:{$provider}:hour:{$hour}";
+        $dayKey = "rate_limit:{$provider}:day:{$day}";
         
         // Increment counters
-        $this->redis->increment("rate_limit:{$provider}:minute:{$minute}");
-        $this->redis->increment("rate_limit:{$provider}:hour:{$hour}");
-        $this->redis->increment("rate_limit:{$provider}:day:{$day}");
+        $this->redis->increment($minuteKey);
+        $this->redis->increment($hourKey);
+        $this->redis->increment($dayKey);
         
         // Set expiration (cleanup old data)
         // Minute counter expires after 2 minutes
         // Hour counter expires after 2 hours
         // Day counter expires after 2 days
+
+        // Best-effort expiration (avoid unbounded key growth)
+        $this->redis->expire($minuteKey, 120);
+        $this->redis->expire($hourKey, 7200);
+        $this->redis->expire($dayKey, 172800);
         
         return true;
     }
