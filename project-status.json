@@ -578,10 +578,11 @@
             "description": "Real-time notifications via polling/SSE",
             "files": [
                 "app/Controllers/RealTimeNotificationController.php",
-                "app/Services/RealTimeNotificationService.php"
+                "app/Services/RealTimeNotificationService.php",
+                "tests/Unit/Services/RealTimeNotificationServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "NOTIF-003",
@@ -600,10 +601,11 @@
             "files": [
                 "app/Controllers/WhatsAppController.php",
                 "app/Services/WhatsAppService.php",
-                "app/Services/TelegramService.php"
+                "app/Services/TelegramService.php",
+                "tests/Unit/Services/WhatsAppServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "HEALTH-001",
@@ -623,10 +625,11 @@
             "description": "Error monitoring — rastreamento de erros e alertas",
             "files": [
                 "app/Controllers/ErrorMonitoringController.php",
-                "app/Services/ErrorMonitoringService.php"
+                "app/Services/ErrorMonitoringService.php",
+                "tests/Unit/Services/ErrorMonitoringServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "HEALTH-003",
@@ -720,20 +723,22 @@
             "description": "Brand Analyzer — análise de posicionamento de marca",
             "files": [
                 "app/Controllers/BrandAnalyzerController.php",
-                "app/Services/BrandAnalyzerService.php"
+                "app/Services/BrandAnalyzerService.php",
+                "tests/Unit/Services/BrandAnalyzerServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "MULTI-001",
             "category": "multi_account",
             "description": "Gerenciamento de múltiplas contas ML",
             "files": [
-                "app/Controllers/MultiAccountController.php"
+                "app/Controllers/MultiAccountController.php",
+                "tests/Unit/Controllers/MultiAccountControllerTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "TRENDS-001",
@@ -741,10 +746,11 @@
             "description": "Análise de tendências de mercado",
             "files": [
                 "app/Controllers/TrendsController.php",
-                "app/Services/TrendsService.php"
+                "app/Services/TrendsService.php",
+                "tests/Unit/Services/TrendsServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "CLAIMS-001",
@@ -786,10 +792,11 @@
             "description": "Integração com Shopee (marketplace secundário)",
             "files": [
                 "app/Controllers/ShopeeController.php",
-                "app/Services/ShopeeService.php"
+                "app/Services/ShopeeService.php",
+                "tests/Unit/Services/ShopeeServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "ADS-001",
@@ -797,10 +804,11 @@
             "description": "Gestão de Product Ads no Mercado Livre",
             "files": [
                 "app/Controllers/AdsController.php",
-                "app/Services/AdsService.php"
+                "app/Services/AdsService.php",
+                "tests/Unit/Services/AdsServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "AI-008",
