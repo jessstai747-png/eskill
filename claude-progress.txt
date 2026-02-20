@@ -6,6 +6,29 @@
 
 ---
 
+## Sessao: 2026-02-20 — AUTH: ML client respeita conta disconnected (invalid_grant)
+
+### Implementado
+- `app/Services/MercadoLivreClient.php`
+   - Detecta e propaga estado **disconnected** (`status='disconnected'` ou `last_refresh_error` contendo `invalid_grant`).
+   - Short-circuit de chamadas autenticadas retornando erro acionável:
+      - `error=account_disconnected`
+      - `reconnect_url=/auth/authorize?reconnect=<accountId>`
+   - Evita loop de retry/401 quando a conta já está desconectada.
+
+- `app/Services/UnifiedTokenRefreshService.php`
+   - Não sobrescreve `disconnected` para `expired` após falha de refresh.
+   - Remove contas `disconnected` da fila de renovação.
+
+- `tests/Unit/MercadoLivreClientDisconnectHandlingTest.php`
+   - Testes estruturais DB-free garantindo a presença do payload `account_disconnected` e da regra “não sobrescrever disconnected”.
+
+### Validação
+- `php -l` ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅ (2797 testes, 6469 assertions, 42 skipped; ambiente sem MySQL)
+
+---
+
 ## Sessao: 2026-02-20 — GOV-003: Governance Diagnostic Worker + Migration + Dashboard Toggle
 
 ### Implementado

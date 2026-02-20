@@ -269,17 +269,35 @@ class UnifiedTokenRefreshService
                     
                     $this->log('info', "Token renovado: {$nickname}", ['account_id' => $accountId]);
                 } else {
-                    // Marcar como expirado se ainda não estava
-                    if ($currentStatus !== 'expired') {
-                        $this->markAccountAsExpired($accountId);
+                    $statusRow = $this->getAccountStatusRow($accountId);
+                    $statusAfter = $statusRow['status'];
+                    $lastError = $statusRow['last_refresh_error'];
+
+                    // Se o refresh falhou por invalid_grant, o MercadoLivreAuthService marca como disconnected.
+                    // NUNCA sobrescrever disconnected para expired.
+                    if ($statusAfter === 'disconnected') {
+                        $detail['result'] = 'failed';
+                        $detail['status_after'] = 'disconnected';
+                        $detail['reason'] = $lastError ?: 'Conta desconectada — requer reconexão OAuth';
+                        $results['tokens_failed']++;
+
+                        $this->log('warning', "Conta desconectada — refresh irrecuperável: {$nickname}", [
+                            'account_id' => $accountId,
+                            'last_refresh_error' => $lastError,
+                        ]);
+                    } else {
+                        // Marcar como expirado se ainda não estava
+                        if ($currentStatus !== 'expired') {
+                            $this->markAccountAsExpired($accountId);
+                        }
+
+                        $detail['result'] = 'failed';
+                        $detail['status_after'] = 'expired';
+                        $detail['reason'] = 'Refresh token inválido ou expirado';
+                        $results['tokens_failed']++;
+
+                        $this->log('warning', "Falha ao renovar: {$nickname}", ['account_id' => $accountId]);
                     }
-                    
-                    $detail['result'] = 'failed';
-                    $detail['status_after'] = 'expired';
-                    $detail['reason'] = 'Refresh token inválido ou expirado';
-                    $results['tokens_failed']++;
-                    
-                    $this->log('warning', "Falha ao renovar: {$nickname}", ['account_id' => $accountId]);
                 }
             } catch (\Throwable $e) {
                 $detail['result'] = 'error';
@@ -328,7 +346,8 @@ class UnifiedTokenRefreshService
             $stmt = $this->db->prepare("
                 SELECT id, nickname, ml_user_id, token_expires_at, status
                 FROM ml_accounts
-                WHERE refresh_token IS NOT NULL
+                WHERE status != 'disconnected'
+                AND refresh_token IS NOT NULL
                 AND refresh_token != ''
                 ORDER BY token_expires_at ASC
             ");
@@ -343,6 +362,7 @@ class UnifiedTokenRefreshService
                     token_expires_at <= :buffer_time
                     OR status = 'expired'
                 )
+                AND status != 'disconnected'
                 AND refresh_token IS NOT NULL
                 AND refresh_token != ''
                 ORDER BY token_expires_at ASC
@@ -370,6 +390,34 @@ class UnifiedTokenRefreshService
         $this->db->prepare(
             "UPDATE ml_accounts SET status = 'expired', updated_at = NOW() WHERE id = :id"
         )->execute(['id' => $accountId]);
+    }
+
+    /**
+     * @return array{status: string, last_refresh_error: string|null}
+     */
+    private function getAccountStatusRow(int $accountId): array
+    {
+        try {
+            $stmt = $this->db->prepare('SELECT status, last_refresh_error FROM ml_accounts WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $accountId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!is_array($row)) {
+                return ['status' => 'unknown', 'last_refresh_error' => null];
+            }
+
+            $status = (string)($row['status'] ?? 'unknown');
+            $errRaw = $row['last_refresh_error'] ?? null;
+            $err = is_string($errRaw) && trim($errRaw) !== '' ? trim($errRaw) : null;
+
+            return ['status' => $status, 'last_refresh_error' => $err];
+        } catch (\Throwable $e) {
+            $this->log('warning', 'Falha ao consultar status da conta após refresh', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['status' => 'unknown', 'last_refresh_error' => null];
+        }
     }
     
     // ===== FILE LOCKING =====

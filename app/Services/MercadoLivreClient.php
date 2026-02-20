@@ -27,6 +27,11 @@ class MercadoLivreClient
     private bool $dbUnavailable = false;
     private string $tokenSource = 'none';
 
+    private bool $accountDisconnected = false;
+    private ?string $accountNickname = null;
+    private ?string $accountStatus = null;
+    private ?string $lastRefreshError = null;
+
     private function isHttpContext(): bool
     {
         return isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== '';
@@ -239,11 +244,29 @@ class MercadoLivreClient
         }
 
         $db = Database::getInstance();
-        $stmt = $db->prepare('SELECT access_token, refresh_token, token_expires_at, tokens_encrypted FROM ml_accounts WHERE id = :id LIMIT 1');
+        $stmt = $db->prepare(
+            'SELECT access_token, refresh_token, token_expires_at, tokens_encrypted, status, last_refresh_error, nickname
+             FROM ml_accounts WHERE id = :id LIMIT 1'
+        );
         $stmt->execute(['id' => $this->accountId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!$row) {
+            return false;
+        }
+
+        $this->accountNickname = isset($row['nickname']) ? (string)$row['nickname'] : null;
+        $this->accountStatus = isset($row['status']) ? (string)$row['status'] : null;
+        $this->lastRefreshError = isset($row['last_refresh_error']) ? (string)$row['last_refresh_error'] : null;
+
+        $this->accountDisconnected = $this->isAccountDisconnectedState($this->accountStatus, $this->lastRefreshError);
+        if ($this->accountDisconnected) {
+            $this->accessToken = '';
+            $this->refreshToken = '';
+            $this->tokenExpiresAt = $row['token_expires_at'] ?? null;
+            $this->hasAccessToken = false;
+            $this->tokenSource = 'db_disconnected';
+            $this->refreshHttpClient();
             return false;
         }
 
@@ -260,6 +283,18 @@ class MercadoLivreClient
                     'account_id' => $this->accountId,
                     'error' => $e->getMessage(),
                 ]);
+
+                // Tokens corrompidos/indecifráveis: tratar como conta desconectada para evitar loops de 401.
+                $this->accountDisconnected = true;
+                $this->accountStatus = $this->accountStatus ?? 'unknown';
+                $this->lastRefreshError = $this->lastRefreshError ?: 'decrypt_failed';
+                $this->tokenSource = 'db_decrypt_failed';
+                $this->accessToken = '';
+                $this->refreshToken = '';
+                $this->tokenExpiresAt = $row['token_expires_at'] ?? null;
+                $this->hasAccessToken = false;
+                $this->refreshHttpClient();
+
                 return false;
             }
         }
@@ -276,6 +311,45 @@ class MercadoLivreClient
         return $this->hasAccessToken;
     }
 
+    private function isAccountDisconnectedState(?string $status, ?string $lastRefreshError): bool
+    {
+        $s = $status !== null ? trim($status) : '';
+        if ($s === 'disconnected') {
+            return true;
+        }
+
+        $err = $lastRefreshError !== null ? trim($lastRefreshError) : '';
+        if ($err === '') {
+            return false;
+        }
+
+        return stripos($err, 'invalid_grant') !== false;
+    }
+
+    private function accountDisconnectedError(string $endpoint): array
+    {
+        $nickname = $this->accountNickname;
+        $accountId = $this->accountId;
+
+        $label = $nickname !== null && $nickname !== ''
+            ? $nickname
+            : ($accountId !== null ? (string)$accountId : '');
+
+        return [
+            'error' => 'account_disconnected',
+            'message' => $label !== ''
+                ? "A conta {$label} precisa ser reconectada ao Mercado Livre."
+                : 'Esta conta precisa ser reconectada ao Mercado Livre.',
+            'endpoint' => $endpoint,
+            'status' => 401,
+            'account_id' => $accountId,
+            'nickname' => $nickname,
+            'reconnect_url' => $accountId !== null ? '/auth/authorize?reconnect=' . $accountId : null,
+            'token_source' => $this->tokenSource,
+            'last_refresh_error' => $this->lastRefreshError,
+        ];
+    }
+
     /**
      * Garante que o access token está válido (renova se necessário)
      */
@@ -286,11 +360,20 @@ class MercadoLivreClient
         }
 
         $db = Database::getInstance();
-        $stmt = $db->prepare('SELECT token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
+        $stmt = $db->prepare('SELECT token_expires_at, status, last_refresh_error FROM ml_accounts WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $this->accountId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!$row) {
+            return false;
+        }
+
+        $status = isset($row['status']) ? (string)$row['status'] : null;
+        $lastError = isset($row['last_refresh_error']) ? (string)$row['last_refresh_error'] : null;
+        $this->accountStatus = $status;
+        $this->lastRefreshError = $lastError;
+        $this->accountDisconnected = $this->isAccountDisconnectedState($status, $lastError);
+        if ($this->accountDisconnected) {
             return false;
         }
 
@@ -307,6 +390,12 @@ class MercadoLivreClient
         $authService = $this->authService ?? new MercadoLivreAuthService();
         $refreshed = $authService->refreshToken($this->accountId);
         if (!$refreshed) {
+            // O refresh pode ter marcado a conta como disconnected.
+            try {
+                $this->loadAccount();
+            } catch (\Throwable $t) {
+                // best-effort
+            }
             return false;
         }
 
@@ -602,6 +691,10 @@ class MercadoLivreClient
             return $this->decorateLegacyResponse($this->networkDisabledError($method, $endpoint));
         }
 
+        if ($requiresAuth && $this->accountId !== null && $this->accountDisconnected) {
+            return $this->decorateLegacyResponse($this->accountDisconnectedError($endpoint));
+        }
+
         if ($requiresAuth && !$this->isConfigured()) {
             return $this->decorateLegacyResponse($this->missingTokenError($endpoint));
         }
@@ -621,7 +714,20 @@ class MercadoLivreClient
         // PROACTIVE TOKEN REFRESH: Verifica e renova token ANTES de fazer a requisição
         // Isso evita erros 401 e garante fluxo sem interrupções
         if ($requiresAuth && $this->accountId !== null) {
-            $this->ensureValidAccessToken(120); // 2 horas de margem
+            $ok = $this->ensureValidAccessToken(120); // 2 horas de margem
+            if (!$ok) {
+                // Se falhou por desconexão (invalid_grant), retornar erro acionável já aqui.
+                if ($this->accountDisconnected) {
+                    return $this->decorateLegacyResponse($this->accountDisconnectedError($endpoint));
+                }
+
+                // Caso contrário, segue com o token atual (pode ainda estar válido) e deixa o 401 tratar.
+                log_warning('Falha ao garantir token válido antes da requisição ML', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'account_id' => $this->accountId,
+                ]);
+            }
         }
 
         // Se for requisição pública, adicionar client_id para evitar rate limits agressivos
@@ -665,6 +771,10 @@ class MercadoLivreClient
                     if ($ok) {
                         // ensureValidAccessToken() recarrega e atualiza headers
                         return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
+                    }
+
+                    if ($this->accountDisconnected) {
+                        return $this->decorateLegacyResponse($this->accountDisconnectedError($endpoint));
                     }
                 } catch (\Throwable $t) {
                     // segue para log abaixo
