@@ -6,6 +6,7 @@ use App\Controllers\OrderController;
 use App\Controllers\OrdersController; // Keeping both as per original file check
 use App\Controllers\AICenterController; // NEW: AI Center Controller
 use App\Controllers\AccountHealthController;
+use App\Controllers\AccountGovernanceController;
 
 /** @var \App\Router $router */
 
@@ -31,6 +32,12 @@ $router->get('api/account-health/advanced/status', AccountHealthController::clas
 $router->get('api/account-health/advanced/customer-service', AccountHealthController::class, 'getAdvancedCustomerService');
 $router->get('api/account-health/advanced/catalog', AccountHealthController::class, 'getAdvancedCatalog');
 $router->get('api/account-health/advanced/complete', AccountHealthController::class, 'getAdvancedComplete');
+
+// Account Governance & Recovery
+$router->get('dashboard/account-governance', AccountGovernanceController::class, 'index');
+$router->post('api/account-governance/diagnostic', AccountGovernanceController::class, 'runDiagnostic');
+$router->post('api/account-governance/validate', AccountGovernanceController::class, 'validateInput');
+$router->get('api/account-governance/classifications', AccountGovernanceController::class, 'getClassifications');
 
 // OpenSpec Module
 $router->get('dashboard/openspec', 'App\\Controllers\\OpenSpecController', 'index');

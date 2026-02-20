@@ -6,6 +6,39 @@
 
 ---
 
+## Sessao: 2026-02-20 — GOV-001: AccountGovernanceService implementado
+
+### Implementado
+- `app/Services/AccountGovernanceService.php` (1216 linhas)
+  - Pure computation engine sem DB/API
+  - 8 classificações de item: SEM_ESTOQUE, TOXICO, POLUIDOR, MORTO, FRACO, EM_RISCO, SAUDAVEL, ANCHOR
+  - 5 estados de conta: TRAVADA, PENALIZADA, EM_RECUPERACAO, ESTAVEL, FORTE
+  - 8 tipos de ação: PAUSAR, REATIVAR, REPOR_ESTOQUE, OTIMIZAR_TITULO, OTIMIZAR_PRECO, MELHORAR_FOTOS, MONITORAR, PROTEGER
+  - 4 prioridades: CRITICA, ALTA, MEDIA, BAIXA
+  - 3 fases de recuperação: ESTANCAR, ESTABILIZAR, CRESCER
+  - Pipeline completo: validateInput → calculateAccountMetrics → processItem → calculateFlags → calculateItemScore → classifyItem → classifyAccount → generateActions → applyGuardrails → detectDensityRisks → generateRecoveryPlan → identifyTopCauses → generateWeekPlan → generateExecutiveSummary → buildSuccessCriteria
+- `app/Controllers/AccountGovernanceController.php` (268 linhas)
+  - POST /api/account-governance/diagnostic — pipeline completo
+  - POST /api/account-governance/validate — validação apenas
+  - GET /api/account-governance/classifications — referência de constantes
+- `app/Views/dashboard/account-governance.php` (446 linhas)
+  - Dashboard Alpine.js com resumo executivo, top 5 causas, plano de recuperação, plano semanal
+- `tests/Unit/AccountGovernanceServiceTest.php` (974 linhas)
+  - 46 testes, 197 assertions
+  - Cobertura completa de todas as funções públicas
+
+### Validação
+- php -l: Sem erros de sintaxe
+- phpunit: 46 testes, 197 assertions, 0 failures (12ms)
+
+### Rotas Registradas
+- GET /dashboard/account-governance
+- POST /api/account-governance/diagnostic
+- POST /api/account-governance/validate
+- GET /api/account-governance/classifications
+
+---
+
 ## Sessao: 2026-02-20 — BRAND-001: Brand Central corrigido e validado
 
 ### Implementado

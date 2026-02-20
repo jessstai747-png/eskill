@@ -827,6 +827,19 @@
             ],
             "passes": true,
             "last_tested": "2026-02-20"
+        },
+        {
+            "id": "GOV-001",
+            "category": "governance",
+            "description": "AccountGovernanceService — Motor de Governança e Recuperação de Conta ML com item scoring, classificação 8 tipos, account status 5 estados, density risk, guardrails, recovery plan 3 fases, week plan 7 dias, actions com MOTIVO/IMPACTO/RISCO/JANELA/ROLLBACK, top 5 causes, executive summary",
+            "files": [
+                "app/Services/AccountGovernanceService.php",
+                "app/Controllers/AccountGovernanceController.php",
+                "app/Views/dashboard/account-governance.php",
+                "tests/Unit/AccountGovernanceServiceTest.php"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-20"
         }
     ]
 }
