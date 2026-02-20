@@ -489,7 +489,8 @@ class PromotionService extends MercadoLivreClient
 
     private function generateCouponCode(): string
     {
-        return 'CUPOM' . strtoupper(substr(md5(time()), 0, 8));
+        $seed = (string) microtime(true);
+        return 'CUPOM' . strtoupper(substr(md5($seed), 0, 8));
     }
 
     private function formatPromotions(array $promotions): array

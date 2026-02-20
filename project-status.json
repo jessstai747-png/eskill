@@ -699,8 +699,8 @@
                 "app/Controllers/PromotionController.php",
                 "app/Services/PromotionService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "BRAND-001",

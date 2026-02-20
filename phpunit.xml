@@ -86,6 +86,7 @@
             <file>tests/Unit/Controllers/ListingBuilderControllerTest.php</file>
             <file>tests/Unit/Controllers/StockSyncControllerTest.php</file>
             <file>tests/Unit/Controllers/PushControllerTest.php</file>
+            <file>tests/Unit/Controllers/PromotionControllerTest.php</file>
             <!-- Batch 3: Existing passing tests -->
             <file>tests/Unit/Services/ValidationServiceTest.php</file>
             <file>tests/Unit/Services/EncryptionServiceTest.php</file>
@@ -126,6 +127,7 @@
             <file>tests/Unit/Services/MercadoLivre/AdvancedPricingEngineTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/SmartQAServiceTest.php</file>
             <file>tests/Unit/Services/PushNotificationServiceTest.php</file>
+            <file>tests/Unit/Services/PromotionServiceTest.php</file>
             <file>tests/Unit/Scripts/AutomatedReportsWorkerTest.php</file>
         </testsuite>
         <testsuite name="Integration">

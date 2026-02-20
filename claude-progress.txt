@@ -6,6 +6,33 @@
 
 ---
 
+## Sessao: 2026-02-20 — PROMO-001: Gestão de promoções estabilizada e validada
+
+### Implementado
+- `app/Controllers/PromotionController.php`
+  - Adicionado `declare(strict_types=1)`.
+- `app/Services/PromotionService.php`
+  - Corrigido `generateCouponCode()` para PHP 8.4 (`md5()` recebendo string via `microtime(true)`).
+- `tests/Unit/Controllers/PromotionControllerTest.php` (novo)
+  - Cobertura estrutural de endpoints públicos: `index`, `listPromotions`, `detail`, `join`.
+  - Validação de propriedades esperadas (`promotionService`, `userService`).
+- `tests/Unit/Services/PromotionServiceTest.php` (novo)
+  - Cobertura de regras internas reais: `buildCouponPayload`, `calculateConversionRate`, `calculateCouponROI`, estruturas vazias canônicas.
+- `phpunit.xml`
+  - Inclusão explícita de `PromotionControllerTest` e `PromotionServiceTest` no testsuite `Unit`.
+
+### Validação
+- `php -l app/Controllers/PromotionController.php` -> OK
+- `php -l app/Services/PromotionService.php` -> OK
+- `php -l tests/Unit/Controllers/PromotionControllerTest.php` -> OK
+- `php -l tests/Unit/Services/PromotionServiceTest.php` -> OK
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Controllers/PromotionControllerTest.php` -> OK (2 tests, 10 assertions)
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Services/PromotionServiceTest.php` -> OK (7 tests, 14 assertions)
+- `php vendor/bin/phpunit --testsuite Unit` -> OK (2718 tests, 6155 assertions, 42 skipped)
+
+### Status
+- `project-status.json` atualizado: **PROMO-001 passes=true**, `last_tested=2026-02-20`
+
 ## Sessao: 2026-02-20 — NOTIF-001: Push notifications (web-push) resilientes sem MySQL
 
 ### Implementado
