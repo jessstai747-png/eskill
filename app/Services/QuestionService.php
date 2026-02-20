@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -19,39 +21,67 @@ class QuestionService
     private ?int $accountId;
     private ?AnswerGeneratorService $answerGenerator;
     private ?QuestionAnalyzerService $questionAnalyzer;
+    private ?ItemService $itemService;
     private ?PDO $db;
 
-    public function __construct(?int $accountId = null)
-    {
+    public function __construct(
+        ?int $accountId = null,
+        ?MercadoLivreClient $client = null,
+        ?CacheService $cache = null,
+        ?AnswerGeneratorService $answerGenerator = null,
+        ?QuestionAnalyzerService $questionAnalyzer = null,
+        ?ItemService $itemService = null,
+        ?PDO $db = null,
+        bool $skipDbAutoConnect = false
+    ) {
         $this->accountId = $accountId;
-        $this->client = new MercadoLivreClient($accountId);
-        $this->cache = new CacheService();
-        $this->answerGenerator = null;
-        try {
-            $this->answerGenerator = new AnswerGeneratorService($accountId);
-        } catch (Throwable $e) {
-            log_warning('QuestionService: AnswerGenerator indisponível (dependências não inicializadas)', [
-                'service' => 'QuestionService',
-                'error' => $e->getMessage(),
-            ]);
+        $this->client = $client ?? new MercadoLivreClient($accountId);
+        $this->cache = $cache ?? new CacheService();
+
+        if ($answerGenerator !== null) {
+            $this->answerGenerator = $answerGenerator;
+        } else {
+            $this->answerGenerator = null;
+            try {
+                $this->answerGenerator = new AnswerGeneratorService($accountId);
+            } catch (Throwable $e) {
+                log_warning('QuestionService: AnswerGenerator indisponível (dependências não inicializadas)', [
+                    'service' => 'QuestionService',
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
-        $this->questionAnalyzer = null;
-        try {
-            $this->questionAnalyzer = new QuestionAnalyzerService();
-        } catch (Throwable $e) {
-            log_warning('QuestionService: QuestionAnalyzer indisponível (dependências não inicializadas)', [
-                'service' => 'QuestionService',
-                'error' => $e->getMessage(),
-            ]);
+
+        if ($questionAnalyzer !== null) {
+            $this->questionAnalyzer = $questionAnalyzer;
+        } else {
+            $this->questionAnalyzer = null;
+            try {
+                $this->questionAnalyzer = new QuestionAnalyzerService();
+            } catch (Throwable $e) {
+                log_warning('QuestionService: QuestionAnalyzer indisponível (dependências não inicializadas)', [
+                    'service' => 'QuestionService',
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
-        try {
-            $this->db = Database::getInstance();
-        } catch (Throwable $e) {
+
+        $this->itemService = $itemService;
+
+        if ($db !== null) {
+            $this->db = $db;
+        } elseif ($skipDbAutoConnect) {
             $this->db = null;
-            log_warning('QuestionService: DB indisponível, operando em modo API-only', [
-                'service' => 'QuestionService',
-                'error' => $e->getMessage(),
-            ]);
+        } else {
+            try {
+                $this->db = Database::getInstance();
+            } catch (Throwable $e) {
+                $this->db = null;
+                log_warning('QuestionService: DB indisponível, operando em modo API-only', [
+                    'service' => 'QuestionService',
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 
@@ -279,7 +309,7 @@ class QuestionService
             return $question;
         }
 
-        $itemService = new ItemService($this->accountId);
+        $itemService = $this->itemService ?? new ItemService($this->accountId);
         $itemId = (string)($question['item_id'] ?? '');
         $item = $itemId !== '' ? $itemService->getItem($itemId) : [];
         $context = $item['title'] ?? '';

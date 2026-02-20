@@ -6,6 +6,29 @@
 
 ---
 
+## Sessao: 2026-02-20 — ORDERS-002: Perguntas e Respostas com IA
+
+### Implementacao
+- **QuestionService.php**: Adicionado `declare(strict_types=1)`, refatorado constructor com DI
+  - 8 parametros opcionais: accountId, client, cache, answerGenerator, questionAnalyzer, itemService, db, skipDbAutoConnect
+  - AnswerGeneratorService e QuestionAnalyzerService injetaveis (ou tentam auto-instanciar)
+  - ItemService injetavel (usado em analyzeQuestion ao inves de `new ItemService`)
+  - DB injetavel com skipDbAutoConnect flag
+- **QuestionController.php**: Adicionado `declare(strict_types=1)`
+- **QuestionServiceTest.php**: 52 testes DB-free com 92 assertions criados
+  - Constructor/DI (2), syncQuestions (5), getQuestions (7), generateDraftAnswer (3)
+  - analyzeQuestion (3), getQuestion (3), getQuestionFromDatabase (3), answerQuestion (5)
+  - syncSingleQuestion (2), deleteQuestion (3), getUnansweredCount (3), saveQuestionToDatabase (3)
+  - Edge cases e normalizacao (9)
+- Suite total: 2534 testes, 5617 assertions, 0 falhas, 42 skipped
+
+### Decisoes Tecnicas
+- Mantido padrao DI consistente com OrderService/WebhookService: params opcionais com null defaults
+- ItemService injetavel para evitar `new ItemService()` em analyzeQuestion (testabilidade)
+- CacheService injetavel mas nao usado diretamente nos testes (QuestionService nao usa cache para queries)
+
+---
+
 ## Sessao: 2026-02-20 — WEBHOOK-001: Webhooks do Mercado Livre
 
 ### Implementacao

@@ -498,10 +498,11 @@
             "description": "Perguntas e respostas automáticas com IA",
             "files": [
                 "app/Controllers/QuestionController.php",
-                "app/Services/QuestionService.php"
+                "app/Services/QuestionService.php",
+                "tests/Unit/Services/QuestionServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "SHIP-001",
