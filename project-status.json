@@ -569,8 +569,8 @@
                 "app/Controllers/PushController.php",
                 "app/Services/PushNotificationService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "NOTIF-002",

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -18,26 +20,49 @@ use Exception;
  */
 class PushNotificationService
 {
-    private PDO $db;
-    private ?string $vapidPublicKey;
-    private ?string $vapidPrivateKey;
+    private ?PDO $db = null;
+    private string $vapidPublicKey = '';
+    private string $vapidPrivateKey = '';
     private string $vapidSubject;
     private ?WebPush $webPush = null;
 
-    public function __construct()
+    public function __construct(?PDO $db = null, ?WebPush $webPush = null, bool $skipDbAutoConnect = false)
     {
-        $this->db = Database::getInstance();
-        $this->vapidPublicKey = $_ENV['VAPID_PUBLIC_KEY'] ?? null;
-        $this->vapidPrivateKey = $_ENV['VAPID_PRIVATE_KEY'] ?? null;
-        $this->vapidSubject = $_ENV['VAPID_SUBJECT'] ?? 'mailto:admin@eskill.com.br';
+        $this->db = $db;
+        $this->webPush = $webPush;
+        $this->vapidPublicKey = (string) ($_ENV['VAPID_PUBLIC_KEY'] ?? getenv('VAPID_PUBLIC_KEY') ?? '');
+        $this->vapidPrivateKey = (string) ($_ENV['VAPID_PRIVATE_KEY'] ?? getenv('VAPID_PRIVATE_KEY') ?? '');
+        $this->vapidSubject = (string) ($_ENV['VAPID_SUBJECT'] ?? getenv('VAPID_SUBJECT') ?? 'mailto:admin@eskill.com.br');
 
         // Gerar chaves se não existirem
-        if (!$this->vapidPublicKey || !$this->vapidPrivateKey) {
+        if ($this->vapidPublicKey === '' || $this->vapidPrivateKey === '') {
             $this->generateVapidKeys();
         }
-        
-        $this->ensureTable();
-        $this->initWebPush();
+
+        if ($this->db === null && !$skipDbAutoConnect) {
+            try {
+                $this->db = Database::getInstance();
+            } catch (\Throwable $e) {
+                log_warning('PushNotificationService: DB indisponível', [
+                    'error' => $e->getMessage(),
+                ]);
+                $this->db = null;
+            }
+        }
+
+        if ($this->db !== null) {
+            try {
+                $this->ensureTable();
+            } catch (\Throwable $e) {
+                log_error('PushNotificationService: falha ao garantir tabela', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($this->webPush === null) {
+            $this->initWebPush();
+        }
     }
 
     /**
@@ -67,6 +92,10 @@ class PushNotificationService
      */
     private function ensureTable(): void
     {
+        if ($this->db === null) {
+            return;
+        }
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS push_subscriptions (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,6 +149,13 @@ class PushNotificationService
      */
     public function saveSubscription(int $userId, array $subscription): array
     {
+        if ($this->db === null) {
+            return [
+                'success' => false,
+                'error' => 'Banco de dados indisponível',
+            ];
+        }
+
         try {
             // Verificar se já existe subscription para este endpoint
             $existing = $this->findSubscriptionByEndpoint($subscription['endpoint']);
@@ -182,6 +218,13 @@ class PushNotificationService
      */
     public function removeSubscription(int $userId, string $endpoint): array
     {
+        if ($this->db === null) {
+            return [
+                'success' => false,
+                'error' => 'Banco de dados indisponível',
+            ];
+        }
+
         try {
             $stmt = $this->db->prepare("
                 DELETE FROM push_subscriptions 
@@ -210,6 +253,10 @@ class PushNotificationService
      */
     public function findSubscriptionByEndpoint(string $endpoint): ?array
     {
+        if ($this->db === null) {
+            return null;
+        }
+
         $stmt = $this->db->prepare("
             SELECT * FROM push_subscriptions WHERE endpoint = :endpoint
         ");
@@ -224,6 +271,10 @@ class PushNotificationService
      */
     public function getUserSubscriptions(int $userId): array
     {
+        if ($this->db === null) {
+            return [];
+        }
+
         $stmt = $this->db->prepare("
             SELECT * FROM push_subscriptions 
             WHERE user_id = :user_id 
@@ -393,6 +444,10 @@ class PushNotificationService
      */
     private function updateLastNotified(int $subscriptionId): void
     {
+        if ($this->db === null) {
+            return;
+        }
+
         $stmt = $this->db->prepare("
             UPDATE push_subscriptions 
             SET last_notified_at = NOW() 
@@ -406,6 +461,13 @@ class PushNotificationService
      */
     public function sendToAll(array $payload): array
     {
+        if ($this->db === null) {
+            return [
+                'success' => false,
+                'error' => 'Banco de dados indisponível',
+            ];
+        }
+
         $stmt = $this->db->query("SELECT DISTINCT user_id FROM push_subscriptions");
         $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -491,6 +553,15 @@ class PushNotificationService
      */
     public function getStats(): array
     {
+        if ($this->db === null) {
+            return [
+                'total_subscriptions' => 0,
+                'users_with_push' => 0,
+                'active_subscriptions' => 0,
+                'by_browser' => [],
+            ];
+        }
+
         $stats = [];
 
         // Total de subscriptions
@@ -531,6 +602,10 @@ class PushNotificationService
      */
     public function cleanExpiredSubscriptions(int $daysOld = 90): int
     {
+        if ($this->db === null) {
+            return 0;
+        }
+
         $stmt = $this->db->prepare("
             DELETE FROM push_subscriptions 
             WHERE updated_at < DATE_SUB(NOW(), INTERVAL :days DAY)

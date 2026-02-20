@@ -6,6 +6,107 @@
 
 ---
 
+## Sessao: 2026-02-20 — NOTIF-001: Push notifications (web-push) resilientes sem MySQL
+
+### Implementado
+- `app/Services/PushNotificationService.php`
+   - Adicionado `declare(strict_types=1)`.
+   - Construtor refatorado com DI opcional para ambiente sem DB:
+      - `__construct(?PDO $db = null, ?WebPush $webPush = null, bool $skipDbAutoConnect = false)`
+      - `Database::getInstance()` agora é best-effort (try/catch) e falha de DB não derruba a aplicação.
+   - Métodos de CRUD/estatísticas agora retornam erro amigável quando `$db === null`.
+   - `ensureTable()` protegido: só executa quando DB existe.
+- `app/Controllers/PushController.php`
+   - `declare(strict_types=1)`.
+
+### Validação
+- `php -l app/Services/PushNotificationService.php` -> OK
+- `php -l app/Controllers/PushController.php` -> OK
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Services/PushNotificationServiceTest.php`
+   - OK (4 tests, 35 assertions)
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Controllers/PushControllerTest.php`
+   - OK (3 tests, 27 assertions)
+
+### Status
+- `project-status.json` atualizado: **NOTIF-001 passes=true**, `last_tested=2026-02-20`
+
+---
+
+## Sessao: 2025-07-15 — GOV-001: Account Governance & Recovery Coach
+
+### Implementado
+- `app/Services/AccountGovernanceService.php` (1529 linhas) — Motor de governança puro
+  - 8 classificações de itens (SEM_ESTOQUE/TOXICO/POLUIDOR/MORTO/FRACO/EM_RISCO/SAUDAVEL/ANCHOR)
+  - 5 estados de conta (TRAVADA/PENALIZADA/EM_RECUPERACAO/ESTAVEL/FORTE)
+  - 8 tipos de ação com MOTIVO/IMPACTO/RISCO/JANELA/ROLLBACK
+  - Scoring de itens 0-100 (5 componentes: sales/conv/visits/health/margin)
+  - Guardrails: max 30% pausas, max 50 mudanças/dia, max 15% queda de preço
+  - Plano de recuperação em 3 fases (ESTANCAR/ESTABILIZAR/CRESCER)
+  - Plano semanal de 7 dias
+  - Top 5 causas de problemas
+  - Resumo executivo
+  - Critérios de sucesso e rollback por estado de conta
+  - Zero dependências externas (apenas Monolog opcional)
+- `app/Controllers/AccountGovernanceController.php` — Controller com 3 endpoints JSON
+  - POST /api/account-governance/diagnostic — diagnóstico completo
+  - POST /api/account-governance/classify-item — classificar item individual
+  - POST /api/account-governance/week-plan — plano semanal
+- `app/Views/dashboard/account-governance.php` — Dashboard com JS para renderizar diagnóstico
+- `app/Routes/web.php` — Rotas registradas (3 POST + 1 GET)
+- `tests/Unit/AccountGovernanceServiceTest.php` — 46 testes, 197 assertions, 0 failures
+  - Testa: constructor, validateInput, calculateAccountMetrics, calculateFlags, calculateItemScore,
+    classifyItem (8 classificações), classifyAccount (5 estados), generateActions, applyGuardrails,
+    detectDensityRisks, generateRecoveryPlan, identifyTopCauses, generateWeekPlan,
+    generateExecutiveSummary, buildSuccessCriteria, pipeline completo, performance (100 itens < 500ms)
+- `phpunit.xml` — Teste registrado no testsuite Unit
+
+### Validação
+- php -l: Todos os arquivos sem erro de sintaxe
+- phpunit: 46 tests, 197 assertions, OK (14ms)
+- Type hints: Todos os parâmetros e retornos tipados
+- Error handling: try/catch em I/O + InvalidArgumentException para validação
+- Logging: Monolog em operações críticas (opcional via constructor)
+
+### Decisões Técnicas
+- Zero DB/API: motor de computação puro — recebe arrays, retorna diagnóstico
+- Guardrails implementados como pós-processamento (não nos geradores de ações)
+- Flags booleanas calculadas relative ao average da conta (não absoluto)
+- Scoring subtrativo: começa em 100 e subtrai penalidades por componente
+- Controller separado do AccountHealthController (concerns distintos)
+
+---
+
+## Sessao: 2026-02-20 — HEALTH-002: Error monitoring validado
+
+### Implementado
+- `app/Services/ErrorMonitoringService.php`
+  - Adicionado `declare(strict_types=1)`.
+- `tests/Unit/Controllers/ErrorMonitoringControllerTest.php` (novo)
+  - Verificação de endpoints públicos (`recent`, `stats`, `analyzeLog`, `clean`, `log`) e estrutura.
+- `tests/Unit/Services/ErrorMonitoringServiceTest.php` (novo)
+  - Cobertura de regras reais:
+    - fallback para arquivo de log inexistente,
+    - fallback seguro em exceções de DB (`getRecentErrors`, `getErrorStats`, `cleanOldErrors`),
+    - `countBySeverity` e `parseLogContent` via reflexão.
+- `phpunit.xml`
+  - Adicionados:
+    - `tests/Unit/Controllers/ErrorMonitoringControllerTest.php`
+    - `tests/Unit/Services/ErrorMonitoringServiceTest.php`
+
+### Validação
+- `php -l app/Services/ErrorMonitoringService.php` -> OK
+- `php -l tests/Unit/Controllers/ErrorMonitoringControllerTest.php` -> OK
+- `php -l tests/Unit/Services/ErrorMonitoringServiceTest.php` -> OK
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Controllers/ErrorMonitoringControllerTest.php tests/Unit/Services/ErrorMonitoringServiceTest.php`
+  - 2 tests, 11 assertions, 0 failures
+- `php vendor/bin/phpunit --testsuite Unit`
+  - 2902 tests, 6635 assertions, 0 failures, 42 skipped
+
+### Status
+- `project-status.json` atualizado: **HEALTH-002 passes=true**, `last_tested=2026-02-20`
+
+---
+
 ## Sessao: 2026-02-20 — STOCK-001: Stock Sync validado (serviço + controller)
 
 ### Implementado
