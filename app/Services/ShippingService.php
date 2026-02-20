@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -21,14 +23,25 @@ use Dompdf\Options;
 class ShippingService
 {
     private MercadoLivreClient $client;
-    private PDO $db;
+    private ?PDO $db;
     private ?int $accountId;
 
-    public function __construct(?int $accountId = null)
-    {
+    public function __construct(
+        ?int $accountId = null,
+        ?MercadoLivreClient $client = null,
+        ?PDO $db = null,
+        bool $skipDbAutoConnect = false
+    ) {
         $this->accountId = $accountId;
-        $this->client = new MercadoLivreClient($accountId);
-        $this->db = Database::getInstance();
+        $this->client = $client ?? new MercadoLivreClient($accountId);
+
+        if ($db !== null) {
+            $this->db = $db;
+        } elseif ($skipDbAutoConnect) {
+            $this->db = null;
+        } else {
+            $this->db = Database::getInstance();
+        }
     }
 
     /**
@@ -338,6 +351,16 @@ class ShippingService
     public function analyzeShippingPerformance(array $filters = []): array
     {
         try {
+            if ($this->db === null) {
+                return [
+                    'total_shipments' => 0,
+                    'delivery_rate' => 0,
+                    'delay_rate' => 0,
+                    'score' => 0,
+                    'error' => 'db_unavailable',
+                ];
+            }
+
             $startDate = $filters['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
             $endDate = $filters['end_date'] ?? date('Y-m-d');
 
@@ -400,7 +423,7 @@ class ShippingService
      */
     public function generatePickList(array $orderIds): array
     {
-        if (empty($orderIds)) {
+        if (empty($orderIds) || $this->db === null) {
             return [];
         }
 
@@ -536,7 +559,7 @@ class ShippingService
      */
     public function getShippingIds(array $orderIds): array
     {
-        if (empty($orderIds)) {
+        if (empty($orderIds) || $this->db === null) {
             return [];
         }
 

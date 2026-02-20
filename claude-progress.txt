@@ -6,6 +6,24 @@
 
 ---
 
+## Sessao: 2026-02-20 — SHIP-001: Calculo e Gestao de Frete
+
+### Implementacao
+- **ShippingService.php**: Adicionado `declare(strict_types=1)`, refatorado constructor com DI
+  - 4 parametros opcionais: accountId, client, db, skipDbAutoConnect
+  - DB agora nullable (?PDO) — metodos que usam DB verificam null antes de operar
+  - analyzeShippingPerformance, generatePickList, getShippingIds protegidos contra DB null
+- **ShippingController.php**: Adicionado `declare(strict_types=1)`
+- **ShippingServiceTest.php**: 40 testes DB-free com 74 assertions criados
+  - Constructor (2), getShippingPreferences (2), updateShippingPreferences (2)
+  - configureFreeShipping (2), simulateShippingCost (2), getCategoryDimensions (2)
+  - validateDimensions (7), getShippingLabels (3), setHandlingTime (2)
+  - analyzeShippingPerformance (3), generatePickList (5), getShippingIds (5)
+  - Scoring (3)
+- Suite total: 2574 testes, 5691 assertions, 0 falhas, 42 skipped
+
+---
+
 ## Sessao: 2026-02-20 — ORDERS-002: Perguntas e Respostas com IA
 
 ### Implementacao

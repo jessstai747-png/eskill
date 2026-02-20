@@ -510,10 +510,11 @@
             "description": "Cálculo e gestão de frete (Mercado Envios)",
             "files": [
                 "app/Controllers/ShippingController.php",
-                "app/Services/ShippingService.php"
+                "app/Services/ShippingService.php",
+                "tests/Unit/Services/ShippingServiceTest.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "REPORT-001",
