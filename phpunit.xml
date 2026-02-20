@@ -65,6 +65,7 @@
             <file>tests/Unit/Services/AuditServiceTest.php</file>
             <file>tests/Unit/Services/RateLimitTrackerServiceTest.php</file>
             <file>tests/Unit/Services/ListingBuilderServiceTest.php</file>
+            <file>tests/Unit/Services/MercadoLivre/StockSyncServiceTest.php</file>
             <file>tests/Unit/Services/ReportServiceTest.php</file>
             <file>tests/Unit/Services/DynamicPricingServiceTest.php</file>
             <file>tests/Unit/Services/AutoPricingOptimizerServiceTest.php</file>
@@ -83,6 +84,8 @@
             <file>tests/Unit/Controllers/CompetitorMonitorControllerTest.php</file>
             <file>tests/Unit/Controllers/BulkEditorControllerTest.php</file>
             <file>tests/Unit/Controllers/ListingBuilderControllerTest.php</file>
+            <file>tests/Unit/Controllers/StockSyncControllerTest.php</file>
+            <file>tests/Unit/Controllers/PushControllerTest.php</file>
             <!-- Batch 3: Existing passing tests -->
             <file>tests/Unit/Services/ValidationServiceTest.php</file>
             <file>tests/Unit/Services/EncryptionServiceTest.php</file>
@@ -122,6 +125,7 @@
             <file>tests/Unit/Services/MercadoLivre/MercadoLivreAIIntegrationHealthTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/AdvancedPricingEngineTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/SmartQAServiceTest.php</file>
+            <file>tests/Unit/Services/PushNotificationServiceTest.php</file>
             <file>tests/Unit/Scripts/AutomatedReportsWorkerTest.php</file>
         </testsuite>
         <testsuite name="Integration">

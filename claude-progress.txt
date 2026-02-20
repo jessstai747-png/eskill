@@ -4,6 +4,30 @@
 > NUNCA delete entradas anteriores. Apenas adicione novas no topo.
 > Formato: mais recente primeiro (ordem cronológica reversa).
 
+---
+
+## Sessao: 2026-02-20 — STOCK-001: Stock Sync validado (serviço + controller)
+
+### Implementado
+- **Novos testes unitários DB-free**
+   - `tests/Unit/Services/MercadoLivre/StockSyncServiceTest.php`
+   - `tests/Unit/Controllers/StockSyncControllerTest.php`
+- **phpunit.xml**
+   - Adicionados:
+      - `tests/Unit/Services/MercadoLivre/StockSyncServiceTest.php`
+      - `tests/Unit/Controllers/StockSyncControllerTest.php`
+
+### Validação
+- `php -l tests/Unit/Services/MercadoLivre/StockSyncServiceTest.php` -> OK
+- `php -l tests/Unit/Controllers/StockSyncControllerTest.php` -> OK
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Services/MercadoLivre/StockSyncServiceTest.php tests/Unit/Controllers/StockSyncControllerTest.php`
+   - 12 tests, 18 assertions, 0 failures
+
+### Status
+- `project-status.json` atualizado: **STOCK-001 passes=true**, `last_tested=2026-02-20`
+
+---
+
 ## Sessao: 2026-02-20 — ITEMS-003: Listing Builder validado com testes de comportamento
 
 ### Implementado
