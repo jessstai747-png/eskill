@@ -6,6 +6,25 @@
 
 ---
 
+## Sessao: 2026-02-20 — HEALTH-001: Account Health lida com invalid_grant (conta desconectada)
+
+### Implementado
+- `app/Services/MercadoLivreAuthService.php`
+   - `refreshToken()` agora marca a conta como `disconnected` quando o refresh retorna `invalid_grant` (falha irrecuperável).
+   - Também marca como `disconnected` quando o refresh token está vazio ou não pode ser descriptografado.
+   - `ensureValidToken()` não sobrescreve `disconnected` para `expired`.
+
+- `app/Controllers/AccountHealthController.php`
+   - `checkAccountTokens()` agora respeita `status=disconnected` e `last_refresh_error` com `invalid_grant`.
+   - Resposta de erro inclui `reconnect_url` para reconectar via OAuth: `/auth/authorize?reconnect=<id>`.
+
+- `tests/Unit/HealthInvalidGrantHandlingTest.php`
+   - Testes estruturais DB-free garantindo o tratamento de `invalid_grant` e o bloqueio amigável no Account Health.
+
+### Validação
+- `php -l` nos arquivos alterados ✅
+- `php vendor/bin/phpunit --testsuite Unit` ✅ (2799 testes, 6472 assertions, 42 skipped; Integration suite indisponível por MySQL)
+
 ## Sessao: 2026-02-20 — HOTFIX: login 500 por DI no AuthController
 
 ### Implementado

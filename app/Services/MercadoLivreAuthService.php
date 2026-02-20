@@ -14,6 +14,60 @@ class MercadoLivreAuthService
     private array $config;
     private ?\PDO $db;
 
+    /**
+     * Marca uma conta como desconectada (falha irrecuperável de refresh).
+     *
+     * Não lança exceção: erros aqui não devem derrubar workers/controllers.
+     *
+     * @param array<string, string|int|float|bool|array|null>|null $details
+     */
+    private function markAccountDisconnected(
+        int $accountId,
+        string $errorMessage,
+        ?int $httpCode = null,
+        ?array $details = null,
+        ?string $expiresAtBefore = null,
+        ?int $executionTimeMs = null
+    ): void {
+        $safeMessage = mb_substr(trim($errorMessage), 0, 500);
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                "UPDATE ml_accounts
+                 SET status = 'disconnected',
+                     refresh_failure_count = refresh_failure_count + 1,
+                     last_refresh_error = :error,
+                     updated_at = NOW()
+                 WHERE id = :id"
+            );
+
+            $stmt->execute([
+                'error' => $safeMessage,
+                'id' => $accountId,
+            ]);
+        } catch (\Throwable $e) {
+            try {
+                (new StructuredLogService())->warning('Falha ao marcar conta ML como disconnected', [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+            } catch (\Throwable $ignored) {
+                // best-effort
+            }
+        }
+
+        $this->logAuditEvent(
+            $accountId,
+            'refresh_disconnected',
+            $details,
+            $httpCode,
+            $safeMessage,
+            $expiresAtBefore,
+            null,
+            $executionTimeMs
+        );
+    }
+
     public function __construct(?\PDO $db = null, ?array $config = null)
     {
         $this->config = $config ?? \App\Core\Config::getInstance()->all();
@@ -334,6 +388,17 @@ class MercadoLivreAuthService
             } catch (\Throwable $e) {
                 $logger = new StructuredLogService();
                 $logger->error('Failed to decrypt refresh token', ['error' => $e->getMessage()]);
+
+                $executionTime = (int)((microtime(true) - $startTime) * 1000);
+                $this->markAccountDisconnected(
+                    $accountId,
+                    'decrypt_failed: falha ao descriptografar refresh token',
+                    null,
+                    null,
+                    $expiresAtBefore,
+                    $executionTime
+                );
+
                 return false;
             }
         }
@@ -344,14 +409,15 @@ class MercadoLivreAuthService
             $logger->warning('Refresh token vazio - conta desconectada', [
                 'account_id' => $accountId,
             ]);
-            
-            $this->logAuditEvent(
+
+            $executionTime = (int)((microtime(true) - $startTime) * 1000);
+            $this->markAccountDisconnected(
                 $accountId,
-                'refresh_failed',
+                'missing_refresh_token: refresh token vazio',
                 null,
                 null,
-                'Refresh token vazio - conta desconectada',
-                $expiresAtBefore
+                $expiresAtBefore,
+                $executionTime
             );
             
             return false;
@@ -373,6 +439,7 @@ class MercadoLivreAuthService
         $success = false;
         $resp = null;
         $httpCode = 0;
+        $disconnectReason = null;
 
         while ($attempt < $maxRetries && !$success) {
             $attempt++;
@@ -404,6 +471,7 @@ class MercadoLivreAuthService
             if ($httpCode === 400 || $httpCode === 401) {
                 $data = json_decode($resp, true);
                 if (isset($data['error']) && $data['error'] === 'invalid_grant') {
+                    $disconnectReason = 'invalid_grant: ' . (string)($data['message'] ?? 'refresh token inválido');
                     break;
                 }
             }
@@ -417,6 +485,27 @@ class MercadoLivreAuthService
 
         if (!$success) {
             $executionTime = (int)((microtime(true) - $startTime) * 1000);
+
+            // Falha irrecuperável: invalid_grant => conta precisa reconectar via OAuth
+            if (is_string($disconnectReason) && $disconnectReason !== '') {
+                $logger = new StructuredLogService();
+                $logger->warning('Conta ML desconectada (invalid_grant no refresh)', [
+                    'account_id' => $accountId,
+                    'status' => $httpCode,
+                    'response_preview' => substr($resp ?? '', 0, 200),
+                ]);
+
+                $this->markAccountDisconnected(
+                    $accountId,
+                    $disconnectReason,
+                    $httpCode,
+                    ['attempts' => $attempt, 'response_preview' => substr($resp ?? '', 0, 200)],
+                    $expiresAtBefore,
+                    $executionTime
+                );
+
+                return false;
+            }
             
             $logger = new StructuredLogService();
             $logger->error('Falha refresh token ML após tentativas', [
@@ -562,6 +651,18 @@ class MercadoLivreAuthService
                 }
             }
             return true;
+        }
+
+        // Se refreshToken() já marcou a conta como disconnected, não sobrescrever para expired.
+        try {
+            $stmt = $this->pdo()->prepare('SELECT status FROM ml_accounts WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $accountId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (is_array($row) && ($row['status'] ?? null) === 'disconnected') {
+                return false;
+            }
+        } catch (\Throwable $e) {
+            // best-effort
         }
 
         try {

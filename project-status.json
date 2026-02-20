@@ -611,10 +611,11 @@
             "description": "Account Health — monitoramento de saúde da conta ML",
             "files": [
                 "app/Controllers/AccountHealthController.php",
-                "app/Services/AccountHealthService.php"
+                "app/Services/AccountHealthService.php",
+                "app/Services/MercadoLivreAuthService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "HEALTH-002",
@@ -848,6 +849,18 @@
             "files": [
                 "app/Services/MercadoLivre/AccountGovernanceIntegrationService.php",
                 "tests/Unit/AccountGovernanceIntegrationServiceTest.php"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-20"
+        },
+        {
+            "id": "GOV-003",
+            "category": "governance",
+            "description": "Governance Diagnostic Worker — Worker background para diagnósticos periódicos de governança em todas as contas ML, com histórico e alertas",
+            "files": [
+                "bin/governance-diagnostic-worker.php",
+                "database/migrations/2026_02_20_create_governance_diagnostic_history.php",
+                "app/Views/dashboard/account-governance.php"
             ],
             "passes": true,
             "last_tested": "2026-02-20"

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Request;
@@ -220,6 +222,7 @@ class AccountHealthController
             $db = Database::getInstance();
             $stmt = $db->prepare(
                 "SELECT nickname, access_token, refresh_token, tokens_encrypted, token_expires_at
+                 , status, last_refresh_error, refresh_failure_count
                  FROM ml_accounts WHERE id = :id LIMIT 1"
             );
             $stmt->execute(['id' => $accountId]);
@@ -236,6 +239,22 @@ class AccountHealthController
 
             $accessToken = $account['access_token'] ?? '';
             $refreshToken = $account['refresh_token'] ?? '';
+
+            $status = (string)($account['status'] ?? '');
+            $lastRefreshError = (string)($account['last_refresh_error'] ?? '');
+
+            // Conta marcada como desconectada no backend (ex.: invalid_grant no refresh)
+            if ($status === 'disconnected' || stripos($lastRefreshError, 'invalid_grant') !== false) {
+                return [
+                    'success' => false,
+                    'error' => 'account_disconnected',
+                    'message' => 'A conta ' . ($account['nickname'] ?? "#$accountId")
+                        . ' precisa ser reconectada ao Mercado Livre.',
+                    'nickname' => $account['nickname'] ?? null,
+                    'account_id' => $accountId,
+                    'reconnect_url' => '/auth/authorize?reconnect=' . $accountId,
+                ];
+            }
 
             // Descriptografar tokens se necessário para validação real
             if (!empty($account['tokens_encrypted']) && ($accessToken !== '' || $refreshToken !== '')) {
@@ -273,6 +292,7 @@ class AccountHealthController
                         . ' está desconectada do Mercado Livre.',
                     'nickname' => $account['nickname'] ?? null,
                     'account_id' => $accountId,
+                    'reconnect_url' => '/auth/authorize?reconnect=' . $accountId,
                 ];
             }
 
@@ -288,6 +308,7 @@ class AccountHealthController
                             . ' expirou e não pode ser renovado. Reconecte a conta.',
                         'nickname' => $account['nickname'] ?? null,
                         'account_id' => $accountId,
+                        'reconnect_url' => '/auth/authorize?reconnect=' . $accountId,
                     ];
                 }
             }
