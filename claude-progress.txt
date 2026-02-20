@@ -6,6 +6,23 @@
 
 ---
 
+## Sessao: 2026-02-20 — CLAIMS-001 + SETTINGS-001: Claims & Settings DI
+
+### Implementado
+- **CLAIMS-001**: ClaimsService.php — `declare(strict_types=1)`, DI constructor (accountId, client, db, skipDbAutoConnect), nullable PDO with null guard in syncClaimToDatabase
+- **CLAIMS-001**: ClaimsController.php — `declare(strict_types=1)`
+- **CLAIMS-001**: ClaimsServiceTest.php — 24 tests, 72 assertions (getClaims, getClaim, syncClaim, sendMessage, DB sync, edge cases)
+- **SETTINGS-001**: SettingsService.php — `declare(strict_types=1)`, DI constructor (accountId, db, skipDbAutoConnect), nullable PDO
+- **SETTINGS-001**: SettingsServiceTest.php — 15 tests, 38 assertions (get, set, getAll, getDefaultTaxRate, getDefaultPricingStrategy)
+- Both registered in phpunit.xml
+- Full suite: 2613 tests, 5801 assertions, 0 failures, 42 skipped
+
+### Status
+- Features passing: 53/73
+- Features remaining: 20
+
+---
+
 ## Sessao: 2026-02-20 — SHIP-001: Calculo e Gestao de Frete
 
 ### Implementacao

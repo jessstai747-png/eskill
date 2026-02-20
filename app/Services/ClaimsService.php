@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\MercadoLivreClient;
@@ -9,14 +11,25 @@ use PDO;
 class ClaimsService
 {
     private MercadoLivreClient $client;
-    private PDO $db;
+    private ?PDO $db;
     private ?int $accountId;
 
-    public function __construct(?int $accountId = null)
-    {
+    public function __construct(
+        ?int $accountId = null,
+        ?MercadoLivreClient $client = null,
+        ?PDO $db = null,
+        bool $skipDbAutoConnect = false
+    ) {
         $this->accountId = $accountId;
-        $this->client = new MercadoLivreClient($accountId);
-        $this->db = Database::getInstance();
+        $this->client = $client ?? new MercadoLivreClient($accountId);
+
+        if ($db !== null) {
+            $this->db = $db;
+        } elseif (!$skipDbAutoConnect) {
+            $this->db = Database::getInstance();
+        } else {
+            $this->db = null;
+        }
     }
 
     /**
@@ -91,6 +104,10 @@ class ClaimsService
 
     private function syncClaimToDatabase(array $claim): void
     {
+        if ($this->db === null) {
+            return;
+        }
+
         $sql = "
             INSERT INTO ml_claims (
                 id, order_id, account_id, type, status, stage, reason, 

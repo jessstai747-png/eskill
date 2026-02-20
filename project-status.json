@@ -753,8 +753,8 @@
                 "app/Controllers/ClaimsController.php",
                 "app/Services/ClaimsService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "SETTINGS-001",
@@ -764,8 +764,8 @@
                 "app/Controllers/SettingsController.php",
                 "app/Services/SettingsService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "CACHE-001",

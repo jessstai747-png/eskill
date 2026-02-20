@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -7,13 +9,23 @@ use PDO;
 
 class SettingsService
 {
-    private $db;
-    private $accountId;
+    private ?PDO $db;
+    private int $accountId;
 
-    public function __construct(int $accountId)
-    {
-        $this->db = Database::getInstance();
+    public function __construct(
+        int $accountId,
+        ?PDO $db = null,
+        bool $skipDbAutoConnect = false
+    ) {
         $this->accountId = $accountId;
+
+        if ($db !== null) {
+            $this->db = $db;
+        } elseif (!$skipDbAutoConnect) {
+            $this->db = Database::getInstance();
+        } else {
+            $this->db = null;
+        }
     }
 
     /**
