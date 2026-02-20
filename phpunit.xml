@@ -83,6 +83,7 @@
             <file>tests/Unit/Controllers/AICenterControllerTest.php</file>
             <file>tests/Unit/Controllers/CompetitorMonitorControllerTest.php</file>
             <file>tests/Unit/Controllers/BulkEditorControllerTest.php</file>
+            <file>tests/Unit/Controllers/BrandCentralControllerTest.php</file>
             <file>tests/Unit/Controllers/ListingBuilderControllerTest.php</file>
             <file>tests/Unit/Controllers/StockSyncControllerTest.php</file>
             <file>tests/Unit/Controllers/PushControllerTest.php</file>
@@ -128,6 +129,7 @@
             <file>tests/Unit/Services/MercadoLivre/SmartQAServiceTest.php</file>
             <file>tests/Unit/Services/PushNotificationServiceTest.php</file>
             <file>tests/Unit/Services/PromotionServiceTest.php</file>
+            <file>tests/Unit/Services/BrandCentralServiceTest.php</file>
             <file>tests/Unit/Scripts/AutomatedReportsWorkerTest.php</file>
         </testsuite>
         <testsuite name="Integration">

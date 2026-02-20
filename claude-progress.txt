@@ -6,6 +6,39 @@
 
 ---
 
+## Sessao: 2026-02-20 — BRAND-001: Brand Central corrigido e validado
+
+### Implementado
+- `app/Controllers/BrandCentralController.php`
+  - Adicionado `declare(strict_types=1)`.
+  - Padronizado parsing de JSON via `Request::json()`.
+  - Corrigida chamada de `addToShowcase()` para enviar `options` como array (antes havia incompatibilidade de assinatura).
+  - Fortalecidas validações de payload (`item_id`, `sections`).
+- `app/Services/BrandCentralService.php`
+  - Adicionado `declare(strict_types=1)`.
+  - Conexão DB tornou-se resiliente (`?PDO` + fallback sem derrubar serviço).
+  - `getBrandStore`, `getBrandProducts` e `analyzeBrandPerformance` agora retornam contrato consistente com `success`/`error`/`data`.
+  - Corrigido `getStoreId()` para ler payload encapsulado em `data`.
+  - Corrigida regra de `calculateRepeatRate()` para evitar divisão por zero.
+  - Adicionado `getEmptyPerformance()` para fallback consistente de métricas.
+- Testes unitários novos (DB-free)
+  - `tests/Unit/Controllers/BrandCentralControllerTest.php`
+  - `tests/Unit/Services/BrandCentralServiceTest.php`
+- `phpunit.xml`
+  - Inclusão explícita dos novos testes de `BrandCentral` no testsuite `Unit`.
+
+### Validação
+- `php -l app/Controllers/BrandCentralController.php` -> OK
+- `php -l app/Services/BrandCentralService.php` -> OK
+- `php -l tests/Unit/Controllers/BrandCentralControllerTest.php` -> OK
+- `php -l tests/Unit/Services/BrandCentralServiceTest.php` -> OK
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Controllers/BrandCentralControllerTest.php` -> OK (4 tests, 22 assertions)
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Services/BrandCentralServiceTest.php` -> OK (7 tests, 19 assertions)
+- `php vendor/bin/phpunit --testsuite Unit` -> OK (2729 tests, 6196 assertions, 42 skipped)
+
+### Status
+- `project-status.json` atualizado: **BRAND-001 passes=true**, `last_tested=2026-02-20`
+
 ## Sessao: 2026-02-20 — PROMO-001: Gestão de promoções estabilizada e validada
 
 ### Implementado

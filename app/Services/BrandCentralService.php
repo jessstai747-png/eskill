@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -18,12 +20,16 @@ use PDO;
  */
 class BrandCentralService extends MercadoLivreClient
 {
-    private PDO $db;
+    private ?PDO $db;
 
     public function __construct(?int $accountId = null)
     {
         parent::__construct($accountId);
-        $this->db = Database::getInstance();
+        try {
+            $this->db = Database::getInstance();
+        } catch (\Throwable) {
+            $this->db = null;
+        }
     }
 
     /**
@@ -38,27 +44,38 @@ class BrandCentralService extends MercadoLivreClient
             $response = $this->get("/users/{$userId}/brands_official_store");
 
             if (isset($response['error'])) {
-                return $this->getEmptyStore();
+                return [
+                    'success' => false,
+                    'error' => $response['message'] ?? 'Erro ao obter loja oficial',
+                    'data' => $this->getEmptyStore(),
+                ];
             }
 
             return [
-                'id' => $response['id'] ?? null,
-                'name' => $response['name'] ?? '',
-                'brand_name' => $response['brand']['name'] ?? '',
-                'logo' => $response['brand']['logo'] ?? null,
-                'description' => $response['description'] ?? '',
-                'status' => $response['status'] ?? 'inactive',
-                'followers' => $response['followers'] ?? 0,
-                'customization' => [
-                    'primary_color' => $response['customization']['primary_color'] ?? '#000000',
-                    'banner_url' => $response['customization']['banner_url'] ?? null,
-                    'layout' => $response['customization']['layout'] ?? 'default',
+                'success' => true,
+                'data' => [
+                    'id' => $response['id'] ?? null,
+                    'name' => $response['name'] ?? '',
+                    'brand_name' => $response['brand']['name'] ?? '',
+                    'logo' => $response['brand']['logo'] ?? null,
+                    'description' => $response['description'] ?? '',
+                    'status' => $response['status'] ?? 'inactive',
+                    'followers' => $response['followers'] ?? 0,
+                    'customization' => [
+                        'primary_color' => $response['customization']['primary_color'] ?? '#000000',
+                        'banner_url' => $response['customization']['banner_url'] ?? null,
+                        'layout' => $response['customization']['layout'] ?? 'default',
+                    ],
+                    'created_at' => $response['date_created'] ?? null,
                 ],
-                'created_at' => $response['date_created'] ?? null,
             ];
         } catch (\Exception $e) {
             log_error('Erro ao obter loja oficial', ['service' => 'BrandCentralService', 'error' => $e->getMessage()]);
-            return $this->getEmptyStore();
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => $this->getEmptyStore(),
+            ];
         }
     }
 
@@ -111,23 +128,38 @@ class BrandCentralService extends MercadoLivreClient
             $storeId = $this->getStoreId();
 
             if (!$storeId) {
-                return ['total' => 0, 'products' => []];
+                return [
+                    'success' => false,
+                    'error' => 'Loja oficial não encontrada',
+                    'data' => ['total' => 0, 'products' => [], 'paging' => []],
+                ];
             }
 
             $params = array_merge(['seller_id' => $userId], $filters);
             $response = $this->get("/brands_official_store/{$storeId}/items", $params);
 
             if (isset($response['error'])) {
-                return ['total' => 0, 'products' => []];
+                return [
+                    'success' => false,
+                    'error' => $response['message'] ?? 'Erro ao listar produtos',
+                    'data' => ['total' => 0, 'products' => [], 'paging' => []],
+                ];
             }
 
             return [
-                'total' => $response['paging']['total'] ?? 0,
-                'products' => $this->formatProducts($response['results'] ?? []),
-                'paging' => $response['paging'] ?? [],
+                'success' => true,
+                'data' => [
+                    'total' => $response['paging']['total'] ?? 0,
+                    'products' => $this->formatProducts($response['results'] ?? []),
+                    'paging' => $response['paging'] ?? [],
+                ],
             ];
         } catch (\Exception $e) {
-            return ['total' => 0, 'products' => []];
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => ['total' => 0, 'products' => [], 'paging' => []],
+            ];
         }
     }
 
@@ -210,6 +242,14 @@ class BrandCentralService extends MercadoLivreClient
     public function analyzeBrandPerformance(array $filters = []): array
     {
         try {
+            if ($this->db === null) {
+                return [
+                    'success' => false,
+                    'error' => 'Banco de dados indisponivel',
+                    'data' => $this->getEmptyPerformance($filters),
+                ];
+            }
+
             $startDate = $filters['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
             $endDate = $filters['end_date'] ?? date('Y-m-d');
 
@@ -235,27 +275,30 @@ class BrandCentralService extends MercadoLivreClient
 
             // Buscar seguidores
             $store = $this->getBrandStore();
-            $followers = $store['followers'] ?? 0;
+            $followers = $store['data']['followers'] ?? 0;
 
             return [
-                'period' => [
-                    'start' => $startDate,
-                    'end' => $endDate,
+                'success' => true,
+                'data' => [
+                    'period' => [
+                        'start' => $startDate,
+                        'end' => $endDate,
+                    ],
+                    'total_sales' => $data['total_sales'] ?? 0,
+                    'total_revenue' => round((float) ($data['total_revenue'] ?? 0), 2),
+                    'avg_ticket' => round((float) ($data['avg_ticket'] ?? 0), 2),
+                    'unique_buyers' => $data['unique_buyers'] ?? 0,
+                    'followers' => $followers,
+                    'repeat_purchase_rate' => $this->calculateRepeatRate($data),
+                    'brand_loyalty_score' => $this->calculateLoyaltyScore($data, (int) $followers),
                 ],
-                'total_sales' => $data['total_sales'] ?? 0,
-                'total_revenue' => round($data['total_revenue'] ?? 0, 2),
-                'avg_ticket' => round($data['avg_ticket'] ?? 0, 2),
-                'unique_buyers' => $data['unique_buyers'] ?? 0,
-                'followers' => $followers,
-                'repeat_purchase_rate' => $this->calculateRepeatRate($data),
-                'brand_loyalty_score' => $this->calculateLoyaltyScore($data, $followers),
             ];
         } catch (\Exception $e) {
             log_error('Erro ao analisar marca', ['service' => 'BrandCentralService', 'error' => $e->getMessage()]);
             return [
-                'total_sales' => 0,
-                'total_revenue' => 0,
-                'brand_loyalty_score' => 0,
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => $this->getEmptyPerformance($filters),
             ];
         }
     }
@@ -297,7 +340,7 @@ class BrandCentralService extends MercadoLivreClient
     private function getStoreId(): ?string
     {
         $store = $this->getBrandStore();
-        return $store['id'] ?? null;
+        return $store['data']['id'] ?? null;
     }
 
     private function buildCustomizationPayload(array $customization): array
@@ -345,10 +388,12 @@ class BrandCentralService extends MercadoLivreClient
 
     private function calculateRepeatRate(array $data): float
     {
-        $totalSales = $data['total_sales'] ?? 0;
-        $uniqueBuyers = $data['unique_buyers'] ?? 1;
+        $totalSales = (int) ($data['total_sales'] ?? 0);
+        $uniqueBuyers = (int) ($data['unique_buyers'] ?? 0);
 
-        if ($uniqueBuyers === 0) return 0;
+        if ($totalSales <= 0 || $uniqueBuyers <= 0) {
+            return 0.0;
+        }
 
         $repeatPurchases = max(0, $totalSales - $uniqueBuyers);
         return round(($repeatPurchases / $totalSales) * 100, 2);
@@ -391,6 +436,23 @@ class BrandCentralService extends MercadoLivreClient
                 'banner_url' => null,
                 'layout' => 'default',
             ],
+        ];
+    }
+
+    private function getEmptyPerformance(array $filters): array
+    {
+        return [
+            'period' => [
+                'start' => $filters['start_date'] ?? date('Y-m-d', strtotime('-30 days')),
+                'end' => $filters['end_date'] ?? date('Y-m-d'),
+            ],
+            'total_sales' => 0,
+            'total_revenue' => 0.0,
+            'avg_ticket' => 0.0,
+            'unique_buyers' => 0,
+            'followers' => 0,
+            'repeat_purchase_rate' => 0.0,
+            'brand_loyalty_score' => 0,
         ];
     }
 }

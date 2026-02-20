@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Request;
@@ -39,7 +41,7 @@ class BrandCentralController
         header('Content-Type: application/json');
 
         $result = $this->brandService->getBrandStore();
-        
+
         http_response_code($result['success'] ? 200 : 500);
         echo json_encode($result);
     }
@@ -59,9 +61,9 @@ class BrandCentralController
     {
         header('Content-Type: application/json');
 
-        $data = json_decode(file_get_contents('php://input'), true);
-        
-        if (!$data) {
+        $data = $this->request->json();
+
+        if (!is_array($data) || $data === []) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Invalid JSON']);
             return;
@@ -108,20 +110,26 @@ class BrandCentralController
     {
         header('Content-Type: application/json');
 
-        $data = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($data['item_id'])) {
+        $data = $this->request->json();
+        $itemId = is_array($data) ? (string) ($data['item_id'] ?? '') : '';
+
+        if ($itemId === '') {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'item_id required']);
             return;
         }
 
+        $options = [
+            'position' => is_array($data) ? ($data['position'] ?? null) : null,
+            'featured' => is_array($data) ? (bool) ($data['featured'] ?? false) : false,
+            'section' => is_array($data) ? ($data['section'] ?? null) : null,
+        ];
+
         $result = $this->brandService->addToShowcase(
-            $data['item_id'],
-            $data['position'] ?? null,
-            $data['featured'] ?? false
+            $itemId,
+            $options
         );
-        
+
         http_response_code($result['success'] ? 200 : 500);
         echo json_encode($result);
     }
@@ -176,9 +184,9 @@ class BrandCentralController
     {
         header('Content-Type: application/json');
 
-        $data = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($data['sections']) || !is_array($data['sections'])) {
+        $data = $this->request->json();
+
+        if (!is_array($data) || !isset($data['sections']) || !is_array($data['sections'])) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'sections array required']);
             return;

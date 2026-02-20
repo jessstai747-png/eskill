@@ -710,8 +710,8 @@
                 "app/Controllers/BrandCentralController.php",
                 "app/Services/BrandCentralService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "BRAND-002",
