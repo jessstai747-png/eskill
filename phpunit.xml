@@ -132,6 +132,7 @@
             <file>tests/Unit/Services/BrandCentralServiceTest.php</file>
             <file>tests/Unit/Scripts/AutomatedReportsWorkerTest.php</file>
             <file>tests/Unit/AccountGovernanceServiceTest.php</file>
+            <file>tests/Unit/AccountGovernanceIntegrationServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

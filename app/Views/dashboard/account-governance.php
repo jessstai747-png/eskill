@@ -45,11 +45,30 @@ $currentPage = $currentPage ?? 'account-governance';
         text-transform: uppercase;
     }
 
-    .status-travada { background: #fee2e2; color: #991b1b; }
-    .status-penalizada { background: #fed7aa; color: #9a3412; }
-    .status-recuperacao { background: #fef3c7; color: #92400e; }
-    .status-estavel { background: #d1fae5; color: #065f46; }
-    .status-forte { background: #dbeafe; color: #1e40af; }
+    .status-travada {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-penalizada {
+        background: #fed7aa;
+        color: #9a3412;
+    }
+
+    .status-recuperacao {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-estavel {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-forte {
+        background: #dbeafe;
+        color: #1e40af;
+    }
 
     .classification-grid {
         display: grid;
@@ -79,10 +98,21 @@ $currentPage = $currentPage ?? 'account-governance';
         margin-bottom: 0.5rem;
     }
 
-    .action-card.critical { border-left: 4px solid #dc2626; }
-    .action-card.high { border-left: 4px solid #ea580c; }
-    .action-card.medium { border-left: 4px solid #ca8a04; }
-    .action-card.low { border-left: 4px solid #16a34a; }
+    .action-card.critical {
+        border-left: 4px solid #dc2626;
+    }
+
+    .action-card.high {
+        border-left: 4px solid #ea580c;
+    }
+
+    .action-card.medium {
+        border-left: 4px solid #ca8a04;
+    }
+
+    .action-card.low {
+        border-left: 4px solid #16a34a;
+    }
 
     .phase-card {
         padding: 1.25rem;
@@ -90,9 +120,20 @@ $currentPage = $currentPage ?? 'account-governance';
         margin-bottom: 1rem;
     }
 
-    .phase-estancar { background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 1px solid #fecaca; }
-    .phase-estabilizar { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a; }
-    .phase-crescer { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; }
+    .phase-estancar {
+        background: linear-gradient(135deg, #fef2f2, #fee2e2);
+        border: 1px solid #fecaca;
+    }
+
+    .phase-estabilizar {
+        background: linear-gradient(135deg, #fffbeb, #fef3c7);
+        border: 1px solid #fde68a;
+    }
+
+    .phase-crescer {
+        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+        border: 1px solid #bbf7d0;
+    }
 
     .metric-card {
         text-align: center;
@@ -124,7 +165,9 @@ $currentPage = $currentPage ?? 'account-governance';
     }
 
     @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     .empty-state {
@@ -151,11 +194,10 @@ $currentPage = $currentPage ?? 'account-governance';
                 <h1>Governança da Conta</h1>
                 <p>Motor de diagnóstico, classificação de itens e plano de recuperação</p>
             </div>
-            <button 
-                @click="runDiagnostic()" 
+            <button
+                @click="runDiagnostic()"
                 :disabled="loading"
-                class="btn btn-light"
-            >
+                class="btn btn-light">
                 <span x-show="!loading">Executar Diagnóstico</span>
                 <span x-show="loading" class="loading-spinner"></span>
             </button>
@@ -178,14 +220,13 @@ $currentPage = $currentPage ?? 'account-governance';
             <div class="governance-card">
                 <h5 class="mb-3">Resumo Executivo</h5>
                 <div class="d-flex align-items-center gap-3 mb-3">
-                    <span 
+                    <span
                         class="status-badge"
                         :class="'status-' + result.account_status.toLowerCase()"
-                        x-text="result.account_status"
-                    ></span>
+                        x-text="result.account_status"></span>
                     <span class="text-muted" x-text="result.executive_summary.headline"></span>
                 </div>
-                
+
                 <div class="row g-3 mt-3">
                     <div class="col-md-3">
                         <div class="metric-card">
@@ -256,12 +297,11 @@ $currentPage = $currentPage ?? 'account-governance';
                 <p class="text-muted mb-3">
                     Tempo estimado: <strong x-text="result.recovery_plan.estimated_recovery"></strong>
                 </p>
-                
+
                 <template x-for="phase in result.recovery_plan.phases" :key="phase.name">
-                    <div 
+                    <div
                         class="phase-card"
-                        :class="'phase-' + phase.name.toLowerCase()"
-                    >
+                        :class="'phase-' + phase.name.toLowerCase()">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h6 class="mb-0" x-text="phase.name + ' (' + phase.duration + ')'"></h6>
                             <span class="badge bg-secondary" x-text="phase.items.length + ' itens'"></span>
@@ -336,8 +376,8 @@ $currentPage = $currentPage ?? 'account-governance';
     <!-- Empty State -->
     <div x-show="!result && !loading && !error" class="empty-state governance-card">
         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="mb-3 text-muted" viewBox="0 0 16 16">
-            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-            <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/>
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+            <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z" />
         </svg>
         <h5>Nenhum diagnóstico executado</h5>
         <p>Clique em "Executar Diagnóstico" para analisar sua conta</p>
@@ -345,102 +385,101 @@ $currentPage = $currentPage ?? 'account-governance';
 </div>
 
 <script>
-function governanceApp() {
-    return {
-        loading: false,
-        error: null,
-        result: null,
+    function governanceApp() {
+        return {
+            loading: false,
+            error: null,
+            result: null,
 
-        init() {
-            // Initial setup
-        },
+            init() {
+                // Initial setup
+            },
 
-        async runDiagnostic() {
-            this.loading = true;
-            this.error = null;
+            async runDiagnostic() {
+                this.loading = true;
+                this.error = null;
 
-            try {
-                // For demo, we'll use sample data
-                // In production, this would come from your ML API
-                const sampleData = this.getSampleData();
+                try {
+                    // For demo, we'll use sample data
+                    // In production, this would come from your ML API
+                    const sampleData = this.getSampleData();
 
-                const response = await fetch('/api/account-governance/diagnostic', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(sampleData),
-                });
+                    const response = await fetch('/api/account-governance/diagnostic', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(sampleData),
+                    });
 
-                const data = await response.json();
+                    const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Erro no diagnóstico');
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Erro no diagnóstico');
+                    }
+
+                    this.result = data.data;
+                } catch (err) {
+                    this.error = err.message;
+                } finally {
+                    this.loading = false;
                 }
+            },
 
-                this.result = data.data;
-            } catch (err) {
-                this.error = err.message;
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        getSampleData() {
-            // Sample data for testing
-            return {
-                account_data: {
-                    seller_id: 'SELLER123',
-                    reputation_level: 'green',
-                    total_sales_60d: 150,
-                    claims_rate: 0.01,
-                    late_shipment_rate: 0.02,
-                    cancellation_rate: 0.01,
-                },
-                items: [
-                    {
-                        id: 'MLB001',
-                        title: 'Bagageiro CG 160 Titan',
-                        price: 89.90,
-                        status: 'active',
-                        available_quantity: 15,
-                        visits_30d: 500,
-                        visits_14d: 250,
-                        sales_30d: 20,
-                        sales_14d: 10,
-                        margin_pct: 0.15,
-                        category_id: 'MLB1234',
+            getSampleData() {
+                // Sample data for testing
+                return {
+                    account_data: {
+                        seller_id: 'SELLER123',
+                        reputation_level: 'green',
+                        total_sales_60d: 150,
+                        claims_rate: 0.01,
+                        late_shipment_rate: 0.02,
+                        cancellation_rate: 0.01,
                     },
-                    {
-                        id: 'MLB002',
-                        title: 'Retrovisor Universal Moto',
-                        price: 45.00,
-                        status: 'active',
-                        available_quantity: 0,
-                        visits_30d: 200,
-                        visits_14d: 100,
-                        sales_30d: 8,
-                        sales_14d: 4,
-                        margin_pct: 0.12,
-                        category_id: 'MLB1234',
-                    },
-                    {
-                        id: 'MLB003',
-                        title: 'Protetor de Motor CG',
-                        price: 120.00,
-                        status: 'active',
-                        available_quantity: 5,
-                        visits_30d: 50,
-                        visits_14d: 20,
-                        sales_30d: 0,
-                        sales_14d: 0,
-                        margin_pct: 0.08,
-                        category_id: 'MLB1235',
-                    },
-                ],
-                seller_context: {},
-            };
-        },
-    };
-}
+                    items: [{
+                            id: 'MLB001',
+                            title: 'Bagageiro CG 160 Titan',
+                            price: 89.90,
+                            status: 'active',
+                            available_quantity: 15,
+                            visits_30d: 500,
+                            visits_14d: 250,
+                            sales_30d: 20,
+                            sales_14d: 10,
+                            margin_pct: 0.15,
+                            category_id: 'MLB1234',
+                        },
+                        {
+                            id: 'MLB002',
+                            title: 'Retrovisor Universal Moto',
+                            price: 45.00,
+                            status: 'active',
+                            available_quantity: 0,
+                            visits_30d: 200,
+                            visits_14d: 100,
+                            sales_30d: 8,
+                            sales_14d: 4,
+                            margin_pct: 0.12,
+                            category_id: 'MLB1234',
+                        },
+                        {
+                            id: 'MLB003',
+                            title: 'Protetor de Motor CG',
+                            price: 120.00,
+                            status: 'active',
+                            available_quantity: 5,
+                            visits_30d: 50,
+                            visits_14d: 20,
+                            sales_30d: 0,
+                            sales_14d: 0,
+                            margin_pct: 0.08,
+                            category_id: 'MLB1235',
+                        },
+                    ],
+                    seller_context: {},
+                };
+            },
+        };
+    }
 </script>

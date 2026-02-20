@@ -840,6 +840,17 @@
             ],
             "passes": true,
             "last_tested": "2026-02-20"
+        },
+        {
+            "id": "GOV-002",
+            "category": "governance",
+            "description": "AccountGovernanceIntegrationService — Integração com API do Mercado Livre para buscar dados reais (items, visitas, vendas, reputação) e alimentar o motor de governança",
+            "files": [
+                "app/Services/MercadoLivre/AccountGovernanceIntegrationService.php",
+                "tests/Unit/AccountGovernanceIntegrationServiceTest.php"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-20"
         }
     ]
 }

@@ -6,6 +6,55 @@
 
 ---
 
+## Sessao: 2026-02-20 — GOV-002: Integração ML para Account Governance
+
+### Implementado
+- `app/Services/MercadoLivre/AccountGovernanceIntegrationService.php` (609 linhas)
+  - Integração completa com API do Mercado Livre
+  - Busca dados do vendedor via /users/me incluindo seller_reputation
+  - Busca lista de items via /users/{id}/items/search (ativos + pausados)
+  - Busca detalhes em batch via multi-get /items?ids=...
+  - Busca métricas de visitas via ItemMetricsService.getItemVisits()
+  - Busca vendas dos últimos 30 dias via /orders/search
+  - Formata dados no formato esperado pelo AccountGovernanceService
+  - Executa diagnóstico completo e retorna resultado enriquecido
+  - Rate limiting: 200ms entre batches, max 20 items por batch
+  - Mapeia reputation level: power_seller_status e level_id para nivéis padronizados
+
+- `app/Controllers/AccountGovernanceController.php` — atualizado
+  - Novo endpoint: POST /api/account-governance/diagnostic-ml
+  - Busca dados reais da conta ML ativa e executa diagnóstico
+  - Opções: max_items, include_paused, fetch_visits, fetch_sales
+
+- `app/Routes/web.php` — nova rota adicionada
+  - POST api/account-governance/diagnostic-ml → runDiagnosticFromML
+
+- `tests/Unit/AccountGovernanceIntegrationServiceTest.php` (375 linhas)
+  - 17 testes, 56 assertions
+  - Testes com mocks do MercadoLivreClient (sem chamadas reais de API)
+  - Cobertura: error handling, success flow, reputation mapping
+
+### Validação
+- php -l: Sem erros de sintaxe em todos os arquivos
+- PHPUnit: 17 testes, 56 assertions, 0 falhas (3.2s)
+- Integração com service existente verificada
+
+### Endpoints API
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | /api/account-governance/diagnostic | Diagnóstico com dados fornecidos |
+| POST | /api/account-governance/diagnostic-ml | Diagnóstico com dados da API ML |
+| POST | /api/account-governance/validate | Validação apenas |
+| GET | /api/account-governance/classifications | Referência de constantes |
+
+### Próximos Passos
+1. Dashboard: conectar botão "Executar Diagnóstico" ao endpoint /diagnostic-ml
+2. Worker: criar bin/governance-diagnostic-worker.php para execução periódica
+3. Alertas: notificar quando status muda para TRAVADA/PENALIZADA
+4. Histórico: salvar diagnósticos em tabela para comparação temporal
+
+---
+
 ## Sessao: 2026-02-20 — GOV-001: AccountGovernanceService implementado
 
 ### Implementado

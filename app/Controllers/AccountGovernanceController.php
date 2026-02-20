@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Services\AccountGovernanceService;
+use App\Services\MercadoLivre\AccountGovernanceIntegrationService;
 use App\Services\UserService;
 
 /**
@@ -246,6 +247,75 @@ class AccountGovernanceController
                 ],
             ],
         ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Run diagnostic with real data from Mercado Livre API
+     * POST /api/account-governance/diagnostic-ml
+     *
+     * Body: {
+     *   "max_items": 200,        // optional, default 200, max 500
+     *   "include_paused": true,  // optional, default true
+     *   "fetch_visits": true,    // optional, default true
+     *   "fetch_sales": true      // optional, default true
+     * }
+     */
+    public function runDiagnosticFromML(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-cache');
+
+        if (!$this->userService->isAuthenticated()) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Não autenticado', 'code' => 'UNAUTHORIZED']);
+            return;
+        }
+
+        try {
+            $input = $this->getJsonInput();
+        } catch (\InvalidArgumentException $e) {
+            // Permitir body vazio - usar defaults
+            $input = [];
+        }
+
+        try {
+            // Get account ID from session
+            $accountId = $_SESSION['active_ml_account_id'] ?? null;
+
+            $options = [
+                'max_items' => (int) ($input['max_items'] ?? 200),
+                'include_paused' => (bool) ($input['include_paused'] ?? true),
+                'fetch_visits' => (bool) ($input['fetch_visits'] ?? true),
+                'fetch_sales' => (bool) ($input['fetch_sales'] ?? true),
+            ];
+
+            $integrationService = new AccountGovernanceIntegrationService($accountId);
+            $result = $integrationService->runDiagnosticFromAPI($options);
+
+            if (isset($result['error']) && $result['error'] === true) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => $result['message'] ?? 'Erro na integração',
+                    'code' => $result['error_code'] ?? 'INTEGRATION_ERROR',
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            echo json_encode([
+                'success' => true,
+                'data' => $result,
+            ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Erro interno na integração',
+                'code' => 'INTERNAL_ERROR',
+            ], JSON_UNESCAPED_UNICODE);
+
+            error_log("[AccountGovernance ML] Error: " . $e->getMessage());
+        }
     }
 
     /**

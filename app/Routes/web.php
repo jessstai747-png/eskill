@@ -18,6 +18,7 @@ $router->get('dashboard/metrics', DashboardController::class, 'metrics'); // API
 
 // Quality Dashboard (NEW - implementado)
 use App\Controllers\QualityController;
+
 $router->get('dashboard/quality', QualityController::class, 'getDashboard');
 
 // Diagnóstico da Conta (Account Health)
@@ -36,6 +37,7 @@ $router->get('api/account-health/advanced/complete', AccountHealthController::cl
 // Account Governance & Recovery
 $router->get('dashboard/account-governance', AccountGovernanceController::class, 'index');
 $router->post('api/account-governance/diagnostic', AccountGovernanceController::class, 'runDiagnostic');
+$router->post('api/account-governance/diagnostic-ml', AccountGovernanceController::class, 'runDiagnosticFromML');
 $router->post('api/account-governance/validate', AccountGovernanceController::class, 'validateInput');
 $router->get('api/account-governance/classifications', AccountGovernanceController::class, 'getClassifications');
 
@@ -54,7 +56,7 @@ $router->get('dashboard/categories', ViewController::class, 'categories');
 
 // Order View Routes
 // Note: Checking file list: There IS an OrdersController.php AND an OrderController.php. Using OrdersController to match original logic.
-$router->get('dashboard/orders', 'App\Controllers\OrdersController', 'index'); 
+$router->get('dashboard/orders', 'App\Controllers\OrdersController', 'index');
 
 $router->get('dashboard/profile', 'App\Controllers\ProfileController', 'index');
 $router->get('dashboard/settings', 'App\Controllers\SettingsController', 'index');
@@ -497,6 +499,3 @@ $router->get('seo/dashboard', ViewController::class, 'seoDashboard');
 // SEO Intelligence Module
 $router->get('dashboard/seo-intelligence', ViewController::class, 'seoIntelligence');
 $router->get('dashboard/seo-intelligence/listing', ViewController::class, 'seoIntelligenceDetail');
-
-
-

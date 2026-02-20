@@ -147,12 +147,17 @@ class Router
                     if ($this->canSendHeaders()) {
                         http_response_code(500);
                     }
+                    // Sempre registrar internamente a falha para diagnóstico de 500 em produção.
+                    log_error('Router: controller instantiation failed', [
+                        'controller' => $controllerClass,
+                        'action' => $action,
+                        'path' => $path,
+                        'method' => $method,
+                        'error' => $e->getMessage(),
+                    ]);
                     // Security: não expor mensagens internas em produção (M2)
                     $isProduction = ($_ENV['APP_ENV'] ?? 'production') === 'production';
                     $errorMsg = $isProduction ? 'Erro interno do servidor' : $e->getMessage();
-                    if (!$isProduction) {
-                        log_error('Router: controller error', ['error' => $e->getMessage()]);
-                    }
                     echo json_encode(['error' => $errorMsg]);
                     return;
                 }
@@ -161,6 +166,12 @@ class Router
                     if ($this->canSendHeaders()) {
                         http_response_code(500);
                     }
+                    log_error('Router: action not found', [
+                        'controller' => $controllerClass,
+                        'action' => $action,
+                        'path' => $path,
+                        'method' => $method,
+                    ]);
                     // Security: não expor nome do método em produção (M2)
                     $isProduction = ($_ENV['APP_ENV'] ?? 'production') === 'production';
                     $msg = $isProduction ? 'Erro interno do servidor' : "Método {$action} não encontrado no controller";
