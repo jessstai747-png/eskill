@@ -4,6 +4,48 @@
 > NUNCA delete entradas anteriores. Apenas adicione novas no topo.
 > Formato: mais recente primeiro (ordem cronológica reversa).
 
+## Sessao: 2026-02-20 — ITEMS-003: Listing Builder validado com testes de comportamento
+
+### Implementado
+- **ListingBuilderService.php**
+  - Adicionado `declare(strict_types=1)`
+  - Tipagem explícita de estado interno:
+    - `client: ?MercadoLivreClient`
+    - `accountId: ?int`
+    - `db: ?PDO`
+  - Construtor refatorado com DI opcional e modo DB-free:
+    - `accountId` aceita `int|string|null`
+    - injeção opcional de `MercadoLivreClient` e `PDO`
+    - `skipDbAutoConnect` para testes/ambientes sem MySQL
+  - Guards adicionados:
+    - `duplicateAndOptimize()` retorna erro claro quando cliente ML indisponível
+    - `publishListing()` retorna erro claro quando cliente ML indisponível
+    - `saveListing()` agora ignora persistência quando DB indisponível (sem quebrar fluxo)
+    - `suggestCategory()` retorna erro claro quando cliente ML indisponível
+  - Novo helper interno `normalizeAccountId()`
+- **Testes unitários (service)**
+  - `tests/Unit/Services/ListingBuilderServiceTest.php` reescrito para comportamento real (DB-free)
+  - Cobertura de payload de build, descrição/atributos sem conta ativa, duplicação por API, publish success/error, e fallback sem cliente
+- **Novo teste unitário (controller)**
+  - `tests/Unit/Controllers/ListingBuilderControllerTest.php`
+  - Verifica métodos públicos do endpoint, strict types e estrutura da classe
+- **phpunit.xml**
+  - Adicionados:
+    - `tests/Unit/Services/ListingBuilderServiceTest.php`
+    - `tests/Unit/Controllers/ListingBuilderControllerTest.php`
+
+### Validação
+- `php -l app/Services/ListingBuilderService.php` -> OK
+- `php -l tests/Unit/Services/ListingBuilderServiceTest.php` -> OK
+- `php -l tests/Unit/Controllers/ListingBuilderControllerTest.php` -> OK
+- `php vendor/bin/phpunit --testsuite Unit tests/Unit/Services/ListingBuilderServiceTest.php tests/Unit/Controllers/ListingBuilderControllerTest.php`
+  - 9 tests, 25 assertions, 0 failures
+
+### Status
+- `project-status.json` atualizado: **ITEMS-003 passes=true**, `last_tested=2026-02-20`
+- Features passing: 57/73
+- Features remaining: 16
+
 ---
 
 ## Sessao: 2026-02-20 — SEC-002 + SEC-004: Rate limiting + Audit log

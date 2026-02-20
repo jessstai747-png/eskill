@@ -1,129 +1,222 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
-use Tests\TestCase;
 use App\Services\ListingBuilderService;
+use App\Services\MercadoLivreClient;
+use PDO;
+use PDOStatement;
+use PHPUnit\Framework\MockObject\MockObject;
+use Tests\TestCase;
 
 /**
- * Testes do ListingBuilderService
+ * @covers \App\Services\ListingBuilderService
  */
 class ListingBuilderServiceTest extends TestCase
 {
-    private ListingBuilderService $service;
-
-    protected function setUp(): void
+    private function createMockClient(array $getMap = [], array $postMap = []): MockObject
     {
-        parent::setUp();
-        $this->service = new ListingBuilderService();
+        $client = $this->createMock(MercadoLivreClient::class);
+
+        $client->method('get')->willReturnCallback(function (string $endpoint, array $query = []) use ($getMap) {
+            foreach ($getMap as $pattern => $response) {
+                if (str_contains($endpoint, $pattern)) {
+                    return $response;
+                }
+            }
+            return ['error' => 'not_mocked', 'endpoint' => $endpoint, 'query' => $query];
+        });
+
+        $client->method('post')->willReturnCallback(function (string $endpoint, array $payload = []) use ($postMap) {
+            foreach ($postMap as $pattern => $response) {
+                if (str_contains($endpoint, $pattern)) {
+                    return $response;
+                }
+            }
+            return ['error' => 'not_mocked', 'endpoint' => $endpoint, 'payload' => $payload];
+        });
+
+        return $client;
     }
 
-    // =============================
-    // TESTES DE INSTANCIAÇÃO
-    // =============================
-
-    public function testCanBeInstantiated(): void
+    private function createMockDb(): MockObject
     {
-        $this->assertInstanceOf(ListingBuilderService::class, $this->service);
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')->willReturn(true);
+
+        $db = $this->createMock(PDO::class);
+        $db->method('prepare')->willReturn($stmt);
+
+        return $db;
     }
 
-    public function testCanBeInstantiatedWithNullAccountId(): void
+    public function testBuildListingCreatesValidPayload(): void
     {
-        // Testar instanciação sem account_id
-        $service = new ListingBuilderService(null);
-        $this->assertInstanceOf(ListingBuilderService::class, $service);
+        $service = new ListingBuilderService(skipDbAutoConnect: true);
+
+        $result = $service->buildListing([
+            'title' => 'Corrente 428h Honda',
+            'price' => 99.9,
+            'category_id' => 'MLB123',
+            'quantity' => 3,
+            'description' => 'Produto premium',
+            'images' => ['https://img.example/1.jpg'],
+            'attributes' => [['id' => 'BRAND', 'value_name' => 'Honda']],
+        ]);
+
+        $this->assertSame('Corrente 428h Honda', $result['title']);
+        $this->assertSame(99.9, $result['price']);
+        $this->assertSame('MLB123', $result['category_id']);
+        $this->assertSame(3, $result['available_quantity']);
+        $this->assertCount(1, $result['pictures']);
+        $this->assertSame('https://img.example/1.jpg', $result['pictures'][0]['source']);
+        $this->assertCount(1, $result['attributes']);
     }
 
-    // =============================
-    // TESTES DE MÉTODOS
-    // =============================
-
-    public function testHasRequiredMethods(): void
+    public function testBuildDescriptionWithoutAccountReturnsOriginalDescription(): void
     {
-        $methods = [
-            'buildListing',
-            'buildDescription',
-            'buildAttributes',
-            'publishListing',
-        ];
+        $service = new ListingBuilderService(skipDbAutoConnect: true);
 
-        foreach ($methods as $method) {
-            $this->assertTrue(
-                method_exists($this->service, $method),
-                "ListingBuilderService deve ter método {$method}()"
-            );
-        }
+        $description = $service->buildDescription(['description' => 'Descricao manual']);
+
+        $this->assertSame('Descricao manual', $description);
     }
 
-    // =============================
-    // TESTES DE TEMPLATES
-    // =============================
-
-    public function testHasDescriptionTemplates(): void
+    public function testBuildAttributesWithoutAccountReturnsOriginalAttributes(): void
     {
-        $reflection = new \ReflectionClass(ListingBuilderService::class);
-        $this->assertTrue(
-            $reflection->hasConstant('DESCRIPTION_TEMPLATES') ||
-                $reflection->hasProperty('descriptionTemplates'),
-            'Deve ter templates de descrição'
+        $service = new ListingBuilderService(skipDbAutoConnect: true);
+        $attrs = [['id' => 'BRAND', 'value_name' => 'Yamaha']];
+
+        $result = $service->buildAttributes([
+            'category_id' => 'MLB123',
+            'attributes' => $attrs,
+        ]);
+
+        $this->assertSame($attrs, $result);
+    }
+
+    public function testDuplicateAndOptimizeRejectsEmptyItemId(): void
+    {
+        $service = new ListingBuilderService(skipDbAutoConnect: true);
+
+        $result = $service->duplicateAndOptimize(' ');
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('Item ID inválido', $result['error']);
+    }
+
+    public function testDuplicateAndOptimizeBuildsOptimizedListingFromApiData(): void
+    {
+        $client = $this->createMockClient([
+            '/items/MLB1/description' => ['plain_text' => 'Descricao original'],
+            '/items/MLB1' => [
+                'id' => 'MLB1',
+                'title' => 'Pastilha Freio',
+                'price' => 120.5,
+                'category_id' => 'MLB123',
+                'available_quantity' => 4,
+                'condition' => 'new',
+                'listing_type_id' => 'gold_special',
+                'attributes' => [['id' => 'BRAND', 'value_name' => 'Cobreq']],
+                'pictures' => [
+                    ['secure_url' => 'https://img.example/p1.jpg'],
+                    ['url' => 'https://img.example/p2.jpg'],
+                ],
+            ],
+        ]);
+
+        $service = new ListingBuilderService(
+            accountId: null,
+            client: $client,
+            db: null,
+            skipDbAutoConnect: true
         );
+
+        $result = $service->duplicateAndOptimize('MLB1');
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('MLB1', $result['source_item_id']);
+        $this->assertSame('Pastilha Freio', $result['listing']['title']);
+        $this->assertCount(2, $result['listing']['pictures']);
+        $this->assertSame('Descricao original', $result['listing']['description']['plain_text']);
     }
 
-    // =============================
-    // TESTES DE ESTRUTURA
-    // =============================
-
-    public function testHasMercadoLivreClient(): void
+    public function testPublishListingReturnsErrorWhenMlClientUnavailable(): void
     {
-        $reflection = new \ReflectionClass(ListingBuilderService::class);
-        $this->assertTrue($reflection->hasProperty('client'));
+        $service = new ListingBuilderService(skipDbAutoConnect: true);
+
+        $reflection = new \ReflectionClass($service);
+        $clientProp = $reflection->getProperty('client');
+        $clientProp->setAccessible(true);
+        $clientProp->setValue($service, null);
+
+        $result = $service->publishListing(['title' => 'Teste']);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('Cliente Mercado Livre indisponível', $result['error']);
     }
 
-    // =============================
-    // TESTES DE RETORNO
-    // =============================
-
-    public function testBuildListingReturnsArray(): void
+    public function testPublishListingSuccessPersistsWhenDbAvailable(): void
     {
-        $reflection = new \ReflectionMethod(ListingBuilderService::class, 'buildListing');
-        $returnType = $reflection->getReturnType();
+        $client = $this->createMockClient([], [
+            '/items' => [
+                'id' => 'MLB200',
+                'title' => 'Kit Relacao',
+                'category_id' => 'MLB321',
+                'price' => 199.9,
+                'available_quantity' => 2,
+                'status' => 'active',
+                'permalink' => 'https://mlb.example/item',
+            ],
+        ]);
 
-        $this->assertNotNull($returnType);
-        $this->assertEquals('array', $returnType->getName());
+        $service = new ListingBuilderService(
+            accountId: 1,
+            client: $client,
+            db: $this->createMockDb(),
+            skipDbAutoConnect: true
+        );
+
+        $result = $service->publishListing(['title' => 'Kit Relacao']);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('MLB200', $result['item_id']);
+        $this->assertSame('https://mlb.example/item', $result['permalink']);
     }
 
-    public function testBuildDescriptionReturnsString(): void
+    public function testPublishListingReturnsErrorWhenApiReturnsNoItemId(): void
     {
-        $reflection = new \ReflectionMethod(ListingBuilderService::class, 'buildDescription');
-        $returnType = $reflection->getReturnType();
+        $client = $this->createMockClient([], [
+            '/items' => ['message' => 'unexpected'],
+        ]);
 
-        $this->assertNotNull($returnType);
-        $this->assertEquals('string', $returnType->getName());
+        $service = new ListingBuilderService(
+            accountId: 1,
+            client: $client,
+            db: null,
+            skipDbAutoConnect: true
+        );
+
+        $result = $service->publishListing(['title' => 'Sem id']);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('API returned no item ID', $result['error']);
     }
 
-    // =============================
-    // TESTES DE PARÂMETROS
-    // =============================
-
-    public function testBuildListingAcceptsArray(): void
+    public function testSuggestCategoryReturnsErrorWhenMlClientUnavailable(): void
     {
-        $reflection = new \ReflectionMethod(ListingBuilderService::class, 'buildListing');
-        $params = $reflection->getParameters();
+        $service = new ListingBuilderService(skipDbAutoConnect: true);
 
-        $this->assertCount(1, $params);
-        $this->assertEquals('productData', $params[0]->getName());
-        $this->assertEquals('array', $params[0]->getType()->getName());
-    }
+        $reflection = new \ReflectionClass($service);
+        $clientProp = $reflection->getProperty('client');
+        $clientProp->setAccessible(true);
+        $clientProp->setValue($service, null);
 
-    // =============================
-    // TESTES DE DOCUMENTAÇÃO
-    // =============================
+        $result = $service->suggestCategory('Pastilha');
 
-    public function testClassHasDocumentation(): void
-    {
-        $reflection = new \ReflectionClass(ListingBuilderService::class);
-        $docComment = $reflection->getDocComment();
-
-        $this->assertNotFalse($docComment);
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Cliente Mercado Livre indisponível', $result['error']);
     }
 }

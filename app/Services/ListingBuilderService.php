@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\AI\SEO\TitleKiller;
@@ -17,19 +19,44 @@ use App\Database;
  */
 class ListingBuilderService
 {
-    public MercadoLivreClient $client;
-    private $accountId;
-    private PDO $db;
+    private ?MercadoLivreClient $client;
+    private ?int $accountId;
+    private ?PDO $db;
 
     public const DESCRIPTION_TEMPLATES = [
         'default' => "{{title}} - descrição padrão",
     ];
 
-    public function __construct(?string $accountId = null)
+    public function __construct(
+        int|string|null $accountId = null,
+        ?MercadoLivreClient $client = null,
+        ?PDO $db = null,
+        bool $skipDbAutoConnect = false
+    )
     {
-        $this->accountId = $accountId;
-        $this->client = new MercadoLivreClient($accountId);
-        $this->db = Database::getInstance();
+        $this->accountId = $this->normalizeAccountId($accountId);
+        $this->client = $client;
+        $this->db = $db;
+
+        if ($this->client === null) {
+            try {
+                $this->client = new MercadoLivreClient($this->accountId);
+            } catch (\Throwable $e) {
+                log_warning('ListingBuilderService: ML client indisponível', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($this->db === null && !$skipDbAutoConnect) {
+            try {
+                $this->db = Database::getInstance();
+            } catch (\Throwable $e) {
+                log_warning('ListingBuilderService: DB indisponível', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**
@@ -158,6 +185,10 @@ class ListingBuilderService
         $itemId = trim($itemId);
         if ($itemId === '') {
             return ['success' => false, 'error' => 'Item ID inválido'];
+        }
+
+        if ($this->client === null) {
+            return ['success' => false, 'error' => 'Cliente Mercado Livre indisponível'];
         }
 
         try {
@@ -304,6 +335,13 @@ class ListingBuilderService
     public function publishListing(array $listingData): array
     {
         try {
+            if ($this->client === null) {
+                return [
+                    'success' => false,
+                    'error' => 'Cliente Mercado Livre indisponível'
+                ];
+            }
+
             $response = $this->client->post('/items', $listingData);
             
             if (!empty($response['id'])) {
@@ -337,6 +375,10 @@ class ListingBuilderService
      */
     private function saveListing(array $item): void
     {
+        if ($this->db === null) {
+            return;
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO items 
             (ml_item_id, account_id, title, category_id, price, available_quantity, status, data, created_at)
@@ -366,11 +408,29 @@ class ListingBuilderService
     public function suggestCategory(string $productName): array
     {
         try {
+            if ($this->client === null) {
+                return ['error' => 'Cliente Mercado Livre indisponível'];
+            }
+
             return $this->client->get('/sites/MLB/domain_discovery/search', [
                 'q' => $productName
             ]);
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
+    }
+
+    private function normalizeAccountId(int|string|null $accountId): ?int
+    {
+        if ($accountId === null || $accountId === '') {
+            return null;
+        }
+
+        if (is_int($accountId)) {
+            return $accountId > 0 ? $accountId : null;
+        }
+
+        $normalized = (int) $accountId;
+        return $normalized > 0 ? $normalized : null;
     }
 }

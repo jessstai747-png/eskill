@@ -53,6 +53,7 @@
             <file>tests/Unit/Controllers/CloneROIAnalysisControllerTest.php</file>
             <file>tests/Unit/Services/CloneAnalyticsServiceTest.php</file>
             <file>tests/Unit/Controllers/CloneAnalyticsControllerTest.php</file>
+            <file>tests/Unit/Controllers/AdvancedReportControllerTest.php</file>
             <file>tests/Unit/Services/CloneHealthMonitorServiceTest.php</file>
             <file>tests/Unit/Services/CloneSyncServiceTest.php</file>
             <file>tests/Unit/Services/OrderServiceTest.php</file>
@@ -63,6 +64,8 @@
             <file>tests/Unit/Services/SettingsServiceTest.php</file>
             <file>tests/Unit/Services/AuditServiceTest.php</file>
             <file>tests/Unit/Services/RateLimitTrackerServiceTest.php</file>
+            <file>tests/Unit/Services/ListingBuilderServiceTest.php</file>
+            <file>tests/Unit/Services/ReportServiceTest.php</file>
             <file>tests/Unit/Services/DynamicPricingServiceTest.php</file>
             <file>tests/Unit/Services/AutoPricingOptimizerServiceTest.php</file>
             <file>tests/Unit/Services/PriceRulesEngineServiceTest.php</file>
@@ -79,6 +82,7 @@
             <file>tests/Unit/Controllers/AICenterControllerTest.php</file>
             <file>tests/Unit/Controllers/CompetitorMonitorControllerTest.php</file>
             <file>tests/Unit/Controllers/BulkEditorControllerTest.php</file>
+            <file>tests/Unit/Controllers/ListingBuilderControllerTest.php</file>
             <!-- Batch 3: Existing passing tests -->
             <file>tests/Unit/Services/ValidationServiceTest.php</file>
             <file>tests/Unit/Services/EncryptionServiceTest.php</file>
@@ -118,6 +122,7 @@
             <file>tests/Unit/Services/MercadoLivre/MercadoLivreAIIntegrationHealthTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/AdvancedPricingEngineTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/SmartQAServiceTest.php</file>
+            <file>tests/Unit/Scripts/AutomatedReportsWorkerTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

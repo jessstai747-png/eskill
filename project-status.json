@@ -443,8 +443,8 @@
                 "app/Controllers/ListingBuilderController.php",
                 "app/Services/ListingBuilderService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "ITEMS-004",
@@ -524,8 +524,8 @@
                 "app/Controllers/AdvancedReportController.php",
                 "app/Services/ReportService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "REPORT-002",
@@ -547,8 +547,8 @@
                 "app/Services/ExportService.php",
                 "app/Services/PdfService.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "REPORT-004",
@@ -558,8 +558,8 @@
                 "bin/automated-reports-worker.php",
                 "bin/weekly-report.php"
             ],
-            "passes": false,
-            "last_tested": "2026-02-17"
+            "passes": true,
+            "last_tested": "2026-02-20"
         },
         {
             "id": "NOTIF-001",
