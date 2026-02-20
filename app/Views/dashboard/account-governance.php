@@ -194,13 +194,27 @@ $currentPage = $currentPage ?? 'account-governance';
                 <h1>Governança da Conta</h1>
                 <p>Motor de diagnóstico, classificação de itens e plano de recuperação</p>
             </div>
-            <button
-                @click="runDiagnostic()"
-                :disabled="loading"
-                class="btn btn-light">
-                <span x-show="!loading">Executar Diagnóstico</span>
-                <span x-show="loading" class="loading-spinner"></span>
-            </button>
+            <div class="d-flex align-items-center gap-3">
+                <div class="form-check form-switch">
+                    <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="useRealDataToggle"
+                        x-model="useRealData"
+                        style="cursor: pointer;">
+                    <label class="form-check-label text-white" for="useRealDataToggle" style="cursor: pointer;">
+                        <span x-show="useRealData">Dados Reais (ML API)</span>
+                        <span x-show="!useRealData">Dados de Teste</span>
+                    </label>
+                </div>
+                <button
+                    @click="runDiagnostic()"
+                    :disabled="loading"
+                    class="btn btn-light">
+                    <span x-show="!loading">Executar Diagnóstico</span>
+                    <span x-show="loading" class="loading-spinner"></span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -390,9 +404,13 @@ $currentPage = $currentPage ?? 'account-governance';
             loading: false,
             error: null,
             result: null,
+            useRealData: localStorage.getItem('gov_use_real_data') === 'true',
 
             init() {
-                // Initial setup
+                // Watch for toggle changes
+                this.$watch('useRealData', (value) => {
+                    localStorage.setItem('gov_use_real_data', value);
+                });
             },
 
             async runDiagnostic() {
@@ -400,17 +418,28 @@ $currentPage = $currentPage ?? 'account-governance';
                 this.error = null;
 
                 try {
-                    // For demo, we'll use sample data
-                    // In production, this would come from your ML API
-                    const sampleData = this.getSampleData();
-
-                    const response = await fetch('/api/account-governance/diagnostic', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(sampleData),
-                    });
+                    let response;
+                    
+                    if (this.useRealData) {
+                        // Call real ML API endpoint
+                        response = await fetch('/api/account-governance/diagnostic-ml', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ max_items: 200 }),
+                        });
+                    } else {
+                        // Use sample data endpoint
+                        const sampleData = this.getSampleData();
+                        response = await fetch('/api/account-governance/diagnostic', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(sampleData),
+                        });
+                    }
 
                     const data = await response.json();
 

@@ -6,6 +6,53 @@
 
 ---
 
+## Sessao: 2026-02-20 — GOV-003: Governance Diagnostic Worker + Migration + Dashboard Toggle
+
+### Implementado
+
+#### bin/governance-diagnostic-worker.php (297 linhas)
+- Worker background para diagnósticos periódicos de governança em todas as contas ML
+- **Modo único** (`--once`): roda um ciclo e encerra (ideal para crontab)
+- **Modo contínuo**: loop infinito com sleep de 6h entre ciclos
+- **CLI options**: `--once`, `--account=ID`, `--verbose`, `--help`
+- **Rate limiting**: 0.5s entre contas para evitar rate limit da API ML
+- **Logging**: Monolog com stdout + arquivo rotativo (7 dias)
+- **Alertas**: Log crítico quando `critical_actions > 0`
+- **Persistência**: Salva diagnósticos em `governance_diagnostic_history`
+
+#### database/migrations/2026_02_20_create_governance_diagnostic_history.php (78 linhas)
+- Tabela `governance_diagnostic_history` com:
+  - `account_id`, `account_status`, `total_items`, `healthy_items`, `problem_items`
+  - `critical_actions`, `top_causes` (JSON), `executive_summary` (JSON), `full_result` (JSON)
+  - Índices: `idx_account_id`, `idx_created_at`, `idx_account_created`, `idx_critical`
+- View `v_latest_governance_diagnostic` para último diagnóstico por conta
+
+#### app/Views/dashboard/account-governance.php (atualizado)
+- Toggle "Dados Reais (ML API)" vs "Dados de Teste"
+- Estado salvo em localStorage para persistir preferência
+- Quando ativo, chama `/api/account-governance/diagnostic-ml` (API real)
+- Quando desativado, chama `/api/account-governance/diagnostic` (dados de exemplo)
+
+### Validação
+- `php -l` em todos arquivos ✅  
+- `php vendor/bin/phpunit` — 46 testes, 197 assertions ✅
+
+### Crontab recomendado
+```
+# Diagnóstico de governança a cada 6 horas
+0 0,6,12,18 * * * php /path/to/bin/governance-diagnostic-worker.php --once >> /var/log/governance-worker.log 2>&1
+```
+
+### Arquivos criados/modificados
+| Arquivo | Ação | Linhas |
+|---------|------|--------|
+| bin/governance-diagnostic-worker.php | ✨ Criado | 297 |
+| database/migrations/2026_02_20_create_governance_diagnostic_history.php | ✨ Criado | 78 |
+| app/Views/dashboard/account-governance.php | 📝 Atualizado | ~530 |
+| project-status.json | 📝 Atualizado | GOV-003 adicionado |
+
+---
+
 ## Sessao: 2026-02-20 — HEALTH-001: Account Health lida com invalid_grant (conta desconectada)
 
 ### Implementado

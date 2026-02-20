@@ -87,7 +87,7 @@ class MercadoLivreAuthService
             throw new \RuntimeException('Database unavailable for MercadoLivreAuthService', 0, $e);
         }
     }
-    
+
     /**
      * Grava evento de auditoria na tabela token_refresh_audit
      */
@@ -111,7 +111,7 @@ class MercadoLivreAuthService
                     :expires_at_before, :expires_at_after, :execution_time_ms
                 )
             ");
-            
+
             $stmt->execute([
                 'account_id' => $accountId,
                 'action' => $action,
@@ -327,7 +327,7 @@ class MercadoLivreAuthService
         if (isset($_SESSION['ml_oauth_pkce']) && is_array($_SESSION['ml_oauth_pkce'])) {
             unset($_SESSION['ml_oauth_pkce'][$state]);
         }
-        
+
         // Logar autorização OAuth bem-sucedida
         $this->logAuditEvent(
             $accountId,
@@ -342,7 +342,7 @@ class MercadoLivreAuthService
             null,
             $expiresAt
         );
-        
+
         // Atualizar last_oauth_connection_at
         $this->pdo()->prepare(
             'UPDATE ml_accounts SET last_oauth_connection_at = NOW() WHERE id = :id'
@@ -358,7 +358,7 @@ class MercadoLivreAuthService
     public function refreshToken(int $accountId, int $maxRetries = 3): bool
     {
         $startTime = microtime(true);
-        
+
         // Recuperar refresh token e expirar atual
         $stmt = $this->pdo()->prepare('SELECT refresh_token, tokens_encrypted, token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $accountId]);
@@ -367,9 +367,9 @@ class MercadoLivreAuthService
         if (!$row) {
             return false;
         }
-        
+
         $expiresAtBefore = $row['token_expires_at'];
-        
+
         // Logar tentativa de refresh
         $this->logAuditEvent(
             $accountId,
@@ -419,7 +419,7 @@ class MercadoLivreAuthService
                 $expiresAtBefore,
                 $executionTime
             );
-            
+
             return false;
         }
 
@@ -443,7 +443,7 @@ class MercadoLivreAuthService
 
         while ($attempt < $maxRetries && !$success) {
             $attempt++;
-            
+
             $ch = curl_init($tokenUrl);
             $curlOptions = [
                 CURLOPT_RETURNTRANSFER => true,
@@ -466,7 +466,7 @@ class MercadoLivreAuthService
                 $success = true;
                 break;
             }
-            
+
             // Falha fatal (invalid_grant), não adianta tentar de novo
             if ($httpCode === 400 || $httpCode === 401) {
                 $data = json_decode($resp, true);
@@ -506,15 +506,15 @@ class MercadoLivreAuthService
 
                 return false;
             }
-            
+
             $logger = new StructuredLogService();
             $logger->error('Falha refresh token ML após tentativas', [
                 'attempts' => $attempt,
-                'status' => $httpCode, 
+                'status' => $httpCode,
                 'response' => $resp,
                 'account_id' => $accountId
             ]);
-            
+
             $this->logAuditEvent(
                 $accountId,
                 'refresh_failed',
@@ -525,7 +525,7 @@ class MercadoLivreAuthService
                 null,
                 $executionTime
             );
-            
+
             // Atualizar contador de falhas e último erro
             $this->pdo()->prepare(
                 'UPDATE ml_accounts 
@@ -537,7 +537,7 @@ class MercadoLivreAuthService
                 'error' => "HTTP {$httpCode}: " . substr($resp ?? '', 0, 500),
                 'id' => $accountId
             ]);
-            
+
             return false;
         }
 
@@ -583,7 +583,7 @@ class MercadoLivreAuthService
             'status' => 'active',
             'id' => $accountId
         ]);
-        
+
         $executionTime = (int)((microtime(true) - $startTime) * 1000);
 
         $logger = new StructuredLogService();
@@ -592,7 +592,7 @@ class MercadoLivreAuthService
             'expires_at' => $expiresAt,
             'attempts' => $attempt
         ]);
-        
+
         // Logar sucesso de refresh com tempos de expiração
         $this->logAuditEvent(
             $accountId,

@@ -509,7 +509,7 @@ class AccountHealthController
         try {
             $startTime = microtime(true);
             $service = new AccountHealthService((int) $accountId);
-            
+
             $diagnostics = [
                 'account_status' => $service->getAccountStatusDiagnostic(),
                 'customer_service' => $service->getCustomerServiceDiagnostic(),
