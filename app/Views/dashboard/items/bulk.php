@@ -16,10 +16,10 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                     <div class="col-md-3">
                         <select class="form-select" id="bulk-action">
                             <option value="">Selecione uma ação...</option>
-                            <option value="price_increase_percent">Aumentar Preço (%)</option>
-                            <option value="price_decrease_percent">Diminuir Preço (%)</option>
-                            <option value="status_pause">Pausar Anúncios</option>
-                            <option value="status_activate">Ativar Anúncios</option>
+                            <option value="price_increase">Aumentar Preço (%)</option>
+                            <option value="price_decrease">Diminuir Preço (%)</option>
+                            <option value="pause">Pausar Anúncios</option>
+                            <option value="activate">Ativar Anúncios</option>
                         </select>
                     </div>
                     <div class="col-md-2">

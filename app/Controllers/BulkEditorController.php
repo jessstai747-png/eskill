@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Database;
@@ -29,6 +31,22 @@ class BulkEditorController extends BaseController
         'activate',            // Ativar anúncios
         'update_title_prefix', // Adicionar prefixo ao título
         'update_title_suffix', // Adicionar sufixo ao título
+    ];
+
+    // Compatibilidade retroativa com payloads legados da view
+    private const ACTION_ALIASES = [
+        'price_increase_percent' => 'price_increase',
+        'price_decrease_percent' => 'price_decrease',
+        'status_pause' => 'pause',
+        'status_activate' => 'activate',
+    ];
+
+    private const ACTIONS_REQUIRING_NUMERIC_VALUE = [
+        'price_increase',
+        'price_decrease',
+        'price_set',
+        'stock_set',
+        'stock_add',
     ];
 
     public function __construct(UserService $userService)
@@ -74,7 +92,7 @@ class BulkEditorController extends BaseController
 
         $data = json_decode(file_get_contents('php://input'), true);
         $ids = $data['ids'] ?? [];
-        $action = $data['action'] ?? null;
+        $action = $this->normalizeAction($data['action'] ?? null);
         $value = $data['value'] ?? null;
 
         // Validações
@@ -84,14 +102,14 @@ class BulkEditorController extends BaseController
             return;
         }
 
-        if (!$action || !in_array($action, self::ALLOWED_ACTIONS)) {
+        if (!$action || !in_array($action, self::ALLOWED_ACTIONS, true)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Ação inválida: ' . $action]);
             return;
         }
 
         // Validar valor para ações que precisam
-        if (in_array($action, ['price_increase', 'price_decrease', 'price_set', 'stock_set', 'stock_add'])) {
+        if (in_array($action, self::ACTIONS_REQUIRING_NUMERIC_VALUE, true)) {
             if ($value === null || !is_numeric($value)) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => 'Valor numérico é obrigatório para esta ação']);
@@ -317,12 +335,18 @@ class BulkEditorController extends BaseController
 
         $data = json_decode(file_get_contents('php://input'), true);
         $ids = $data['ids'] ?? [];
-        $action = $data['action'] ?? null;
+        $action = $this->normalizeAction($data['action'] ?? null);
         $value = $data['value'] ?? null;
 
         if (empty($ids) || !$action) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Parâmetros inválidos']);
+            return;
+        }
+
+        if (!in_array($action, self::ALLOWED_ACTIONS, true)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Ação inválida: ' . $action]);
             return;
         }
 
@@ -370,6 +394,8 @@ class BulkEditorController extends BaseController
      */
     private function calculateChange(array $item, string $action, $value): array
     {
+        $action = $this->normalizeAction($action);
+
         switch ($action) {
             case 'price_increase':
                 return [
@@ -421,5 +447,19 @@ class BulkEditorController extends BaseController
                     'new' => null
                 ];
         }
+    }
+
+    private function normalizeAction(?string $action): ?string
+    {
+        if ($action === null) {
+            return null;
+        }
+
+        $trimmed = trim($action);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        return self::ACTION_ALIASES[$trimmed] ?? $trimmed;
     }
 }
