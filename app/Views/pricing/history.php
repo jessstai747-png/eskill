@@ -10,7 +10,9 @@
  */
 
 $pageTitle = 'Histórico de Preços - Precificador Inteligente';
-$accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
+$accountId = $accountId
+    ?? ($_SESSION['active_ml_account_id'] ?? null)
+    ?? ($_SESSION['current_account_id'] ?? 1);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -201,7 +203,9 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
                                 <i class="bi bi-search"></i>
                             </span>
                             <input type="text" class="form-control border-start-0" 
-                                   id="itemSearch" placeholder="Buscar item por MLB, SKU ou título...">
+                                   id="itemSearch" list="itemSearchList"
+                                   placeholder="Buscar item por MLB, SKU ou título...">
+                            <datalist id="itemSearchList"></datalist>
                         </div>
                     </div>
                 </div>
@@ -414,9 +418,20 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             initializeCharts();
+            initFromUrl();
             loadDashboardData();
             setupEventListeners();
         });
+
+        function initFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const itemId = params.get('item_id') || params.get('itemId');
+            if (itemId) {
+                const input = document.getElementById('itemSearch');
+                input.value = itemId;
+                applySelectedItem(itemId);
+            }
+        }
 
         // Setup event listeners
         function setupEventListeners() {
@@ -436,6 +451,28 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => searchItems(e.target.value), 300);
             });
+
+            document.getElementById('itemSearch').addEventListener('change', (e) => {
+                applySelectedItem(e.target.value);
+            });
+
+            document.getElementById('itemSearch').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    applySelectedItem(e.target.value);
+                }
+            });
+        }
+
+        function applySelectedItem(value) {
+            const trimmed = (value || '').trim();
+            // Aceita diretamente o item_id do ML (ex.: MLB123)
+            if (trimmed && trimmed.toUpperCase().startsWith('MLB')) {
+                selectedItemId = trimmed.toUpperCase();
+                loadDashboardData();
+                return;
+            }
+            selectedItemId = null;
+            clearCharts();
         }
 
         // Initialize Chart.js charts
@@ -590,10 +627,10 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
         // Load alert statistics
         async function loadAlertStats() {
             try {
-                const response = await fetch(`${API_BASE}/alerts?days=${selectedPeriod}`);
+                const response = await fetch(`${API_BASE}/alerts/stats?days=${selectedPeriod}`);
                 const data = await response.json();
                 
-                if (data.stats) {
+                if (data.success && data.stats) {
                     const stats = data.stats;
                     
                     // Update stat cards
@@ -624,8 +661,8 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
         // Load price history
         async function loadPriceHistory() {
             if (!selectedItemId) {
-                // Load sample/aggregate data
-                generateSampleData();
+                // Sem item selecionado: não mostrar dados fictícios
+                clearCharts();
                 return;
             }
             
@@ -633,15 +670,20 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
                 const response = await fetch(`${API_BASE}/history/${selectedItemId}?days=${selectedPeriod}`);
                 const data = await response.json();
                 
-                if (data.history) {
-                    const labels = data.history.map(h => h.date);
-                    const prices = data.history.map(h => h.price);
-                    const margins = data.history.map(h => h.margin || 0);
-                    const rankings = data.history.map(h => h.position_percentage || 50);
+                const history = data.history || [];
+                if (data.success && Array.isArray(history) && history.length > 0) {
+                    const labels = history.map(h => h.date);
+                    const prices = history.map(h => h.price);
+                    const avgPrices = history.map(h => h.avg_price ?? null);
+                    const minPrices = history.map(h => h.min_price ?? null);
+                    const margins = history.map(h => h.margin || 0);
+                    const rankings = history.map(h => h.position_percentage || 50);
                     
                     // Update price history chart
                     charts.priceHistory.data.labels = labels;
                     charts.priceHistory.data.datasets[0].data = prices;
+                    charts.priceHistory.data.datasets[1].data = avgPrices;
+                    charts.priceHistory.data.datasets[2].data = minPrices;
                     charts.priceHistory.update();
                     
                     // Update margin chart
@@ -653,76 +695,98 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
                     charts.ranking.data.labels = labels;
                     charts.ranking.data.datasets[0].data = rankings;
                     charts.ranking.update();
+
+                    // Update changes table
+                    renderPriceChangesTable(data.historico || [], selectedItemId);
+                } else {
+                    clearCharts();
+                    renderPriceChangesTable([], selectedItemId);
                 }
             } catch (error) {
                 console.error('Error loading price history:', error);
-                generateSampleData();
+                clearCharts();
+                renderPriceChangesTable([], selectedItemId);
             }
         }
 
-        // Generate sample data for demonstration
-        function generateSampleData() {
-            const labels = [];
-            const prices = [];
-            const avgPrices = [];
-            const minPrices = [];
-            const margins = [];
-            const rankings = [];
-            
-            const basePrice = 199.90;
-            const today = new Date();
-            
-            for (let i = selectedPeriod - 1; i >= 0; i--) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - i);
-                labels.push(date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
-                
-                // Generate realistic variations
-                const variation = (Math.random() - 0.5) * 20;
-                const price = basePrice + variation;
-                prices.push(price.toFixed(2));
-                avgPrices.push((price * 1.05).toFixed(2));
-                minPrices.push((price * 0.92).toFixed(2));
-                
-                // Margins between 10-30%
-                margins.push((15 + (Math.random() * 15)).toFixed(2));
-                
-                // Rankings between 5-25%
-                rankings.push((8 + (Math.random() * 12)).toFixed(2));
-            }
-            
-            // Update price history chart
-            charts.priceHistory.data.labels = labels;
-            charts.priceHistory.data.datasets[0].data = prices;
-            charts.priceHistory.data.datasets[1].data = avgPrices;
-            charts.priceHistory.data.datasets[2].data = minPrices;
+        function clearCharts() {
+            charts.priceHistory.data.labels = [];
+            charts.priceHistory.data.datasets.forEach(ds => ds.data = []);
             charts.priceHistory.update();
-            
-            // Update margin chart
-            charts.margin.data.labels = labels;
-            charts.margin.data.datasets[0].data = margins;
+
+            charts.margin.data.labels = [];
+            charts.margin.data.datasets[0].data = [];
             charts.margin.update();
-            
-            // Update ranking chart
-            charts.ranking.data.labels = labels;
-            charts.ranking.data.datasets[0].data = rankings;
+
+            charts.ranking.data.labels = [];
+            charts.ranking.data.datasets[0].data = [];
             charts.ranking.update();
+        }
+
+        function renderPriceChangesTable(historico, itemId) {
+            const body = document.getElementById('priceChangesBody');
+            if (!Array.isArray(historico) || historico.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Nenhum histórico encontrado${itemId ? ` para ${escapeHtml(itemId)}` : ''}.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            body.innerHTML = historico.slice(0, 50).map(row => {
+                const dt = row.data_mudanca ? new Date(row.data_mudanca) : null;
+                const dateLabel = dt && !isNaN(dt) ? dt.toLocaleString('pt-BR') : (row.data_mudanca || '-');
+                const prev = row.preco_anterior !== undefined ? Number(row.preco_anterior) : null;
+                const next = row.preco_novo !== undefined ? Number(row.preco_novo) : null;
+                const varPct = row.percentual_mudanca !== undefined ? Number(row.percentual_mudanca) : null;
+                return `
+                    <tr>
+                        <td>${escapeHtml(dateLabel)}</td>
+                        <td>${escapeHtml(itemId || selectedItemId || '')}</td>
+                        <td class="text-end">${prev !== null ? 'R$ ' + prev.toFixed(2) : '-'}</td>
+                        <td class="text-end">${next !== null ? 'R$ ' + next.toFixed(2) : '-'}</td>
+                        <td class="text-end">${varPct !== null ? varPct.toFixed(2) + '%' : '-'}</td>
+                        <td>${escapeHtml(row.motivo || row.origem || '-') }</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         // Load alerts
         async function loadAlerts() {
             try {
-                const response = await fetch(`${API_BASE}/alerts`);
+                const response = await fetch(`${API_BASE}/alerts?limit=10`);
                 const data = await response.json();
                 
                 const timeline = document.getElementById('alertTimeline');
                 const pendingBadge = document.getElementById('pendingAlertsCount');
-                
-                if (data.alerts && data.alerts.length > 0) {
-                    const pendingCount = data.alerts.filter(a => !a.is_resolved).length;
+
+                let alerts = data.alerts;
+                if (!Array.isArray(alerts) && Array.isArray(data.alertas)) {
+                    alerts = data.alertas.map(a => {
+                        const nivel = a.nivel;
+                        const alertType = nivel === 'vermelho' ? 'danger' : (nivel === 'amarelo' ? 'warning' : 'excellent');
+                        const title = a.tipo_alerta || 'Alerta';
+                        return {
+                            alert_type: alertType,
+                            title,
+                            alert_message: a.mensagem,
+                            created_at: a.criado_em,
+                            suggested_price: a.preco_recomendado,
+                            is_resolved: !!a.resolvido,
+                        };
+                    });
+                }
+                alerts = Array.isArray(alerts) ? alerts : [];
+
+                if (data.success && alerts.length > 0) {
+                    const pendingCount = alerts.filter(a => !a.is_resolved).length;
                     pendingBadge.textContent = pendingCount;
-                    
-                    timeline.innerHTML = data.alerts.slice(0, 10).map(alert => `
+
+                    timeline.innerHTML = alerts.slice(0, 10).map(alert => `
                         <div class="alert-item ${alert.alert_type}">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
@@ -759,9 +823,24 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
         // Search items
         async function searchItems(query) {
             if (query.length < 3) return;
-            
-            // This would typically call the ML API or local items endpoint
-            console.log('Searching for:', query);
+
+            const datalist = document.getElementById('itemSearchList');
+            try {
+                const response = await fetch(`${API_BASE}/items?q=${encodeURIComponent(query)}&limit=10`);
+                const data = await response.json();
+
+                if (!data.success || !Array.isArray(data.items)) {
+                    return;
+                }
+
+                datalist.innerHTML = data.items.map(item => {
+                    const id = (item.id || '').toString();
+                    const title = (item.titulo || '').toString();
+                    return `<option value="${escapeHtml(id)}">${escapeHtml(title)}</option>`;
+                }).join('');
+            } catch (error) {
+                console.error('Error searching items:', error);
+            }
         }
 
         // Refresh data
@@ -771,8 +850,8 @@ $accountId = $accountId ?? ($_SESSION['current_account_id'] ?? 1);
 
         // Export data
         function exportData() {
-            showToast('Exportação iniciada...', 'info');
-            // Implementation would generate CSV/Excel
+            const url = `${API_BASE}/export/history?days=${selectedPeriod}`;
+            window.open(url, '_blank');
         }
 
         // Utility functions

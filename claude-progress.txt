@@ -6,6 +6,38 @@
 
 ---
 
+## Sessao: 2026-02-21 — FEAT(PRICING): Pricing History com dados reais (UI ↔ API)
+
+### Implementado
+
+- `app/Views/pricing/history.php`
+   - Removido fallback de dados mock/sample (Math.random)
+   - Item selector agora faz busca real via `GET /api/pricing-intelligence/{accountId}/items?q=...`
+   - Integração real com:
+      - `GET /api/pricing-intelligence/{accountId}/history/{itemId}` (gráficos + tabela)
+      - `GET /api/pricing-intelligence/{accountId}/alerts` (timeline)
+      - `GET /api/pricing-intelligence/{accountId}/alerts/stats` (cards + gráfico de distribuição)
+      - `GET /api/pricing-intelligence/{accountId}/export/history` (export CSV)
+   - Conta ativa agora usa `$_SESSION['active_ml_account_id']` (fallback mantido)
+
+- `app/Controllers/PricingIntelligenceController.php`
+   - `getHistory()` agora aceita `days` (compat) além de `dias` e retorna também `history` normalizado
+   - `getAlerts()` retorna alias `alerts` normalizado (mantendo `alertas` bruto) e suporta filtro opcional por `days/dias`
+   - `getAlertStats()` agora calcula stats direto da tabela `pricing_ranking_alerts` (evita divergência de schema)
+
+- `app/Services/MarginCalculatorService.php`
+   - Histórico agora retorna também campos de concorrência e margem anterior (quando existir no DB)
+
+- `app/Services/RankingAlertService.php`
+   - Alinhado ao schema real da migração (`nivel`, `lido`, `resolvido`, `criado_em`, etc.)
+   - Queries e persistência ajustadas para não depender de colunas inexistentes
+
+### Validação
+
+- `php -l` ✅ (todos os arquivos modificados)
+- `php vendor/bin/phpunit` ✅ (2871 tests, 6691 assertions, 42 skipped)
+- MySQL indisponível neste sandbox (Connection refused) — esperado
+
 ## Sessao: 2026-02-21 — FIX(TESTS): PHPUnit default DB-free + repair broken test
 
 ### Implementado

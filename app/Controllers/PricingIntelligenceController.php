@@ -245,15 +245,51 @@ class PricingIntelligenceController extends BaseController
     {
         $this->jsonResponse();
 
-        $dias = $this->request->getInt('dias', 30);
+        $dias = $this->request->getInt('dias', 0);
+        if ($dias <= 0) {
+            // Compat: alguns frontends usam days
+            $dias = $this->request->getInt('days', 30);
+        }
+        $dias = max(1, min(3650, $dias));
+
         $historico = $this->marginService->getHistoricoPrecos($itemId, $dias);
+
+        // Compat/UI: retornar também no formato "history" (para gráficos)
+        // Mantém "historico" como retorno bruto (ordenado DESC pelo DB)
+        $historySource = array_reverse($historico);
+        $history = array_map(static function (array $row): array {
+            $dataMudanca = $row['data_mudanca'] ?? null;
+            $dateLabel = null;
+            if (!empty($dataMudanca)) {
+                $ts = strtotime((string)$dataMudanca);
+                $dateLabel = $ts ? date('d/m', $ts) : null;
+            }
+
+            $alerta = isset($row['alerta_ranking']) && is_string($row['alerta_ranking']) ? $row['alerta_ranking'] : null;
+            $positionPercentage = match ($alerta) {
+                'verde' => 6.0,
+                'amarelo' => 12.5,
+                'vermelho' => 18.0,
+                default => null,
+            };
+
+            return [
+                'date' => $dateLabel,
+                'price' => isset($row['preco_novo']) ? (float)$row['preco_novo'] : null,
+                'margin' => isset($row['margem_nova']) ? (float)$row['margem_nova'] : null,
+                'min_price' => isset($row['preco_concorrente_min']) ? (float)$row['preco_concorrente_min'] : null,
+                'avg_price' => isset($row['preco_concorrente_medio']) ? (float)$row['preco_concorrente_medio'] : null,
+                'position_percentage' => $positionPercentage,
+            ];
+        }, $historySource);
 
         echo json_encode([
             'success' => true,
             'item_id' => $itemId,
             'periodo_dias' => $dias,
             'total' => count($historico),
-            'historico' => $historico
+            'historico' => $historico,
+            'history' => $history,
         ]);
     }
 
@@ -379,6 +415,16 @@ class PricingIntelligenceController extends BaseController
             $naoLidos = $this->request->get('nao_lidos') !== null;
             $limit = $this->request->getInt('limit', 50);
 
+            $days = $this->request->getInt('days', 0);
+            if ($days <= 0) {
+                $days = $this->request->getInt('dias', 0);
+            }
+            $cutoff = null;
+            if ($days > 0) {
+                $days = max(1, min(365, $days));
+                $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
+            }
+
             $sql = "SELECT * FROM pricing_ranking_alerts WHERE account_id = :account_id";
             $params = ['account_id' => $this->accountId];
 
@@ -391,16 +437,53 @@ class PricingIntelligenceController extends BaseController
                 $sql .= " AND lido = 0";
             }
 
+            if ($cutoff !== null) {
+                $sql .= " AND criado_em >= :cutoff";
+                $params['cutoff'] = $cutoff;
+            }
+
             $sql .= " ORDER BY criado_em DESC LIMIT {$limit}";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             $alertas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Compat/UI: normalizar keys usadas em views antigas
+            $alerts = array_map(static function (array $a): array {
+                $alertType = match ($a['nivel'] ?? null) {
+                    'vermelho' => 'danger',
+                    'amarelo' => 'warning',
+                    'verde' => 'excellent',
+                    default => 'warning',
+                };
+
+                $title = match ($a['tipo_alerta'] ?? null) {
+                    'aumento_preco' => 'Aumento de preço',
+                    'queda_vendas' => 'Queda de vendas',
+                    'perda_posicao' => 'Perda de posição',
+                    'concorrente_agressivo' => 'Concorrente agressivo',
+                    default => 'Alerta',
+                };
+
+                return [
+                    'id' => isset($a['id']) ? (int)$a['id'] : 0,
+                    'item_id' => $a['item_id'] ?? null,
+                    'alert_type' => $alertType,
+                    'title' => $title,
+                    'alert_message' => $a['mensagem'] ?? null,
+                    'current_price' => isset($a['preco_atual']) ? (float)$a['preco_atual'] : null,
+                    'suggested_price' => isset($a['preco_recomendado']) ? (float)$a['preco_recomendado'] : null,
+                    'is_read' => (bool)($a['lido'] ?? 0),
+                    'is_resolved' => (bool)($a['resolvido'] ?? 0),
+                    'created_at' => $a['criado_em'] ?? null,
+                ];
+            }, $alertas);
+
             echo json_encode([
                 'success' => true,
                 'total' => count($alertas),
-                'alertas' => $alertas
+                'alertas' => $alertas,
+                'alerts' => $alerts
             ]);
         } catch (\Throwable $e) {
             $this->error('Erro ao buscar alertas: ' . $e->getMessage());
@@ -1640,10 +1723,80 @@ class PricingIntelligenceController extends BaseController
         $this->jsonResponse();
 
         $days = $this->request->getInt('days', 30);
+        $days = max(1, min(365, $days));
+
+        $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
 
         try {
-            $stats = $this->alertService->getAlertStats($days);
-            echo json_encode(['success' => true, 'stats' => $stats]);
+            $stmt = $this->db->prepare("
+                SELECT 
+                    nivel,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN resolvido = 1 THEN 1 ELSE 0 END) as resolved,
+                    SUM(CASE WHEN resolvido = 0 THEN 1 ELSE 0 END) as pending
+                FROM pricing_ranking_alerts
+                WHERE account_id = :account_id
+                  AND criado_em >= :cutoff
+                GROUP BY nivel
+            ");
+            $stmt->execute([
+                'account_id' => $this->accountId,
+                'cutoff' => $cutoff,
+            ]);
+            $byLevel = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $totalsByType = [
+                'excellent' => 0,
+                'good' => 0,
+                'warning' => 0,
+                'danger' => 0,
+            ];
+
+            foreach ($byLevel as $row) {
+                $nivel = $row['nivel'] ?? null;
+                $total = isset($row['total']) ? (int)$row['total'] : 0;
+
+                $type = match ($nivel) {
+                    'vermelho' => 'danger',
+                    'amarelo' => 'warning',
+                    'verde' => 'excellent',
+                    default => null,
+                };
+
+                if ($type !== null) {
+                    $totalsByType[$type] += $total;
+                }
+            }
+
+            $byType = [];
+            foreach ($totalsByType as $type => $total) {
+                $byType[] = ['alert_type' => $type, 'total' => (int)$total];
+            }
+
+            $stmt = $this->db->prepare("
+                SELECT 
+                    COUNT(*) as total_alerts,
+                    SUM(CASE WHEN resolvido = 0 THEN 1 ELSE 0 END) as pending_alerts,
+                    AVG(TIMESTAMPDIFF(HOUR, criado_em, COALESCE(resolvido_em, NOW()))) as avg_resolution_hours
+                FROM pricing_ranking_alerts
+                WHERE account_id = :account_id
+                  AND criado_em >= :cutoff
+            ");
+            $stmt->execute([
+                'account_id' => $this->accountId,
+                'cutoff' => $cutoff,
+            ]);
+            $totals = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                'success' => true,
+                'stats' => [
+                    'by_type' => $byType,
+                    'by_level' => $byLevel,
+                    'totals' => $totals,
+                    'period_days' => $days,
+                ],
+            ]);
         } catch (\Throwable $e) {
             $this->error('Erro ao buscar estatísticas: ' . $e->getMessage());
         }

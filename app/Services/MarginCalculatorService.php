@@ -477,9 +477,20 @@ class MarginCalculatorService
         try {
             $stmt = $this->db->prepare("
                 SELECT 
-                    preco_anterior, preco_novo, percentual_mudanca,
-                    origem, motivo, estrategia_usada, alerta_ranking,
-                    margem_nova, lucro_unitario_novo, data_mudanca
+                    preco_anterior,
+                    preco_novo,
+                    percentual_mudanca,
+                    origem,
+                    motivo,
+                    estrategia_usada,
+                    preco_concorrente_min,
+                    preco_concorrente_medio,
+                    qtd_concorrentes,
+                    margem_anterior,
+                    margem_nova,
+                    lucro_unitario_novo,
+                    alerta_ranking,
+                    data_mudanca
                 FROM pricing_history
                 WHERE account_id = :account_id 
                 AND item_id = :item_id

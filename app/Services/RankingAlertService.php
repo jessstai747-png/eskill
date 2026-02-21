@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -218,7 +220,7 @@ class RankingAlertService
         $stmt = $this->db->prepare("
             SELECT * FROM pricing_ranking_alerts 
             WHERE account_id = :account_id AND item_id = :item_id 
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY criado_em DESC LIMIT 1
         ");
         
         $stmt->execute([
@@ -240,13 +242,19 @@ class RankingAlertService
             return $currentStatus['severity'] >= 3;
         }
         
-        // Verificar se mudou de faixa
-        if ($previousAlert['alert_type'] !== $currentStatus['status']) {
+        $currentNivel = match ($currentStatus['status'] ?? null) {
+            'danger' => 'vermelho',
+            'warning' => 'amarelo',
+            default => 'verde',
+        };
+
+        // Verificar se mudou de faixa (comparando níveis persistidos)
+        if (($previousAlert['nivel'] ?? null) !== $currentNivel) {
             return true;
         }
         
         // Se piorou dentro da mesma faixa, alertar após 24h
-        $lastAlertTime = strtotime($previousAlert['created_at']);
+        $lastAlertTime = strtotime((string)($previousAlert['criado_em'] ?? ''));
         $hoursSinceLastAlert = (time() - $lastAlertTime) / 3600;
         
         if ($hoursSinceLastAlert >= 24 && $currentStatus['severity'] >= 3) {
@@ -263,33 +271,41 @@ class RankingAlertService
     {
         $message = $this->buildAlertMessage($itemData, $rankingData, $status);
         $suggestedPrice = $this->calculateSuggestedPrice($itemData['price'], $rankingData, $status);
+
+        $nivel = match ($status['status'] ?? null) {
+            'danger' => 'vermelho',
+            'warning' => 'amarelo',
+            default => 'verde',
+        };
+
+        // Por enquanto, este service é focado em perda de posição no ranking de preço.
+        $tipoAlerta = 'perda_posicao';
         
         $alert = [
             'account_id' => $this->accountId,
             'item_id' => $itemId,
-            'title' => $itemData['title'] ?? '',
-            'current_price' => $itemData['price'],
-            'alert_type' => $status['status'],
-            'alert_message' => $message,
-            'position_percentage' => $status['position_percentage'],
-            'suggested_price' => $suggestedPrice,
-            'is_read' => 0,
-            'is_resolved' => 0,
+            'tipo_alerta' => $tipoAlerta,
+            'nivel' => $nivel,
+            'mensagem' => $message,
+            'preco_atual' => (float)($itemData['price'] ?? 0),
+            'preco_recomendado' => $suggestedPrice,
+            // Armazenamos o percentual de posição como "variação detectada" para análise posterior.
+            'variacao_detectada' => isset($status['position_percentage']) ? (float)$status['position_percentage'] : null,
+            'lido' => 0,
+            'resolvido' => 0,
         ];
         
         // Persistir no banco
         $stmt = $this->db->prepare("
             INSERT INTO pricing_ranking_alerts 
-            (account_id, item_id, title, current_price, alert_type, alert_message, 
-             position_percentage, suggested_price, is_read, is_resolved, created_at)
+            (account_id, item_id, tipo_alerta, nivel, mensagem, preco_atual, preco_recomendado, variacao_detectada, lido, resolvido)
             VALUES 
-            (:account_id, :item_id, :title, :current_price, :alert_type, :alert_message,
-             :position_percentage, :suggested_price, :is_read, :is_resolved, NOW())
+            (:account_id, :item_id, :tipo_alerta, :nivel, :mensagem, :preco_atual, :preco_recomendado, :variacao_detectada, :lido, :resolvido)
         ");
         
         $stmt->execute($alert);
-        $alert['id'] = $this->db->lastInsertId();
-        $alert['created_at'] = date('Y-m-d H:i:s');
+        $alert['id'] = (int)$this->db->lastInsertId();
+        $alert['criado_em'] = date('Y-m-d H:i:s');
         
         return $alert;
     }
@@ -456,15 +472,14 @@ class RankingAlertService
         $stmt = $this->db->prepare("
             SELECT * FROM pricing_ranking_alerts 
             WHERE account_id = :account_id 
-              AND is_resolved = 0 
+              AND resolvido = 0 
             ORDER BY 
-                CASE alert_type 
-                    WHEN 'danger' THEN 1 
-                    WHEN 'warning' THEN 2 
-                    WHEN 'good' THEN 3 
-                    WHEN 'excellent' THEN 4 
+                CASE nivel 
+                    WHEN 'vermelho' THEN 1 
+                    WHEN 'amarelo' THEN 2 
+                    WHEN 'verde' THEN 3 
                 END,
-                created_at DESC
+                criado_em DESC
             LIMIT {$limitSql}
         ");
         
@@ -487,7 +502,7 @@ class RankingAlertService
         
         $stmt = $this->db->prepare("
             UPDATE pricing_ranking_alerts 
-            SET is_read = 1, updated_at = NOW()
+            SET lido = 1
             WHERE id IN ({$placeholders}) AND account_id = ?
         ");
         
@@ -502,10 +517,9 @@ class RankingAlertService
     {
         $stmt = $this->db->prepare("
             UPDATE pricing_ranking_alerts 
-            SET is_resolved = 1, 
-                resolution_notes = :resolution,
-                resolved_at = NOW(),
-                updated_at = NOW()
+            SET resolvido = 1,
+                acao_tomada = :resolution,
+                resolvido_em = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
         
@@ -521,48 +535,74 @@ class RankingAlertService
      */
     public function getAlertStats(int $days = 30): array
     {
+        $days = max(1, min(365, $days));
+        $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
+
         $stmt = $this->db->prepare("
             SELECT 
-                alert_type,
+                nivel,
                 COUNT(*) as total,
-                SUM(CASE WHEN is_resolved = 1 THEN 1 ELSE 0 END) as resolved,
-                SUM(CASE WHEN is_resolved = 0 THEN 1 ELSE 0 END) as pending,
-                AVG(position_percentage) as avg_position
+                SUM(CASE WHEN resolvido = 1 THEN 1 ELSE 0 END) as resolved,
+                SUM(CASE WHEN resolvido = 0 THEN 1 ELSE 0 END) as pending
             FROM pricing_ranking_alerts
-            WHERE account_id = :account_id 
-              AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
-            GROUP BY alert_type
+            WHERE account_id = :account_id
+              AND criado_em >= :cutoff
+            GROUP BY nivel
         ");
-        
+
         $stmt->execute([
             'account_id' => $this->accountId,
-            'days' => $days
+            'cutoff' => $cutoff,
         ]);
-        
-        $byType = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Totais gerais
+
+        $byLevel = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $totalsByType = [
+            'excellent' => 0,
+            'good' => 0,
+            'warning' => 0,
+            'danger' => 0,
+        ];
+
+        foreach ($byLevel as $row) {
+            $nivel = $row['nivel'] ?? null;
+            $total = isset($row['total']) ? (int)$row['total'] : 0;
+            $type = match ($nivel) {
+                'vermelho' => 'danger',
+                'amarelo' => 'warning',
+                'verde' => 'excellent',
+                default => null,
+            };
+            if ($type !== null) {
+                $totalsByType[$type] += $total;
+            }
+        }
+
+        $byType = [];
+        foreach ($totalsByType as $type => $total) {
+            $byType[] = ['alert_type' => $type, 'total' => (int)$total];
+        }
+
         $stmt = $this->db->prepare("
             SELECT 
                 COUNT(*) as total_alerts,
-                SUM(CASE WHEN is_resolved = 0 THEN 1 ELSE 0 END) as pending_alerts,
-                AVG(TIMESTAMPDIFF(HOUR, created_at, COALESCE(resolved_at, NOW()))) as avg_resolution_hours
+                SUM(CASE WHEN resolvido = 0 THEN 1 ELSE 0 END) as pending_alerts,
+                AVG(TIMESTAMPDIFF(HOUR, criado_em, COALESCE(resolvido_em, NOW()))) as avg_resolution_hours
             FROM pricing_ranking_alerts
-            WHERE account_id = :account_id 
-              AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+            WHERE account_id = :account_id
+              AND criado_em >= :cutoff
         ");
-        
         $stmt->execute([
             'account_id' => $this->accountId,
-            'days' => $days
+            'cutoff' => $cutoff,
         ]);
-        
         $totals = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return [
             'by_type' => $byType,
+            'by_level' => $byLevel,
             'totals' => $totals,
-            'period_days' => $days
+            'period_days' => $days,
         ];
     }
 
@@ -575,7 +615,7 @@ class RankingAlertService
         $stmt = $this->db->prepare("
             SELECT * FROM pricing_ranking_alerts 
             WHERE account_id = :account_id AND item_id = :item_id 
-            ORDER BY created_at DESC
+            ORDER BY criado_em DESC
             LIMIT {$limitSql}
         ");
         

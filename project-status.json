@@ -302,7 +302,7 @@
                 "tests/Unit/Services/PriceAnalyticsServiceTest.php"
             ],
             "passes": true,
-            "last_tested": "2025-06-28"
+            "last_tested": "2026-02-21"
         },
         {
             "id": "PRICE-005",
