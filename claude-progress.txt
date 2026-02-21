@@ -6,6 +6,28 @@
 
 ---
 
+## Sessao: 2026-02-21 — FEAT(ML/PRICING): Monitoramento de concorrentes com ML Search real + filtro por seller
+
+### Implementado
+
+- `app/Services/PricingCompetitorMonitorService.php`
+   - Integração real com API do Mercado Livre:
+      - `GET /items/{itemId}` (dados base do anúncio)
+      - `GET /sites/MLB/search` via `MercadoLivreClient::searchItems()` (mercado/concorrentes)
+   - Filtro para ignorar anúncios do mesmo seller (`seller_id`) e o próprio item
+   - Query de busca derivada do título (keywords) com override opcional via `q`
+   - Persistência best-effort em `competitor_pricing_cache` (schema real) com `percentil_preco`
+
+- `app/Controllers/PricingIntelligenceController.php`
+   - Endpoint `GET /api/pricing-intelligence/:accountId/monitor/competitors/{itemId}` agora delega para `PricingCompetitorMonitorService`
+   - Suporta params opcionais: `limit` (1..50) e `q` (override da query)
+
+### Validação
+
+- `php -l` ✅ (arquivos modificados)
+- `php vendor/bin/phpunit --testsuite=Unit` ✅ (Unit; MySQL indisponível no sandbox)
+- `bash bin/init.sh` ✅ (com aviso de MySQL esperado neste sandbox)
+
 ## Sessao: 2026-02-21 — CHORE(GIT): Ignorar artefatos locais do MySQL (sandbox) + limpar arquivo acidental
 
 ### Implementado

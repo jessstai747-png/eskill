@@ -305,6 +305,17 @@
             "last_tested": "2026-02-21"
         },
         {
+            "id": "PRICE-006",
+            "category": "pricing",
+            "description": "Pricing intelligence — monitoramento de concorrentes via API do Mercado Livre",
+            "files": [
+                "app/Controllers/PricingIntelligenceController.php",
+                "app/Services/PricingCompetitorMonitorService.php"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-21"
+        },
+        {
             "id": "PRICE-005",
             "category": "pricing",
             "description": "Scheduled pricing — agendamento de mudanças de preço",

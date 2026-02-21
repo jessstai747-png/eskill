@@ -10,6 +10,7 @@ use App\Services\PromotionSimulatorService;
 use App\Services\PricingScenarioService;
 use App\Services\PricingRulesService;
 use App\Services\AutoPricingOptimizerService;
+use App\Services\PricingCompetitorMonitorService;
 use App\Services\MercadoLivreClient;
 use App\Database;
 use PDO;
@@ -2925,150 +2926,18 @@ class PricingIntelligenceController extends BaseController
         $this->jsonResponse();
 
         try {
-            // Buscar dados do item
-            $itemData = $this->mlClient->get("/items/{$itemId}");
-            if (!$itemData || isset($itemData['error'])) {
-                $this->error('Item não encontrado');
-                return;
-            }
+            $limit = $this->request->getIntClamped('limit', 1, 50, 50);
+            $q = $this->request->get('q');
+            $q = is_string($q) && trim($q) !== '' ? trim($q) : null;
 
-            $precoAtual = (float)$itemData['price'];
-            $categoryId = $itemData['category_id'];
-            $titulo = $itemData['title'];
+            $service = new PricingCompetitorMonitorService(
+                accountId: $this->accountId,
+                db: $this->db,
+                mlClient: $this->mlClient
+            );
 
-            // Extrair palavras-chave do título
-            $keywords = $this->extractKeywords($titulo);
-
-            // Buscar concorrentes por categoria
-            $concorrentes = [];
-            $searchResult = $this->mlClient->get("/sites/MLB/search", [
-                'category' => $categoryId,
-                'limit' => 50,
-                'sort' => 'relevance'
-            ]);
-
-            if ($searchResult && isset($searchResult['results'])) {
-                foreach ($searchResult['results'] as $item) {
-                    if ($item['id'] !== $itemId) {
-                        $concorrentes[] = [
-                            'id' => $item['id'],
-                            'titulo' => $item['title'],
-                            'preco' => (float)$item['price'],
-                            'vendidos' => $item['sold_quantity'] ?? 0,
-                            'frete_gratis' => $item['shipping']['free_shipping'] ?? false,
-                            'tipo_anuncio' => $item['listing_type_id'] ?? 'gold_special',
-                            'vendedor' => $item['seller']['nickname'] ?? null,
-                            'reputacao' => $item['seller']['seller_reputation']['level_id'] ?? null,
-                            'diferenca_preco' => round((($item['price'] - $precoAtual) / $precoAtual) * 100, 2)
-                        ];
-                    }
-                }
-            }
-
-            // Ordenar por preço
-            usort($concorrentes, fn($a, $b) => $a['preco'] <=> $b['preco']);
-
-            // Estatísticas
-            $precos = array_column($concorrentes, 'preco');
-            $stats = [
-                'total' => count($concorrentes),
-                'preco_minimo' => !empty($precos) ? min($precos) : 0,
-                'preco_maximo' => !empty($precos) ? max($precos) : 0,
-                'preco_medio' => !empty($precos) ? round(array_sum($precos) / count($precos), 2) : 0,
-                'preco_mediano' => !empty($precos) ? $precos[floor(count($precos) / 2)] : 0
-            ];
-
-            // Posição no ranking de preços
-            $posicao = 1;
-            foreach ($concorrentes as $c) {
-                if ($c['preco'] < $precoAtual) $posicao++;
-            }
-
-            // Salvar em cache (schema real: database/migrations/2026_01_29_create_pricing_intelligence_tables.sql)
-            try {
-                $totalConcorrentes = (int)($stats['total'] ?? 0);
-                $totalComNossoItem = $totalConcorrentes + 1;
-                $percentilPreco = $totalComNossoItem > 1
-                    ? round((($posicao - 1) / ($totalComNossoItem - 1)) * 100, 2)
-                    : 50.0;
-
-                $topConcorrentes = array_map(static function (array $c): array {
-                    return [
-                        'id' => $c['id'] ?? null,
-                        'titulo' => $c['titulo'] ?? null,
-                        'preco' => $c['preco'] ?? null,
-                        'vendedor' => $c['vendedor'] ?? null,
-                        'reputacao' => $c['reputacao'] ?? null,
-                    ];
-                }, array_slice($concorrentes, 0, 20));
-
-                $cacheStmt = $this->db->prepare("
-                    INSERT INTO competitor_pricing_cache
-                    (
-                        account_id, item_id, category_id,
-                        preco_minimo, preco_maximo, preco_medio, preco_mediano,
-                        qtd_concorrentes, top_concorrentes,
-                        nossa_posicao_preco, percentil_preco,
-                        expira_em
-                    )
-                    VALUES
-                    (
-                        :account_id, :item_id, :category_id,
-                        :preco_minimo, :preco_maximo, :preco_medio, :preco_mediano,
-                        :qtd_concorrentes, :top_concorrentes,
-                        :nossa_posicao_preco, :percentil_preco,
-                        DATE_ADD(NOW(), INTERVAL 12 HOUR)
-                    )
-                    ON DUPLICATE KEY UPDATE
-                        category_id = VALUES(category_id),
-                        preco_minimo = VALUES(preco_minimo),
-                        preco_maximo = VALUES(preco_maximo),
-                        preco_medio = VALUES(preco_medio),
-                        preco_mediano = VALUES(preco_mediano),
-                        qtd_concorrentes = VALUES(qtd_concorrentes),
-                        top_concorrentes = VALUES(top_concorrentes),
-                        nossa_posicao_preco = VALUES(nossa_posicao_preco),
-                        percentil_preco = VALUES(percentil_preco),
-                        expira_em = VALUES(expira_em),
-                        atualizado_em = NOW()
-                ");
-
-                $cacheStmt->execute([
-                    'account_id' => $this->accountId,
-                    'item_id' => $itemId,
-                    'category_id' => $categoryId,
-                    'preco_minimo' => $stats['preco_minimo'] ?? null,
-                    'preco_maximo' => $stats['preco_maximo'] ?? null,
-                    'preco_medio' => $stats['preco_medio'] ?? null,
-                    'preco_mediano' => $stats['preco_mediano'] ?? null,
-                    'qtd_concorrentes' => $totalConcorrentes,
-                    'top_concorrentes' => json_encode($topConcorrentes),
-                    'nossa_posicao_preco' => $posicao,
-                    'percentil_preco' => $percentilPreco,
-                ]);
-            } catch (\Throwable $e) {
-                log_error('Erro ao salvar competitor_pricing_cache', [
-                    'context' => 'PricingIntelligenceController::monitorCompetitors',
-                    'account_id' => $this->accountId,
-                    'item_id' => $itemId,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            echo json_encode([
-                'success' => true,
-                'item' => [
-                    'id' => $itemId,
-                    'titulo' => $titulo,
-                    'preco' => $precoAtual,
-                    'categoria' => $categoryId
-                ],
-                'posicao_preco' => $posicao,
-                'posicao_total' => count($concorrentes) + 1,
-                'estatisticas' => $stats,
-                'concorrentes' => array_slice($concorrentes, 0, 20),
-                'atualizado_em' => date('Y-m-d H:i:s')
-            ]);
+            $result = $service->monitorItem($itemId, $limit, $q);
+            echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao monitorar concorrentes: ' . $e->getMessage());
         }
