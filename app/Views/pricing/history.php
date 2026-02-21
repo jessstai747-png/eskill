@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Página de Histórico de Preços
- * 
+ *
  * Dashboard com gráficos Chart.js para visualizar:
  * - Histórico de preços
  * - Evolução de margens
@@ -16,6 +17,7 @@ $accountId = $accountId
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,12 +33,12 @@ $accountId = $accountId
             --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
-        
+
         body {
             background: #f8f9fc;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
-        
+
         .page-header {
             background: var(--primary-gradient);
             color: white;
@@ -44,21 +46,21 @@ $accountId = $accountId
             border-radius: 0 0 20px 20px;
             margin-bottom: 2rem;
         }
-        
+
         .chart-card {
             background: white;
             border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        
+
         .chart-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
         }
-        
+
         .chart-title {
             font-weight: 600;
             font-size: 1.1rem;
@@ -68,56 +70,67 @@ $accountId = $accountId
             align-items: center;
             gap: 0.5rem;
         }
-        
+
         .chart-container {
             position: relative;
             height: 300px;
         }
-        
+
         .stat-card {
             background: white;
             border-radius: 12px;
             padding: 1.25rem;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
         }
-        
+
         .stat-card .stat-value {
             font-size: 1.8rem;
             font-weight: 700;
             margin-bottom: 0.25rem;
         }
-        
+
         .stat-card .stat-label {
             font-size: 0.85rem;
             color: #666;
         }
-        
-        .stat-card.excellent { border-left: 4px solid #38ef7d; }
-        .stat-card.good { border-left: 4px solid #4facfe; }
-        .stat-card.warning { border-left: 4px solid #f5576c; }
-        .stat-card.danger { border-left: 4px solid #dc3545; }
-        
+
+        .stat-card.excellent {
+            border-left: 4px solid #38ef7d;
+        }
+
+        .stat-card.good {
+            border-left: 4px solid #4facfe;
+        }
+
+        .stat-card.warning {
+            border-left: 4px solid #f5576c;
+        }
+
+        .stat-card.danger {
+            border-left: 4px solid #dc3545;
+        }
+
         .item-selector {
             max-width: 500px;
         }
-        
+
         .item-selector .form-control {
             border-radius: 30px;
             padding: 0.75rem 1.25rem;
         }
-        
+
         .period-selector .btn {
             border-radius: 20px;
             padding: 0.5rem 1rem;
             font-size: 0.875rem;
         }
-        
+
         .alert-timeline {
             max-height: 400px;
             overflow-y: auto;
         }
-        
+
         .alert-item {
             padding: 0.75rem;
             border-left: 3px solid;
@@ -125,20 +138,31 @@ $accountId = $accountId
             background: #f8f9fc;
             border-radius: 0 8px 8px 0;
         }
-        
-        .alert-item.danger { border-color: #dc3545; }
-        .alert-item.warning { border-color: #ffc107; }
-        .alert-item.good { border-color: #0dcaf0; }
-        .alert-item.excellent { border-color: #198754; }
-        
+
+        .alert-item.danger {
+            border-color: #dc3545;
+        }
+
+        .alert-item.warning {
+            border-color: #ffc107;
+        }
+
+        .alert-item.good {
+            border-color: #0dcaf0;
+        }
+
+        .alert-item.excellent {
+            border-color: #198754;
+        }
+
         .competitor-table {
             font-size: 0.9rem;
         }
-        
+
         .competitor-table .price-cell {
             font-weight: 600;
         }
-        
+
         .competitor-table .position-badge {
             width: 30px;
             height: 30px;
@@ -149,24 +173,24 @@ $accountId = $accountId
             font-weight: 600;
             font-size: 0.8rem;
         }
-        
+
         .loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255, 255, 255, 0.9);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 9999;
         }
-        
+
         .loading-overlay.active {
             display: flex;
         }
-        
+
         @media (max-width: 768px) {
             .chart-container {
                 height: 250px;
@@ -174,6 +198,7 @@ $accountId = $accountId
         }
     </style>
 </head>
+
 <body>
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
@@ -202,9 +227,9 @@ $accountId = $accountId
                             <span class="input-group-text bg-white border-end-0">
                                 <i class="bi bi-search"></i>
                             </span>
-                            <input type="text" class="form-control border-start-0" 
-                                   id="itemSearch" list="itemSearchList"
-                                   placeholder="Buscar item por MLB, SKU ou título...">
+                            <input type="text" class="form-control border-start-0"
+                                id="itemSearch" list="itemSearchList"
+                                placeholder="Buscar item por MLB, SKU ou título...">
                             <datalist id="itemSearchList"></datalist>
                         </div>
                     </div>
@@ -509,7 +534,9 @@ $accountId = $accountId
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: {
+                            position: 'bottom'
+                        }
                     },
                     scales: {
                         y: {
@@ -540,7 +567,9 @@ $accountId = $accountId
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: {
+                            position: 'bottom'
+                        }
                     },
                     scales: {
                         y: {
@@ -571,7 +600,9 @@ $accountId = $accountId
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: {
+                            position: 'bottom'
+                        }
                     },
                     scales: {
                         y: {
@@ -601,7 +632,9 @@ $accountId = $accountId
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: {
+                            position: 'bottom'
+                        }
                     }
                 }
             });
@@ -629,21 +662,25 @@ $accountId = $accountId
             try {
                 const response = await fetch(`${API_BASE}/alerts/stats?days=${selectedPeriod}`);
                 const data = await response.json();
-                
+
                 if (data.success && data.stats) {
                     const stats = data.stats;
-                    
+
                     // Update stat cards
                     const byType = {};
-                    (stats.by_type || []).forEach(s => {
+                    const sourceByType = (stats.ranking_distribution && Array.isArray(stats.ranking_distribution.by_type))
+                        ? stats.ranking_distribution.by_type
+                        : (stats.by_type || []);
+
+                    (sourceByType || []).forEach(s => {
                         byType[s.alert_type] = s.total;
                     });
-                    
+
                     document.getElementById('statExcellent').textContent = byType.excellent || 0;
                     document.getElementById('statGood').textContent = byType.good || 0;
                     document.getElementById('statWarning').textContent = byType.warning || 0;
                     document.getElementById('statDanger').textContent = byType.danger || 0;
-                    
+
                     // Update distribution chart
                     charts.distribution.data.datasets[0].data = [
                         byType.excellent || 0,
@@ -665,11 +702,11 @@ $accountId = $accountId
                 clearCharts();
                 return;
             }
-            
+
             try {
                 const response = await fetch(`${API_BASE}/history/${selectedItemId}?days=${selectedPeriod}`);
                 const data = await response.json();
-                
+
                 const history = data.history || [];
                 if (data.success && Array.isArray(history) && history.length > 0) {
                     const labels = history.map(h => h.date);
@@ -678,19 +715,19 @@ $accountId = $accountId
                     const minPrices = history.map(h => h.min_price ?? null);
                     const margins = history.map(h => h.margin || 0);
                     const rankings = history.map(h => h.position_percentage || 50);
-                    
+
                     // Update price history chart
                     charts.priceHistory.data.labels = labels;
                     charts.priceHistory.data.datasets[0].data = prices;
                     charts.priceHistory.data.datasets[1].data = avgPrices;
                     charts.priceHistory.data.datasets[2].data = minPrices;
                     charts.priceHistory.update();
-                    
+
                     // Update margin chart
                     charts.margin.data.labels = labels;
                     charts.margin.data.datasets[0].data = margins;
                     charts.margin.update();
-                    
+
                     // Update ranking chart
                     charts.ranking.data.labels = labels;
                     charts.ranking.data.datasets[0].data = rankings;
@@ -760,7 +797,7 @@ $accountId = $accountId
             try {
                 const response = await fetch(`${API_BASE}/alerts?limit=10`);
                 const data = await response.json();
-                
+
                 const timeline = document.getElementById('alertTimeline');
                 const pendingBadge = document.getElementById('pendingAlertsCount');
 
@@ -869,7 +906,7 @@ $accountId = $accountId
             const date = new Date(dateStr);
             const now = new Date();
             const diff = Math.floor((now - date) / 1000);
-            
+
             if (diff < 60) return 'agora';
             if (diff < 3600) return Math.floor(diff / 60) + 'min';
             if (diff < 86400) return Math.floor(diff / 3600) + 'h';
@@ -887,4 +924,5 @@ $accountId = $accountId
         }
     </script>
 </body>
+
 </html>

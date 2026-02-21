@@ -6,6 +6,23 @@
 
 ---
 
+## Sessao: 2026-02-21 — FIX(PRICING): Cache de concorrência (schema real) + stats de distribuição
+
+### Implementado
+
+- `app/Controllers/PricingIntelligenceController.php`
+   - `monitorCompetitors()` agora persiste o cache em `competitor_pricing_cache` usando o schema real da migração (campos `preco_*`, `qtd_concorrentes`, `top_concorrentes`, `nossa_posicao_preco`, `percentil_preco`, `expira_em`)
+   - `getAlertStats()` agora inclui `stats.ranking_distribution.by_type` (Excelente/Bom/Atenção/Crítico) calculado a partir de `competitor_pricing_cache.percentil_preco` no período selecionado
+   - Logging via `log_error()` quando houver falha ao salvar cache (sem quebrar a resposta da API)
+
+- `app/Views/pricing/history.php`
+   - UI passa a preferir `stats.ranking_distribution.by_type` quando disponível (mantém fallback compatível com `stats.by_type`)
+
+### Validação
+
+- `php -l` ✅ (arquivos modificados)
+- `php vendor/bin/phpunit` ✅ (Unit; MySQL indisponível no sandbox)
+
 ## Sessao: 2026-02-21 — FEAT(PRICING): Pricing History com dados reais (UI ↔ API)
 
 ### Implementado
@@ -214,7 +231,7 @@ Created DB-free unit tests for 8 features that were failing (passes: false):
 - Quando desativado, chama `/api/account-governance/diagnostic` (dados de exemplo)
 
 ### Validação
-- `php -l` em todos arquivos ✅  
+- `php -l` em todos arquivos ✅
 - `php vendor/bin/phpunit` — 46 testes, 197 assertions ✅
 
 ### Crontab recomendado
@@ -2274,9 +2291,9 @@ Se ML não estiver conectado, exibe dica no final:
 - `scripts/verify_seo_killer_final.php` — Integração completa com ML API diagnosis
 
 ### Validação
-✅ `php -l` — Sem erros de sintaxe  
-✅ `phpunit --filter SEO` — 32 testes (6 passed, 26 skipped)  
-✅ Script executa e mostra diagnóstico ML  
+✅ `php -l` — Sem erros de sintaxe
+✅ `phpunit --filter SEO` — 32 testes (6 passed, 26 skipped)
+✅ Script executa e mostra diagnóstico ML
 
 ### Impacto
 Script de smoke test do SEO Killer agora verifica:
@@ -2306,9 +2323,9 @@ require_once __DIR__ . '/../autoload.php';
 ```
 
 ### Validação
-✅ Script agora executa com sucesso  
-✅ Diagnostica corretamente componentes do SEO Killer  
-✅ Mostra status visual de saúde do sistema  
+✅ Script agora executa com sucesso
+✅ Diagnostica corretamente componentes do SEO Killer
+✅ Mostra status visual de saúde do sistema
 
 ### Arquivos Modificados
 - `scripts/verify_seo_killer_final.php` — paths corrigidos (linhas 7-8)
@@ -2358,9 +2375,9 @@ Mismatch entre estrutura de retorno:
 - `bin/validate-ml-health-fix.php` (novo)
 
 ### Impacto
-✅ Health agora reflete corretamente o status real da integração ML  
-✅ Diagnóstico da API do ML (`/users/me`, `/sites/MLB`, etc.) visível via `checks`  
-✅ Campos `seller_id`, `token_source`, `db_unavailable` expostos no health  
+✅ Health agora reflete corretamente o status real da integração ML
+✅ Diagnóstico da API do ML (`/users/me`, `/sites/MLB`, etc.) visível via `checks`
+✅ Campos `seller_id`, `token_source`, `db_unavailable` expostos no health
 
 ---
 
@@ -2580,7 +2597,7 @@ A sessão anterior identificou que `MercadoLivreClient::getItemDetails()` armaze
 - Agora usa `use NormalizesMLItems;`
 - Removido `normalizeMLItem()`, `extractAttribute()`, `extractDescriptionText()` duplicados
 
-#### 5. Bug Fix — `SEOAuditService::auditDescription()`  
+#### 5. Bug Fix — `SEOAuditService::auditDescription()`
 - `strip_tags()` recebia array → TypeError
 - Agora usa `NormalizesMLItems::extractDescriptionText()` antes de strip_tags
 

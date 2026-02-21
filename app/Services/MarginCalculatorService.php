@@ -7,14 +7,14 @@ use PDO;
 
 /**
  * Margin Calculator Service
- * 
+ *
  * Cálculo preciso de margens considerando:
  * - Comissão do Mercado Livre (por categoria)
  * - Impostos (Simples Nacional, Lucro Presumido, MEI)
  * - Custo de Ads (ACOS médio)
  * - Frete grátis subsidiado
  * - Embalagem e custos extras
- * 
+ *
  * @package App\Services
  */
 class MarginCalculatorService
@@ -43,7 +43,7 @@ class MarginCalculatorService
 
     /**
      * Calcula a margem real de um produto considerando todos os custos
-     * 
+     *
      * @param float $precoVenda Preço de venda no ML
      * @param array $custos Array com custos do produto
      * @return array Breakdown completo da margem
@@ -60,12 +60,12 @@ class MarginCalculatorService
         $custoEmbalagem = (float)($custos['custo_embalagem'] ?? 0);
         $custoEtiqueta = (float)($custos['custo_etiqueta'] ?? 0);
         $custoFreteEntrada = (float)($custos['custo_frete_entrada'] ?? 0);
-        
+
         // Taxas (em percentual)
         $taxaComissaoML = (float)($custos['taxa_comissao_ml'] ?? 16); // 16% padrão
         $taxaImposto = (float)($custos['taxa_imposto'] ?? 9);         // Simples padrão
         $acosMedio = (float)($custos['acos_medio'] ?? 0);
-        
+
         // Frete grátis subsidiado pelo vendedor
         $custoFreteGratis = (float)($custos['custo_frete_gratis'] ?? 0);
 
@@ -169,7 +169,7 @@ class MarginCalculatorService
         }
 
         $precoPromocional = $precoOriginal * (1 - $descontoPercent / 100);
-        
+
         $margemOriginal = $this->calcularMargem($precoOriginal, $custos);
         $margemPromocao = $this->calcularMargem($precoPromocional, $custos);
 
@@ -203,7 +203,7 @@ class MarginCalculatorService
         foreach ($descontos as $desc) {
             $precoDesc = $precoOriginal * (1 - $desc / 100);
             $margem = $this->calcularMargem($precoDesc, $custos);
-            
+
             $cenarios[] = [
                 'desconto' => $desc,
                 'preco' => round($precoDesc, 2),
@@ -223,19 +223,19 @@ class MarginCalculatorService
     public function calcularDescontoMaximoSeguro(float $precoOriginal, array $custos, float $margemMinima = 5): float
     {
         $resultado = $this->calcularPrecoMinimo($custos, $margemMinima);
-        
+
         if (!$resultado['success']) {
             return 0;
         }
 
         $precoMinimo = $resultado['preco_minimo'];
-        
+
         if ($precoMinimo >= $precoOriginal) {
             return 0;
         }
 
         $descontoMaximo = (($precoOriginal - $precoMinimo) / $precoOriginal) * 100;
-        
+
         return round(max(0, $descontoMaximo), 2);
     }
 
@@ -249,7 +249,7 @@ class MarginCalculatorService
         }
 
         $variacao = (($precoNovo - $precoAtual) / $precoAtual) * 100;
-        
+
         // Limites de impacto no algoritmo do ML
         $alerta = 'verde';
         $mensagem = 'Alteração segura para o ranking';
@@ -305,8 +305,8 @@ class MarginCalculatorService
 
         try {
             $stmt = $this->db->prepare("
-                SELECT taxa_classico, taxa_premium 
-                FROM ml_category_fees 
+                SELECT taxa_classico, taxa_premium
+                FROM ml_category_fees
                 WHERE category_id = :category_id
             ");
             $stmt->execute(['category_id' => $categoryId]);
@@ -409,7 +409,7 @@ class MarginCalculatorService
                 'account_id' => $this->accountId,
                 'item_id' => $itemId
             ]);
-            
+
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         } catch (\Throwable $e) {
             return null;
@@ -476,7 +476,7 @@ class MarginCalculatorService
 
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     preco_anterior,
                     preco_novo,
                     percentual_mudanca,
@@ -492,7 +492,7 @@ class MarginCalculatorService
                     alerta_ranking,
                     data_mudanca
                 FROM pricing_history
-                WHERE account_id = :account_id 
+                WHERE account_id = :account_id
                 AND item_id = :item_id
                 AND data_mudanca >= DATE_SUB(NOW(), INTERVAL :dias DAY)
                 ORDER BY data_mudanca DESC
@@ -502,7 +502,7 @@ class MarginCalculatorService
                 'item_id' => $itemId,
                 'dias' => $dias
             ]);
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             return [];

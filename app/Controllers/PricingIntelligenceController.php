@@ -16,9 +16,9 @@ use PDO;
 
 /**
  * Pricing Intelligence Controller
- * 
+ *
  * API REST para o módulo de precificação inteligente
- * 
+ *
  * Endpoints:
  * - POST /api/pricing/:accountId/margin/calculate
  * - POST /api/pricing/:accountId/margin/minimum
@@ -35,7 +35,7 @@ use PDO;
  * - POST /api/pricing/:accountId/promotion/apply/:itemId
  * - GET  /api/pricing/:accountId/scenarios/:itemId
  * - POST /api/pricing/:accountId/rules
- * 
+ *
  * @package App\Controllers
  */
 class PricingIntelligenceController extends BaseController
@@ -67,7 +67,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/margin/calculate
      * Calcula margem real de um produto
-     * 
+     *
      * Body: {
      *   "preco_venda": 199.90,
      *   "custo_producao": 80.00,
@@ -99,7 +99,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/margin/minimum
      * Calcula preço mínimo para atingir margem alvo
-     * 
+     *
      * Body: {
      *   "custo_producao": 80.00,
      *   "margem_alvo": 15,
@@ -120,7 +120,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/simulate-discount
      * Simula impacto de desconto na margem
-     * 
+     *
      * Body: {
      *   "preco_original": 199.90,
      *   "desconto_percent": 15,
@@ -150,7 +150,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/ranking-impact
      * Analisa impacto de alteração de preço no ranking
-     * 
+     *
      * Body: {
      *   "preco_atual": 199.90,
      *   "preco_novo": 229.90
@@ -187,7 +187,7 @@ class PricingIntelligenceController extends BaseController
         if (!$custos) {
             // Tenta buscar dados básicos do ML
             $item = $this->mlClient->get("/items/{$itemId}");
-            
+
             echo json_encode([
                 'success' => true,
                 'item_id' => $itemId,
@@ -213,7 +213,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/costs/:itemId
      * Salva custos de um produto
-     * 
+     *
      * Body: {
      *   "sku": "ABC123",
      *   "custo_producao": 80.00,
@@ -312,7 +312,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/suggest-price
      * Sugere preço baseado em estratégia
-     * 
+     *
      * Body: {
      *   "category_id": "MLB1234",
      *   "strategy": "competitive",
@@ -357,12 +357,12 @@ class PricingIntelligenceController extends BaseController
         if (isset($data['cost']) && $suggestion['success'] && $suggestion['suggested_price']) {
             $custos = $data;
             $custos['custo_producao'] = $data['cost'];
-            
+
             $margem = $this->marginService->calcularMargem(
                 $suggestion['suggested_price'],
                 $custos
             );
-            
+
             $suggestion['margem_calculada'] = $margem;
         }
 
@@ -500,8 +500,8 @@ class PricingIntelligenceController extends BaseController
 
         try {
             $stmt = $this->db->prepare("
-                UPDATE pricing_ranking_alerts 
-                SET lido = 1 
+                UPDATE pricing_ranking_alerts
+                SET lido = 1
                 WHERE id = :id AND account_id = :account_id
             ");
             $stmt->execute(['id' => $alertId, 'account_id' => $this->accountId]);
@@ -515,7 +515,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/apply/:itemId
      * Aplica novo preço no Mercado Livre
-     * 
+     *
      * Body: {
      *   "novo_preco": 199.90,
      *   "motivo": "Ajuste competitivo",
@@ -537,7 +537,7 @@ class PricingIntelligenceController extends BaseController
         try {
             // Buscar preço atual
             $item = $this->mlClient->get("/items/{$itemId}");
-            
+
             if (!$item || isset($item['error'])) {
                 $this->error('Item não encontrado', 404);
                 return;
@@ -599,7 +599,6 @@ class PricingIntelligenceController extends BaseController
                 'margem_nova' => $margemNova,
                 'lucro_unitario' => $lucroNovo
             ]);
-
         } catch (\Throwable $e) {
             $this->error('Erro ao aplicar preço: ' . $e->getMessage());
         }
@@ -616,7 +615,7 @@ class PricingIntelligenceController extends BaseController
     public function getStatus(): void
     {
         $this->jsonResponse();
-        
+
         try {
             // Verificar conta no banco
             $stmt = $this->db->prepare("
@@ -624,12 +623,12 @@ class PricingIntelligenceController extends BaseController
                        CASE WHEN token_expires_at > NOW() THEN 'válido' ELSE 'expirado' END as token_status,
                        token_expires_at,
                        created_at
-                FROM ml_accounts 
+                FROM ml_accounts
                 WHERE id = :id
             ");
             $stmt->execute(['id' => $this->accountId]);
             $account = $stmt->fetch(\PDO::FETCH_ASSOC);
-            
+
             if (!$account) {
                 echo json_encode([
                     'success' => false,
@@ -639,28 +638,28 @@ class PricingIntelligenceController extends BaseController
                 ]);
                 return;
             }
-            
+
             // Se token expirado, tentar renovar automaticamente
             $tokenRenovado = false;
             if ($account['token_status'] === 'expirado' || $account['status'] !== 'active') {
                 $authService = new \App\Services\MercadoLivreAuthService();
                 $tokenRenovado = $authService->refreshToken($this->accountId);
-                
+
                 if ($tokenRenovado) {
                     // Recarregar dados da conta após renovação
                     $stmt->execute(['id' => $this->accountId]);
                     $account = $stmt->fetch(\PDO::FETCH_ASSOC);
-                    
+
                     // Recriar o cliente ML com o novo token
                     $this->mlClient = new \App\Services\MercadoLivreClient($this->accountId);
                 }
             }
-            
+
             // Tentar conexão ML
             $mlStatus = 'desconectado';
             $mlInfo = null;
             $mlError = null;
-            
+
             try {
                 $meData = $this->mlClient->get('/users/me');
                 if ($meData && !isset($meData['error'])) {
@@ -678,7 +677,7 @@ class PricingIntelligenceController extends BaseController
             } catch (\Throwable $e) {
                 $mlError = $e->getMessage();
             }
-            
+
             // Estatísticas do módulo de pricing
             $statsStmt = $this->db->prepare("SELECT COUNT(*) as total FROM product_costs WHERE account_id = :id");
             $statsStmt->execute(['id' => $this->accountId]);
@@ -692,7 +691,7 @@ class PricingIntelligenceController extends BaseController
             } catch (\Throwable $e) {
                 $localItemsCount = 0;
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'account' => [
@@ -727,24 +726,24 @@ class PricingIntelligenceController extends BaseController
     public function refreshToken(): void
     {
         $this->jsonResponse();
-        
+
         try {
             $authService = new \App\Services\MercadoLivreAuthService();
             $success = $authService->refreshToken($this->accountId);
-            
+
             if ($success) {
                 // Recarregar cliente ML
                 $this->mlClient = new \App\Services\MercadoLivreClient($this->accountId);
-                
+
                 // Verificar conexão
                 $meData = $this->mlClient->get('/users/me');
                 $connected = $meData && !isset($meData['error']);
-                
+
                 // Buscar nova data de expiração
                 $stmt = $this->db->prepare("SELECT token_expires_at FROM ml_accounts WHERE id = :id");
                 $stmt->execute(['id' => $this->accountId]);
                 $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-                
+
                 echo json_encode([
                     'success' => true,
                     'message' => 'Token renovado com sucesso',
@@ -760,7 +759,7 @@ class PricingIntelligenceController extends BaseController
                     'action_required' => 'Reconecte sua conta clicando no botão abaixo',
                     'reconnect_url' => '/auth/authorize',
                     'help' => 'Tokens do Mercado Livre expiram se não forem usados por muito tempo. ' .
-                              'Você precisará autorizar novamente o acesso à sua conta.'
+                        'Você precisará autorizar novamente o acesso à sua conta.'
                 ]);
             }
         } catch (\Throwable $e) {
@@ -776,7 +775,7 @@ class PricingIntelligenceController extends BaseController
             $page = max(1, (int)$this->request->getInt('page', 1));
             $limit = $this->request->getIntClamped('limit', 1, 100, 20);
             $offset = max(0, min(1000000, ($page - 1) * $limit));
-            
+
             $status = $this->request->get('status');
             $margemMin = $this->request->get('margem_min');
             $margemMax = $this->request->get('margem_max');
@@ -801,7 +800,7 @@ class PricingIntelligenceController extends BaseController
 
             // Buscar itens do ML usando endpoint correto
             $params = ['status' => $status ?? 'active', 'limit' => $limit, 'offset' => $offset];
-            
+
             try {
                 $mlItems = $this->mlClient->getMyItems($params);
             } catch (\Throwable $mlError) {
@@ -847,7 +846,7 @@ class PricingIntelligenceController extends BaseController
                 $whereSql = implode(' AND ', $where);
 
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         pc.item_id,
                         pc.sku,
                         pc.custo_producao,
@@ -867,8 +866,8 @@ class PricingIntelligenceController extends BaseController
                         m.sold_quantity AS local_sold,
                         m.thumbnail AS local_thumbnail
                     FROM product_costs pc
-                    LEFT JOIN ml_items m 
-                        ON m.account_id = pc.account_id 
+                    LEFT JOIN ml_items m
+                        ON m.account_id = pc.account_id
                        AND m.id = pc.item_id
                     WHERE {$whereSql}
                     ORDER BY pc.atualizado_em DESC
@@ -880,13 +879,13 @@ class PricingIntelligenceController extends BaseController
                 }
                 $stmt->execute();
                 $itemsFromDb = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-                
+
                 // Contar total
                 $countStmt = $this->db->prepare("
                     SELECT COUNT(*)
                     FROM product_costs pc
-                    LEFT JOIN ml_items m 
-                        ON m.account_id = pc.account_id 
+                    LEFT JOIN ml_items m
+                        ON m.account_id = pc.account_id
                        AND m.id = pc.item_id
                     WHERE {$whereSql}
                 ");
@@ -895,7 +894,7 @@ class PricingIntelligenceController extends BaseController
                 }
                 $countStmt->execute();
                 $total = (int)$countStmt->fetchColumn();
-                
+
                 // Se não há itens cadastrados localmente
                 if (empty($itemsFromDb)) {
                     echo json_encode([
@@ -909,7 +908,7 @@ class PricingIntelligenceController extends BaseController
                     ]);
                     return;
                 }
-                
+
                 $items = [];
                 foreach ($itemsFromDb as $custos) {
                     $price = isset($custos['local_price']) ? (float)$custos['local_price'] : null;
@@ -961,7 +960,7 @@ class PricingIntelligenceController extends BaseController
                         'aviso' => 'Dados obtidos do cache local. Conecte ao Mercado Livre para sincronização em tempo real.'
                     ];
                 }
-                
+
                 echo json_encode([
                     'success' => true,
                     'page' => $page,
@@ -980,18 +979,18 @@ class PricingIntelligenceController extends BaseController
             if (!empty($itemIds)) {
                 // Buscar detalhes dos itens
                 $itemsData = $this->mlClient->get("/items", ['ids' => implode(',', array_slice($itemIds, 0, 20))]);
-                
+
                 foreach ($itemsData as $itemData) {
                     $item = $itemData['body'] ?? $itemData;
                     $itemId = $item['id'];
-                    
+
                     // Buscar custos do banco
                     $custos = $this->marginService->getCustosProduto($itemId);
-                    
+
                     $margem = null;
                     $lucro = null;
                     $indicador = 'cinza';
-                    
+
                     if ($custos) {
                         $calc = $this->marginService->calcularMargem((float)$item['price'], $custos);
                         $margem = $calc['margem_real'] ?? null;
@@ -1031,7 +1030,6 @@ class PricingIntelligenceController extends BaseController
                 'ml_status' => 'conectado',
                 'token_refreshed' => $tokenRefreshed
             ]);
-
         } catch (\Throwable $e) {
             $this->error('Erro ao listar itens: ' . $e->getMessage());
         }
@@ -1040,7 +1038,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/bulk-costs
      * Importação em lote de custos
-     * 
+     *
      * Body: {
      *   "items": [
      *     {"item_id": "MLB123", "sku": "ABC", "custo_producao": 80},
@@ -1068,7 +1066,7 @@ class PricingIntelligenceController extends BaseController
             }
 
             $result = $this->marginService->salvarCustosProduto($item['item_id'], $item);
-            
+
             if ($result['success']) {
                 $sucesso++;
             } else {
@@ -1091,7 +1089,7 @@ class PricingIntelligenceController extends BaseController
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     nivel,
                     COUNT(*) as total,
                     SUM(CASE WHEN lido = 0 THEN 1 ELSE 0 END) as nao_lidos
@@ -1113,7 +1111,7 @@ class PricingIntelligenceController extends BaseController
             $limitSql = max(1, min(200, (int)$limit));
             // Buscar itens com custos cadastrados
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     pc.item_id,
                     pc.sku,
                     pc.custo_producao,
@@ -1133,7 +1131,7 @@ class PricingIntelligenceController extends BaseController
             $stmt->bindValue('account_id', $this->accountId, PDO::PARAM_INT);
             $stmt->execute();
             $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Calcular margem para cada item (precisa buscar preço do ML)
             $result = [];
             foreach ($items as $item) {
@@ -1146,7 +1144,7 @@ class PricingIntelligenceController extends BaseController
                     'margem_alvo' => (float)$item['margem_alvo']
                 ];
             }
-            
+
             return $result;
         } catch (\Throwable $e) {
             return [];
@@ -1158,8 +1156,8 @@ class PricingIntelligenceController extends BaseController
         try {
             $limitSql = max(1, min(200, (int)$limit));
             $stmt = $this->db->prepare("
-                SELECT 
-                    item_id, preco_anterior, preco_novo, 
+                SELECT
+                    item_id, preco_anterior, preco_novo,
                     percentual_mudanca, origem, alerta_ranking,
                     data_mudanca
                 FROM pricing_history
@@ -1189,7 +1187,7 @@ class PricingIntelligenceController extends BaseController
 
             // Conta alterações de preço por período
             $stmt2 = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_alteracoes,
                     AVG(margem_nova) as margem_media,
                     MIN(margem_nova) as margem_minima,
@@ -1264,7 +1262,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/promotion/simulate/:itemId
      * Simula uma promoção para um item
-     * 
+     *
      * Body: {
      *   "desconto": 15,
      *   "custos": { "custo_producao": 80, ... },  // opcional
@@ -1299,7 +1297,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/promotion/scenarios/:itemId
      * Gera cenários de desconto para um item
-     * 
+     *
      * Body: {
      *   "preco_original": 199.90,  // opcional, busca do ML se omitido
      *   "custos": { ... }  // opcional
@@ -1337,7 +1335,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/promotion/apply/:itemId
      * Aplica uma promoção no Mercado Livre
-     * 
+     *
      * Body: {
      *   "preco_promocional": 169.90,
      *   "motivo": "Promoção de verão"
@@ -1368,7 +1366,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/promotion/central-ofertas/:itemId
      * Simula participação na Central de Ofertas do ML
-     * 
+     *
      * Body: {
      *   "tipo_oferta": "deal_of_day"  // deal_of_day, lightning_deal, best_seller
      * }
@@ -1431,7 +1429,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/scenarios/what-if/:itemId
      * Cria cenário "what-if" para análise
-     * 
+     *
      * Body: {
      *   "preco": 199.90,
      *   "custos": { "custo_producao": 90, "taxa_imposto": 12 },
@@ -1466,7 +1464,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/rules
      * Cria uma regra de precificação automática
-     * 
+     *
      * Body: {
      *   "nome": "Competitivo Eletrônicos",
      *   "descricao": "Mantém preços competitivos em eletrônicos",
@@ -1516,7 +1514,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/rules/:ruleId/execute
      * Executa uma regra de precificação
-     * 
+     *
      * Body: {
      *   "aplicar": false  // true para aplicar, false para simular
      * }
@@ -1546,7 +1544,7 @@ class PricingIntelligenceController extends BaseController
 
         try {
             $stmt = $this->db->prepare("
-                DELETE FROM pricing_rules 
+                DELETE FROM pricing_rules
                 WHERE id = :id AND account_id = :account_id
             ");
             $stmt->execute(['id' => $ruleId, 'account_id' => $this->accountId]);
@@ -1570,8 +1568,8 @@ class PricingIntelligenceController extends BaseController
 
         try {
             $stmt = $this->db->prepare("
-                UPDATE pricing_rules 
-                SET ativo = NOT ativo 
+                UPDATE pricing_rules
+                SET ativo = NOT ativo
                 WHERE id = :id AND account_id = :account_id
             ");
             $stmt->execute(['id' => $ruleId, 'account_id' => $this->accountId]);
@@ -1595,7 +1593,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/alerts/analyze-batch
      * Analisa ranking de múltiplos itens
-     * 
+     *
      * Body: {
      *   "item_ids": ["MLB123", "MLB456"]
      * }
@@ -1627,11 +1625,11 @@ class PricingIntelligenceController extends BaseController
         $this->jsonResponse();
 
         $limit = $this->request->getInt('limit', 50);
-        
+
         try {
             $alerts = $this->alertService->getUnresolvedAlerts($limit);
             $stats = $this->alertService->getAlertStats($this->request->getInt('days', 30));
-            
+
             echo json_encode([
                 'success' => true,
                 'alerts' => $alerts,
@@ -1645,7 +1643,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/alerts/mark-read
      * Marca alertas como lidos
-     * 
+     *
      * Body: {
      *   "alert_ids": [1, 2, 3]
      * }
@@ -1671,7 +1669,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/alerts/:alertId/resolve
      * Resolve um alerta específico
-     * 
+     *
      * Body: {
      *   "resolution": "Preço ajustado para R$ 189,90"
      * }
@@ -1728,8 +1726,41 @@ class PricingIntelligenceController extends BaseController
         $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
 
         try {
+            // Distribuição de ranking por faixa (baseada no cache de concorrência)
+            // Obs: isso alimenta o gráfico de distribuição na UI (Excelente/Bom/Atenção/Crítico).
+            $rankingDistributionByType = [
+                'excellent' => 0,
+                'good' => 0,
+                'warning' => 0,
+                'danger' => 0,
+            ];
+            $rankingDistributionTotals = [
+                'total_cached_items' => 0,
+            ];
+
+            try {
+                $distStmt = $this->db->prepare("\n                    SELECT\n                        SUM(CASE WHEN percentil_preco >= 0 AND percentil_preco < 8 THEN 1 ELSE 0 END) as excellent,\n                        SUM(CASE WHEN percentil_preco >= 8 AND percentil_preco < 12 THEN 1 ELSE 0 END) as good,\n                        SUM(CASE WHEN percentil_preco >= 12 AND percentil_preco < 15 THEN 1 ELSE 0 END) as warning,\n                        SUM(CASE WHEN percentil_preco >= 15 THEN 1 ELSE 0 END) as danger,\n                        COUNT(*) as total_cached_items\n                    FROM competitor_pricing_cache\n                    WHERE account_id = :account_id\n                      AND percentil_preco IS NOT NULL\n                      AND atualizado_em >= :cutoff\n                ");
+                $distStmt->execute([
+                    'account_id' => $this->accountId,
+                    'cutoff' => $cutoff,
+                ]);
+                $distRow = $distStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+                $rankingDistributionByType = [
+                    'excellent' => (int)($distRow['excellent'] ?? 0),
+                    'good' => (int)($distRow['good'] ?? 0),
+                    'warning' => (int)($distRow['warning'] ?? 0),
+                    'danger' => (int)($distRow['danger'] ?? 0),
+                ];
+                $rankingDistributionTotals = [
+                    'total_cached_items' => (int)($distRow['total_cached_items'] ?? 0),
+                ];
+            } catch (\Throwable $e) {
+                // Sem cache/tabela indisponível: mantém zeros.
+            }
+
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     nivel,
                     COUNT(*) as total,
                     SUM(CASE WHEN resolvido = 1 THEN 1 ELSE 0 END) as resolved,
@@ -1774,7 +1805,7 @@ class PricingIntelligenceController extends BaseController
             }
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_alerts,
                     SUM(CASE WHEN resolvido = 0 THEN 1 ELSE 0 END) as pending_alerts,
                     AVG(TIMESTAMPDIFF(HOUR, criado_em, COALESCE(resolvido_em, NOW()))) as avg_resolution_hours
@@ -1794,6 +1825,12 @@ class PricingIntelligenceController extends BaseController
                     'by_type' => $byType,
                     'by_level' => $byLevel,
                     'totals' => $totals,
+                    'ranking_distribution' => [
+                        'by_type' => array_map(static function (string $type, int $total): array {
+                            return ['alert_type' => $type, 'total' => $total];
+                        }, array_keys($rankingDistributionByType), array_values($rankingDistributionByType)),
+                        'totals' => $rankingDistributionTotals,
+                    ],
                     'period_days' => $days,
                 ],
             ]);
@@ -1813,7 +1850,7 @@ class PricingIntelligenceController extends BaseController
         try {
             // Buscar todos os produtos com custos
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     pc.item_id,
                     pc.sku,
                     pc.custo_producao,
@@ -1842,7 +1879,7 @@ class PricingIntelligenceController extends BaseController
             $output = fopen('php://output', 'w');
 
             // BOM para Excel reconhecer UTF-8
-            fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+            fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             // Cabeçalho
             fputcsv($output, [
@@ -1895,7 +1932,7 @@ class PricingIntelligenceController extends BaseController
             $days = $this->request->getInt('days', 30);
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     ph.item_id,
                     ph.preco_anterior,
                     ph.preco_novo,
@@ -1918,7 +1955,7 @@ class PricingIntelligenceController extends BaseController
             header('Content-Disposition: attachment; filename="pricing_history_' . date('Y-m-d_His') . '.csv"');
 
             $output = fopen('php://output', 'w');
-            fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+            fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             fputcsv($output, [
                 'Item ID',
@@ -1968,7 +2005,7 @@ class PricingIntelligenceController extends BaseController
             $historico = [];
             try {
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         DATE(data_mudanca) as data,
                         AVG(preco_novo) as preco_medio,
                         AVG(margem_nova) as margem_media,
@@ -1993,7 +2030,7 @@ class PricingIntelligenceController extends BaseController
             $concorrencia = [];
             try {
                 $stmtConc = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         DATE(atualizado_em) as data,
                         AVG(preco_minimo) as preco_min_conc,
                         AVG(preco_medio) as preco_med_conc,
@@ -2016,7 +2053,7 @@ class PricingIntelligenceController extends BaseController
 
             // Calcular tendência
             $tendencia = $this->calcularTendencia($historico);
-            
+
             // Valores mín/max
             $precoMinimo = !empty($historico) ? min(array_column($historico, 'preco_medio')) : 0;
             $precoMaximo = !empty($historico) ? max(array_column($historico, 'preco_medio')) : 0;
@@ -2063,7 +2100,7 @@ class PricingIntelligenceController extends BaseController
 
             // Distribuição de margens (usando margem_alvo configurada pelo usuário)
             $stmtMargens = $this->db->prepare("
-                SELECT 
+                SELECT
                     SUM(CASE WHEN margem_alvo < 5 THEN 1 ELSE 0 END) as critica,
                     SUM(CASE WHEN margem_alvo >= 5 AND margem_alvo < 10 THEN 1 ELSE 0 END) as baixa,
                     SUM(CASE WHEN margem_alvo >= 10 AND margem_alvo < 20 THEN 1 ELSE 0 END) as media,
@@ -2078,7 +2115,7 @@ class PricingIntelligenceController extends BaseController
             $alteracoes = ['total_alteracoes' => 0, 'aumentos' => 0, 'reducoes' => 0, 'com_alerta' => 0, 'variacao_media' => 0];
             try {
                 $stmtAlteracoes = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         COUNT(*) as total_alteracoes,
                         SUM(CASE WHEN percentual_mudanca > 0 THEN 1 ELSE 0 END) as aumentos,
                         SUM(CASE WHEN percentual_mudanca < 0 THEN 1 ELSE 0 END) as reducoes,
@@ -2100,7 +2137,7 @@ class PricingIntelligenceController extends BaseController
             $alertas = ['total' => 0, 'criticos' => 0, 'altos' => 0, 'medios' => 0, 'nao_lidos' => 0];
             try {
                 $stmtAlertas = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         COUNT(*) as total,
                         SUM(CASE WHEN nivel = 'vermelho' THEN 1 ELSE 0 END) as criticos,
                         SUM(CASE WHEN nivel = 'amarelo' THEN 1 ELSE 0 END) as altos,
@@ -2120,7 +2157,7 @@ class PricingIntelligenceController extends BaseController
             $regras = ['total' => 0, 'ativas' => 0];
             try {
                 $stmtRegras = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         COUNT(*) as total,
                         SUM(CASE WHEN ativo = 1 THEN 1 ELSE 0 END) as ativas
                     FROM pricing_rules
@@ -2136,7 +2173,7 @@ class PricingIntelligenceController extends BaseController
             $topAlteracoes = [];
             try {
                 $stmtTop = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         item_id,
                         COUNT(*) as alteracoes,
                         AVG(percentual_mudanca) as variacao_media
@@ -2159,7 +2196,7 @@ class PricingIntelligenceController extends BaseController
             $tendencia = [];
             try {
                 $stmtTendencia = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         DATE(data_mudanca) as data,
                         COUNT(*) as alteracoes,
                         SUM(CASE WHEN percentual_mudanca > 0 THEN 1 ELSE 0 END) as aumentos,
@@ -2258,7 +2295,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/bulk/apply-rule
      * Aplica uma regra a múltiplos itens
-     * 
+     *
      * Body: {
      *   "item_ids": ["MLB123", "MLB456"],
      *   "simulate": true
@@ -2286,7 +2323,7 @@ class PricingIntelligenceController extends BaseController
                 try {
                     // Buscar custos do produto
                     $custos = $this->marginService->getCustosProduto($itemId);
-                    
+
                     if (!$custos) {
                         $results[] = [
                             'item_id' => $itemId,
@@ -2360,7 +2397,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/bulk/update-costs
      * Atualiza custos de múltiplos itens com base em percentual
-     * 
+     *
      * Body: {
      *   "item_ids": ["MLB123", "MLB456"],
      *   "field": "custo_producao",
@@ -2373,8 +2410,17 @@ class PricingIntelligenceController extends BaseController
         $this->jsonResponse();
         $data = $this->getJsonInput();
 
-        $validFields = ['custo_producao', 'custo_embalagem', 'custo_etiqueta', 'custo_frete_gratis', 
-                        'taxa_comissao_ml', 'taxa_imposto', 'acos_medio', 'margem_minima', 'margem_alvo'];
+        $validFields = [
+            'custo_producao',
+            'custo_embalagem',
+            'custo_etiqueta',
+            'custo_frete_gratis',
+            'taxa_comissao_ml',
+            'taxa_imposto',
+            'acos_medio',
+            'margem_minima',
+            'margem_alvo'
+        ];
 
         if (empty($data['item_ids']) || !isset($data['field']) || !isset($data['adjustment_value'])) {
             $this->error('item_ids, field e adjustment_value são obrigatórios', 400);
@@ -2394,12 +2440,12 @@ class PricingIntelligenceController extends BaseController
 
             foreach ($data['item_ids'] as $itemId) {
                 if ($adjustmentType === 'percent') {
-                    $sql = "UPDATE product_costs 
+                    $sql = "UPDATE product_costs
                             SET {$data['field']} = {$data['field']} * (1 + :adj/100),
                                 atualizado_em = NOW()
                             WHERE account_id = :account_id AND item_id = :item_id";
                 } else {
-                    $sql = "UPDATE product_costs 
+                    $sql = "UPDATE product_costs
                             SET {$data['field']} = {$data['field']} + :adj,
                                 atualizado_em = NOW()
                             WHERE account_id = :account_id AND item_id = :item_id";
@@ -2466,7 +2512,7 @@ class PricingIntelligenceController extends BaseController
         // Volatilidade
         $diferencas = [];
         for ($i = 1; $i < count($precos); $i++) {
-            $diferencas[] = abs((float)$precos[$i] - (float)$precos[$i-1]);
+            $diferencas[] = abs((float)$precos[$i] - (float)$precos[$i - 1]);
         }
         $mediaPreco = array_sum($precos) / count($precos);
         $volatilidade = $mediaPreco > 0 ? (array_sum($diferencas) / count($diferencas)) / $mediaPreco * 100 : 0;
@@ -2622,14 +2668,14 @@ class PricingIntelligenceController extends BaseController
     public function getPerformanceReport(): void
     {
         $this->jsonResponse();
-        
+
         try {
             $days = $this->request->getInt('days', 30);
             $startDate = date('Y-m-d', strtotime("-{$days} days"));
-            
+
             // Métricas gerais
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(DISTINCT item_id) as total_items_alterados,
                     COUNT(*) as total_alteracoes,
                     AVG(percentual_mudanca) as variacao_media,
@@ -2642,10 +2688,10 @@ class PricingIntelligenceController extends BaseController
             ");
             $stmt->execute(['account_id' => $this->accountId, 'start_date' => $startDate]);
             $metricas = $stmt->fetch(\PDO::FETCH_ASSOC);
-            
+
             // Evolução diária
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     DATE(data_mudanca) as data,
                     COUNT(*) as alteracoes,
                     AVG(percentual_mudanca) as variacao_media,
@@ -2658,10 +2704,10 @@ class PricingIntelligenceController extends BaseController
             ");
             $stmt->execute(['account_id' => $this->accountId, 'start_date' => $startDate]);
             $evolucao = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            
+
             // Top 10 itens com mais alterações
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     item_id,
                     COUNT(*) as total_alteracoes,
                     MIN(preco_anterior) as preco_min,
@@ -2676,10 +2722,10 @@ class PricingIntelligenceController extends BaseController
             ");
             $stmt->execute(['account_id' => $this->accountId, 'start_date' => $startDate]);
             $topItems = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            
+
             // Alertas gerados
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     SUM(CASE WHEN nivel_alerta = 'vermelho' THEN 1 ELSE 0 END) as alertas_criticos,
                     SUM(CASE WHEN nivel_alerta = 'amarelo' THEN 1 ELSE 0 END) as alertas_moderados,
                     SUM(CASE WHEN nivel_alerta = 'verde' THEN 1 ELSE 0 END) as alertas_leves,
@@ -2690,7 +2736,7 @@ class PricingIntelligenceController extends BaseController
             ");
             $stmt->execute(['account_id' => $this->accountId, 'start_date' => $startDate]);
             $alertas = $stmt->fetch(\PDO::FETCH_ASSOC);
-            
+
             echo json_encode([
                 'success' => true,
                 'periodo' => [
@@ -2727,7 +2773,7 @@ class PricingIntelligenceController extends BaseController
     public function autoSuggestPrice(string $itemId): void
     {
         $this->jsonResponse();
-        
+
         try {
             // Buscar dados do item
             $itemData = $this->mlClient->get("/items/{$itemId}");
@@ -2735,17 +2781,17 @@ class PricingIntelligenceController extends BaseController
                 $this->error('Item não encontrado no Mercado Livre');
                 return;
             }
-            
+
             $precoAtual = (float)$itemData['price'];
             $categoryId = $itemData['category_id'];
-            
+
             // Buscar custos cadastrados
             $custos = $this->marginService->getCustosProduto($itemId);
             if (!$custos) {
                 $this->error('Custos não cadastrados para este item. Cadastre os custos primeiro.');
                 return;
             }
-            
+
             // Análise de concorrentes
             $concorrentes = [];
             try {
@@ -2754,7 +2800,7 @@ class PricingIntelligenceController extends BaseController
                     'limit' => 20,
                     'sort' => 'relevance'
                 ]);
-                
+
                 if ($searchResult && isset($searchResult['results'])) {
                     foreach ($searchResult['results'] as $item) {
                         if ($item['id'] !== $itemId) {
@@ -2768,30 +2814,30 @@ class PricingIntelligenceController extends BaseController
             } catch (\Throwable $e) {
                 // Ignorar erro de concorrentes
             }
-            
+
             // Calcular preço médio dos concorrentes
             $precoMedioConcorrentes = 0;
             if (!empty($concorrentes)) {
                 $precoMedioConcorrentes = array_sum(array_column($concorrentes, 'preco')) / count($concorrentes);
             }
-            
+
             // Calcular preço mínimo (margem 5%)
             $precoMinimoResult = $this->marginService->calcularPrecoMinimo($custos, 5);
             $precoMinimo = $precoMinimoResult['preco_minimo'] ?? 0;
-            
+
             // Calcular preço ideal (margem alvo ou 15%)
             $margemAlvo = (float)($custos['margem_alvo'] ?? 15);
             $precoIdealResult = $this->marginService->calcularPrecoMinimo($custos, $margemAlvo);
             $precoIdeal = $precoIdealResult['preco_minimo'] ?? 0;
-            
+
             // Estratégias de preço
             $estrategias = [];
-            
+
             // 1. Preço competitivo (5% abaixo da média)
             if ($precoMedioConcorrentes > 0) {
                 $precoCompetitivo = $precoMedioConcorrentes * 0.95;
                 $margemCompetitivo = $this->marginService->calcularMargem($precoCompetitivo, $custos);
-                
+
                 $estrategias['competitivo'] = [
                     'preco' => round($precoCompetitivo, 2),
                     'margem' => $margemCompetitivo['margem_real'],
@@ -2800,7 +2846,7 @@ class PricingIntelligenceController extends BaseController
                     'viavel' => $margemCompetitivo['margem_real'] >= 0
                 ];
             }
-            
+
             // 2. Preço de margem mínima
             if ($precoMinimo > 0) {
                 $margemMinimoCalc = $this->marginService->calcularMargem($precoMinimo, $custos);
@@ -2812,7 +2858,7 @@ class PricingIntelligenceController extends BaseController
                     'viavel' => true
                 ];
             }
-            
+
             // 3. Preço de margem ideal
             if ($precoIdeal > 0) {
                 $margemIdealCalc = $this->marginService->calcularMargem($precoIdeal, $custos);
@@ -2824,12 +2870,12 @@ class PricingIntelligenceController extends BaseController
                     'viavel' => true
                 ];
             }
-            
+
             // 4. Preço Premium (+10% sobre média)
             if ($precoMedioConcorrentes > 0) {
                 $precoPremium = $precoMedioConcorrentes * 1.10;
                 $margemPremium = $this->marginService->calcularMargem($precoPremium, $custos);
-                
+
                 $estrategias['premium'] = [
                     'preco' => round($precoPremium, 2),
                     'margem' => $margemPremium['margem_real'],
@@ -2838,7 +2884,7 @@ class PricingIntelligenceController extends BaseController
                     'viavel' => true
                 ];
             }
-            
+
             // Recomendação
             $recomendacao = 'margem_ideal';
             if ($precoIdeal > 0 && $precoAtual > $precoIdeal * 1.15) {
@@ -2848,7 +2894,7 @@ class PricingIntelligenceController extends BaseController
             } elseif ($precoMedioConcorrentes > 0 && $precoAtual > $precoMedioConcorrentes * 1.2) {
                 $recomendacao = 'competitivo';
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'item_id' => $itemId,
@@ -2860,8 +2906,8 @@ class PricingIntelligenceController extends BaseController
                 'recomendacao' => $recomendacao,
                 'analise' => [
                     'posicao_atual' => $precoAtual <= $precoMedioConcorrentes ? 'competitivo' : 'acima_mercado',
-                    'gap_concorrencia' => $precoMedioConcorrentes > 0 
-                        ? round((($precoAtual - $precoMedioConcorrentes) / $precoMedioConcorrentes) * 100, 2) 
+                    'gap_concorrencia' => $precoMedioConcorrentes > 0
+                        ? round((($precoAtual - $precoMedioConcorrentes) / $precoMedioConcorrentes) * 100, 2)
                         : null
                 ]
             ]);
@@ -2877,7 +2923,7 @@ class PricingIntelligenceController extends BaseController
     public function monitorCompetitors(string $itemId): void
     {
         $this->jsonResponse();
-        
+
         try {
             // Buscar dados do item
             $itemData = $this->mlClient->get("/items/{$itemId}");
@@ -2885,14 +2931,14 @@ class PricingIntelligenceController extends BaseController
                 $this->error('Item não encontrado');
                 return;
             }
-            
+
             $precoAtual = (float)$itemData['price'];
             $categoryId = $itemData['category_id'];
             $titulo = $itemData['title'];
-            
+
             // Extrair palavras-chave do título
             $keywords = $this->extractKeywords($titulo);
-            
+
             // Buscar concorrentes por categoria
             $concorrentes = [];
             $searchResult = $this->mlClient->get("/sites/MLB/search", [
@@ -2900,7 +2946,7 @@ class PricingIntelligenceController extends BaseController
                 'limit' => 50,
                 'sort' => 'relevance'
             ]);
-            
+
             if ($searchResult && isset($searchResult['results'])) {
                 foreach ($searchResult['results'] as $item) {
                     if ($item['id'] !== $itemId) {
@@ -2918,10 +2964,10 @@ class PricingIntelligenceController extends BaseController
                     }
                 }
             }
-            
+
             // Ordenar por preço
             usort($concorrentes, fn($a, $b) => $a['preco'] <=> $b['preco']);
-            
+
             // Estatísticas
             $precos = array_column($concorrentes, 'preco');
             $stats = [
@@ -2931,41 +2977,84 @@ class PricingIntelligenceController extends BaseController
                 'preco_medio' => !empty($precos) ? round(array_sum($precos) / count($precos), 2) : 0,
                 'preco_mediano' => !empty($precos) ? $precos[floor(count($precos) / 2)] : 0
             ];
-            
+
             // Posição no ranking de preços
             $posicao = 1;
             foreach ($concorrentes as $c) {
                 if ($c['preco'] < $precoAtual) $posicao++;
             }
-            
-            // Salvar em cache
+
+            // Salvar em cache (schema real: database/migrations/2026_01_29_create_pricing_intelligence_tables.sql)
             try {
-                $stmt = $this->db->prepare("
-                    INSERT INTO competitor_pricing_cache 
-                    (account_id, item_id, category_id, preco_medio, preco_minimo, preco_maximo, total_concorrentes, dados_json, atualizado_em)
-                    VALUES (:account_id, :item_id, :category_id, :preco_medio, :preco_minimo, :preco_maximo, :total, :dados, NOW())
-                    ON DUPLICATE KEY UPDATE 
-                    preco_medio = VALUES(preco_medio),
-                    preco_minimo = VALUES(preco_minimo),
-                    preco_maximo = VALUES(preco_maximo),
-                    total_concorrentes = VALUES(total_concorrentes),
-                    dados_json = VALUES(dados_json),
-                    atualizado_em = NOW()
+                $totalConcorrentes = (int)($stats['total'] ?? 0);
+                $totalComNossoItem = $totalConcorrentes + 1;
+                $percentilPreco = $totalComNossoItem > 1
+                    ? round((($posicao - 1) / ($totalComNossoItem - 1)) * 100, 2)
+                    : 50.0;
+
+                $topConcorrentes = array_map(static function (array $c): array {
+                    return [
+                        'id' => $c['id'] ?? null,
+                        'titulo' => $c['titulo'] ?? null,
+                        'preco' => $c['preco'] ?? null,
+                        'vendedor' => $c['vendedor'] ?? null,
+                        'reputacao' => $c['reputacao'] ?? null,
+                    ];
+                }, array_slice($concorrentes, 0, 20));
+
+                $cacheStmt = $this->db->prepare("
+                    INSERT INTO competitor_pricing_cache
+                    (
+                        account_id, item_id, category_id,
+                        preco_minimo, preco_maximo, preco_medio, preco_mediano,
+                        qtd_concorrentes, top_concorrentes,
+                        nossa_posicao_preco, percentil_preco,
+                        expira_em
+                    )
+                    VALUES
+                    (
+                        :account_id, :item_id, :category_id,
+                        :preco_minimo, :preco_maximo, :preco_medio, :preco_mediano,
+                        :qtd_concorrentes, :top_concorrentes,
+                        :nossa_posicao_preco, :percentil_preco,
+                        DATE_ADD(NOW(), INTERVAL 12 HOUR)
+                    )
+                    ON DUPLICATE KEY UPDATE
+                        category_id = VALUES(category_id),
+                        preco_minimo = VALUES(preco_minimo),
+                        preco_maximo = VALUES(preco_maximo),
+                        preco_medio = VALUES(preco_medio),
+                        preco_mediano = VALUES(preco_mediano),
+                        qtd_concorrentes = VALUES(qtd_concorrentes),
+                        top_concorrentes = VALUES(top_concorrentes),
+                        nossa_posicao_preco = VALUES(nossa_posicao_preco),
+                        percentil_preco = VALUES(percentil_preco),
+                        expira_em = VALUES(expira_em),
+                        atualizado_em = NOW()
                 ");
-                $stmt->execute([
+
+                $cacheStmt->execute([
                     'account_id' => $this->accountId,
                     'item_id' => $itemId,
                     'category_id' => $categoryId,
-                    'preco_medio' => $stats['preco_medio'],
-                    'preco_minimo' => $stats['preco_minimo'],
-                    'preco_maximo' => $stats['preco_maximo'],
-                    'total' => $stats['total'],
-                    'dados' => json_encode(array_slice($concorrentes, 0, 20))
+                    'preco_minimo' => $stats['preco_minimo'] ?? null,
+                    'preco_maximo' => $stats['preco_maximo'] ?? null,
+                    'preco_medio' => $stats['preco_medio'] ?? null,
+                    'preco_mediano' => $stats['preco_mediano'] ?? null,
+                    'qtd_concorrentes' => $totalConcorrentes,
+                    'top_concorrentes' => json_encode($topConcorrentes),
+                    'nossa_posicao_preco' => $posicao,
+                    'percentil_preco' => $percentilPreco,
                 ]);
             } catch (\Throwable $e) {
-                // Ignorar erro de cache
+                log_error('Erro ao salvar competitor_pricing_cache', [
+                    'context' => 'PricingIntelligenceController::monitorCompetitors',
+                    'account_id' => $this->accountId,
+                    'item_id' => $itemId,
+                    'error' => $e->getMessage(),
+                ]);
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'item' => [
@@ -3004,27 +3093,27 @@ class PricingIntelligenceController extends BaseController
     {
         $this->jsonResponse();
         $data = $this->getJsonInput();
-        
+
         try {
             $itemId = $data['item_id'] ?? null;
             $cenarios = $data['cenarios'] ?? [];
-            
+
             if (!$itemId) {
                 $this->error('item_id é obrigatório');
                 return;
             }
-            
+
             // Buscar custos
             $custos = $this->marginService->getCustosProduto($itemId);
             if (!$custos) {
                 $this->error('Custos não cadastrados para este item');
                 return;
             }
-            
+
             // Buscar preço atual
             $itemData = $this->mlClient->get("/items/{$itemId}");
             $precoAtual = (float)($itemData['price'] ?? 0);
-            
+
             // Se não há cenários, criar cenários padrão
             if (empty($cenarios)) {
                 $cenarios = [
@@ -3036,25 +3125,25 @@ class PricingIntelligenceController extends BaseController
                     ['nome' => 'Aumento 15%', 'variacao_preco' => 15],
                 ];
             }
-            
+
             $previsoes = [];
             foreach ($cenarios as $cenario) {
                 $nome = $cenario['nome'] ?? 'Cenário';
                 $variacaoPreco = (float)($cenario['variacao_preco'] ?? 0);
                 $variacaoCusto = (float)($cenario['variacao_custo'] ?? 0);
-                
+
                 // Calcular novo preço
                 $novoPreco = $precoAtual * (1 + $variacaoPreco / 100);
-                
+
                 // Ajustar custos se necessário
                 $custosAjustados = $custos;
                 if ($variacaoCusto !== 0) {
                     $custosAjustados['custo_producao'] = $custos['custo_producao'] * (1 + $variacaoCusto / 100);
                 }
-                
+
                 // Calcular margem
                 $resultado = $this->marginService->calcularMargem($novoPreco, $custosAjustados);
-                
+
                 // Impacto no ranking (estimado)
                 $impactoRanking = 'neutro';
                 if ($variacaoPreco > 12) {
@@ -3064,7 +3153,7 @@ class PricingIntelligenceController extends BaseController
                 } elseif ($variacaoPreco < -5) {
                     $impactoRanking = 'positivo';
                 }
-                
+
                 $previsoes[] = [
                     'cenario' => $nome,
                     'variacao_preco' => $variacaoPreco,
@@ -3077,7 +3166,7 @@ class PricingIntelligenceController extends BaseController
                     'viavel' => $resultado['margem_real'] > 0
                 ];
             }
-            
+
             // Encontrar cenário ideal (maior margem viável sem impacto negativo alto)
             $cenarioIdeal = null;
             $maiorMargem = -PHP_FLOAT_MAX;
@@ -3087,7 +3176,7 @@ class PricingIntelligenceController extends BaseController
                     $cenarioIdeal = $p['cenario'];
                 }
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'item_id' => $itemId,
@@ -3100,7 +3189,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro na previsão: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Configura alerta de preço para um item
      * POST /api/pricing-intelligence/{accountId}/price-alerts
@@ -3108,31 +3197,31 @@ class PricingIntelligenceController extends BaseController
     public function createPriceAlert(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $input = $this->request->json();
-            
+
             $itemId = $input['item_id'] ?? null;
             $tipoAlerta = $input['tipo'] ?? 'concorrente_abaixo'; // concorrente_abaixo, margem_minima, ranking_perdido
             $valorGatilho = $input['valor_gatilho'] ?? 5; // percentual ou valor absoluto
             $notificarEmail = $input['notificar_email'] ?? true;
             $notificarWhatsapp = $input['notificar_whatsapp'] ?? false;
-            
+
             if (!$itemId) {
                 $this->error('item_id é obrigatório');
                 return;
             }
-            
+
             // Buscar item no ML para validar
             $item = $this->mlClient->get("/items/{$itemId}");
             if (!$item) {
                 $this->error('Item não encontrado');
                 return;
             }
-            
+
             // Inserir alerta
             $stmt = $this->db->prepare("
-                INSERT INTO pricing_price_alerts 
+                INSERT INTO pricing_price_alerts
                 (account_id, item_id, tipo_alerta, valor_gatilho, notificar_email, notificar_whatsapp, ativo, created_at)
                 VALUES (:account_id, :item_id, :tipo, :valor, :email, :whatsapp, 1, NOW())
                 ON DUPLICATE KEY UPDATE
@@ -3142,7 +3231,7 @@ class PricingIntelligenceController extends BaseController
                 ativo = 1,
                 updated_at = NOW()
             ");
-            
+
             $stmt->execute([
                 'account_id' => $this->accountId,
                 'item_id' => $itemId,
@@ -3151,7 +3240,7 @@ class PricingIntelligenceController extends BaseController
                 'email' => $notificarEmail ? 1 : 0,
                 'whatsapp' => $notificarWhatsapp ? 1 : 0
             ]);
-            
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Alerta configurado com sucesso',
@@ -3170,7 +3259,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro ao criar alerta: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Lista alertas de preço configurados
      * GET /api/pricing-intelligence/{accountId}/price-alerts
@@ -3178,11 +3267,11 @@ class PricingIntelligenceController extends BaseController
     public function listPriceAlerts(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             // Verificar se tabela existe
             $tableExists = $this->db->query("SHOW TABLES LIKE 'pricing_price_alerts'")->rowCount() > 0;
-            
+
             if (!$tableExists) {
                 // Criar tabela se não existir
                 $this->db->exec("
@@ -3204,7 +3293,7 @@ class PricingIntelligenceController extends BaseController
                         KEY idx_ativo (ativo)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 ");
-                
+
                 echo json_encode([
                     'success' => true,
                     'alertas' => [],
@@ -3212,9 +3301,9 @@ class PricingIntelligenceController extends BaseController
                 ]);
                 return;
             }
-            
+
             $stmt = $this->db->prepare("
-                SELECT a.*, 
+                SELECT a.*,
                        (SELECT COUNT(*) FROM pricing_alert_history WHERE alert_id = a.id) as total_disparos
                 FROM pricing_price_alerts a
                 WHERE a.account_id = :account_id
@@ -3222,7 +3311,7 @@ class PricingIntelligenceController extends BaseController
             ");
             $stmt->execute(['account_id' => $this->accountId]);
             $alertas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Enriquecer com dados do item
             foreach ($alertas as &$alerta) {
                 $item = $this->mlClient->get("/items/{$alerta['item_id']}");
@@ -3230,7 +3319,7 @@ class PricingIntelligenceController extends BaseController
                 $alerta['preco_atual'] = $item['price'] ?? 0;
                 $alerta['thumbnail'] = $item['thumbnail'] ?? '';
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'alertas' => $alertas,
@@ -3240,7 +3329,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro ao listar alertas: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Remove alerta de preço
      * DELETE /api/pricing-intelligence/{accountId}/price-alerts/{alertId}
@@ -3248,17 +3337,17 @@ class PricingIntelligenceController extends BaseController
     public function deletePriceAlert(string $alertId): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $stmt = $this->db->prepare("
-                DELETE FROM pricing_price_alerts 
+                DELETE FROM pricing_price_alerts
                 WHERE id = :id AND account_id = :account_id
             ");
             $stmt->execute([
                 'id' => $alertId,
                 'account_id' => $this->accountId
             ]);
-            
+
             if ($stmt->rowCount() > 0) {
                 echo json_encode([
                     'success' => true,
@@ -3271,7 +3360,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro ao remover alerta: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Importa custos de produtos via CSV
      * POST /api/pricing-intelligence/{accountId}/import/costs
@@ -3279,29 +3368,29 @@ class PricingIntelligenceController extends BaseController
     public function importCosts(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $uploadedFile = $this->request->file('file');
             if (!$uploadedFile) {
                 $this->error('Arquivo não enviado ou inválido');
                 return;
             }
-            
+
             $file = $uploadedFile['tmp_name'];
             $handle = fopen($file, 'r');
-            
+
             if (!$handle) {
                 $this->error('Não foi possível abrir o arquivo');
                 return;
             }
-            
+
             // Pular header
             $header = fgetcsv($handle, 0, ',');
-            
+
             // Validar colunas mínimas
             $requiredColumns = ['item_id', 'custo_produto'];
             $headerLower = array_map('strtolower', $header);
-            
+
             foreach ($requiredColumns as $col) {
                 if (!in_array($col, $headerLower)) {
                     $this->error("Coluna obrigatória ausente: $col");
@@ -3309,12 +3398,12 @@ class PricingIntelligenceController extends BaseController
                     return;
                 }
             }
-            
+
             $importados = 0;
             $erros = [];
-            
+
             $stmt = $this->db->prepare("
-                INSERT INTO product_costs 
+                INSERT INTO product_costs
                 (account_id, item_id, custo_produto, custo_frete, imposto_percentual, taxa_ml_percentual, custo_fixo, updated_at)
                 VALUES (:account_id, :item_id, :custo, :frete, :imposto, :taxa, :fixo, NOW())
                 ON DUPLICATE KEY UPDATE
@@ -3325,20 +3414,20 @@ class PricingIntelligenceController extends BaseController
                 custo_fixo = VALUES(custo_fixo),
                 updated_at = NOW()
             ");
-            
+
             $linha = 1;
             while (($data = fgetcsv($handle, 0, ',')) !== false) {
                 $linha++;
-                
+
                 try {
                     $row = array_combine($headerLower, $data);
-                    
+
                     $itemId = trim($row['item_id'] ?? '');
                     if (empty($itemId)) {
                         $erros[] = "Linha $linha: item_id vazio";
                         continue;
                     }
-                    
+
                     $stmt->execute([
                         'account_id' => $this->accountId,
                         'item_id' => $itemId,
@@ -3348,15 +3437,15 @@ class PricingIntelligenceController extends BaseController
                         'taxa' => floatval(str_replace(',', '.', $row['taxa_ml_percentual'] ?? 16)),
                         'fixo' => floatval(str_replace(',', '.', $row['custo_fixo'] ?? 0))
                     ]);
-                    
+
                     $importados++;
                 } catch (\Throwable $e) {
                     $erros[] = "Linha $linha: " . $e->getMessage();
                 }
             }
-            
+
             fclose($handle);
-            
+
             echo json_encode([
                 'success' => true,
                 'message' => "Importação concluída",
@@ -3368,7 +3457,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro na importação: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Calcula preço ideal baseado em meta de margem
      * POST /api/pricing-intelligence/{accountId}/calculate-ideal-price
@@ -3376,47 +3465,47 @@ class PricingIntelligenceController extends BaseController
     public function calculateIdealPrice(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $input = $this->request->json();
-            
+
             $itemId = $input['item_id'] ?? null;
             $margemDesejada = $input['margem_desejada'] ?? 20;
-            
+
             if (!$itemId) {
                 $this->error('item_id é obrigatório');
                 return;
             }
-            
+
             // Buscar custos usando marginService
             $custos = $this->marginService->getCustosProduto($itemId);
             if (!$custos) {
                 $this->error('Custos não cadastrados para este item');
                 return;
             }
-            
+
             // Buscar item atual usando mlClient
             $item = $this->mlClient->get("/items/{$itemId}");
             $precoAtual = $item['price'] ?? 0;
-            
+
             // Calcular preço ideal
             // Fórmula: Preço = Custo Total / (1 - (Margem% + Taxa%) / 100)
             $custoTotal = ($custos['custo_producao'] ?? 0) + ($custos['custo_frete_gratis'] ?? 0) + ($custos['custo_embalagem'] ?? 0);
             $taxaTotal = ($custos['taxa_comissao_ml'] ?? 16) + ($custos['taxa_imposto'] ?? 0);
-            
+
             $divisor = 1 - (($margemDesejada + $taxaTotal) / 100);
-            
+
             if ($divisor <= 0) {
                 $this->error('Margem desejada muito alta para os custos atuais');
                 return;
             }
-            
+
             $precoIdeal = $custoTotal / $divisor;
-            
+
             // Buscar concorrentes para contexto
             $categoryId = $item['category_id'] ?? null;
             $precoMedioConcorrentes = null;
-            
+
             if ($categoryId) {
                 try {
                     $concorrentes = $this->strategyService->analyzeCompetitorPrices($categoryId);
@@ -3425,11 +3514,11 @@ class PricingIntelligenceController extends BaseController
                     // Ignorar erro de concorrentes
                 }
             }
-            
+
             // Análise
             $diferencaAtual = $precoAtual > 0 ? (($precoIdeal - $precoAtual) / $precoAtual) * 100 : 0;
             $competitivo = $precoMedioConcorrentes ? $precoIdeal <= $precoMedioConcorrentes * 1.1 : null;
-            
+
             echo json_encode([
                 'success' => true,
                 'item_id' => $itemId,
@@ -3456,7 +3545,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro ao calcular preço ideal: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Analisa rentabilidade geral da conta
      * GET /api/pricing-intelligence/{accountId}/profitability
@@ -3464,16 +3553,16 @@ class PricingIntelligenceController extends BaseController
     public function analyzeProfitability(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             // Buscar todos os custos cadastrados
             $stmt = $this->db->prepare("
-                SELECT * FROM product_costs 
+                SELECT * FROM product_costs
                 WHERE account_id = :account_id
             ");
             $stmt->execute(['account_id' => $this->accountId]);
             $custos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             if (empty($custos)) {
                 echo json_encode([
                     'success' => true,
@@ -3482,7 +3571,7 @@ class PricingIntelligenceController extends BaseController
                 ]);
                 return;
             }
-            
+
             $analises = [];
             $totais = [
                 'itens' => 0,
@@ -3490,31 +3579,31 @@ class PricingIntelligenceController extends BaseController
                 'prejuizo' => 0,
                 'lucro_total_estimado' => 0
             ];
-            
+
             foreach ($custos as $custo) {
                 $item = $this->mlClient->get("/items/{$custo['item_id']}");
                 if (!$item || !isset($item['price'])) {
                     continue;
                 }
-                
+
                 $preco = $item['price'];
                 $resultado = $this->marginService->calcularMargem($preco, $custo);
-                
+
                 $totais['itens']++;
-                
+
                 if ($resultado['margem_real'] >= 0) {
                     $totais['lucrativos']++;
                 } else {
                     $totais['prejuizo']++;
                 }
-                
+
                 // Estimar lucro mensal (baseado em sold_quantity se disponível)
                 $vendidosMes = $item['sold_quantity'] ?? 1;
                 $lucroMensal = $resultado['lucro_unitario'] * $vendidosMes;
                 $totais['lucro_total_estimado'] += $lucroMensal;
-                
+
                 $custoTotal = ($custo['custo_producao'] ?? 0) + ($custo['custo_frete_gratis'] ?? 0) + ($custo['custo_embalagem'] ?? 0);
-                
+
                 $analises[] = [
                     'item_id' => $custo['item_id'],
                     'titulo' => $item['title'] ?? 'Produto',
@@ -3527,10 +3616,10 @@ class PricingIntelligenceController extends BaseController
                     'status' => $resultado['indicador']
                 ];
             }
-            
+
             // Ordenar por lucro mensal (decrescente)
             usort($analises, fn($a, $b) => $b['lucro_mensal_estimado'] <=> $a['lucro_mensal_estimado']);
-            
+
             echo json_encode([
                 'success' => true,
                 'resumo' => [
@@ -3548,9 +3637,9 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro na análise de rentabilidade: ' . $e->getMessage());
         }
     }
-    
+
     // ==================== AUTO-OTIMIZADOR DE PREÇOS ====================
-    
+
     /**
      * Obtém configuração do auto-otimizador
      * GET /api/pricing-intelligence/{accountId}/auto-optimizer/config
@@ -3558,11 +3647,11 @@ class PricingIntelligenceController extends BaseController
     public function getAutoOptimizerConfig(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $optimizer = new AutoPricingOptimizerService($this->accountId);
             $config = $optimizer->getConfig();
-            
+
             echo json_encode([
                 'success' => true,
                 'config' => $config
@@ -3571,7 +3660,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro ao obter configuração: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Salva configuração do auto-otimizador
      * POST /api/pricing-intelligence/{accountId}/auto-optimizer/config
@@ -3579,19 +3668,19 @@ class PricingIntelligenceController extends BaseController
     public function saveAutoOptimizerConfig(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $input = $this->request->json();
-            
+
             $optimizer = new AutoPricingOptimizerService($this->accountId);
             $result = $optimizer->saveConfig($input);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao salvar configuração: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Executa otimização manual
      * POST /api/pricing-intelligence/{accountId}/auto-optimizer/run
@@ -3599,17 +3688,17 @@ class PricingIntelligenceController extends BaseController
     public function runAutoOptimizer(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $optimizer = new AutoPricingOptimizerService($this->accountId);
             $result = $optimizer->runOptimization();
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro na otimização: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Analisa um item específico para otimização
      * GET /api/pricing-intelligence/{accountId}/auto-optimizer/analyze/{itemId}
@@ -3617,19 +3706,19 @@ class PricingIntelligenceController extends BaseController
     public function analyzeItemForOptimization(string $itemId): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             // Buscar item do ML
             $item = $this->mlClient->get("/items/{$itemId}");
-            
+
             if (!$item) {
                 $this->error('Item não encontrado');
                 return;
             }
-            
+
             $optimizer = new AutoPricingOptimizerService($this->accountId);
             $analysis = $optimizer->analyzeItem($item);
-            
+
             echo json_encode([
                 'success' => true,
                 'item_id' => $itemId,
@@ -3640,7 +3729,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro na análise: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Obtém estatísticas do otimizador
      * GET /api/pricing-intelligence/{accountId}/auto-optimizer/stats
@@ -3648,11 +3737,11 @@ class PricingIntelligenceController extends BaseController
     public function getAutoOptimizerStats(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $optimizer = new AutoPricingOptimizerService($this->accountId);
             $stats = $optimizer->getStats();
-            
+
             echo json_encode([
                 'success' => true,
                 'stats' => $stats
@@ -3661,7 +3750,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro ao obter estatísticas: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Obtém histórico de otimizações
      * GET /api/pricing-intelligence/{accountId}/auto-optimizer/history
@@ -3669,14 +3758,14 @@ class PricingIntelligenceController extends BaseController
     public function getAutoOptimizerHistory(): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $days = $this->request->getInt('days', 30);
             $limit = $this->request->getIntClamped('limit', 1, 500, 100);
-            
+
             $optimizer = new AutoPricingOptimizerService($this->accountId);
             $history = $optimizer->getOptimizationHistory($days, $limit);
-            
+
             echo json_encode([
                 'success' => true,
                 'history' => $history,
@@ -3686,7 +3775,7 @@ class PricingIntelligenceController extends BaseController
             $this->error('Erro ao obter histórico: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Aplica sugestão de preço do otimizador
      * POST /api/pricing-intelligence/{accountId}/auto-optimizer/apply/{itemId}
@@ -3694,25 +3783,25 @@ class PricingIntelligenceController extends BaseController
     public function applyOptimizerSuggestion(string $itemId): void
     {
         header('Content-Type: application/json');
-        
+
         try {
             $input = $this->request->json();
             $newPrice = (float)($input['price'] ?? 0);
-            
+
             if ($newPrice <= 0) {
                 $this->error('Preço inválido');
                 return;
             }
-            
+
             // Aplicar preço no ML
             $response = $this->mlClient->put("/items/{$itemId}", [
                 'price' => $newPrice
             ]);
-            
+
             if ($response && isset($response['id'])) {
                 // Registrar no histórico
                 $stmt = $this->db->prepare("
-                    INSERT INTO pricing_history 
+                    INSERT INTO pricing_history
                     (account_id, item_id, preco_novo, motivo, created_at)
                     VALUES (:account_id, :item_id, :preco, 'auto_optimizer_manual', NOW())
                 ");
@@ -3721,7 +3810,7 @@ class PricingIntelligenceController extends BaseController
                     'item_id' => $itemId,
                     'preco' => $newPrice
                 ]);
-                
+
                 echo json_encode([
                     'success' => true,
                     'message' => 'Preço aplicado com sucesso',
@@ -3746,7 +3835,7 @@ class PricingIntelligenceController extends BaseController
     {
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
-            
+
             $filters = [];
             if (!empty($this->request->get('status'))) {
                 $filters['status'] = $this->request->get('status');
@@ -3755,9 +3844,9 @@ class PricingIntelligenceController extends BaseController
                 $filters['item_id'] = $this->request->get('item_id');
             }
             $filters['limit'] = $this->request->getInt('limit', 50);
-            
+
             $tests = $service->listTests($filters);
-            
+
             echo json_encode([
                 'success' => true,
                 'tests' => $tests,
@@ -3775,10 +3864,10 @@ class PricingIntelligenceController extends BaseController
     {
         try {
             $data = $this->request->json() ?? [];
-            
+
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $result = $service->createTest($data);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao criar teste: ' . $e->getMessage());
@@ -3793,12 +3882,12 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $test = $service->getTest($testId);
-            
+
             if (!$test) {
                 $this->error('Teste não encontrado', 404);
                 return;
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'test' => $test
@@ -3816,7 +3905,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $result = $service->startTest($testId);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao iniciar teste: ' . $e->getMessage());
@@ -3831,7 +3920,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $result = $service->pauseTest($testId);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao pausar teste: ' . $e->getMessage());
@@ -3846,10 +3935,10 @@ class PricingIntelligenceController extends BaseController
         try {
             $data = $this->request->json() ?? [];
             $winner = $data['winner'] ?? null;
-            
+
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $result = $service->completeTest($testId, $winner);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao finalizar teste: ' . $e->getMessage());
@@ -3864,7 +3953,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $result = $service->cancelTest($testId);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao cancelar teste: ' . $e->getMessage());
@@ -3879,7 +3968,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $analysis = $service->analyzeTest($testId);
-            
+
             echo json_encode($analysis);
         } catch (\Throwable $e) {
             $this->error('Erro ao analisar teste: ' . $e->getMessage());
@@ -3893,10 +3982,10 @@ class PricingIntelligenceController extends BaseController
     {
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
-            
+
             $results = $service->getResults($testId);
             $dailyResults = $service->getDailyResults($testId);
-            
+
             echo json_encode([
                 'success' => true,
                 'summary' => $results,
@@ -3914,15 +4003,15 @@ class PricingIntelligenceController extends BaseController
     {
         try {
             $data = $this->request->json() ?? [];
-            
+
             if (empty($data['variant']) || !in_array($data['variant'], ['control', 'variant'])) {
                 $this->error('Variante inválida');
                 return;
             }
-            
+
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $result = $service->recordResults($testId, $data['variant'], $data);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao registrar resultados: ' . $e->getMessage());
@@ -3937,7 +4026,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $log = $service->getTestLog($testId);
-            
+
             echo json_encode([
                 'success' => true,
                 'log' => $log
@@ -3955,7 +4044,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\PriceAbTestService($this->accountId);
             $stats = $service->getStats();
-            
+
             echo json_encode([
                 'success' => true,
                 'stats' => $stats
@@ -3977,7 +4066,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $watchlist = $service->getWatchlist();
-            
+
             echo json_encode([
                 'success' => true,
                 'watchlist' => $watchlist
@@ -3994,10 +4083,10 @@ class PricingIntelligenceController extends BaseController
     {
         try {
             $data = $this->request->json() ?? [];
-            
+
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $result = $service->addToWatchlist($data);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao adicionar à watchlist: ' . $e->getMessage());
@@ -4012,7 +4101,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $result = $service->removeFromWatchlist($itemId);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao remover da watchlist: ' . $e->getMessage());
@@ -4026,10 +4115,10 @@ class PricingIntelligenceController extends BaseController
     {
         try {
             $keywords = $this->request->get('keywords');
-            
+
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $result = $service->scanCompetitors($itemId, $keywords);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao escanear concorrentes: ' . $e->getMessage());
@@ -4044,7 +4133,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $analysis = $service->getMarketAnalysis($itemId);
-            
+
             echo json_encode($analysis);
         } catch (\Throwable $e) {
             $this->error('Erro ao obter análise de mercado: ' . $e->getMessage());
@@ -4063,10 +4152,10 @@ class PricingIntelligenceController extends BaseController
                 'severity' => $this->request->get('severity'),
                 'limit' => $this->request->getInt('limit', 50)
             ];
-            
+
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $alerts = $service->getAlerts(array_filter($filters, fn($v) => $v !== null));
-            
+
             echo json_encode([
                 'success' => true,
                 'alerts' => $alerts
@@ -4084,10 +4173,10 @@ class PricingIntelligenceController extends BaseController
         try {
             $data = $this->request->json() ?? [];
             $alertIds = $data['alert_ids'] ?? [];
-            
+
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $result = $service->markAlertsAsRead($alertIds);
-            
+
             echo json_encode($result);
         } catch (\Throwable $e) {
             $this->error('Erro ao marcar alertas: ' . $e->getMessage());
@@ -4102,7 +4191,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $service = new \App\Services\CompetitorMonitorService($this->accountId);
             $stats = $service->getStats();
-            
+
             echo json_encode([
                 'success' => true,
                 'stats' => $stats
@@ -4514,7 +4603,7 @@ class PricingIntelligenceController extends BaseController
         try {
             $days = $this->request->getInt('days', 30);
             $service = new \App\Services\PriceAnalyticsService($this->accountId);
-            
+
             // Buscar histórico de preços do item para forecast
             $trend = $service->getPriceTrend($itemId, 90);
             $prices = [];
@@ -4523,7 +4612,7 @@ class PricingIntelligenceController extends BaseController
                     $prices[] = $h['price'] ?? $h['current_price'] ?? 0;
                 }
             }
-            
+
             $result = $service->forecastPrice($prices, $days);
             echo json_encode($result);
         } catch (\Throwable $e) {
@@ -4554,7 +4643,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/bulk/preview
      * Pré-visualiza alteração em massa
-     * 
+     *
      * Body: {
      *   "filters": { "category_id": "...", "item_ids": [...] },
      *   "operation": { "type": "percent_increase", "value": 10 }
@@ -4566,7 +4655,7 @@ class PricingIntelligenceController extends BaseController
             $data = $this->request->json() ?? [];
             $filters = $data['filters'] ?? [];
             $operation = $data['operation'] ?? [];
-            
+
             $service = new \App\Services\BulkPriceEditorService($this->accountId);
             $result = $service->preview($filters, $operation);
             echo json_encode($result);
@@ -4578,7 +4667,7 @@ class PricingIntelligenceController extends BaseController
     /**
      * POST /api/pricing/:accountId/bulk/apply
      * Aplica alteração em massa
-     * 
+     *
      * Body: {
      *   "filters": { "category_id": "...", "item_ids": [...] },
      *   "operation": { "type": "percent_increase", "value": 10 },
@@ -4592,7 +4681,7 @@ class PricingIntelligenceController extends BaseController
             $filters = $data['filters'] ?? [];
             $operation = $data['operation'] ?? [];
             $createRollback = $data['create_rollback'] ?? true;
-            
+
             $service = new \App\Services\BulkPriceEditorService($this->accountId);
             $result = $service->apply($filters, $operation, $createRollback);
             echo json_encode($result);
@@ -4857,4 +4946,3 @@ class PricingIntelligenceController extends BaseController
         }
     }
 }
-

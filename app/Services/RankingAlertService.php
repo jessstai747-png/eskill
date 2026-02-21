@@ -10,10 +10,10 @@ use PDO;
 
 /**
  * RankingAlertService
- * 
+ *
  * Serviço dedicado ao monitoramento de posicionamento no ranking de preços
  * do Mercado Livre e geração de alertas quando produtos saem das faixas ideais.
- * 
+ *
  * Funcionalidades:
  * - Monitoramento contínuo de posição no ranking
  * - Alertas por faixas (0-8%, 8-12%, 12-15%, >15%)
@@ -26,7 +26,7 @@ class RankingAlertService
     private PDO $db;
     private int $accountId;
     private MercadoLivreClient $mlClient;
-    
+
     // Configurações de faixas de ranking
     private const RANKING_THRESHOLDS = [
         'excellent' => ['min' => 0, 'max' => 8, 'status' => 'excellent', 'message' => 'Excelente posição'],
@@ -34,7 +34,7 @@ class RankingAlertService
         'warning' => ['min' => 12, 'max' => 15, 'status' => 'warning', 'message' => 'Posição de risco'],
         'danger' => ['min' => 15, 'max' => 100, 'status' => 'danger', 'message' => 'Fora do ranking competitivo'],
     ];
-    
+
     // Severidade dos alertas
     private const ALERT_SEVERITY = [
         'excellent' => 1,
@@ -52,7 +52,7 @@ class RankingAlertService
 
     /**
      * Analisa e gera alertas para um item específico
-     * 
+     *
      * @param string $itemId ID do item no ML
      * @param array $itemData Dados do item (opcional - será buscado se não fornecido)
      * @return array Resultado da análise com alertas gerados
@@ -63,35 +63,35 @@ class RankingAlertService
         if (!$itemData) {
             $itemData = $this->mlClient->get("/items/{$itemId}");
         }
-        
+
         if (empty($itemData) || isset($itemData['error'])) {
             return [
                 'success' => false,
                 'error' => 'Item não encontrado no Mercado Livre'
             ];
         }
-        
+
         // Buscar dados de ranking da categoria
         $categoryId = $itemData['category_id'] ?? null;
         $currentPrice = $itemData['price'] ?? 0;
-        
+
         if (!$categoryId || !$currentPrice) {
             return [
                 'success' => false,
                 'error' => 'Dados insuficientes para análise'
             ];
         }
-        
+
         // Buscar posição no ranking de preço
         $rankingData = $this->fetchPriceRanking($itemId, $categoryId, $currentPrice);
-        
+
         // Determinar status atual
         $currentStatus = $this->determineRankingStatus($rankingData['position_percentage'] ?? 50);
-        
+
         // Verificar se precisa gerar alerta
         $previousAlert = $this->getLastAlert($itemId);
         $shouldAlert = $this->shouldGenerateAlert($currentStatus, $previousAlert);
-        
+
         $result = [
             'success' => true,
             'item_id' => $itemId,
@@ -102,21 +102,21 @@ class RankingAlertService
             'threshold' => self::RANKING_THRESHOLDS[$currentStatus['status']],
             'alert_generated' => false,
         ];
-        
+
         // Gerar alerta se necessário
         if ($shouldAlert) {
             $alert = $this->generateAlert($itemId, $itemData, $rankingData, $currentStatus);
             $result['alert_generated'] = true;
             $result['alert'] = $alert;
         }
-        
+
         // Calcular sugestões de ajuste
         $result['suggestions'] = $this->calculatePriceSuggestions(
-            $currentPrice, 
-            $rankingData, 
+            $currentPrice,
+            $rankingData,
             $currentStatus
         );
-        
+
         return $result;
     }
 
@@ -131,12 +131,12 @@ class RankingAlertService
             'limit' => 50,
             'sort' => 'price_asc'
         ];
-        
+
         $results = $this->mlClient->get('/sites/MLB/search', $searchParams);
-        
+
         $items = $results['results'] ?? [];
         $totalItems = count($items);
-        
+
         if ($totalItems === 0) {
             return [
                 'position' => 0,
@@ -148,16 +148,16 @@ class RankingAlertService
                 'median_price' => 0,
             ];
         }
-        
+
         // Extrair preços e calcular estatísticas
         $prices = array_map(fn($item) => $item['price'] ?? 0, $items);
         sort($prices);
-        
+
         $lowestPrice = min($prices);
         $highestPrice = max($prices);
         $averagePrice = array_sum($prices) / $totalItems;
         $medianPrice = $prices[(int)floor($totalItems / 2)];
-        
+
         // Calcular posição do preço atual
         $position = 0;
         foreach ($prices as $price) {
@@ -165,12 +165,12 @@ class RankingAlertService
                 $position++;
             }
         }
-        
+
         // Calcular percentual de posição (0 = mais barato, 100 = mais caro)
-        $positionPercentage = $totalItems > 1 
-            ? (($position - 1) / ($totalItems - 1)) * 100 
+        $positionPercentage = $totalItems > 1
+            ? (($position - 1) / ($totalItems - 1)) * 100
             : 50;
-        
+
         return [
             'position' => $position,
             'total' => $totalItems,
@@ -201,7 +201,7 @@ class RankingAlertService
                 ];
             }
         }
-        
+
         // Fallback para danger
         return [
             'status' => 'danger',
@@ -218,16 +218,16 @@ class RankingAlertService
     private function getLastAlert(string $itemId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_ranking_alerts 
-            WHERE account_id = :account_id AND item_id = :item_id 
+            SELECT * FROM pricing_ranking_alerts
+            WHERE account_id = :account_id AND item_id = :item_id
             ORDER BY criado_em DESC LIMIT 1
         ");
-        
+
         $stmt->execute([
             'account_id' => $this->accountId,
             'item_id' => $itemId
         ]);
-        
+
         $alert = $stmt->fetch(PDO::FETCH_ASSOC);
         return $alert ?: null;
     }
@@ -241,7 +241,7 @@ class RankingAlertService
         if (!$previousAlert) {
             return $currentStatus['severity'] >= 3;
         }
-        
+
         $currentNivel = match ($currentStatus['status'] ?? null) {
             'danger' => 'vermelho',
             'warning' => 'amarelo',
@@ -252,15 +252,15 @@ class RankingAlertService
         if (($previousAlert['nivel'] ?? null) !== $currentNivel) {
             return true;
         }
-        
+
         // Se piorou dentro da mesma faixa, alertar após 24h
         $lastAlertTime = strtotime((string)($previousAlert['criado_em'] ?? ''));
         $hoursSinceLastAlert = (time() - $lastAlertTime) / 3600;
-        
+
         if ($hoursSinceLastAlert >= 24 && $currentStatus['severity'] >= 3) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -280,7 +280,7 @@ class RankingAlertService
 
         // Por enquanto, este service é focado em perda de posição no ranking de preço.
         $tipoAlerta = 'perda_posicao';
-        
+
         $alert = [
             'account_id' => $this->accountId,
             'item_id' => $itemId,
@@ -294,19 +294,19 @@ class RankingAlertService
             'lido' => 0,
             'resolvido' => 0,
         ];
-        
+
         // Persistir no banco
         $stmt = $this->db->prepare("
-            INSERT INTO pricing_ranking_alerts 
+            INSERT INTO pricing_ranking_alerts
             (account_id, item_id, tipo_alerta, nivel, mensagem, preco_atual, preco_recomendado, variacao_detectada, lido, resolvido)
-            VALUES 
+            VALUES
             (:account_id, :item_id, :tipo_alerta, :nivel, :mensagem, :preco_atual, :preco_recomendado, :variacao_detectada, :lido, :resolvido)
         ");
-        
+
         $stmt->execute($alert);
         $alert['id'] = (int)$this->db->lastInsertId();
         $alert['criado_em'] = date('Y-m-d H:i:s');
-        
+
         return $alert;
     }
 
@@ -319,14 +319,14 @@ class RankingAlertService
         $position = $rankingData['position'] ?? 0;
         $total = $rankingData['total'] ?? 0;
         $percentage = round($status['position_percentage'], 1);
-        
+
         $messages = [
             'excellent' => "✅ {$title} está na posição {$position} de {$total} ({$percentage}% - Excelente)",
             'good' => "👍 {$title} está em boa posição: {$position} de {$total} ({$percentage}%)",
             'warning' => "⚠️ {$title} está perdendo competitividade: posição {$position} de {$total} ({$percentage}%)",
             'danger' => "🔴 URGENTE: {$title} está fora do ranking competitivo: posição {$position} de {$total} ({$percentage}%)",
         ];
-        
+
         return $messages[$status['status']] ?? $messages['warning'];
     }
 
@@ -339,28 +339,28 @@ class RankingAlertService
         if (in_array($status['status'], ['excellent', 'good'])) {
             return null;
         }
-        
+
         $targetPercentage = 10; // Alvo: top 10%
         $lowestPrice = $rankingData['lowest_price'] ?? $currentPrice;
         $averagePrice = $rankingData['average_price'] ?? $currentPrice;
-        
+
         // Calcular preço para atingir a posição alvo
         // Se estamos na posição 20%, queremos ir para 10%
         $priceRange = $rankingData['price_range'] ?? ($currentPrice * 0.3);
-        
+
         // Preço alvo = preço mais baixo + (range * target_percentage)
         $targetPrice = $lowestPrice + ($priceRange * ($targetPercentage / 100));
-        
+
         // Garantir que não seja menor que o preço mínimo viável (assumindo 5% de margem mínima)
         $minViablePrice = $lowestPrice * 1.02; // 2% acima do mais barato
-        
+
         $suggestedPrice = max($targetPrice, $minViablePrice);
-        
+
         // Não sugerir aumento de preço
         if ($suggestedPrice >= $currentPrice) {
             return $currentPrice * 0.95; // Sugere 5% de desconto
         }
-        
+
         return round($suggestedPrice, 2);
     }
 
@@ -370,20 +370,20 @@ class RankingAlertService
     private function calculatePriceSuggestions(float $currentPrice, array $rankingData, array $status): array
     {
         $suggestions = [];
-        
+
         // Sugestão para atingir top 5%
         $suggestions['top_5'] = $this->calculateTargetPrice($currentPrice, $rankingData, 5);
-        
+
         // Sugestão para atingir top 10%
         $suggestions['top_10'] = $this->calculateTargetPrice($currentPrice, $rankingData, 10);
-        
+
         // Sugestão para igualar média
         $suggestions['match_average'] = [
             'price' => round($rankingData['average_price'], 2),
             'discount_percentage' => round((($currentPrice - $rankingData['average_price']) / $currentPrice) * 100, 2),
             'description' => 'Igualar preço médio da categoria'
         ];
-        
+
         // Sugestão baseada no status atual
         if ($status['status'] === 'danger') {
             $urgentPrice = $currentPrice * 0.90; // 10% de desconto
@@ -393,7 +393,7 @@ class RankingAlertService
                 'description' => 'Desconto urgente para recuperar posição'
             ];
         }
-        
+
         return $suggestions;
     }
 
@@ -404,10 +404,10 @@ class RankingAlertService
     {
         $lowestPrice = $rankingData['lowest_price'] ?? $currentPrice;
         $priceRange = $rankingData['price_range'] ?? ($currentPrice * 0.3);
-        
+
         $targetPrice = $lowestPrice + ($priceRange * ($targetPercentage / 100));
         $discountPercentage = (($currentPrice - $targetPrice) / $currentPrice) * 100;
-        
+
         return [
             'price' => round(max($targetPrice, $lowestPrice * 1.01), 2),
             'discount_percentage' => round(max(0, $discountPercentage), 2),
@@ -417,7 +417,7 @@ class RankingAlertService
 
     /**
      * Executa análise em lote de múltiplos itens
-     * 
+     *
      * @param array $itemIds Lista de IDs de itens
      * @return array Resultados da análise em lote
      */
@@ -434,22 +434,22 @@ class RankingAlertService
                 'danger' => 0,
             ]
         ];
-        
+
         foreach ($itemIds as $itemId) {
             $analysis = $this->analyzeItem($itemId);
-            
+
             if ($analysis['success']) {
                 $results['analyzed']++;
                 $status = $analysis['status']['status'] ?? 'unknown';
-                
+
                 if (isset($results['summary'][$status])) {
                     $results['summary'][$status]++;
                 }
-                
+
                 if ($analysis['alert_generated']) {
                     $results['alerts_generated']++;
                 }
-                
+
                 $results['items'][$itemId] = [
                     'status' => $status,
                     'position_percentage' => $analysis['status']['position_percentage'] ?? 0,
@@ -459,7 +459,7 @@ class RankingAlertService
                 ];
             }
         }
-        
+
         return $results;
     }
 
@@ -470,22 +470,22 @@ class RankingAlertService
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_ranking_alerts 
-            WHERE account_id = :account_id 
-              AND resolvido = 0 
-            ORDER BY 
-                CASE nivel 
-                    WHEN 'vermelho' THEN 1 
-                    WHEN 'amarelo' THEN 2 
-                    WHEN 'verde' THEN 3 
+            SELECT * FROM pricing_ranking_alerts
+            WHERE account_id = :account_id
+              AND resolvido = 0
+            ORDER BY
+                CASE nivel
+                    WHEN 'vermelho' THEN 1
+                    WHEN 'amarelo' THEN 2
+                    WHEN 'verde' THEN 3
                 END,
                 criado_em DESC
             LIMIT {$limitSql}
         ");
-        
+
         $stmt->bindValue('account_id', $this->accountId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -497,15 +497,15 @@ class RankingAlertService
         if (empty($alertIds)) {
             return false;
         }
-        
+
         $placeholders = implode(',', array_fill(0, count($alertIds), '?'));
-        
+
         $stmt = $this->db->prepare("
-            UPDATE pricing_ranking_alerts 
+            UPDATE pricing_ranking_alerts
             SET lido = 1
             WHERE id IN ({$placeholders}) AND account_id = ?
         ");
-        
+
         $params = array_merge($alertIds, [$this->accountId]);
         return $stmt->execute($params);
     }
@@ -516,13 +516,13 @@ class RankingAlertService
     public function resolveAlert(int $alertId, ?string $resolution = null): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE pricing_ranking_alerts 
+            UPDATE pricing_ranking_alerts
             SET resolvido = 1,
                 acao_tomada = :resolution,
                 resolvido_em = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             'id' => $alertId,
             'account_id' => $this->accountId,
@@ -539,7 +539,7 @@ class RankingAlertService
         $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
 
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 nivel,
                 COUNT(*) as total,
                 SUM(CASE WHEN resolvido = 1 THEN 1 ELSE 0 END) as resolved,
@@ -584,7 +584,7 @@ class RankingAlertService
         }
 
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total_alerts,
                 SUM(CASE WHEN resolvido = 0 THEN 1 ELSE 0 END) as pending_alerts,
                 AVG(TIMESTAMPDIFF(HOUR, criado_em, COALESCE(resolvido_em, NOW()))) as avg_resolution_hours
@@ -613,16 +613,16 @@ class RankingAlertService
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_ranking_alerts 
-            WHERE account_id = :account_id AND item_id = :item_id 
+            SELECT * FROM pricing_ranking_alerts
+            WHERE account_id = :account_id AND item_id = :item_id
             ORDER BY criado_em DESC
             LIMIT {$limitSql}
         ");
-        
+
         $stmt->bindValue('account_id', $this->accountId, PDO::PARAM_INT);
         $stmt->bindValue('item_id', $itemId, PDO::PARAM_STR);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
