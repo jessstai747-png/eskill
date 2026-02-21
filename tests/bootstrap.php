@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load helpers
@@ -62,31 +64,55 @@ if (!isset($_SESSION)) {
 
 // Detect PHPUnit testsuite from CLI args. Unit tests should not require DB connectivity.
 $argv = $_SERVER['argv'] ?? [];
-$isUnitSuite = false;
+$requestedSuite = null;
 for ($i = 0; $i < count($argv); $i++) {
     // Supports: --testsuite Unit
-    if ($argv[$i] === '--testsuite' && isset($argv[$i + 1]) && strcasecmp((string) $argv[$i + 1], 'Unit') === 0) {
-        $isUnitSuite = true;
+    if ($argv[$i] === '--testsuite' && isset($argv[$i + 1]) && is_string($argv[$i + 1])) {
+        $requestedSuite = (string) $argv[$i + 1];
         break;
     }
 
     // Supports: --testsuite=Unit
     if (is_string($argv[$i]) && str_starts_with($argv[$i], '--testsuite=')) {
-        $value = substr($argv[$i], strlen('--testsuite='));
-        if (strcasecmp((string) $value, 'Unit') === 0) {
-            $isUnitSuite = true;
-            break;
-        }
+        $requestedSuite = (string) substr($argv[$i], strlen('--testsuite='));
+        break;
     }
 }
 
+$suiteNormalized = $requestedSuite !== null ? strtolower(trim($requestedSuite)) : null;
+$isUnitSuite = $suiteNormalized === 'unit';
+$isIntegrationSuite = $suiteNormalized === 'integration';
+
+$_ENV['PHPUNIT_REQUESTED_SUITE'] = $requestedSuite !== null ? $requestedSuite : 'All';
+putenv('PHPUNIT_REQUESTED_SUITE=' . $_ENV['PHPUNIT_REQUESTED_SUITE']);
+
 if ($isUnitSuite) {
+    // Keep Unit suite DB-free. Any DB usage should be mocked inside unit tests.
     error_log('[phpunit-bootstrap] Unit testsuite detected; skipping DB connectivity enforcement.');
     return;
 }
 
-// --- Enforce MySQL usage during tests -----------------------------------
-// Log resolved DB env and ensure tests run against MySQL (abort if not)
+// --- MySQL enforcement during tests -------------------------------------
+// Only enforce DB connectivity when explicitly running Integration suite or
+// when strict mode is enabled via CI=true or PHPUNIT_REQUIRE_DB=1.
+$requireDb = $isIntegrationSuite;
+$ci = strtolower(trim((string)($_ENV['CI'] ?? getenv('CI') ?? '')));
+if ($ci === '1' || $ci === 'true' || $ci === 'yes') {
+    $requireDb = true;
+}
+
+$envRequireDb = trim((string)($_ENV['PHPUNIT_REQUIRE_DB'] ?? getenv('PHPUNIT_REQUIRE_DB') ?? ''));
+if ($envRequireDb !== '') {
+    $requireDb = in_array(strtolower($envRequireDb), ['1', 'true', 'yes', 'on'], true);
+}
+
+if (!$requireDb) {
+    // Default behavior: do not touch DB at bootstrap time.
+    // The Unit suite is DB-free, and Integration runs must opt-in explicitly.
+    return;
+}
+
+// Log resolved DB env and ensure tests run against MySQL
 $dbConn = trim((string)($_ENV['DB_CONNECTION'] ?? getenv('DB_CONNECTION') ?? ''));
 $dbHost = trim((string)($_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? ''));
 $dbPort = trim((string)($_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? ''));
@@ -105,7 +131,7 @@ if ($dbConn === null) {
 }
 
 if (strtolower($dbConn) !== 'mysql') {
-    throw new \Exception("PHPUnit aborted: DB_CONNECTION must be 'mysql' for tests. Resolved DB_CONNECTION={$dbConn}");
+    throw new \RuntimeException("PHPUnit aborted: DB_CONNECTION must be 'mysql' for integration tests. Resolved DB_CONNECTION={$dbConn}");
 }
 
 // Attempt to obtain a PDO instance from App\Database and verify driver
@@ -114,13 +140,13 @@ try {
     $pdo = \App\Database::getInstance();
     $driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
     if ($driver !== 'mysql') {
-        throw new \Exception("PHPUnit aborted: Detected PDO driver '{$driver}' (expected 'mysql').");
+        throw new \RuntimeException("PHPUnit aborted: Detected PDO driver '{$driver}' (expected 'mysql').");
     }
+
     // Log a non-secret representation of DSN
     $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s', $dbHost ?? '127.0.0.1', $dbPort ?? '3306', $dbName ?? 'app_test');
     error_log("[phpunit-bootstrap] Resolved PDO DSN={$dsn}");
 } catch (\Throwable $e) {
-    // Rethrow to abort PHPUnit immediately
+    // For integration runs, fail fast.
     throw $e;
 }
-

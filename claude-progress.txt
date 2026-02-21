@@ -6,6 +6,28 @@
 
 ---
 
+## Sessao: 2026-02-21 — FIX(TESTS): PHPUnit default DB-free + repair broken test
+
+### Implementado
+
+- `phpunit.xml`
+   - `defaultTestSuite="Unit"` para que `php vendor/bin/phpunit` rode a suíte Unit (DB-free) por padrão
+   - Integration continua disponível via `--testsuite Integration`
+
+- `tests/bootstrap.php`
+   - Enforce de MySQL somente quando `--testsuite Integration` ou `CI=true` ou `PHPUNIT_REQUIRE_DB=1`
+   - Evita abort e logs de DB no bootstrap em execuções padrão (Unit)
+
+- `tests/Unit/Services/BulkPriceEditorServiceTest.php`
+   - Arquivo estava corrompido (ParseError) e impedia execução do PHPUnit completo
+   - Reescrito com testes reais DB-free cobrindo cálculos puros via reflection
+
+### Validação
+
+- `php -l` ✅ (arquivos PHP modificados)
+- `php vendor/bin/phpunit` ✅ (2871 tests, 6691 assertions, 42 skipped)
+- MySQL ainda indisponível neste sandbox (Connection refused) — esperado
+
 ## Sessao: 2026-02-21 — CHORE: Repo cleanup + viewer audit access
 
 ### Implementado
