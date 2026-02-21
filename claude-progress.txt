@@ -6,6 +6,70 @@
 
 ---
 
+## Sessao: 2026-02-21 — CHORE: Repo cleanup + viewer audit access
+
+### Implementado
+
+- `bin/create-audit-user.php`
+   - Script CLI para criar/atualizar `auditoria@eskill.com.br` com role `viewer`
+   - Senha via `AUDIT_USER_PASSWORD` (mín. 12 chars) ou gerada via `random_bytes()`
+   - Não executa DDL em runtime: valida suporte à role `viewer` e orienta aplicar migration
+
+- `app/Services/UserService.php`
+   - Permissões: `viewer` pode acessar `audit` e `reports` (read-only)
+
+- `app/Views/layouts/modern/sidebar.php`
+   - Menu: exibe Auditoria/Logs para `viewer` (e mantém Admin completo para `admin`)
+
+- Cleanup do repositório
+   - Remove arquivos temporários/debug acidentais na raiz (scripts e placeholders vazios)
+   - `.gitignore` ajustado para ignorar artefatos locais/agent debug e evitar recriação de junk files
+
+### Validação
+
+- `php -l` ✅ (arquivos PHP modificados)
+- `php vendor/bin/phpunit --testsuite Unit` ✅ (2871 tests, 6691 assertions, 42 skipped)
+- `php vendor/bin/phpunit` ❌ (falha no bootstrap por MySQL indisponível neste ambiente: Connection refused)
+
+---
+
+## Sessao: 2026-02-21 — FIX: Stabilize Unit suite service/controller contracts
+
+### Implementado
+
+- `app/Services/BrandAnalyzerService.php`
+   - `declare(strict_types=1)`
+   - Constantes públicas para testes/consumo externo: `MOTO_CATEGORIES`, `BRAND_VARIATIONS`, `BRAND_ATTRIBUTE_ID`
+   - Compatibilidade com testes: `analyzeBrand()`, `getItemsWithBrand()`, `getItemsMissingBrand()`
+
+- `app/Services/TrendsService.php`
+   - `declare(strict_types=1)`
+   - `getTopSearches()` usando tabela `market_keywords` quando disponível (fallback seguro + logging)
+   - Alias `getSeasonalTrends()` → `analyzeSeasonality()`
+
+- `app/Services/AdsService.php`
+   - `declare(strict_types=1)`
+   - `getCampaignMetrics()` (wrapper de report + `_meta`)
+   - `updateCampaign()` (wrapper para status/budget)
+   - `getCachedCampaigns()` de `private` → `protected` para permitir mocks na suíte Unit
+
+- `app/Services/WhatsAppService.php`
+   - `declare(strict_types=1)`
+   - Alias `sendMessage()` → `send()`
+   - `isConfigured()`
+   - Correção de runtime: `json_decode((string)$response->getBody(), true)` (stream → string)
+
+- `app/Controllers/MultiAccountController.php`
+   - `declare(strict_types=1)`
+   - Alias `getAccounts()` → `listAccounts()`
+
+### Validação
+
+- `php vendor/bin/phpunit --testsuite Unit --stop-on-failure` ✅ (2871 tests, 6691 assertions, 42 skipped)
+- Ambiente ainda sem MySQL acessível (Connection refused) — suite Integration permaneceu pulada.
+
+---
+
 ## Sessao: 2026-02-20 — TESTS: Unit tests for 8 failing features (100% pass)
 
 ### Implementado

@@ -26,9 +26,11 @@ Thumbs.db
 
 # IDE
 .idea/
-.vscode/
 *.sublime-project
 *.sublime-workspace
+
+# VS Code (workspace/editor config)
+.vscode/
 
 # Backup
 *.sql
@@ -40,9 +42,13 @@ storage/backups/
 /tmp/
 /temp/
 cleanup_junk.py
+cleanup_junk.php
+tmp_*.php
+debug_*.php
 
 # PHPUnit cache
 .phpunit.result.cache
+.phpunit.cache/
 
 # Session files
 storage/tmp/sessions/
@@ -52,6 +58,13 @@ cookies.txt
 .env.test
 .env.testing
 
+# MCP / agent local debug artifacts
+.mcp-debug-tools/
+"timeout"s*=
 
-#Ignore vscode AI rules
-.github\instructions\codacy.instructions.md
+# Agent junk files (brackets, commas)
+\[*\],
+true,
+unknown_topic,
+Este
+NUNCA
