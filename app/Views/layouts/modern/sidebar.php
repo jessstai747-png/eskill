@@ -13,6 +13,7 @@ $userName = $_SESSION['user_name'] ?? 'Usuário';
 $userRole = $_SESSION['user_role'] ?? 'Vendedor';
 $userAvatar = $_SESSION['user_avatar'] ?? null;
 $isAdmin = ($_SESSION['user_role'] ?? '') === 'admin' || ($_SESSION['is_admin'] ?? false);
+$isViewer = ($_SESSION['user_role'] ?? '') === 'viewer';
 
 // Helper function to check active state (guarded to avoid redeclaration)
 if (!function_exists('isActive')) {
@@ -284,20 +285,22 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
             </div>
         </div>
 
-        <?php if ($isAdmin): ?>
-        <!-- Admin -->
+        <?php if ($isAdmin || $isViewer): ?>
+        <!-- Admin / Auditoria -->
         <div class="nav-section">
-            <div class="nav-section-title">Administração</div>
+            <div class="nav-section-title"><?= $isAdmin ? 'Administração' : 'Auditoria' ?></div>
 
-            <a href="/dashboard/health" class="nav-item <?= isActive('/health') ? 'active' : '' ?>">
-                <i class="bi bi-activity"></i>
-                <span>System Health</span>
-            </a>
+            <?php if ($isAdmin): ?>
+                <a href="/dashboard/health" class="nav-item <?= isActive('/health') ? 'active' : '' ?>">
+                    <i class="bi bi-activity"></i>
+                    <span>System Health</span>
+                </a>
 
-            <a href="/dashboard/settings/users" class="nav-item <?= isActive('/settings/users') ? 'active' : '' ?>">
-                <i class="bi bi-people"></i>
-                <span>Usuários</span>
-            </a>
+                <a href="/dashboard/settings/users" class="nav-item <?= isActive('/settings/users') ? 'active' : '' ?>">
+                    <i class="bi bi-people"></i>
+                    <span>Usuários</span>
+                </a>
+            <?php endif; ?>
 
             <a href="/dashboard/audit" class="nav-item <?= isActive('/audit') ? 'active' : '' ?>">
                 <i class="bi bi-shield-check"></i>

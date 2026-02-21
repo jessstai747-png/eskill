@@ -184,7 +184,7 @@ class UserService
                         "Detectamos {$fails} tentativas de login falhas na sua conta. Se não foi você, recomendamos redefinir sua senha imediatamente.",
                         'text'
                     );
-                    
+
                     $this->auditLog->log('security_alert', $user['id'], null, [
                         'type' => 'brute_force_attempt',
                         'failures' => $fails
@@ -684,7 +684,7 @@ class UserService
             ORDER BY created_at ASC
         ");
         $stmt->execute(['user_id' => $userId]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -698,11 +698,11 @@ class UserService
     public function isAdmin(?int $userId = null): bool
     {
         $user = $userId ? $this->getUserById($userId) : $this->getCurrentUser();
-        
+
         if (!$user) {
             return false;
         }
-        
+
         return ($user['role'] ?? '') === 'admin';
     }
 
@@ -717,30 +717,30 @@ class UserService
     public function hasPermission(string $permission, ?int $userId = null): bool
     {
         $user = $userId ? $this->getUserById($userId) : $this->getCurrentUser();
-        
+
         if (!$user) {
             return false;
         }
-        
+
         $role = $user['role'] ?? 'user';
-        
+
         // Admin has all permissions
         if ($role === 'admin') {
             return true;
         }
-        
+
         // Permission mappings
         $permissions = [
             'admin' => ['admin'],
             'manager' => ['admin', 'manager'],
-            'audit' => ['admin', 'manager'],
-            'reports' => ['admin', 'manager', 'user'],
+            'audit' => ['admin', 'manager', 'viewer'],
+            'reports' => ['admin', 'manager', 'user', 'viewer'],
             'settings' => ['admin'],
             'user' => ['admin', 'manager', 'user'],
         ];
-        
+
         $allowedRoles = $permissions[$permission] ?? ['admin'];
-        
+
         return in_array($role, $allowedRoles, true);
     }
 
@@ -752,7 +752,7 @@ class UserService
     public function getRole(?int $userId = null): string
     {
         $user = $userId ? $this->getUserById($userId) : $this->getCurrentUser();
-        
+
         return $user['role'] ?? 'user';
     }
 

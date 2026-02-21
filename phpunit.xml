@@ -133,6 +133,15 @@
             <file>tests/Unit/Scripts/AutomatedReportsWorkerTest.php</file>
             <file>tests/Unit/AccountGovernanceServiceTest.php</file>
             <file>tests/Unit/AccountGovernanceIntegrationServiceTest.php</file>
+            <!-- Batch 5: New structural tests (DB-free) -->
+            <file>tests/Unit/Services/RealTimeNotificationServiceTest.php</file>
+            <file>tests/Unit/Services/ErrorMonitoringServiceTest.php</file>
+            <file>tests/Unit/Services/BrandAnalyzerServiceTest.php</file>
+            <file>tests/Unit/Services/TrendsServiceTest.php</file>
+            <file>tests/Unit/Services/ShopeeServiceTest.php</file>
+            <file>tests/Unit/Services/AdsServiceTest.php</file>
+            <file>tests/Unit/Services/WhatsAppServiceTest.php</file>
+            <file>tests/Unit/Controllers/MultiAccountControllerTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

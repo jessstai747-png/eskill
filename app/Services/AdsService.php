@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -111,7 +113,6 @@ class AdsService extends MercadoLivreClient
             $meta['data_source'] = 'local_cache';
             $meta['reason'] = 'empty_api_response';
             return ['campaigns' => $campaigns, '_meta' => $meta];
-
         } catch (\Exception $e) {
             log_warning('Erro ao buscar campanhas de Ads', [
                 'service' => 'AdsService',
@@ -123,6 +124,44 @@ class AdsService extends MercadoLivreClient
             $meta['reason'] = 'exception';
             $meta['error'] = $e->getMessage();
             return ['campaigns' => $campaigns, '_meta' => $meta];
+        }
+    }
+
+    /**
+     * Obtém métricas de uma campanha específica em um período.
+     *
+     * Encapsula getCampaignReport e adiciona metadados de execução.
+     */
+    public function getCampaignMetrics(string $campaignId, string $period = 'last_30_days'): array
+    {
+        $dateFrom = $this->getDateFromPeriod($period);
+        $dateTo = date('Y-m-d');
+
+        $meta = [
+            'fetched_at' => date('Y-m-d H:i:s'),
+            'period' => $period,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'account_id' => $this->accountId,
+        ];
+
+        try {
+            $report = $this->getCampaignReport($campaignId, $dateFrom, $dateTo);
+            return array_merge($report, ['_meta' => $meta]);
+        } catch (\Exception $e) {
+            log_warning('Erro ao obter métricas de campanha', [
+                'service' => 'AdsService',
+                'campaign_id' => $campaignId,
+                'period' => $period,
+                'error' => $e->getMessage(),
+            ]);
+
+            $meta['error'] = $e->getMessage();
+            return array_merge($this->getEmptyReport(), [
+                'campaign_id' => $campaignId,
+                'period' => ['from' => $dateFrom, 'to' => $dateTo],
+                '_meta' => $meta,
+            ]);
         }
     }
 
@@ -162,6 +201,54 @@ class AdsService extends MercadoLivreClient
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Atualiza uma campanha (wrapper para status/budget).
+     *
+     * Campos suportados:
+     * - status: string
+     * - daily_budget: float|int|string numérico
+     */
+    public function updateCampaign(string $campaignId, array $data): array
+    {
+        $results = [];
+        $errors = [];
+
+        if (array_key_exists('daily_budget', $data)) {
+            $budgetValue = $data['daily_budget'];
+            $newBudget = is_numeric($budgetValue) ? (float)$budgetValue : null;
+
+            if ($newBudget === null) {
+                $errors[] = 'invalid_daily_budget';
+            } else {
+                $results['budget'] = $this->updateCampaignBudget($campaignId, $newBudget);
+                if (($results['budget']['success'] ?? false) !== true) {
+                    $errors[] = 'budget_update_failed';
+                }
+            }
+        }
+
+        if (array_key_exists('status', $data)) {
+            $statusValue = $data['status'];
+            $status = is_string($statusValue) ? $statusValue : null;
+
+            if ($status === null || $status === '') {
+                $errors[] = 'invalid_status';
+            } else {
+                $results['status'] = $this->updateCampaignStatus($campaignId, $status);
+                if (($results['status']['success'] ?? false) !== true) {
+                    $errors[] = 'status_update_failed';
+                }
+            }
+        }
+
+        return [
+            'success' => empty($errors),
+            'campaign_id' => $campaignId,
+            'results' => $results,
+            'errors' => $errors,
+        ];
     }
 
     /**
@@ -469,7 +556,6 @@ class AdsService extends MercadoLivreClient
             }
 
             return array_merge($metrics, ['_meta' => $meta]);
-
         } catch (\Exception $e) {
             log_error('Erro ao calcular métricas de ADS', [
                 'service' => 'AdsService',
@@ -479,8 +565,14 @@ class AdsService extends MercadoLivreClient
             $meta['data_source'] = 'error';
             $meta['error'] = $e->getMessage();
             return [
-                'investment' => 0.0, 'revenue' => 0.0, 'acos' => 0, 'roas' => 0,
-                'clicks' => 0, 'impressions' => 0, 'cpc' => 0, 'ctr' => 0,
+                'investment' => 0.0,
+                'revenue' => 0.0,
+                'acos' => 0,
+                'roas' => 0,
+                'clicks' => 0,
+                'impressions' => 0,
+                'cpc' => 0,
+                'ctr' => 0,
                 '_meta' => $meta
             ];
         }
@@ -531,7 +623,7 @@ class AdsService extends MercadoLivreClient
     /**
      * Obtém campanhas do cache local
      */
-    private function getCachedCampaigns(string $status = 'active'): array
+    protected function getCachedCampaigns(string $status = 'active'): array
     {
         try {
             $this->ensureAdsTable();
@@ -548,7 +640,7 @@ class AdsService extends MercadoLivreClient
             $stmt->execute($params);
             $cached = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            return array_map(function($row) {
+            return array_map(function ($row) {
                 $data = json_decode($row['data'] ?? '{}', true);
                 return array_merge($data, [
                     'id' => $row['campaign_id'],
@@ -560,7 +652,6 @@ class AdsService extends MercadoLivreClient
                     '_cached_at' => $row['updated_at']
                 ]);
             }, $cached);
-
         } catch (\Exception $e) {
             return [];
         }
@@ -781,7 +872,7 @@ class AdsService extends MercadoLivreClient
 
     private function getDateFromPeriod(string $period): string
     {
-        return match($period) {
+        return match ($period) {
             'today' => date('Y-m-d'),
             'yesterday' => date('Y-m-d', strtotime('-1 day')),
             'last_7_days' => date('Y-m-d', strtotime('-7 days')),

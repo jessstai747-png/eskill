@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\MercadoLivreClient;
@@ -9,10 +11,10 @@ use PDO;
 
 /**
  * Serviço de Análise de Marca
- * 
+ *
  * Módulo especializado para analisar anúncios de uma marca específica no Mercado Livre,
  * identificando lacunas de dados, inconsistências e garantindo representação adequada.
- * 
+ *
  * Desenvolvido inicialmente para análise da marca AWA (motos e acessórios).
  */
 class BrandAnalyzerService
@@ -26,7 +28,7 @@ class BrandAnalyzerService
     /**
      * Categorias de motos e acessórios no Mercado Livre Brasil
      */
-    private const MOTO_CATEGORIES = [
+    public const MOTO_CATEGORIES = [
         'MLB1051'   => 'Motos',                           // Categoria principal de motos
         'MLB1747'   => 'Acessórios para Veículos',        // Categoria geral de acessórios
         'MLB214858' => 'Acessórios para Motos',           // Acessórios específicos para motos
@@ -36,7 +38,7 @@ class BrandAnalyzerService
     /**
      * Variações conhecidas do nome da marca AWA
      */
-    private const BRAND_VARIATIONS = [
+    public const BRAND_VARIATIONS = [
         'AWA',
         'Awa',
         'awa',
@@ -49,7 +51,7 @@ class BrandAnalyzerService
     /**
      * ID do atributo de marca no ML
      */
-    private const BRAND_ATTRIBUTE_ID = 'BRAND';
+    public const BRAND_ATTRIBUTE_ID = 'BRAND';
 
     public function __construct(?int $accountId = null)
     {
@@ -68,7 +70,7 @@ class BrandAnalyzerService
 
     /**
      * Análise completa da marca AWA
-     * 
+     *
      * @param array $options Opções de análise
      * @return array Resultado completo da análise
      */
@@ -168,6 +170,64 @@ class BrandAnalyzerService
         $this->saveAnalysisHistory($results);
 
         return $results;
+    }
+
+    /**
+     * Método público compatível com a suíte de testes.
+     *
+     * O service nasceu para a marca AWA, então este método mantém compatibilidade
+     * delegando para a análise padrão.
+     */
+    public function analyzeBrand(array $options = []): array
+    {
+        return $this->analyzeAwaBrand($options);
+    }
+
+    /**
+     * Retorna apenas os itens que possuem atributo de marca preenchido e correto.
+     *
+     * @param array $analysisResults Resultado retornado por analyzeBrand()/analyzeAwaBrand().
+     * @return array Itens filtrados.
+     */
+    public function getItemsWithBrand(array $analysisResults): array
+    {
+        $items = $analysisResults['items'] ?? [];
+        if (!is_array($items)) {
+            return [];
+        }
+
+        return array_values(array_filter($items, static function (array $item): bool {
+            $brandAnalysis = $item['brand_analysis'] ?? null;
+            if (!is_array($brandAnalysis)) {
+                return false;
+            }
+
+            return ($brandAnalysis['has_brand'] ?? false) === true
+                && ($brandAnalysis['is_correct'] ?? false) === true;
+        }));
+    }
+
+    /**
+     * Retorna apenas os itens que não possuem atributo de marca preenchido.
+     *
+     * @param array $analysisResults Resultado retornado por analyzeBrand()/analyzeAwaBrand().
+     * @return array Itens filtrados.
+     */
+    public function getItemsMissingBrand(array $analysisResults): array
+    {
+        $items = $analysisResults['items'] ?? [];
+        if (!is_array($items)) {
+            return [];
+        }
+
+        return array_values(array_filter($items, static function (array $item): bool {
+            $brandAnalysis = $item['brand_analysis'] ?? null;
+            if (!is_array($brandAnalysis)) {
+                return false;
+            }
+
+            return ($brandAnalysis['has_brand'] ?? false) === false;
+        }));
     }
 
     /**
@@ -911,9 +971,9 @@ class BrandAnalyzerService
             ");
 
             $stmt = $this->db->prepare("
-                INSERT INTO brand_analysis_history 
-                (brand, analysis_date, total_listings, listings_with_brand, listings_without_brand, 
-                 consistency_score, health_score, health_status, gaps_count, inconsistencies_count, 
+                INSERT INTO brand_analysis_history
+                (brand, analysis_date, total_listings, listings_with_brand, listings_without_brand,
+                 consistency_score, health_score, health_status, gaps_count, inconsistencies_count,
                  sellers_count, result_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
@@ -955,7 +1015,7 @@ class BrandAnalyzerService
         try {
             $limitSql = max(1, min(200, (int)$limit));
             $stmt = $this->db->prepare("
-                SELECT id, brand, analysis_date, total_listings, listings_with_brand, 
+                SELECT id, brand, analysis_date, total_listings, listings_with_brand,
                        listings_without_brand, consistency_score, health_score, health_status,
                        gaps_count, inconsistencies_count, sellers_count, created_at
                 FROM brand_analysis_history
@@ -1342,7 +1402,7 @@ class BrandAnalyzerService
 
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     DATE(analysis_date) as date,
                     total_listings,
                     listings_with_brand,

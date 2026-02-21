@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Request;
@@ -9,9 +11,9 @@ use App\Database;
 
 /**
  * Multi-Account Controller
- * 
+ *
  * Gerencia endpoints para operações multi-conta do SEO Killer
- * 
+ *
  * @package App\Controllers
  * @version 1.9.0
  * @since 2025-12-31
@@ -26,7 +28,7 @@ class MultiAccountController
     {
         $this->request = new Request();
         $this->userId = $_SESSION['user_id'] ?? 0;
-        
+
         if (!$this->userId) {
             $this->jsonError('Unauthorized', 401);
             exit;
@@ -37,7 +39,7 @@ class MultiAccountController
 
     /**
      * GET /api/multi-account/dashboard
-     * 
+     *
      * Dashboard consolidado de todas as contas
      * Query params:
      * - account_ids: array opcional de IDs específicos
@@ -47,7 +49,7 @@ class MultiAccountController
     {
         try {
             $accountIds = $this->request->get('account_ids');
-            
+
             if ($accountIds && is_string($accountIds)) {
                 $accountIds = array_map('intval', explode(',', $accountIds));
             }
@@ -57,9 +59,8 @@ class MultiAccountController
             ];
 
             $dashboard = $this->manager->getDashboard($accountIds, $options);
-            
-            $this->jsonResponse($dashboard);
 
+            $this->jsonResponse($dashboard);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -67,7 +68,7 @@ class MultiAccountController
 
     /**
      * GET /api/multi-account/compare
-     * 
+     *
      * Compara performance entre múltiplas contas
      * Query params REQUIRED:
      * - account_ids: string comma-separated (ex: "1,2,3")
@@ -78,7 +79,7 @@ class MultiAccountController
     {
         try {
             $accountIdsParam = $this->request->get('account_ids');
-            
+
             if (!$accountIdsParam) {
                 $this->jsonError('account_ids parameter is required', 400);
                 return;
@@ -89,9 +90,8 @@ class MultiAccountController
             $days = $this->request->getInt('days', 30);
 
             $comparison = $this->manager->comparePerformance($accountIds, $metric, $days);
-            
-            $this->jsonResponse($comparison);
 
+            $this->jsonResponse($comparison);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -99,7 +99,7 @@ class MultiAccountController
 
     /**
      * POST /api/multi-account/bulk-optimize
-     * 
+     *
      * Otimização em lote cross-account
      * Body JSON:
      * {
@@ -125,7 +125,7 @@ class MultiAccountController
             }
 
             $accountIds = array_map('intval', $body['account_ids']);
-            
+
             $options = [
                 'filters' => $body['filters'] ?? ['seo_score' => ['max' => 70]],
                 'optimizations' => $body['optimizations'] ?? [
@@ -138,9 +138,8 @@ class MultiAccountController
             ];
 
             $result = $this->manager->bulkOptimize($accountIds, $options);
-            
-            $this->jsonResponse($result);
 
+            $this->jsonResponse($result);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -148,7 +147,7 @@ class MultiAccountController
 
     /**
      * GET /api/multi-account/report
-     * 
+     *
      * Relatório consolidado de múltiplas contas
      * Query params:
      * - account_ids: string comma-separated (opcional, default: todas)
@@ -159,8 +158,8 @@ class MultiAccountController
     {
         try {
             $accountIdsParam = $this->request->get('account_ids');
-            
-            $accountIds = $accountIdsParam 
+
+            $accountIds = $accountIdsParam
                 ? array_map('intval', explode(',', $accountIdsParam))
                 : null;
 
@@ -179,9 +178,8 @@ class MultiAccountController
             ];
 
             $report = $this->manager->consolidatedReport($accountIds, $period, $options);
-            
-            $this->jsonResponse($report);
 
+            $this->jsonResponse($report);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -189,7 +187,7 @@ class MultiAccountController
 
     /**
      * POST /api/multi-account/groups
-     * 
+     *
      * Gerenciar grupos de contas
      * Body JSON:
      * {
@@ -211,9 +209,8 @@ class MultiAccountController
             }
 
             $result = $this->manager->manageAccountGroups($body['action'], $body);
-            
-            $this->jsonResponse($result);
 
+            $this->jsonResponse($result);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -221,7 +218,7 @@ class MultiAccountController
 
     /**
      * POST /api/multi-account/switch
-     * 
+     *
      * Trocar contexto de conta ativa
      * Body JSON:
      * {
@@ -239,9 +236,8 @@ class MultiAccountController
             }
 
             $result = $this->manager->switchAccount((int)$body['account_id']);
-            
-            $this->jsonResponse($result);
 
+            $this->jsonResponse($result);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -249,16 +245,26 @@ class MultiAccountController
 
     /**
      * GET /api/multi-account/accounts
-     * 
+     *
+     * Lista todas as contas do usuário com estatísticas básicas
+     */
+    public function getAccounts(): void
+    {
+        $this->listAccounts();
+    }
+
+    /**
+     * GET /api/multi-account/accounts
+     *
      * Lista todas as contas do usuário com estatísticas básicas
      */
     public function listAccounts(): void
     {
         try {
             $db = \App\Database::getInstance();
-            
+
             $stmt = $db->prepare("
-                SELECT 
+                SELECT
                     ma.id,
                     ma.nickname,
                     ma.country_id,
@@ -282,7 +288,6 @@ class MultiAccountController
                 'total' => count($accounts),
                 'active' => count(array_filter($accounts, fn($a) => $a['is_active']))
             ]);
-
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -290,7 +295,7 @@ class MultiAccountController
 
     /**
      * GET /api/multi-account/tokens/status
-     * 
+     *
      * Verifica status dos tokens de todas as contas
      */
     public function getTokensStatus(): void
@@ -298,12 +303,12 @@ class MultiAccountController
         try {
             $db = Database::getInstance();
             $stmt = $db->prepare("
-                SELECT 
+                SELECT
                     id,
                     nickname,
                     status,
                     token_expires_at,
-                    CASE 
+                    CASE
                         WHEN token_expires_at IS NULL THEN 'unknown'
                         WHEN token_expires_at < NOW() THEN 'expired'
                         WHEN token_expires_at < DATE_ADD(NOW(), INTERVAL 2 HOUR) THEN 'expiring_soon'
@@ -334,7 +339,6 @@ class MultiAccountController
                 'summary' => $summary,
                 'needs_attention' => $summary['expired'] > 0 || $summary['expiring_soon'] > 0
             ]);
-
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -342,7 +346,7 @@ class MultiAccountController
 
     /**
      * POST /api/multi-account/tokens/refresh
-     * 
+     *
      * Tenta renovar token de uma conta específica
      * Body: { "account_id": int }
      */
@@ -386,7 +390,6 @@ class MultiAccountController
                     'reconnect_url' => '/auth/authorize?reconnect=' . (int)$accountId
                 ], 401);
             }
-
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
@@ -394,7 +397,7 @@ class MultiAccountController
 
     /**
      * POST /api/multi-account/tokens/refresh-all
-     * 
+     *
      * Tenta renovar tokens de todas as contas do usuário
      */
     public function refreshAllTokens(): void
@@ -402,9 +405,9 @@ class MultiAccountController
         try {
             $db = Database::getInstance();
             $stmt = $db->prepare("
-                SELECT id, nickname 
-                FROM ml_accounts 
-                WHERE user_id = ? 
+                SELECT id, nickname
+                FROM ml_accounts
+                WHERE user_id = ?
                 AND (token_expires_at IS NULL OR token_expires_at < DATE_ADD(NOW(), INTERVAL 2 HOUR))
             ");
             $stmt->execute([$this->userId]);
@@ -443,7 +446,6 @@ class MultiAccountController
                 'needs_reconnect' => !empty($results['failed']),
                 'reconnect_url' => !empty($results['failed']) ? '/dashboard/accounts' : null
             ]);
-
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }

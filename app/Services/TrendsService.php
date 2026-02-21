@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -7,13 +9,13 @@ use PDO;
 
 /**
  * TrendsService - Análise de Tendências de Mercado
- * 
+ *
  * Analisa tendências, sazonalidade e produtos em alta
  * - Produtos mais buscados
  * - Análise de sazonalidade
  * - Oportunidades de mercado
  * - Previsão de demanda
- * 
+ *
  * @link https://developers.mercadolivre.com.br/pt_br/trends
  */
 class TrendsService extends MercadoLivreClient
@@ -28,7 +30,7 @@ class TrendsService extends MercadoLivreClient
 
     /**
      * Obtém tendências por categoria
-     * 
+     *
      * @param string $categoryId ID da categoria
      * @param array $filters Filtros
      * @return array Tendências
@@ -61,8 +63,82 @@ class TrendsService extends MercadoLivreClient
     }
 
     /**
+     * Retorna as keywords mais buscadas (quando houver base local em `market_keywords`).
+     *
+     * Observação: o ML não expõe um endpoint oficial simples de "top searches" para todos
+     * os casos; por isso usamos a base interna do projeto quando disponível.
+     */
+    public function getTopSearches(array $filters = []): array
+    {
+        $limit = (int)($filters['limit'] ?? 20);
+        if ($limit <= 0) {
+            $limit = 20;
+        }
+        if ($limit > 100) {
+            $limit = 100;
+        }
+
+        $categoryId = $filters['category_id'] ?? null;
+        if ($categoryId !== null && !is_string($categoryId)) {
+            $categoryId = null;
+        }
+
+        try {
+            $sql = "SELECT keyword, search_volume"
+                . " FROM market_keywords"
+                . " WHERE search_volume IS NOT NULL";
+
+            $params = [];
+            if (is_string($categoryId) && $categoryId !== '') {
+                $sql .= " AND category_id = :category_id";
+                $params['category_id'] = $categoryId;
+            }
+
+            $sql .= " ORDER BY search_volume DESC";
+            $sql .= " LIMIT :limit";
+
+            $stmt = $this->db->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue(':' . $k, $v, PDO::PARAM_STR);
+            }
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'total' => count($rows),
+                'keywords' => $this->formatKeywords($rows),
+                'category_id' => $categoryId,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+        } catch (\Exception $e) {
+            log_error('Erro ao obter top searches', [
+                'category_id' => $categoryId,
+                'limit' => $limit,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'total' => 0,
+                'keywords' => [],
+                'category_id' => $categoryId,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+        }
+    }
+
+    /**
+     * Alias semântico para análise de sazonalidade.
+     */
+    public function getSeasonalTrends(string $query, array $options = []): array
+    {
+        return $this->analyzeSeasonality($query, $options);
+    }
+
+    /**
      * Obtém produtos em alta
-     * 
+     *
      * @param array $filters Filtros
      * @return array Produtos populares
      */
@@ -73,7 +149,7 @@ class TrendsService extends MercadoLivreClient
             $categoryId = $filters['category_id'] ?? null;
             $limit = $filters['limit'] ?? 20;
 
-            $endpoint = $categoryId 
+            $endpoint = $categoryId
                 ? "/sites/{$siteId}/hot_items/{$categoryId}"
                 : "/sites/{$siteId}/hot_items";
 
@@ -261,7 +337,7 @@ class TrendsService extends MercadoLivreClient
             $totalSales = array_sum(array_column($results, 'total_sales'));
             $avgMonthlySales = $totalSales / count($results);
 
-            return array_map(function($row) use ($avgMonthlySales) {
+            return array_map(function ($row) use ($avgMonthlySales) {
                 $factor = $avgMonthlySales > 0
                     ? round($row['total_sales'] / $avgMonthlySales, 2)
                     : 1.0;
@@ -274,7 +350,6 @@ class TrendsService extends MercadoLivreClient
                     'seasonal_factor' => $factor,
                 ];
             }, $results);
-
         } catch (\Exception $e) {
             log_warning('Erro ao buscar sazonalidade real do histórico', [
                 'query' => $query,
@@ -313,7 +388,7 @@ class TrendsService extends MercadoLivreClient
             $totalRevenue = array_sum(array_column($results, 'total_revenue'));
             $avgMonthlyRevenue = $totalRevenue / count($results);
 
-            return array_map(function($row) use ($avgMonthlyRevenue) {
+            return array_map(function ($row) use ($avgMonthlyRevenue) {
                 $factor = $avgMonthlyRevenue > 0
                     ? round($row['total_revenue'] / $avgMonthlyRevenue, 2)
                     : 1.0;
@@ -325,7 +400,6 @@ class TrendsService extends MercadoLivreClient
                     'seasonal_factor' => $factor,
                 ];
             }, $results);
-
         } catch (\Exception $e) {
             return [];
         }
@@ -375,7 +449,7 @@ class TrendsService extends MercadoLivreClient
 
     /**
      * Identifica oportunidades de mercado
-     * 
+     *
      * @param array $criteria Critérios
      * @return array Oportunidades
      */
@@ -388,7 +462,7 @@ class TrendsService extends MercadoLivreClient
 
             // Query produtos com alta demanda e baixa concorrência
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     keyword,
                     search_volume,
                     competition_level,
@@ -416,7 +490,7 @@ class TrendsService extends MercadoLivreClient
 
             return [
                 'total' => count($opportunities),
-                'opportunities' => array_map(function($opp) {
+                'opportunities' => array_map(function ($opp) {
                     return [
                         'keyword' => $opp['keyword'],
                         'search_volume' => $opp['search_volume'],
@@ -438,7 +512,7 @@ class TrendsService extends MercadoLivreClient
 
     /**
      * Previsão de demanda
-     * 
+     *
      * @param string $itemId ID do item ou keyword
      * @param int $daysAhead Dias à frente
      * @return array Previsão
@@ -448,7 +522,7 @@ class TrendsService extends MercadoLivreClient
         try {
             // Buscar histórico
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     date,
                     visits,
                     sales
@@ -554,7 +628,7 @@ class TrendsService extends MercadoLivreClient
     {
         $sorted = $months;
         usort($sorted, fn($a, $b) => $b['search_volume'] <=> $a['search_volume']);
-        
+
         return array_slice(array_map(fn($m) => [
             'month' => date('F', strtotime($m['month'])),
             'volume' => $m['search_volume'],
@@ -565,7 +639,7 @@ class TrendsService extends MercadoLivreClient
     {
         $sorted = $months;
         usort($sorted, fn($a, $b) => $a['search_volume'] <=> $b['search_volume']);
-        
+
         return array_slice(array_map(fn($m) => [
             'month' => date('F', strtotime($m['month'])),
             'volume' => $m['search_volume'],
@@ -590,7 +664,7 @@ class TrendsService extends MercadoLivreClient
         if ($score > 100) return 'Excelente oportunidade - Alta demanda, baixa concorrência';
         if ($score > 50) return 'Boa oportunidade - Considere investir';
         if ($score > 20) return 'Oportunidade moderada - Avalie cuidadosamente';
-        
+
         return 'Oportunidade limitada';
     }
 
@@ -603,7 +677,7 @@ class TrendsService extends MercadoLivreClient
 
     private function formatKeywords(array $keywords): array
     {
-        return array_map(function($kw) {
+        return array_map(function ($kw) {
             return [
                 'keyword' => $kw['keyword'] ?? $kw,
                 'search_volume' => $kw['search_volume'] ?? 0,
@@ -614,7 +688,7 @@ class TrendsService extends MercadoLivreClient
 
     private function formatTopProducts(array $products): array
     {
-        return array_map(function($p) {
+        return array_map(function ($p) {
             return [
                 'id' => $p['id'],
                 'title' => $p['title'],
@@ -626,7 +700,7 @@ class TrendsService extends MercadoLivreClient
 
     private function formatHotProducts(array $products): array
     {
-        return array_map(function($p) {
+        return array_map(function ($p) {
             return [
                 'id' => $p['id'],
                 'title' => $p['title'],

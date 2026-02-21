@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -22,7 +24,7 @@ class WhatsAppService
         $this->userId = $userId;
         $this->loadSettings();
     }
-    
+
     private function getQueue(): QueueService
     {
         if (!$this->queueService) {
@@ -77,7 +79,7 @@ class WhatsAppService
 
         if ($exists) {
             $stmt = $this->db->prepare("
-                UPDATE whatsapp_settings 
+                UPDATE whatsapp_settings
                 SET api_key = ?, instance_id = ?, phone_number = ?, status = ?, settings = ?, updated_at = NOW()
                 WHERE user_id = ?
             ");
@@ -91,7 +93,7 @@ class WhatsAppService
             ]);
         } else {
             $stmt = $this->db->prepare("
-                INSERT INTO whatsapp_settings 
+                INSERT INTO whatsapp_settings
                 (user_id, api_key, instance_id, phone_number, status, settings, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
             ");
@@ -107,10 +109,22 @@ class WhatsAppService
     }
 
     /**
-     * Envia mensagem WhatsApp
+     * Alias compatível com o contrato esperado pela suíte de testes.
      */
+    public function sendMessage(string $to, string $message, bool $shouldQueue = false): array
+    {
+        return $this->send($to, $message, $shouldQueue);
+    }
+
+    public function isConfigured(): bool
+    {
+        return $this->settings !== null
+            && ($this->settings['is_active'] ?? false) === true;
+    }
+
     /**
      * Envia mensagem WhatsApp
+     *
      * @param bool $shouldQueue Se true, envia para fila Redis
      */
     public function send(string $to, string $message, bool $shouldQueue = false): array
@@ -122,10 +136,10 @@ class WhatsAppService
                     'to' => $to,
                     'message' => $message
                 ]);
-                
+
                 // Log as 'queued'
                 $this->logMessage($to, $message, 'queued');
-                
+
                 return ['success' => true, 'queued' => true, 'job_id' => $jobId];
             } catch (Exception $e) {
                 // Fallback to sync if queue fails
@@ -197,7 +211,7 @@ class WhatsAppService
                 ]
             ]);
 
-            $body = json_decode($response->getBody(), true);
+            $body = json_decode((string)$response->getBody(), true);
             return ['success' => true, 'id' => $body['sid']];
         } catch (Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
@@ -231,7 +245,7 @@ class WhatsAppService
                 ]
             ]);
 
-            $body = json_decode($response->getBody(), true);
+            $body = json_decode((string)$response->getBody(), true);
             return ['success' => true, 'response' => $body];
         } catch (Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
@@ -241,7 +255,7 @@ class WhatsAppService
     private function logMessage(string $to, string $message, string $status): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO whatsapp_logs 
+            INSERT INTO whatsapp_logs
             (user_id, phone_to, message, status, message_type, created_at)
             VALUES (?, ?, ?, ?, 'sent', NOW())
         ");
@@ -253,12 +267,12 @@ class WhatsAppService
     {
         $metadata = ['response' => $response];
         $stmt = $this->db->prepare("
-            UPDATE whatsapp_logs 
+            UPDATE whatsapp_logs
             SET status = ?, metadata = ?, error_message = ?
             WHERE id = ?
         ");
         $stmt->execute([
-            $status, 
+            $status,
             json_encode($metadata),
             $errorMessage,
             $id
@@ -274,9 +288,9 @@ class WhatsAppService
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT * FROM whatsapp_logs 
-            WHERE user_id = ? 
-            ORDER BY created_at DESC 
+            SELECT * FROM whatsapp_logs
+            WHERE user_id = ?
+            ORDER BY created_at DESC
             LIMIT {$limitSql}
         ");
         $stmt->execute([$this->userId]);
