@@ -6,6 +6,24 @@
 
 ---
 
+## Sessao: 2026-02-21 — CHORE(GIT): Ignorar artefatos locais do MySQL (sandbox) + limpar arquivo acidental
+
+### Implementado
+
+- `.gitignore`
+   - Adicionadas regras para ignorar diretórios locais criados durante tentativa de subir MySQL no sandbox:
+      - `/storage/mysql-data/`
+      - `/storage/mysql-tmp/`
+      - `/storage/mysql-run/`
+   - Removidas entradas “lixo” que tinham sido parar no final do arquivo (e que causavam ruído no `git status`)
+
+- Workspace root
+   - Removido arquivo acidental vazio chamado `"timeout"s*=` (estava aparecendo como untracked)
+
+### Validação
+
+- `php vendor/bin/phpunit --testsuite=Unit` ✅ (OK; 2871 tests, 42 skipped; avisos de DB esperados neste sandbox)
+
 ## Sessao: 2026-02-21 — FIX(PRICING): Cache de concorrência (schema real) + stats de distribuição
 
 ### Implementado

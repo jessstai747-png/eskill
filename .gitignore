@@ -46,12 +46,17 @@ cleanup_junk.php
 tmp_*.php
 debug_*.php
 
+# Local MySQL (sandbox/dev)
+/storage/mysql-data/
+/storage/mysql-tmp/
+/storage/mysql-run/
+
 # PHPUnit cache
 .phpunit.result.cache
 .phpunit.cache/
 
 # Session files
-storage/tmp/sessions/
+/storage/tmp/sessions/
 
 # Security: sensitive files
 cookies.txt
@@ -60,11 +65,4 @@ cookies.txt
 
 # MCP / agent local debug artifacts
 .mcp-debug-tools/
-"timeout"s*=
 
-# Agent junk files (brackets, commas)
-\[*\],
-true,
-unknown_topic,
-Este
-NUNCA
