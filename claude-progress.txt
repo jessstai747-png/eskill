@@ -6,6 +6,34 @@
 
 ---
 
+## Sessao: 2026-02-22 — FEAT(WEBHOOK): Integração API com CLAWDBOT (endpoint público assinado)
+
+### Implementado
+
+- `app/Services/ClawdbotWebhookService.php`
+   - Validação de assinatura HMAC-SHA256 (com suporte opcional a timestamp e tolerância anti-replay)
+   - Normalização de payload em comando seguro (`run_agent` / `dispatch_job`)
+
+- `app/Controllers/ClawdbotWebhookController.php`
+   - Endpoints públicos (CSRF-exempt) em `/api/webhook/clawdbot`:
+      - `GET /api/webhook/clawdbot/health`
+      - `POST /api/webhook/clawdbot` (valida assinatura, dedup best-effort, enfileira job com allowlist)
+
+- `app/Routes/api.php`
+   - Registro das rotas do CLAWDBOT
+
+- `tests/Unit/Services/ClawdbotWebhookServiceTest.php` + `phpunit.xml`
+   - Testes unitários DB-free para assinatura/timestamp/normalização
+   - Inclusão do teste na lista curada do testsuite `Unit`
+
+- `.env.example`
+   - Variáveis de ambiente documentadas: `CLAWDBOT_WEBHOOK_SECRET`, `CLAWDBOT_WEBHOOK_TOLERANCE`, `CLAWDBOT_ALLOWED_JOB_TYPES`
+
+### Validação
+
+- `php -l` ✅ (arquivos novos/alterados)
+- `php vendor/bin/phpunit --testsuite=Unit` ✅ (2836 tests, 6600 assertions, 34 skipped; DB indisponível no sandbox)
+
 ## Sessao: 2026-02-22 — FIX(TEST-RUNNER): Stabilize Unit boundary + env parity in init script
 
 ### Implementado

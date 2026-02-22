@@ -707,6 +707,21 @@
             "last_tested": "2026-02-20"
         },
         {
+            "id": "WEBHOOK-002",
+            "category": "webhooks",
+            "description": "Integração CLAWDBOT — webhook assinado (HMAC) para disparo seguro de jobs (ex: run_agent)",
+            "files": [
+                "app/Controllers/ClawdbotWebhookController.php",
+                "app/Services/ClawdbotWebhookService.php",
+                "app/Routes/api.php",
+                "tests/Unit/Services/ClawdbotWebhookServiceTest.php",
+                "phpunit.xml",
+                ".env.example"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-22"
+        },
+        {
             "id": "PROMO-001",
             "category": "promotions",
             "description": "Gestão de promoções e descontos no ML",

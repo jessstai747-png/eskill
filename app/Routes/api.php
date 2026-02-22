@@ -64,6 +64,7 @@ use App\Controllers\AuthApiController;
 use App\Controllers\AuthController;
 use App\Controllers\RenderController;
 use App\Controllers\BrevoIntegrationController;
+use App\Controllers\ClawdbotWebhookController;
 use App\Controllers\UserController;
 use App\Controllers\OnboardingController;
 use App\Controllers\MarketDataController;
@@ -143,6 +144,14 @@ $router->post('api/integrations/brevo/lists/{listId}/contacts/remove', BrevoInte
 $router->post('api/integrations/brevo/sync/lists', BrevoIntegrationController::class, 'syncLists');
 $router->post('api/integrations/brevo/sync/contacts', BrevoIntegrationController::class, 'syncContacts');
 $router->post('api/integrations/brevo/sync/all', BrevoIntegrationController::class, 'syncAll');
+
+
+// ========================================
+// 🤖 Integrações - CLAWDBOT (Webhook público)
+// ========================================
+// Observação: /api/webhook/* é isento de auth global e CSRF (ver public/index.php)
+$router->get('api/webhook/clawdbot/health', ClawdbotWebhookController::class, 'health');
+$router->post('api/webhook/clawdbot', ClawdbotWebhookController::class, 'receive');
 
 
 // ========================================
