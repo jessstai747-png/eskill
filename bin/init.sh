@@ -179,7 +179,7 @@ function check_database() {
     local db_check=$(php -r "
         require '$PROJECT_DIR/vendor/autoload.php';
         try {
-            \$dotenv = Dotenv\Dotenv::createImmutable('$PROJECT_DIR');
+            \$dotenv = Dotenv\Dotenv::createImmutable('$PROJECT_DIR', ['.env.testing', '.env']);
             \$dotenv->safeLoad();
             \$host = \$_ENV['DB_HOST'] ?? '127.0.0.1';
             \$port = \$_ENV['DB_PORT'] ?? '3306';

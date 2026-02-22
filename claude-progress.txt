@@ -6,6 +6,34 @@
 
 ---
 
+## Sessao: 2026-02-22 — FIX(TEST-RUNNER): Stabilize Unit boundary + env parity in init script
+
+### Implementado
+
+- `phpunit.xml`
+   - Removido `tests/Unit/Services/ItemServiceTest.php` da suíte `Unit` (teste DB-coupled).
+   - Mantida execução desse teste na suíte `Integration` via diretório `tests/Unit/Services`.
+
+- `bin/init.sh`
+   - Alinhada a precedência de env com o bootstrap de testes:
+      - `Dotenv::createImmutable(..., ['.env.testing', '.env'])`
+   - Evita divergência entre checks do init e resolução de DB usada pelo PHPUnit.
+
+- `composer.json`
+   - Scripts de teste tornados explícitos:
+      - `test` -> `phpunit --testsuite=Unit`
+      - `test-unit` mantido
+      - `test-integration` mantido
+      - `test-all` adicionado (`Unit && Integration`)
+
+### Validação
+
+- `php -l tests/bootstrap.php` ✅
+- `php -l app/Services/ItemService.php` ✅
+- `php vendor/bin/phpunit --testsuite=Unit --filter ItemServiceTest` ✅ (`No tests executed`, esperado)
+- `php vendor/bin/phpunit --testsuite=Unit` ✅ (2831 tests, 6594 assertions, 35 skipped)
+- `bash bin/init.sh` ✅ (MySQL indisponível no sandbox; Unit OK; Integration pulado)
+
 ## Sessao: 2026-02-21 — FEAT(ML/PRICING): Monitoramento de concorrentes com ML Search real + filtro por seller
 
 ### Implementado
