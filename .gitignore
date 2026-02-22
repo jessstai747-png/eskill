@@ -8,7 +8,7 @@
 .env.*.local
 
 # Logs
-/storage/logs/*.log
+/storage/logs/
 *.log
 
 # Cache
@@ -62,6 +62,22 @@ debug_*.php
 cookies.txt
 .env.test
 .env.testing
+*.credentials
+.git-credentials
+.gitconfig-push
+
+# Storage: runtime data (never track)
+/storage/quarantine/
+/storage/cron_*.json
+/storage/cron_*.lock
+/storage/.test_write
+/storage/agent_projects/
+/storage/phpunit_output.txt
+/storage/nginx-blocked-ips.conf
+/storage/fix_silent_catches.php
+
+# Reports with real business data
+/public/storage/reports/
 
 # MCP / agent local debug artifacts
 .mcp-debug-tools/
