@@ -185,6 +185,8 @@ if ($isWebhook) {
     // Higher limit for dashboard API calls to support real-time features
     $isDashboardApi = strpos($path, '/api/items') === 0
         || strpos($path, '/api/dashboard') === 0
+        || strpos($path, '/api/orders') === 0
+        || strpos($path, '/api/multi-account') === 0
         || strpos($path, '/api/ai/') === 0
         || strpos($path, '/api/seo-killer/') === 0;
     if ($isApi) {

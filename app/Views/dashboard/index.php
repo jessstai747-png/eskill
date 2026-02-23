@@ -1425,6 +1425,7 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
 
     // Load Orders
     async function loadOrders() {
+        const list = document.getElementById('orders-list');
         try {
         let data;
         if (window.ApiClient) {
@@ -1512,7 +1513,6 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
 
         } catch (error) {
             console.error('Error loading orders:', error);
-            const list = document.getElementById('orders-list');
             if (list) {
                 list.innerHTML = `
                 <div class="text-center py-4">

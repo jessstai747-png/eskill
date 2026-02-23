@@ -145,7 +145,15 @@ class DashboardController extends BaseController
             // But Competitor Alerts and Growth are heavy.
 
             // 3. Growth Stats (Real Data)
-            $cloneMetrics = $this->getCloneService()->getCloneMetrics();
+            try {
+                $cloneMetrics = $this->getCloneService()->getCloneMetrics();
+            } catch (\Throwable $e) {
+                log_warning('DashboardController: falha ao carregar clone metrics', [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+                $cloneMetrics = ['today' => 0, 'total' => 0];
+            }
             $avgHealth = $this->calculateAvgHealth($accountId);
 
             $metrics['growth'] = [
