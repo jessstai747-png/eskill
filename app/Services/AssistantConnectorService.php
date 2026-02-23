@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Database;
+use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use PDOException;
 use Throwable;
@@ -192,7 +194,8 @@ class AssistantConnectorService
         $source = isset($payload['source']) ? (string)$payload['source'] : 'assistant';
         $externalEventId = isset($payload['event_id']) ? trim((string)$payload['event_id']) : '';
         $eventType = isset($payload['type']) ? trim((string)$payload['type']) : '';
-        $occurredAt = isset($payload['occurred_at']) ? trim((string)$payload['occurred_at']) : null;
+        $occurredAtRaw = isset($payload['occurred_at']) ? trim((string)$payload['occurred_at']) : null;
+        $occurredAt = self::normalizeMysqlDateTime($occurredAtRaw);
 
         $accountIdInput = isset($payload['account_id']) ? (int)$payload['account_id'] : null;
         $sellerIdInput = isset($payload['seller_id']) ? (string)$payload['seller_id'] : null;
@@ -222,7 +225,7 @@ class AssistantConnectorService
                 ':source' => $source,
                 ':external_event_id' => $externalEventId,
                 ':event_type' => $eventType,
-                ':occurred_at' => $occurredAt !== null && $occurredAt !== '' ? $occurredAt : null,
+                ':occurred_at' => $occurredAt,
                 ':payload' => json_encode($eventPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ]);
 
@@ -258,6 +261,36 @@ class AssistantConnectorService
                 'error' => 'db_error',
                 'message' => 'Falha ao persistir evento.',
             ];
+        }
+    }
+
+    /**
+     * Normaliza um timestamp de entrada para o formato MySQL DATETIME (Y-m-d H:i:s).
+     *
+     * Aceita ISO-8601/RFC3339 (com timezone), "Y-m-d H:i:s" e epoch seconds.
+     */
+    public static function normalizeMysqlDateTime(?string $value): ?string
+    {
+        $value = is_string($value) ? trim($value) : '';
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            if (ctype_digit($value)) {
+                $dt = (new DateTimeImmutable('@' . $value))->setTimezone(new DateTimeZone('UTC'));
+                return $dt->format('Y-m-d H:i:s');
+            }
+
+            $dt = (new DateTimeImmutable($value))->setTimezone(new DateTimeZone('UTC'));
+            return $dt->format('Y-m-d H:i:s');
+        } catch (Throwable $e) {
+            log_warning('AssistantConnectorService: occurred_at inválido; salvando como NULL', [
+                'service' => 'AssistantConnectorService',
+                'occurred_at' => $value,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
         }
     }
 

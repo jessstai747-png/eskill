@@ -12,6 +12,31 @@ use Tests\TestCase;
  */
 class AssistantConnectorServiceTest extends TestCase
 {
+    public function testNormalizeMysqlDateTimeDeveRetornarNullQuandoVazio(): void
+    {
+        $this->assertNull(AssistantConnectorService::normalizeMysqlDateTime(null));
+        $this->assertNull(AssistantConnectorService::normalizeMysqlDateTime(''));
+        $this->assertNull(AssistantConnectorService::normalizeMysqlDateTime('   '));
+    }
+
+    public function testNormalizeMysqlDateTimeDeveAceitarIso8601(): void
+    {
+        $this->assertSame(
+            '2026-02-23 15:53:10',
+            AssistantConnectorService::normalizeMysqlDateTime('2026-02-23T15:53:10Z')
+        );
+    }
+
+    public function testNormalizeMysqlDateTimeDeveAceitarEpochSeconds(): void
+    {
+        $this->assertSame('1970-01-01 00:00:00', AssistantConnectorService::normalizeMysqlDateTime('0'));
+    }
+
+    public function testNormalizeMysqlDateTimeInvalidoDeveRetornarNull(): void
+    {
+        $this->assertNull(AssistantConnectorService::normalizeMysqlDateTime('nao-e-data'));
+    }
+
     public function testNormalizeActionDeveRetornarNullQuandoVazio(): void
     {
         $this->assertNull(AssistantConnectorService::normalizeAction(''));
