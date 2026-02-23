@@ -6,6 +6,57 @@
 
 ---
 
+## Sessão: 2026-02-24 — feat(clone-wizard): Competitor Clone Wizard completo
+
+### Contexto
+Identificado o único openspec change com tarefas pendentes: `add-competitor-clone-wizard`.
+Analisado o codebase e identificadas as lacunas reais de implementação (serviço, worker, endpoint, view).
+
+### Implementado
+
+- **`app/Services/CatalogCloneService.php`** — `createSellerBatchJob()` adicionado
+  - Guardrails server-side: `include_description=false`, `include_pictures=false` por padrão
+  - Limite máximo: `CLONE_JOB_MAX_ITEMS` (default 1000) por job
+  - Flag de lazy resolution: `source_type=seller`, `seller_filters` armazenado em options JSON
+  - Se `item_ids` vazio, cria job com 0 itens — worker resolve o catálogo sob demanda
+
+- **`app/Services/JobService.php`** — lazy seller resolution em `catalogCloneBatchJob()`
+  - Quando `source_type=seller` AND `catalog_clone_job_items` count=0:
+    - Pagina `listSellerItems()` com sleep 200ms entre páginas (rate limit gentil)
+    - Insere itens em `catalog_clone_job_items`, atualiza `total_items` no job
+    - Falha graciosamente: marca job como `failed` e lança RuntimeException
+
+- **`app/Controllers/CatalogCloneController.php`** — `createSellerJob()` adicionado
+  - Endpoint `POST /api/catalog/clone/jobs/seller` (202 Accepted)
+  - Valida `target_account_id` e `source_seller_id` (422 se ausentes)
+  - Chama `createSellerBatchJob()` sem alterar o `createJob()` existente
+
+- **`app/Routes/api.php`** — rota `POST api/catalog/clone/jobs/seller` registrada (antes do `POST jobs`)
+
+- **`app/Controllers/DashboardController.php`** — `cloneWizard()` adicionado
+  - Busca contas ativas de `ml_accounts`, passa `$accounts` para a view
+
+- **`app/Routes/web.php`** — rota `dashboard/catalog/clone-wizard` registrada
+
+- **`app/Views/dashboard/catalog_clone_wizard.php`** — Wizard completo (4 passos)
+  - Step 1: Busca vendedor → card com nickname, reputação, top 5 categorias/marcas
+  - Step 2: Browser de anúncios com facets (marcas + categorias) + paginação + busca + seleção múltipla
+  - Step 3: Configuração (conta destino, estratégia de preço, status inicial, guardrail checkboxes)
+  - Step 4: Resumo → executar via `POST /api/catalog/clone/jobs/seller` → polling de progresso a cada 3s
+
+- **`openspec/changes/add-competitor-clone-wizard/tasks.md`** — 21/24 tarefas marcadas [x]
+
+### Validação
+- `php -l` em todos os arquivos modificados — OK (0 erros)
+- `phpunit --testsuite=Unit` — 2844 testes, 0 falhas, 34 skipped (baseline mantido)
+
+### Não implementado nesta sessão
+- 3.5 Snapshot/cache do catálogo (out-of-scope)
+- 5.1 Teste de integração end-to-end
+- 5.2 Documentação do módulo
+
+---
+
 ## Sessão: 2026-02-23 — FIX(migrations): versionar migrations SQL + tornar migrations PHP runner-safe
 
 ### Contexto

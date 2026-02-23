@@ -824,6 +824,44 @@ class DashboardController extends BaseController
     }
 
     /**
+     * Wizard de clonagem por concorrente (Competitor Clone Wizard)
+     * Fluxo guiado: buscar loja → selecionar itens → ajustar preço → confirmar
+     */
+    public function cloneWizard(): void
+    {
+        try {
+            if (!$this->userService->isAuthenticated()) {
+                header('Location: /login');
+                exit;
+            }
+
+            $pageTitle  = 'Wizard de Clonagem por Concorrente';
+            $activePage = 'catalog-clone-wizard';
+
+            // Buscar contas ativas para o select de destino
+            $db       = Database::getInstance();
+            $stmt     = $db->query(
+                "SELECT id, nickname, ml_user_id FROM ml_accounts WHERE status = 'active' ORDER BY nickname, ml_user_id"
+            );
+            $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            ob_start();
+            require __DIR__ . '/../Views/dashboard/catalog_clone_wizard.php';
+            $content = ob_get_clean();
+
+            require __DIR__ . '/../Views/layouts/modern/app.php';
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            http_response_code(500);
+            echo 'Error loading clone wizard: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+            log_error('Erro ao carregar CloneWizard', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
      * Configurações de notificações de clonagem (Slack/Discord)
      */
     public function cloneNotifications(): void

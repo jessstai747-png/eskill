@@ -798,6 +798,7 @@ $router->post('api/catalog/clone/source/items', CatalogCloneController::class, '
 $router->post('api/catalog/clone/dry-run', CatalogCloneController::class, 'dryRun');
 $router->post('api/catalog/clone/item', CatalogCloneController::class, 'cloneItemNew');
 $router->get('api/catalog/clone/jobs', CatalogCloneController::class, 'listJobs');
+$router->post('api/catalog/clone/jobs/seller', CatalogCloneController::class, 'createSellerJob');
 $router->post('api/catalog/clone/jobs', CatalogCloneController::class, 'createJob');
 $router->get('api/catalog/clone/jobs/{jobId}/status', CatalogCloneController::class, 'getJobStatus');
 $router->get('api/catalog/clone/history', CatalogCloneController::class, 'getHistory');

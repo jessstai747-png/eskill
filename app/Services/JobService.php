@@ -504,6 +504,84 @@ class JobService
         $pricingStrategy = $options['pricing_strategy'] ?? null;
         $stockStrategy = $options['stock_strategy'] ?? null;
 
+        // ── Resolução lazy de itens para jobs source_type=seller ──────────────
+        // Quando o job foi criado sem item_ids (modo "clone all"), o worker busca
+        // os itens via API do ML usando seller_id + filtros armazenados em options.
+        if (($job['source_type'] ?? '') === 'seller') {
+            $stmtCount = $this->db->prepare(
+                'SELECT COUNT(*) FROM catalog_clone_job_items WHERE job_id = :job_id'
+            );
+            $stmtCount->execute([':job_id' => $batchJobId]);
+            $existingCount = (int)$stmtCount->fetchColumn();
+
+            if ($existingCount === 0) {
+                $sellerId     = preg_replace('/\D/', '', (string)($job['source_seller_id'] ?? ''));
+                $sellerFilters = is_array($options['seller_filters'] ?? null) ? $options['seller_filters'] : [];
+                $maxItems     = max(1, (int)($sellerFilters['max_items'] ?? 1000));
+
+                if ($sellerId !== '') {
+                    $cloneSvc = new CatalogCloneService();
+                    $allItems = [];
+                    $offset   = 0;
+                    $pageSize = 50;
+
+                    try {
+                        do {
+                            $apiResult = $cloneSvc->listSellerItems(
+                                $sellerId,
+                                array_merge($sellerFilters, ['offset' => $offset, 'limit' => $pageSize])
+                            );
+
+                            $page    = $apiResult['items'] ?? [];
+                            $allItems = array_merge($allItems, $page);
+                            $offset  += count($page);
+
+                            if (count($page) < $pageSize) {
+                                break;
+                            }
+                            if (count($allItems) >= $maxItems) {
+                                break;
+                            }
+
+                            usleep(200000); // 200 ms inter-page rate-limit
+                        } while (true);
+
+                        $allItems = array_slice($allItems, 0, $maxItems);
+
+                        $stmtIns = $this->db->prepare(
+                            "INSERT INTO catalog_clone_job_items (job_id, source_item_id, status)
+                             VALUES (:job_id, :source_item_id, 'pending')"
+                        );
+                        foreach ($allItems as $item) {
+                            $itemId = (string)($item['id'] ?? '');
+                            if ($itemId === '') {
+                                continue;
+                            }
+                            $stmtIns->execute([
+                                ':job_id'         => $batchJobId,
+                                ':source_item_id' => $itemId,
+                            ]);
+                        }
+
+                        $this->db->prepare(
+                            'UPDATE catalog_clone_jobs SET total_items = :total WHERE job_id = :job_id'
+                        )->execute([':total' => count($allItems), ':job_id' => $batchJobId]);
+                    } catch (\Throwable $e) {
+                        $this->db->prepare(
+                            "UPDATE catalog_clone_jobs SET status = 'failed', completed_at = NOW() WHERE job_id = :job_id"
+                        )->execute([':job_id' => $batchJobId]);
+
+                        throw new \RuntimeException(
+                            'Falha ao resolver itens do seller durante execução do job: ' . $e->getMessage(),
+                            0,
+                            $e
+                        );
+                    }
+                }
+            }
+        }
+        // ── Fim resolução lazy ─────────────────────────────────────────────────
+
         // Tamanho do lote por execução (evita timeouts em batch grande)
         $batchSize = (int)($payload['batch_size'] ?? 3);
         $batchSize = max(1, min($batchSize, 10));

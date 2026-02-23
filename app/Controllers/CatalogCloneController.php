@@ -91,20 +91,20 @@ class CatalogCloneController extends BaseController
         // Validar campos obrigatórios
         // Suporta target_account_id (string/int) ou target_account_ids (array)
         if (empty($input['source_account_id']) || empty($input['source_item_id'])) {
-             http_response_code(400);
-             echo json_encode(['error' => "Fields 'source_account_id' and 'source_item_id' are required"]);
-             return;
+            http_response_code(400);
+            echo json_encode(['error' => "Fields 'source_account_id' and 'source_item_id' are required"]);
+            return;
         }
 
         if (empty($input['target_account_id']) && empty($input['target_account_ids'])) {
-             http_response_code(400);
-             echo json_encode(['error' => "Field 'target_account_id' or 'target_account_ids' is required"]);
-             return;
+            http_response_code(400);
+            echo json_encode(['error' => "Field 'target_account_id' or 'target_account_ids' is required"]);
+            return;
         }
 
         try {
             $targets = [];
-            
+
             if (!empty($input['target_account_ids']) && is_array($input['target_account_ids'])) {
                 $targets = $input['target_account_ids'];
             } else {
@@ -118,10 +118,10 @@ class CatalogCloneController extends BaseController
                 // Prepare input for single clone
                 $singleInput = $input;
                 $singleInput['target_account_id'] = $targetId;
-                
+
                 $result = $this->service->cloneCatalogItem($singleInput);
                 $results[$targetId] = $result;
-                
+
                 if ($result['status'] === 'success') {
                     $hasSuccess = true;
                 }
@@ -147,7 +147,6 @@ class CatalogCloneController extends BaseController
                     'results' => $results
                 ]);
             }
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
@@ -182,7 +181,7 @@ class CatalogCloneController extends BaseController
         // Processamento
         $jobsCreated = 0;
         $jobIds = [];
-        
+
         // Determine target accounts (single or array)
         $targetAccountIds = [];
         if (!empty($input['target_account_ids']) && is_array($input['target_account_ids'])) {
@@ -211,7 +210,7 @@ class CatalogCloneController extends BaseController
                     'pricing_strategy' => $input['pricing_strategy'] ?? [],
                     'stock_strategy' => $input['stock_strategy'] ?? []
                 ];
-    
+
                 $jobId = $this->jobService->dispatch('catalog_clone_item', $payload);
                 $jobIds[] = $jobId;
                 $jobsCreated++;
@@ -233,10 +232,9 @@ class CatalogCloneController extends BaseController
 
         try {
             $metrics = $this->service->getCloneMetrics();
-            
+
             http_response_code(200);
             echo json_encode($metrics);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
@@ -264,10 +262,9 @@ class CatalogCloneController extends BaseController
             ];
 
             $results = $this->service->searchItemsWithFilters($sourceAccountId, $filters);
-            
+
             http_response_code(200);
             echo json_encode($results);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
@@ -310,10 +307,9 @@ class CatalogCloneController extends BaseController
 
         try {
             $result = $this->service->createCloneSchedule($input);
-            
+
             http_response_code(201);
             echo json_encode($result);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
@@ -326,10 +322,9 @@ class CatalogCloneController extends BaseController
 
         try {
             $schedules = $this->service->getActiveSchedules();
-            
+
             http_response_code(200);
             echo json_encode(['schedules' => $schedules]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
@@ -348,7 +343,7 @@ class CatalogCloneController extends BaseController
 
         try {
             $result = $this->service->cancelSchedule($scheduleId);
-            
+
             if ($result) {
                 http_response_code(200);
                 echo json_encode(['status' => 'success', 'message' => 'Schedule canceled successfully']);
@@ -356,7 +351,6 @@ class CatalogCloneController extends BaseController
                 http_response_code(404);
                 echo json_encode(['error' => 'Schedule not found']);
             }
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
@@ -366,9 +360,9 @@ class CatalogCloneController extends BaseController
     public function simulate()
     {
         header('Content-Type: application/json');
-        
+
         $input = $this->request->json();
-        
+
         if (!$input) {
             http_response_code(400);
             echo json_encode(['error' => 'Invalid JSON']);
@@ -448,19 +442,18 @@ class CatalogCloneController extends BaseController
             ];
 
             $result = $this->service->listSellerItems($sellerId, $filters);
-            
+
             http_response_code(200);
             echo json_encode($result);
-
         } catch (\Exception $e) {
             $message = $e->getMessage();
             // Se for o erro de API bloqueada, retornar erro amigável com status 422 ou 403
             if (strpos($message, 'minha conta') !== false || strpos($message, 'não permite mais') !== false) {
-                 http_response_code(403);
-                 echo json_encode(['error' => 'Acesso Negado', 'message' => $message]);
+                http_response_code(403);
+                echo json_encode(['error' => 'Acesso Negado', 'message' => $message]);
             } else {
-                 http_response_code(500);
-                 echo json_encode(['error' => 'Erro ao listar itens do seller', 'message' => $message]);
+                http_response_code(500);
+                echo json_encode(['error' => 'Erro ao listar itens do seller', 'message' => $message]);
             }
         }
     }
@@ -484,10 +477,9 @@ class CatalogCloneController extends BaseController
 
         try {
             $result = $this->service->getSellerSummary($sellerId);
-            
+
             http_response_code(200);
             echo json_encode($result);
-
         } catch (\Exception $e) {
             $message = $e->getMessage();
             // Se for o erro de API bloqueada, retornar erro amigável com status 403
@@ -527,10 +519,9 @@ class CatalogCloneController extends BaseController
             $itemIds = array_filter($itemIds);
 
             $result = $this->service->resolveItemIds($itemIds);
-            
+
             http_response_code(200);
             echo json_encode($result);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao resolver item IDs', 'message' => $e->getMessage()]);
@@ -570,10 +561,9 @@ class CatalogCloneController extends BaseController
 
         try {
             $result = $this->service->dryRunBatch($input);
-            
+
             http_response_code(200);
             echo json_encode($result);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro no dry-run', 'message' => $e->getMessage()]);
@@ -608,13 +598,11 @@ class CatalogCloneController extends BaseController
 
         try {
             $result = $this->service->cloneItem($input);
-            
-            $statusCode = $result['status'] === 'success' ? 201 : 
-                         ($result['status'] === 'skipped_duplicate' ? 409 : 400);
-            
+
+            $statusCode = $result['status'] === 'success' ? 201 : ($result['status'] === 'skipped_duplicate' ? 409 : 400);
+
             http_response_code($statusCode);
             echo json_encode($result);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao clonar item', 'message' => $e->getMessage()]);
@@ -660,13 +648,75 @@ class CatalogCloneController extends BaseController
             }
 
             $result = $this->service->createBatchJob($input);
-            
+
             http_response_code(202); // Accepted
             echo json_encode($result);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao criar job de clonagem', 'message' => $e->getMessage()]);
+        }
+    }
+
+    // =========================================================================
+    // WIZARD: Job de clonagem por seller (Competitor Clone Wizard)
+    // =========================================================================
+
+    /**
+     * Cria job de clonagem em lote com origem por seller público.
+     *
+     * Suporta dois modos:
+     *  - item_ids fornecidos: seleção manual, itens criados imediatamente
+     *  - sem item_ids: resolução lazy, worker busca itens via API do ML
+     *
+     * Guardrails aplicados automaticamente:
+     *  include_description=false, include_pictures=false por padrão.
+     *
+     * POST /api/catalog/clone/jobs/seller
+     */
+    public function createSellerJob(): void
+    {
+        header('Content-Type: application/json');
+
+        $input = $this->request->json();
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid JSON']);
+            return;
+        }
+
+        if (empty($input['target_account_id'])) {
+            http_response_code(422);
+            echo json_encode([
+                'error'   => 'Validation Error',
+                'details' => ['target_account_id' => ['Campo obrigatório']],
+            ]);
+            return;
+        }
+
+        if (empty($input['source_seller_id'])) {
+            http_response_code(422);
+            echo json_encode([
+                'error'   => 'Validation Error',
+                'details' => ['source_seller_id' => ['Campo obrigatório']],
+            ]);
+            return;
+        }
+
+        try {
+            $userId = $this->getUserId();
+            if ($userId) {
+                $input['user_id'] = $userId;
+            }
+
+            $result = $this->service->createSellerBatchJob($input);
+            http_response_code(202);
+            echo json_encode($result);
+        } catch (\InvalidArgumentException $e) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Validation Error', 'message' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro ao criar job de seller', 'message' => $e->getMessage()]);
         }
     }
 
@@ -686,10 +736,9 @@ class CatalogCloneController extends BaseController
 
         try {
             $result = $this->service->getJobStatus($jobId);
-            
+
             http_response_code(200);
             echo json_encode($result);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao obter status do job', 'message' => $e->getMessage()]);
@@ -711,27 +760,27 @@ class CatalogCloneController extends BaseController
             $limitSql = max(1, min(200, (int)$limit));
 
             $db = \App\Database::getInstance();
-            
-            $sql = "SELECT job_id, target_account_id, source_type, source_seller_id, status, 
-                           total_items, processed_items, successful_items, failed_items, 
+
+            $sql = "SELECT job_id, target_account_id, source_type, source_seller_id, status,
+                           total_items, processed_items, successful_items, failed_items,
                            created_at, started_at, completed_at
                     FROM catalog_clone_jobs";
-            
+
             $params = [];
-            
+
             if ($status) {
                 $sql .= " WHERE status = :status";
                 $params['status'] = $status;
             }
-            
+
             $sql .= " ORDER BY created_at DESC LIMIT {$limitSql}";
-            
+
             $stmt = $db->prepare($sql);
-            
+
             foreach ($params as $key => $value) {
                 $stmt->bindValue(":$key", $value);
             }
-            
+
             $stmt->execute();
             $jobs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
@@ -741,7 +790,6 @@ class CatalogCloneController extends BaseController
                 'jobs' => $jobs,
                 'total' => count($jobs),
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao listar jobs', 'message' => $e->getMessage()]);
@@ -813,7 +861,6 @@ class CatalogCloneController extends BaseController
 
             http_response_code(200);
             echo json_encode(['status' => 'success', 'history' => $formatted]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao carregar histórico', 'message' => $e->getMessage()]);
@@ -844,7 +891,6 @@ class CatalogCloneController extends BaseController
                 'templates' => $templates,
                 'total' => count($templates),
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao listar templates', 'message' => $e->getMessage()]);
@@ -873,7 +919,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'template' => $template,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao obter template', 'message' => $e->getMessage()]);
@@ -924,7 +969,6 @@ class CatalogCloneController extends BaseController
                 'message' => 'Template criado com sucesso',
                 'template' => $template,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao criar template', 'message' => $e->getMessage()]);
@@ -961,7 +1005,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'message' => 'Template atualizado com sucesso',
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao atualizar template', 'message' => $e->getMessage()]);
@@ -990,7 +1033,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'message' => 'Template removido com sucesso',
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao remover template', 'message' => $e->getMessage()]);
@@ -1038,7 +1080,6 @@ class CatalogCloneController extends BaseController
                 'template' => $template['name'],
                 'previews' => $previews,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao gerar preview', 'message' => $e->getMessage()]);
@@ -1051,7 +1092,7 @@ class CatalogCloneController extends BaseController
     private function detectChanges(array $original, array $transformed): array
     {
         $changes = [];
-        
+
         if (($original['price'] ?? 0) !== ($transformed['price'] ?? 0)) {
             $changes[] = [
                 'field' => 'price',
@@ -1059,7 +1100,7 @@ class CatalogCloneController extends BaseController
                 'to' => $transformed['price'] ?? 0,
             ];
         }
-        
+
         if (($original['available_quantity'] ?? 0) !== ($transformed['available_quantity'] ?? 0)) {
             $changes[] = [
                 'field' => 'available_quantity',
@@ -1067,7 +1108,7 @@ class CatalogCloneController extends BaseController
                 'to' => $transformed['available_quantity'] ?? 0,
             ];
         }
-        
+
         if (($original['title'] ?? '') !== ($transformed['title'] ?? '')) {
             $changes[] = [
                 'field' => 'title',
@@ -1102,7 +1143,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'dashboard' => $dashboard,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao carregar dashboard', 'message' => $e->getMessage()]);
@@ -1128,7 +1168,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'jobs' => $jobs,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao carregar métricas de jobs', 'message' => $e->getMessage()]);
@@ -1155,7 +1194,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'errors' => $errors,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao carregar top erros', 'message' => $e->getMessage()]);
@@ -1180,7 +1218,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'comparison' => $comparison,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao carregar comparativo', 'message' => $e->getMessage()]);
@@ -1210,7 +1247,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'stats' => $stats,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao carregar estatísticas', 'message' => $e->getMessage()]);
@@ -1240,7 +1276,6 @@ class CatalogCloneController extends BaseController
                 'processed' => count($results),
                 'results' => $results,
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao processar ações', 'message' => $e->getMessage()]);
@@ -1268,7 +1303,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'health' => $health
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao verificar saúde', 'message' => $e->getMessage()]);
@@ -1296,7 +1330,6 @@ class CatalogCloneController extends BaseController
                 'alerts' => $alerts,
                 'count' => count($alerts)
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao listar alertas', 'message' => $e->getMessage()]);
@@ -1324,7 +1357,6 @@ class CatalogCloneController extends BaseController
                 http_response_code(404);
                 echo json_encode(['error' => 'Alerta não encontrado']);
             }
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao reconhecer alerta', 'message' => $e->getMessage()]);
@@ -1348,7 +1380,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'flags' => $flags
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao listar flags', 'message' => $e->getMessage()]);
@@ -1388,7 +1419,6 @@ class CatalogCloneController extends BaseController
                 http_response_code(500);
                 echo json_encode(['error' => 'Erro ao atualizar flag']);
             }
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao atualizar flag', 'message' => $e->getMessage()]);
@@ -1414,7 +1444,6 @@ class CatalogCloneController extends BaseController
                 'status' => 'success',
                 'report' => $report
             ]);
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Erro ao gerar relatório', 'message' => $e->getMessage()]);
@@ -1450,7 +1479,7 @@ class CatalogCloneController extends BaseController
 
             $dashboard = new \App\Services\CloneRealtimeDashboardService();
             $snapshot = $dashboard->getDashboardSnapshot($accountId);
-            
+
             echo json_encode([
                 'success' => true,
                 'data' => $snapshot,
@@ -1475,7 +1504,7 @@ class CatalogCloneController extends BaseController
         try {
             $dashboard = new \App\Services\CloneRealtimeDashboardService();
             $progress = $dashboard->getJobProgress($jobId);
-            
+
             echo json_encode([
                 'success' => true,
                 'data' => $progress,
@@ -1502,7 +1531,7 @@ class CatalogCloneController extends BaseController
 
         try {
             $input = $this->request->json();
-            
+
             $format = $input['format'] ?? 'csv';
             $filters = $input['filters'] ?? [];
             $options = $input['options'] ?? [];
@@ -1599,7 +1628,7 @@ class CatalogCloneController extends BaseController
 
         try {
             $input = $this->request->json();
-            
+
             $itemId = $input['item_id'] ?? null;
             $level = $input['optimization_level'] ?? \App\Services\CloneSeoIntegrationService::OPTIMIZATION_BASIC;
 
@@ -1649,7 +1678,7 @@ class CatalogCloneController extends BaseController
 
         try {
             $input = $this->request->json();
-            
+
             $itemData = $input['item_data'] ?? null;
             $level = $input['optimization_level'] ?? \App\Services\CloneSeoIntegrationService::OPTIMIZATION_BASIC;
             $options = $input['options'] ?? [];

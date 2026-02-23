@@ -80,7 +80,7 @@ class CatalogCloneService
                 "SELECT id FROM ml_accounts WHERE status = 'active' ORDER BY id ASC LIMIT 1"
             );
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-            
+
             if ($row && !empty($row['id'])) {
                 return new MercadoLivreClient((int)$row['id']);
             }
@@ -89,7 +89,7 @@ class CatalogCloneService
                 'error' => $e->getMessage(),
             ]);
         }
-        
+
         // Fallback: tenta sem autenticação (pode falhar dependendo das políticas do ML)
         return new MercadoLivreClient();
     }
@@ -145,79 +145,79 @@ class CatalogCloneService
         );
         $stmt->execute(['seller_id' => $sellerId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         if (!$row) {
             throw new Exception('Conta não encontrada para o seller ID: ' . $sellerId);
         }
-        
+
         $client = new MercadoLivreClient((int)$row['id']);
-        
+
         $limit = min((int)($filters['limit'] ?? 50), 50);
         $offset = (int)($filters['offset'] ?? 0);
-        
+
         // Buscar itens usando endpoint da conta própria
         $params = [
             'limit' => $limit,
             'offset' => $offset,
         ];
-        
+
         if (!empty($filters['category'])) {
             $params['category'] = $filters['category'];
         }
-        
+
         if (!empty($filters['keyword'])) {
             $params['q'] = $filters['keyword'];
         }
-        
+
         $searchResults = $client->get("/users/{$sellerId}/items/search", $params);
-        
+
         if (isset($searchResults['error'])) {
             throw new Exception('Erro ao buscar itens da conta: ' . ($searchResults['message'] ?? 'Unknown'));
         }
-        
+
         $itemIds = $searchResults['results'] ?? [];
         $total = $searchResults['paging']['total'] ?? count($itemIds);
-        
+
         // Buscar detalhes dos itens
         $processedItems = [];
         $brandCounts = [];
         $categoryFacets = [];
         $catalogCount = 0;
         $nonCatalogCount = 0;
-        
+
         if (!empty($itemIds)) {
             // Buscar detalhes em lotes de 20
             foreach (array_chunk($itemIds, 20) as $chunk) {
                 $idsParam = implode(',', $chunk);
                 $itemsDetails = $client->get("/items", ['ids' => $idsParam]);
-                
+
                 if (!is_array($itemsDetails)) continue;
-                
+
                 foreach ($itemsDetails as $itemWrapper) {
                     $item = $itemWrapper['body'] ?? $itemWrapper;
                     if (empty($item['id'])) continue;
-                    
+
                     $isCatalog = !empty($item['catalog_product_id']);
                     $brand = $this->extractBrandFromItem($item);
                     $categoryId = $item['category_id'] ?? '';
-                    
+
                     if ($isCatalog) {
                         $catalogCount++;
                     } else {
                         $nonCatalogCount++;
                     }
-                    
+
                     if ($brand) {
                         $brandCounts[$brand] = ($brandCounts[$brand] ?? 0) + 1;
                     }
-                    
+
                     if ($categoryId) {
                         if (!isset($categoryFacets[$categoryId])) {
                             $categoryFacets[$categoryId] = ['name' => $categoryId, 'count' => 0];
                         }
                         $categoryFacets[$categoryId]['count']++;
                     }
-                    
+
                     // Aplicar filtros locais
                     if (isset($filters['is_catalog'])) {
                         $filterCatalog = filter_var($filters['is_catalog'], FILTER_VALIDATE_BOOLEAN);
@@ -225,11 +225,11 @@ class CatalogCloneService
                             continue;
                         }
                     }
-                    
+
                     if (!empty($filters['brand']) && strcasecmp($brand, $filters['brand']) !== 0) {
                         continue;
                     }
-                    
+
                     $processedItems[] = [
                         'id' => $item['id'],
                         'title' => $item['title'] ?? '',
@@ -250,9 +250,9 @@ class CatalogCloneService
                 }
             }
         }
-        
+
         arsort($brandCounts);
-        
+
         return [
             'status' => 'success',
             'seller_id' => $sellerId,
@@ -286,59 +286,59 @@ class CatalogCloneService
         );
         $stmt->execute(['seller_id' => $sellerId]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         if (!$row) {
             throw new Exception('Conta não encontrada para o seller ID: ' . $sellerId);
         }
-        
+
         $client = new MercadoLivreClient((int)$row['id']);
         $nickname = $row['nickname'] ?? 'Seller ' . $sellerId;
-        
+
         // Buscar total de itens
         $searchResults = $client->get("/users/{$sellerId}/items/search", ['limit' => 0]);
-        
+
         if (isset($searchResults['error'])) {
             throw new Exception('Erro ao buscar summary da conta: ' . ($searchResults['message'] ?? 'Unknown'));
         }
-        
+
         $total = $searchResults['paging']['total'] ?? 0;
-        
+
         // Buscar amostra para classificar catálogo/não-catálogo e extrair marcas
         $sampleSize = min($total, 100);
         $catalogCount = 0;
         $nonCatalogCount = 0;
         $brandCounts = [];
         $categoryFacets = [];
-        
+
         if ($sampleSize > 0) {
             $itemsResult = $client->get("/users/{$sellerId}/items/search", ['limit' => $sampleSize]);
             $itemIds = $itemsResult['results'] ?? [];
-            
+
             if (!empty($itemIds)) {
                 foreach (array_chunk($itemIds, 20) as $chunk) {
                     $idsParam = implode(',', $chunk);
                     $itemsDetails = $client->get("/items", ['ids' => $idsParam]);
-                    
+
                     if (!is_array($itemsDetails)) continue;
-                    
+
                     foreach ($itemsDetails as $itemWrapper) {
                         $item = $itemWrapper['body'] ?? $itemWrapper;
                         if (empty($item['id'])) continue;
-                        
+
                         $isCatalog = !empty($item['catalog_product_id']);
                         $brand = $this->extractBrandFromItem($item);
                         $categoryId = $item['category_id'] ?? '';
-                        
+
                         if ($isCatalog) {
                             $catalogCount++;
                         } else {
                             $nonCatalogCount++;
                         }
-                        
+
                         if ($brand) {
                             $brandCounts[$brand] = ($brandCounts[$brand] ?? 0) + 1;
                         }
-                        
+
                         if ($categoryId) {
                             if (!isset($categoryFacets[$categoryId])) {
                                 $categoryFacets[$categoryId] = ['name' => $categoryId, 'count' => 0];
@@ -349,17 +349,17 @@ class CatalogCloneService
                 }
             }
         }
-        
+
         arsort($brandCounts);
-        
+
         if (!empty($categoryFacets)) {
             uasort($categoryFacets, static function (array $a, array $b): int {
                 return ($b['count'] ?? 0) <=> ($a['count'] ?? 0);
             });
         }
-        
+
         $collected = $catalogCount + $nonCatalogCount;
-        
+
         return [
             'status' => 'success',
             'seller_id' => $sellerId,
@@ -381,13 +381,13 @@ class CatalogCloneService
 
     /**
      * Valida parâmetros obrigatórios para clonagem
-     * 
+     *
      * @throws \InvalidArgumentException se parâmetros inválidos
      */
     private function validateCloneParams(array $params): void
     {
         $required = ['source_account_id', 'source_item_id', 'target_account_id'];
-        
+
         foreach ($required as $field) {
             if (!isset($params[$field]) || $params[$field] === '' || $params[$field] === null) {
                 throw new \InvalidArgumentException("Campo obrigatório ausente: {$field}");
@@ -407,7 +407,7 @@ class CatalogCloneService
 
     /**
      * Calcula o preço final baseado na estratégia
-     * 
+     *
      * @param float $originalPrice Preço original
      * @param array $pricingStrategy Estratégia ['type' => string, 'value' => float]
      * @param int $targetAccountId Conta destino (para análise de mercado)
@@ -415,9 +415,9 @@ class CatalogCloneService
      * @return array ['price' => float, 'strategy_applied' => string]
      */
     private function calculateFinalPrice(
-        float $originalPrice, 
-        array $pricingStrategy, 
-        int $targetAccountId, 
+        float $originalPrice,
+        array $pricingStrategy,
+        int $targetAccountId,
         array $sourceItem
     ): array {
         $monitoring = $this->getMonitoringService();
@@ -453,9 +453,9 @@ class CatalogCloneService
                         null,
                         $sourceItem['title'] ?? ''
                     );
-                    
+
                     $suggestion = $pricingService->suggestPrice($analysis, $strategyType);
-                    
+
                     if (isset($suggestion['suggested_price'])) {
                         $price = $suggestion['suggested_price'];
                         $strategyApplied = "Estratégia " . ucfirst($strategyType);
@@ -490,7 +490,7 @@ class CatalogCloneService
     {
         $startTime = microtime(true);
         $monitoring = $this->getMonitoringService();
-        
+
         // Verificar se módulo está habilitado
         $canClone = $monitoring->canClone();
         if (!$canClone['allowed']) {
@@ -511,7 +511,7 @@ class CatalogCloneService
                 'message' => 'Parâmetros inválidos: ' . $e->getMessage()
             ];
         }
-        
+
         // 1. Extrair parâmetros validados
         $sourceAccountId = (int)$params['source_account_id'];
         $sourceItemId = $params['source_item_id'];
@@ -519,7 +519,7 @@ class CatalogCloneService
         $pricingStrategy = $params['pricing_strategy'] ?? ['type' => 'copy'];
         $stockStrategy = $params['stock_strategy'] ?? ['type' => 'copy'];
         $jobId = $params['job_id'] ?? null;
-        
+
         // Log de início da operação
         $operationId = $monitoring->logCloneStart($sourceItemId, $sourceAccountId, $targetAccountId, [
             'pricing_strategy' => $pricingStrategy,
@@ -541,7 +541,7 @@ class CatalogCloneService
             $monitoring->logApiError("/items/{$sourceItemId}", 404, $sourceItem['message'] ?? 'Unknown error');
             return $this->logAndReturnError($sourceAccountId, $sourceItemId, $targetAccountId, null, null, 'Erro ao buscar item origem: ' . ($sourceItem['message'] ?? 'Unknown error'), 'error', $jobId, $pricingStrategy['type'] ?? 'copy');
         }
-        
+
         $originalPrice = $sourceItem['price'];
 
         // 3. Validar se é catálogo (Removida restrição para permitir clonagem geral)
@@ -550,7 +550,7 @@ class CatalogCloneService
         // 4. Verificar duplicidade na conta destino
         $targetClient = new MercadoLivreClient($targetAccountId);
         $sellerId = $targetClient->getSellerId();
-        
+
         // Busca duplicidade via endpoint de itens do seller
         if ($catalogProductId) {
             // Usar /users/{seller_id}/items/search + multi-get para verificar duplicidade
@@ -558,7 +558,7 @@ class CatalogCloneService
                 'status' => 'active',
                 'limit' => 50
             ]);
-            
+
             $itemIds = $sellerItems['results'] ?? [];
             if (!empty($itemIds)) {
                 // Verificar em lotes de 20
@@ -598,66 +598,68 @@ class CatalogCloneService
             'listing_type_id' => $sourceItem['listing_type_id'],
             'condition' => $sourceItem['condition'],
             // 'catalog_product_id' => $catalogProductId, // Adicionado apenas se existir
-            'pictures' => array_map(function($pic) { return ['source' => $pic['url']]; }, $sourceItem['pictures'] ?? []),
+            'pictures' => array_map(function ($pic) {
+                return ['source' => $pic['url']];
+            }, $sourceItem['pictures'] ?? []),
         ];
 
         if ($catalogProductId) {
-             $payload['catalog_product_id'] = $catalogProductId;
+            $payload['catalog_product_id'] = $catalogProductId;
         } else {
-             // Lógica para itens não-catálogo
-             
-             // Atributos
-             if (!empty($sourceItem['attributes'])) {
-                 $payload['attributes'] = [];
-                 foreach ($sourceItem['attributes'] as $attr) {
-                     // Ignorar atributos somente leitura e internos do ML
-                     if (in_array($attr['id'], ['ITEM_CONDITION', 'GTIN', 'BRAND', 'MODEL', 'LENGTH', 'WEIGHT', 'WIDTH', 'HEIGHT'])) continue; 
-                     
-                     if (isset($attr['value_id']) && $attr['value_id']) {
-                         $payload['attributes'][] = ['id' => $attr['id'], 'value_id' => $attr['value_id']];
-                     } elseif (isset($attr['value_name']) && $attr['value_name']) {
-                         $payload['attributes'][] = ['id' => $attr['id'], 'value_name' => $attr['value_name']];
-                     }
-                 }
-                 // Adicionar atributos obrigatórios BRAND/MODEL se disponíveis como texto simples se não copiados acima
-             }
+            // Lógica para itens não-catálogo
 
-             // Variações
-             if (!empty($sourceItem['variations'])) {
-                 $payload['variations'] = [];
-                 foreach ($sourceItem['variations'] as $variation) {
-                     $varPayload = [
-                         'price' => $payload['price'], // Usa o mesmo preço base
-                         'attribute_combinations' => [],
-                         'available_quantity' => $variation['available_quantity'],
-                         'picture_ids' => $variation['picture_ids']
-                     ];
-                     foreach ($variation['attribute_combinations'] as $attrComb) {
-                          if (isset($attrComb['value_id']) && $attrComb['value_id']) {
-                              $varPayload['attribute_combinations'][] = ['id' => $attrComb['id'], 'value_id' => $attrComb['value_id']];
-                          } else {
-                              $varPayload['attribute_combinations'][] = ['id' => $attrComb['id'], 'value_name' => $attrComb['value_name']];
-                          }
-                     }
-                     $payload['variations'][] = $varPayload;
-                 }
-                 unset($payload['available_quantity']); // Se tem variações, estoque é nelas
-                  // Pictures devem ser processadas diferente para variações?
-                  // No ML, as imagens principais ficam no 'pictures', e 'variations' referenciam 'picture_ids'.
-                  // Ao criar, precisamos garantir que enviamos 'pictures' com 'source' URL, e as variations usam indices ou referências?
-                  // Na criação (POST), variations usam 'picture_ids' que são URLs ou IDs?
-                  // Para criação simples, costuma-se mandar attributes de variação e pictures associadas.
-                  // Simplificação: Se item tem variações, a clonagem exata é complexa. Vamos copiar as variações com seus atributos.
-                  // A gestão de imagens em variations no POST exige cuidado.
-             }
-             
-             // Video, Warranty, etc.
-             if (!empty($sourceItem['video_id'])) $payload['video_id'] = $sourceItem['video_id'];
-             if (!empty($sourceItem['warranty'])) $payload['warranty'] = $sourceItem['warranty'];
-             
-             // Descrição (precisa de endpoint separado, aqui só preparamos clone)
+            // Atributos
+            if (!empty($sourceItem['attributes'])) {
+                $payload['attributes'] = [];
+                foreach ($sourceItem['attributes'] as $attr) {
+                    // Ignorar atributos somente leitura e internos do ML
+                    if (in_array($attr['id'], ['ITEM_CONDITION', 'GTIN', 'BRAND', 'MODEL', 'LENGTH', 'WEIGHT', 'WIDTH', 'HEIGHT'])) continue;
+
+                    if (isset($attr['value_id']) && $attr['value_id']) {
+                        $payload['attributes'][] = ['id' => $attr['id'], 'value_id' => $attr['value_id']];
+                    } elseif (isset($attr['value_name']) && $attr['value_name']) {
+                        $payload['attributes'][] = ['id' => $attr['id'], 'value_name' => $attr['value_name']];
+                    }
+                }
+                // Adicionar atributos obrigatórios BRAND/MODEL se disponíveis como texto simples se não copiados acima
+            }
+
+            // Variações
+            if (!empty($sourceItem['variations'])) {
+                $payload['variations'] = [];
+                foreach ($sourceItem['variations'] as $variation) {
+                    $varPayload = [
+                        'price' => $payload['price'], // Usa o mesmo preço base
+                        'attribute_combinations' => [],
+                        'available_quantity' => $variation['available_quantity'],
+                        'picture_ids' => $variation['picture_ids']
+                    ];
+                    foreach ($variation['attribute_combinations'] as $attrComb) {
+                        if (isset($attrComb['value_id']) && $attrComb['value_id']) {
+                            $varPayload['attribute_combinations'][] = ['id' => $attrComb['id'], 'value_id' => $attrComb['value_id']];
+                        } else {
+                            $varPayload['attribute_combinations'][] = ['id' => $attrComb['id'], 'value_name' => $attrComb['value_name']];
+                        }
+                    }
+                    $payload['variations'][] = $varPayload;
+                }
+                unset($payload['available_quantity']); // Se tem variações, estoque é nelas
+                // Pictures devem ser processadas diferente para variações?
+                // No ML, as imagens principais ficam no 'pictures', e 'variations' referenciam 'picture_ids'.
+                // Ao criar, precisamos garantir que enviamos 'pictures' com 'source' URL, e as variations usam indices ou referências?
+                // Na criação (POST), variations usam 'picture_ids' que são URLs ou IDs?
+                // Para criação simples, costuma-se mandar attributes de variação e pictures associadas.
+                // Simplificação: Se item tem variações, a clonagem exata é complexa. Vamos copiar as variações com seus atributos.
+                // A gestão de imagens em variations no POST exige cuidado.
+            }
+
+            // Video, Warranty, etc.
+            if (!empty($sourceItem['video_id'])) $payload['video_id'] = $sourceItem['video_id'];
+            if (!empty($sourceItem['warranty'])) $payload['warranty'] = $sourceItem['warranty'];
+
+            // Descrição (precisa de endpoint separado, aqui só preparamos clone)
         }
-        
+
         // Tentar copiar shipping mode se existir
         if (isset($sourceItem['shipping']['mode'])) {
             $payload['shipping'] = ['mode' => $sourceItem['shipping']['mode']];
@@ -667,42 +669,44 @@ class CatalogCloneService
         $newItem = $targetClient->post('/items', $payload);
 
         if (isset($newItem['error']) || !isset($newItem['id'])) {
-             // Tentar capturar mensagem de erro detalhada
-             $msg = $newItem['message'] ?? 'Erro desconhecido';
-             if (isset($newItem['cause']) && is_array($newItem['cause'])) {
-                 $causes = array_map(function($c) { return $c['message'] ?? ''; }, $newItem['cause']);
-                 $msg .= ' Causes: ' . implode('; ', $causes);
-             }
-             $processingTimeMs = (int) round((microtime(true) - $startTime) * 1000);
-             return $this->logAndReturnError($sourceAccountId, $sourceItemId, $targetAccountId, null, $catalogProductId, 'Erro ao criar item na API: ' . $msg, 'error', $jobId, $pricingStrategyType, $originalPrice, $finalPrice, $processingTimeMs);
+            // Tentar capturar mensagem de erro detalhada
+            $msg = $newItem['message'] ?? 'Erro desconhecido';
+            if (isset($newItem['cause']) && is_array($newItem['cause'])) {
+                $causes = array_map(function ($c) {
+                    return $c['message'] ?? '';
+                }, $newItem['cause']);
+                $msg .= ' Causes: ' . implode('; ', $causes);
+            }
+            $processingTimeMs = (int) round((microtime(true) - $startTime) * 1000);
+            return $this->logAndReturnError($sourceAccountId, $sourceItemId, $targetAccountId, null, $catalogProductId, 'Erro ao criar item na API: ' . $msg, 'error', $jobId, $pricingStrategyType, $originalPrice, $finalPrice, $processingTimeMs);
         }
 
         $targetItemId = $newItem['id'];
-        
+
         // Clonar descrição para itens não-catálogo
         if (!$catalogProductId) {
-             try {
+            try {
                 $descriptionData = $sourceClient->get("/items/{$sourceItemId}/description");
                 if (!isset($descriptionData['error']) && isset($descriptionData['plain_text'])) {
-                     $descPayload = ['plain_text' => $descriptionData['plain_text']];
-                     $targetClient->post("/items/{$targetItemId}/description", $descPayload);
+                    $descPayload = ['plain_text' => $descriptionData['plain_text']];
+                    $targetClient->post("/items/{$targetItemId}/description", $descPayload);
                 }
-             } catch (Exception $eDesc) {
-                 log_warning('Falha ao clonar descrição do item', [
-                     'target_item_id' => $targetItemId,
-                     'error' => $eDesc->getMessage(),
-                 ]);
-             }
+            } catch (Exception $eDesc) {
+                log_warning('Falha ao clonar descrição do item', [
+                    'target_item_id' => $targetItemId,
+                    'error' => $eDesc->getMessage(),
+                ]);
+            }
         }
 
         // 10. Calcular tempo de processamento e logar sucesso
         $processingTimeMs = (int) round((microtime(true) - $startTime) * 1000);
         $clonedId = $this->logResult(
-            $sourceAccountId, 
-            $sourceItemId, 
-            $targetAccountId, 
-            $targetItemId, 
-            $catalogProductId, 
+            $sourceAccountId,
+            $sourceItemId,
+            $targetAccountId,
+            $targetItemId,
+            $catalogProductId,
             'created',
             'Item clonado com sucesso',
             $jobId,
@@ -715,25 +719,25 @@ class CatalogCloneService
         // 9. Post Actions
         // Agenda ações pós-clone usando ClonePostActionsService
         try {
-             $postActionsService = $this->getPostActionsService();
-             // Definição das ações padrão
-             $actions = ['tech_sheet', 'seo_optimize', 'pricing_apply'];
-             if (!$catalogProductId) {
-                 // Para itens não catalogo, podemos adicionar mais ações se necessário
-             }
-             
-             $postActionsService->scheduleActions(
-                 $targetItemId, 
-                 $actions,
-                 $params['job_id'] ?? null, // Recebe job_id se vier do worker
-                 $clonedId
-             );
-        } catch(Exception $eJob) {
-             $monitoring->logCloneEvent('post_actions_error', [
-                 'error' => $eJob->getMessage(),
-                 'target_item_id' => $targetItemId,
-                 'actions' => $actions ?? []
-             ], 'ERROR');
+            $postActionsService = $this->getPostActionsService();
+            // Definição das ações padrão
+            $actions = ['tech_sheet', 'seo_optimize', 'pricing_apply'];
+            if (!$catalogProductId) {
+                // Para itens não catalogo, podemos adicionar mais ações se necessário
+            }
+
+            $postActionsService->scheduleActions(
+                $targetItemId,
+                $actions,
+                $params['job_id'] ?? null, // Recebe job_id se vier do worker
+                $clonedId
+            );
+        } catch (Exception $eJob) {
+            $monitoring->logCloneEvent('post_actions_error', [
+                'error' => $eJob->getMessage(),
+                'target_item_id' => $targetItemId,
+                'actions' => $actions ?? []
+            ], 'ERROR');
         }
 
         // Log de sucesso final
@@ -747,12 +751,12 @@ class CatalogCloneService
     }
 
     private function logAndReturnError(
-        $sourceAccountId, 
-        $sourceItemId, 
-        $targetAccountId, 
-        $targetItemId, 
-        $catalogProductId, 
-        $message, 
+        $sourceAccountId,
+        $sourceItemId,
+        $targetAccountId,
+        $targetItemId,
+        $catalogProductId,
+        $message,
         $status = 'error',
         ?int $jobId = null,
         ?string $pricingStrategyType = null,
@@ -761,9 +765,18 @@ class CatalogCloneService
         ?int $processingTimeMs = null
     ) {
         $this->logResult(
-            $sourceAccountId, $sourceItemId, $targetAccountId, $targetItemId, 
-            $catalogProductId, $status, $message, $jobId, $pricingStrategyType,
-            $originalPrice, $finalPrice, $processingTimeMs
+            $sourceAccountId,
+            $sourceItemId,
+            $targetAccountId,
+            $targetItemId,
+            $catalogProductId,
+            $status,
+            $message,
+            $jobId,
+            $pricingStrategyType,
+            $originalPrice,
+            $finalPrice,
+            $processingTimeMs
         );
         return [
             'status' => $status,
@@ -772,12 +785,12 @@ class CatalogCloneService
     }
 
     private function logResult(
-        $sourceAccountId, 
-        $sourceItemId, 
-        $targetAccountId, 
-        $targetItemId, 
-        $catalogProductId, 
-        $status, 
+        $sourceAccountId,
+        $sourceItemId,
+        $targetAccountId,
+        $targetItemId,
+        $catalogProductId,
+        $status,
         ?string $errorMessage = null,
         ?int $jobId = null,
         ?string $pricingStrategy = null,
@@ -788,12 +801,12 @@ class CatalogCloneService
         try {
             $stmt = $this->db->prepare("
                 INSERT INTO cloned_items (
-                    job_id, source_account_id, source_item_id, target_account_id, target_item_id, 
-                    catalog_product_id, status, error_message, pricing_strategy, 
+                    job_id, source_account_id, source_item_id, target_account_id, target_item_id,
+                    catalog_product_id, status, error_message, pricing_strategy,
                     original_price, final_price, processing_time_ms
                 )
                 VALUES (
-                    :job_id, :source_account_id, :source_item_id, :target_account_id, :target_item_id, 
+                    :job_id, :source_account_id, :source_item_id, :target_account_id, :target_item_id,
                     :catalog_product_id, :status, :error_message, :pricing_strategy,
                     :original_price, :final_price, :processing_time_ms
                 )
@@ -828,7 +841,7 @@ class CatalogCloneService
     {
         $limitSql = max(1, min(500, (int)$limit));
         $sql = "
-            SELECT 
+            SELECT
                 ci.*,
                 sa.nickname as source_account_name,
                 sa.ml_user_id as source_user_id,
@@ -840,10 +853,10 @@ class CatalogCloneService
             ORDER BY ci.created_at DESC
             LIMIT {$limitSql}
         ";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
@@ -913,7 +926,7 @@ class CatalogCloneService
     public function searchItemsWithFilters(string $sourceAccountId, array $filters): array
     {
         $client = new MercadoLivreClient((int)$sourceAccountId);
-        
+
         // Build search query
         $query = $filters['keyword'] ?? '';
         $status = $filters['status'] ?? 'active';
@@ -921,22 +934,22 @@ class CatalogCloneService
 
         // Usar /users/{seller_id}/items/search
         $sellerId = $client->getSellerId();
-        
+
         $searchParams = [
             'status' => $status,
             'limit' => 50,
             'offset' => 0,
         ];
-        
+
         $searchResults = $client->get("/users/{$sellerId}/items/search", $searchParams);
-        
+
         if (isset($searchResults['error'])) {
             throw new Exception('Erro na busca: ' . ($searchResults['message'] ?? 'Unknown error'));
         }
-        
+
         $itemIds = $searchResults['results'] ?? [];
         $items = [];
-        
+
         if (!empty($itemIds)) {
             // Buscar detalhes em lotes de 20
             $chunks = array_chunk($itemIds, 20);
@@ -958,33 +971,33 @@ class CatalogCloneService
                 }
             }
         }
-        
+
         $searchResults['results'] = $items;
-        
+
         $items = $searchResults['results'] ?? [];
-        
+
         // Apply price filters
         if ($filters['min_price'] || $filters['max_price']) {
-            $items = array_filter($items, function($item) use ($filters) {
+            $items = array_filter($items, function ($item) use ($filters) {
                 $price = $item['price'] ?? 0;
-                
+
                 if ($filters['min_price'] && $price < (float) $filters['min_price']) {
                     return false;
                 }
-                
+
                 if ($filters['max_price'] && $price > (float) $filters['max_price']) {
                     return false;
                 }
-                
+
                 return true;
             });
         }
-        
+
         // Filter only catalog items
-        $catalogItems = array_filter($items, function($item) {
+        $catalogItems = array_filter($items, function ($item) {
             return !empty($item['catalog_product_id']);
         });
-        
+
         return [
             'status' => 'success',
             'items' => array_values($catalogItems),
@@ -1013,10 +1026,10 @@ class CatalogCloneService
         // Buscar informações das contas
         $sql = "SELECT nickname FROM ml_accounts WHERE id = :id";
         $stmt = $this->db->prepare($sql);
-        
+
         $stmt->execute(['id' => $sourceAccountId]);
         $sourceAccount = $stmt->fetchColumn();
-        
+
         $stmt->execute(['id' => $targetAccountId]);
         $targetAccount = $stmt->fetchColumn();
 
@@ -1027,9 +1040,9 @@ class CatalogCloneService
         // Inserir agendamento
         $sql = "
             INSERT INTO clone_schedules (
-                source_account_id, target_account_id, 
+                source_account_id, target_account_id,
                 source_account_name, target_account_name,
-                scheduled_datetime, frequency, filters, 
+                scheduled_datetime, frequency, filters,
                 status, created_at
             ) VALUES (
                 :source_account_id, :target_account_id,
@@ -1062,22 +1075,22 @@ class CatalogCloneService
     public function getActiveSchedules(): array
     {
         $sql = "
-            SELECT 
+            SELECT
                 id, source_account_name, target_account_name,
                 scheduled_datetime, frequency, status,
                 created_at
-            FROM clone_schedules 
+            FROM clone_schedules
             WHERE status = 'active'
             ORDER BY scheduled_datetime ASC
         ";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
-        
+
         $schedules = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         // Format data for frontend
-        return array_map(function($schedule) {
+        return array_map(function ($schedule) {
             return [
                 'id' => $schedule['id'],
                 'source_account' => $schedule['source_account_name'],
@@ -1094,18 +1107,18 @@ class CatalogCloneService
         $sql = "UPDATE clone_schedules SET status = 'canceled' WHERE id = :id AND status = 'active'";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $scheduleId]);
-        
+
         return $stmt->rowCount() > 0;
     }
 
     public function processScheduledClones(): array
     {
         $now = date('Y-m-d H:i:00'); // Truncate seconds for matching
-        
+
         // Buscar agendamentos para executar agora
         $sql = "
-            SELECT * FROM clone_schedules 
-            WHERE status = 'active' 
+            SELECT * FROM clone_schedules
+            WHERE status = 'active'
             AND scheduled_datetime <= :now
         ";
 
@@ -1122,7 +1135,7 @@ class CatalogCloneService
                 if (!empty($schedule['filters'])) {
                     // Parse query string format: "category=MLB1055&min_price=50"
                     parse_str($schedule['filters'], $parsedFilters);
-                    
+
                     // Converter para formato esperado
                     $filters = [
                         'category_id' => $parsedFilters['category'] ?? null,
@@ -1166,7 +1179,6 @@ class CatalogCloneService
                     'status' => 'success',
                     'jobs_created' => $jobsCreated
                 ];
-
             } catch (\Exception $e) {
                 $results[] = [
                     'schedule_id' => $schedule['id'],
@@ -1183,28 +1195,28 @@ class CatalogCloneService
     {
         $client = new MercadoLivreClient((int)$accountId);
         $sellerId = $client->getSellerId();
-        
+
         // Usar /users/{seller_id}/items/search
         $searchResults = $client->get("/users/{$sellerId}/items/search", [
             'status' => 'active',
             'limit' => $limit,
             'offset' => 0
         ]);
-        
+
         if (isset($searchResults['error'])) {
             return [];
         }
 
         $itemIds = $searchResults['results'] ?? [];
-        
+
         if (empty($itemIds)) {
             return [];
         }
-        
+
         // Buscar detalhes para verificar se são itens de catálogo
         $chunks = array_chunk($itemIds, 20);
         $catalogItems = [];
-        
+
         foreach ($chunks as $chunk) {
             $itemsResponse = $client->get('/items', ['ids' => implode(',', $chunk)]);
             foreach ($itemsResponse as $itemData) {
@@ -1227,26 +1239,26 @@ class CatalogCloneService
             // Agendamento recorrente - calcular próxima execução
             $nextExecution = $this->calculateNextExecution($frequency);
             $sql = "
-                UPDATE clone_schedules 
-                SET scheduled_datetime = :next_execution, executed_at = NOW() 
+                UPDATE clone_schedules
+                SET scheduled_datetime = :next_execution, executed_at = NOW()
                 WHERE id = :id
             ";
         }
 
         $stmt = $this->db->prepare($sql);
         $params = ['id' => $scheduleId];
-        
+
         if ($frequency !== 'once') {
             $params['next_execution'] = $nextExecution;
         }
-        
+
         $stmt->execute($params);
     }
 
     private function calculateNextExecution(string $frequency): string
     {
         $now = new \DateTime();
-        
+
         switch ($frequency) {
             case 'daily':
                 $now->modify('+1 day');
@@ -1305,13 +1317,13 @@ class CatalogCloneService
                 // Se não achou local, verifica na API usando /users/{seller_id}/items/search
                 $targetClient = new MercadoLivreClient($targetAccountId);
                 $sellerId = $targetClient->getSellerId();
-                
+
                 // Buscar todos os itens ativos do seller e verificar catalog_product_id
                 $sellerItems = $targetClient->get("/users/{$sellerId}/items/search", [
                     'status' => 'active',
                     'limit' => 50
                 ]);
-                
+
                 $itemIds = $sellerItems['results'] ?? [];
                 if (!empty($itemIds)) {
                     $chunks = array_chunk($itemIds, 20);
@@ -1466,9 +1478,9 @@ class CatalogCloneService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) FROM items 
-                WHERE account_id = :account_id 
-                AND catalog_product_id = :catalog_id 
+                SELECT COUNT(*) FROM items
+                WHERE account_id = :account_id
+                AND catalog_product_id = :catalog_id
                 AND status != 'closed'
             ");
             $stmt->execute([
@@ -1542,15 +1554,15 @@ class CatalogCloneService
         // Tratar erro 403 (bloqueio da API para sellers externos)
         if (isset($searchResults['error'])) {
             $errorMsg = $searchResults['message'] ?? $searchResults['error'] ?? 'Unknown';
-            
+
             if ($searchResults['status'] === 403 || stripos($errorMsg, 'forbidden') !== false) {
                 throw new Exception(
                     'A API do Mercado Livre não permite mais buscar anúncios de outros vendedores. ' .
-                    'Esta funcionalidade só está disponível para suas próprias contas vinculadas. ' .
-                    'Use a opção "Minha Conta" ou informe IDs de anúncios específicos.'
+                        'Esta funcionalidade só está disponível para suas próprias contas vinculadas. ' .
+                        'Use a opção "Minha Conta" ou informe IDs de anúncios específicos.'
                 );
             }
-            
+
             throw new Exception('Erro ao buscar itens do seller: ' . $errorMsg);
         }
 
@@ -1728,15 +1740,15 @@ class CatalogCloneService
         // Tratar erro 403 (bloqueio da API para sellers externos)
         if (isset($searchResults['error'])) {
             $errorMsg = $searchResults['message'] ?? $searchResults['error'] ?? 'Unknown';
-            
+
             if ($searchResults['status'] === 403 || stripos($errorMsg, 'forbidden') !== false) {
                 throw new Exception(
                     'A API do Mercado Livre não permite mais buscar anúncios de outros vendedores. ' .
-                    'Esta funcionalidade só está disponível para suas próprias contas vinculadas. ' .
-                    'Use a opção "Minha Conta" ou informe IDs de anúncios específicos.'
+                        'Esta funcionalidade só está disponível para suas próprias contas vinculadas. ' .
+                        'Use a opção "Minha Conta" ou informe IDs de anúncios específicos.'
                 );
             }
-            
+
             throw new Exception('Erro ao buscar summary do seller: ' . $errorMsg);
         }
 
@@ -2036,10 +2048,10 @@ class CatalogCloneService
                 'status' => 'active',
                 'limit' => 50
             ]);
-            
+
             $itemIds = $sellerItems['results'] ?? [];
             $foundDuplicate = false;
-            
+
             if (!empty($itemIds)) {
                 foreach (array_chunk($itemIds, 20) as $chunk) {
                     $itemsResponse = $targetClient->get('/items', ['ids' => implode(',', $chunk)]);
@@ -2203,8 +2215,8 @@ class CatalogCloneService
         // 17. Agendar ações pós-clone se template definir
         if ($template && !empty($template['post_actions'])) {
             try {
-                $postActions = is_string($template['post_actions']) 
-                    ? json_decode($template['post_actions'], true) 
+                $postActions = is_string($template['post_actions'])
+                    ? json_decode($template['post_actions'], true)
                     : $template['post_actions'];
 
                 if (!empty($postActions)) {
@@ -2252,8 +2264,8 @@ class CatalogCloneService
         if ($sku) {
             try {
                 $stmt = $this->db->prepare("
-                    SELECT item_id FROM items 
-                    WHERE account_id = :account_id 
+                    SELECT item_id FROM items
+                    WHERE account_id = :account_id
                     AND seller_custom_field = :sku
                     AND status != 'closed'
                     LIMIT 1
@@ -2431,7 +2443,7 @@ class CatalogCloneService
     ): void {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO cloned_items 
+                INSERT INTO cloned_items
                 (source_account_id, source_item_id, target_account_id, target_item_id, catalog_product_id, status, is_catalog, brand, source_snapshot)
                 VALUES (:source_account_id, :source_item_id, :target_account_id, :target_item_id, :catalog_product_id, 'created', :is_catalog, :brand, :source_snapshot)
             ");
@@ -2596,6 +2608,81 @@ class CatalogCloneService
     // =========================================================================
 
     /**
+     * Cria um job de clonagem em lote com origem por seller público (Wizard).
+     *
+     * Suporta dois modos:
+     *  - Seleção manual: `item_ids` fornecidos → criados imediatamente
+     *  - Resolução lazy: sem `item_ids` → worker busca itens via API do ML
+     *    usando `source_seller_id` + filtros armazenados em `options.seller_filters`
+     *
+     * Guardrails padrão: include_description=false, include_pictures=false.
+     *
+     * @param array{
+     *   target_account_id: int,
+     *   source_seller_id: string,
+     *   item_ids?: string[],
+     *   filters?: array{category?:string,brand?:string,keyword?:string},
+     *   options?: array,
+     *   user_id?: int,
+     *   template_slug?: string,
+     * } $params
+     * @return array Job criado com campos: status, job_id, total_items, message
+     * @throws \InvalidArgumentException Quando parâmetros inválidos ou limite excedido
+     */
+    public function createSellerBatchJob(array $params): array
+    {
+        $targetAccountId = (int)($params['target_account_id'] ?? 0);
+        $sourceSellerId  = preg_replace('/\D/', '', (string)($params['source_seller_id'] ?? ''));
+        $itemIds         = is_array($params['item_ids'] ?? null) ? $params['item_ids'] : [];
+        $filters         = is_array($params['filters'] ?? null) ? $params['filters'] : [];
+        $options         = is_array($params['options'] ?? null) ? $params['options'] : [];
+        $userId          = $params['user_id'] ?? null;
+        $templateSlug    = $params['template_slug'] ?? null;
+
+        if ($targetAccountId <= 0) {
+            throw new \InvalidArgumentException('target_account_id é obrigatório e deve ser inteiro positivo');
+        }
+        if ($sourceSellerId === '') {
+            throw new \InvalidArgumentException('source_seller_id é obrigatório (somente dígitos)');
+        }
+
+        // Guardrail: modo seguro por padrão — não copia conteúdo autoral
+        if (!array_key_exists('include_description', $options)) {
+            $options['include_description'] = false;
+        }
+        if (!array_key_exists('include_pictures', $options)) {
+            $options['include_pictures'] = false;
+        }
+
+        // Limite de segurança por job
+        $maxItemsPerJob = max(1, (int)($_ENV['CLONE_JOB_MAX_ITEMS'] ?? 1000));
+
+        if (count($itemIds) > $maxItemsPerJob) {
+            throw new \InvalidArgumentException(
+                "Excede o limite de {$maxItemsPerJob} itens por job. Divida em múltiplos jobs ou use filtros."
+            );
+        }
+
+        // Persistir filtros para resolução lazy pelo worker
+        $options['seller_filters'] = [
+            'category'  => $filters['category'] ?? null,
+            'brand'     => $filters['brand'] ?? null,
+            'keyword'   => $filters['keyword'] ?? null,
+            'max_items' => $maxItemsPerJob,
+        ];
+
+        return $this->createBatchJob([
+            'target_account_id' => $targetAccountId,
+            'source_type'       => 'seller',
+            'source_seller_id'  => $sourceSellerId,
+            'item_ids'          => $itemIds,
+            'options'           => $options,
+            'user_id'           => $userId,
+            'template_slug'     => $templateSlug,
+        ]);
+    }
+
+    /**
      * Cria um job de clonagem em lote
      *
      * @param array $params Parâmetros do job
@@ -2624,7 +2711,7 @@ class CatalogCloneService
 
         // Inserir job principal
         $stmt = $this->db->prepare("
-            INSERT INTO catalog_clone_jobs 
+            INSERT INTO catalog_clone_jobs
             (job_id, target_account_id, source_type, source_seller_id, source_account_id, total_items, options, created_by_user_id, template_id, template_slug, status)
             VALUES (:job_id, :target_account_id, :source_type, :source_seller_id, :source_account_id, :total_items, :options, :user_id, :template_id, :template_slug, 'pending')
         ");
@@ -2644,7 +2731,7 @@ class CatalogCloneService
 
         // Inserir itens do job
         $stmtItem = $this->db->prepare("
-            INSERT INTO catalog_clone_job_items 
+            INSERT INTO catalog_clone_job_items
             (job_id, source_item_id, status)
             VALUES (:job_id, :source_item_id, 'pending')
         ");
@@ -2697,7 +2784,7 @@ class CatalogCloneService
         // Buscar itens do job
         $stmtItems = $this->db->prepare("
             SELECT source_item_id, target_item_id, status, error_message, is_catalog, brand
-            FROM catalog_clone_job_items 
+            FROM catalog_clone_job_items
             WHERE job_id = :job_id
         ");
         $stmtItems->execute(['job_id' => $jobId]);

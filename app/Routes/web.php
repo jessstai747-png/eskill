@@ -72,6 +72,7 @@ $router->get('dashboard/items', DashboardController::class, 'items');
 $router->get('dashboard/messages', DashboardController::class, 'messages');
 $router->get('dashboard/catalog/clone', DashboardController::class, 'catalogClone');
 $router->get('dashboard/catalog/clone-batch', DashboardController::class, 'catalogCloneBatch');
+$router->get('dashboard/catalog/clone-wizard', DashboardController::class, 'cloneWizard');
 $router->get('dashboard/catalog/clone-metrics', DashboardController::class, 'catalogCloneMetrics');
 $router->get('dashboard/catalog/clone-monitoring', DashboardController::class, 'catalogCloneMonitoring');
 $router->get('dashboard/catalog/clone-notifications', DashboardController::class, 'cloneNotifications');
