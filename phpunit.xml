@@ -59,6 +59,7 @@
             <file>tests/Unit/Services/OrderServiceTest.php</file>
             <file>tests/Unit/Services/MercadoLivreWebhookServiceTest.php</file>
             <file>tests/Unit/Services/ClawdbotWebhookServiceTest.php</file>
+            <file>tests/Unit/Services/AssistantConnectorServiceTest.php</file>
             <file>tests/Unit/Services/QuestionServiceTest.php</file>
             <file>tests/Unit/Services/ShippingServiceTest.php</file>
             <file>tests/Unit/Services/ClaimsServiceTest.php</file>

@@ -7,7 +7,7 @@ use PDO;
 
 /**
  * ApiTokenService
- * 
+ *
  * Gerenciamento de tokens de API para autenticação de terceiros
  * - Criar/revogar tokens
  * - Validar tokens
@@ -82,7 +82,7 @@ class ApiTokenService
             SELECT t.*, u.id as user_id, u.email, u.name
             FROM api_tokens t
             JOIN users u ON t.user_id = u.id
-            WHERE t.token = ? 
+            WHERE t.token = ?
             AND t.is_active = 1
             AND (t.expires_at IS NULL OR t.expires_at > NOW())
         ");
@@ -149,7 +149,7 @@ class ApiTokenService
     public function revokeToken(int $tokenId, int $userId): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE api_tokens 
+            UPDATE api_tokens
             SET is_active = FALSE, updated_at = NOW()
             WHERE id = ? AND user_id = ?
         ");
@@ -163,7 +163,7 @@ class ApiTokenService
     public function updateTokenName(int $tokenId, int $userId, string $name): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE api_tokens 
+            UPDATE api_tokens
             SET name = ?, updated_at = NOW()
             WHERE id = ? AND user_id = ?
         ");
@@ -177,7 +177,7 @@ class ApiTokenService
     private function updateLastUsed(int $tokenId): void
     {
         $stmt = $this->db->prepare("
-            UPDATE api_tokens 
+            UPDATE api_tokens
             SET last_used_at = NOW()
             WHERE id = ?
         ");
@@ -199,7 +199,7 @@ class ApiTokenService
     public function getTokenStats(int $tokenId, int $userId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 t.id,
                 t.name,
                 t.created_at,
@@ -221,9 +221,9 @@ class ApiTokenService
     public function cleanExpiredTokens(): int
     {
         $stmt = $this->db->prepare("
-            UPDATE api_tokens 
+            UPDATE api_tokens
             SET is_active = FALSE
-            WHERE expires_at IS NOT NULL 
+            WHERE expires_at IS NOT NULL
             AND expires_at < NOW()
             AND is_active = TRUE
         ");
@@ -241,6 +241,9 @@ class ApiTokenService
             '*' => 'Acesso total (não recomendado)',
             'read' => 'Leitura de dados',
             'write' => 'Escrita de dados',
+            'assistant:read' => 'Assistant Connector — leitura (sellers, status de actions)',
+            'assistant:write' => 'Assistant Connector — escrita (eventos, criar actions)',
+            'assistant:admin' => 'Assistant Connector — admin (leitura+escrita)',
             'orders:read' => 'Ler pedidos',
             'orders:write' => 'Gerenciar pedidos',
             'items:read' => 'Ler anúncios',

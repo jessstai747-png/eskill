@@ -16,6 +16,8 @@ use App\Services\AI\SEO\BulkOptimizer;
 use App\Services\EanService;
 use App\Services\WebhookInboxService;
 use App\Services\AutonomousAgentService;
+use App\Services\AssistantActionExecutorService;
+use App\Services\AssistantConnectorService;
 
 class JobService
 {
@@ -227,6 +229,23 @@ class JobService
             if ($attempts >= $maxAttempts) {
                 // Marcar como falhou
                 $this->updateJobStatus($jobId, 'failed', $e->getMessage());
+
+                // DLQ best-effort para assistant_action
+                if ($type === 'assistant_action') {
+                    try {
+                        $actionRunId = isset($payload['action_run_id']) ? (int)$payload['action_run_id'] : 0;
+                        if ($actionRunId > 0) {
+                            $connector = new AssistantConnectorService();
+                            $connector->markActionRunFailed($actionRunId, $e->getMessage());
+                        }
+                    } catch (\Throwable $inner) {
+                        log_warning('JobService: falha ao marcar assistant_action como failed', [
+                            'service' => 'JobService',
+                            'job_id' => $jobId,
+                            'error' => $inner->getMessage(),
+                        ]);
+                    }
+                }
             } else {
                 // Reagendar para tentar novamente
                 $this->updateJobStatus($jobId, 'pending', $e->getMessage(), null, null, $attempts);
@@ -295,6 +314,10 @@ class JobService
 
             case 'run_agent':
                 return $this->runAutonomousAgentJob($payload);
+
+            case 'assistant_action':
+                $executor = new AssistantActionExecutorService();
+                return $executor->execute($payload, (int)($jobId ?? 0));
 
             default:
                 throw new \Exception("Tipo de job desconhecido: {$type}");
@@ -1244,7 +1267,7 @@ class JobService
     public function getStats(): array
     {
         $stmt = $this->db->query("
-            SELECT 
+            SELECT
                 status,
                 COUNT(*) as count
             FROM jobs
@@ -1294,8 +1317,8 @@ class JobService
         $inQuery = implode(',', $ids);
 
         $stmt = $this->db->query("
-            SELECT id, status, error_message 
-            FROM jobs 
+            SELECT id, status, error_message
+            FROM jobs
             WHERE id IN ($inQuery)
         ");
 

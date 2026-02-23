@@ -65,6 +65,7 @@ use App\Controllers\AuthController;
 use App\Controllers\RenderController;
 use App\Controllers\BrevoIntegrationController;
 use App\Controllers\ClawdbotWebhookController;
+use App\Controllers\AssistantConnectorController;
 use App\Controllers\UserController;
 use App\Controllers\OnboardingController;
 use App\Controllers\MarketDataController;
@@ -152,6 +153,17 @@ $router->post('api/integrations/brevo/sync/all', BrevoIntegrationController::cla
 // Observação: /api/webhook/* é isento de auth global e CSRF (ver public/index.php)
 $router->get('api/webhook/clawdbot/health', ClawdbotWebhookController::class, 'health');
 $router->post('api/webhook/clawdbot', ClawdbotWebhookController::class, 'receive');
+
+
+// ========================================
+// 🧩 Assistant Connector (API tokens + multi-conta)
+// ========================================
+// Observação: rotas /api/assistant/* são protegidas pelo auth global de /api/* (ver public/index.php)
+$router->get('api/assistant/health', AssistantConnectorController::class, 'health');
+$router->get('api/assistant/sellers', AssistantConnectorController::class, 'sellers');
+$router->post('api/assistant/events', AssistantConnectorController::class, 'ingestEvent');
+$router->post('api/assistant/actions', AssistantConnectorController::class, 'createAction');
+$router->get('api/assistant/actions/{id}', AssistantConnectorController::class, 'getAction');
 
 
 // ========================================

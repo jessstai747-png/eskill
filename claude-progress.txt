@@ -6,6 +6,53 @@
 
 ---
 
+## Sessao: 2026-02-23 — FEAT(ASSISTANT): Assistant Connector (Opção A) — API multi-loja (Mercado Livre)
+
+### Implementado
+
+- `database/migrations/2026_02_23_create_assistant_connector_tables.sql`
+   - Tabelas do conector:
+      - `assistant_events` com idempotência por `(source, external_event_id)`
+      - `assistant_action_runs` com idempotência por `(account_id, idempotency_key)` e status (`queued/processing/completed/failed`), attempts/max_attempts, payload/result/error e vínculo com `job_id`
+
+- `app/Controllers/AssistantConnectorController.php`
+   - Endpoints em `/api/assistant/*` (protegidos por Bearer token + scopes):
+      - `GET /api/assistant/health`
+      - `GET /api/assistant/sellers` (multi-conta do usuário)
+      - `POST /api/assistant/events` (ingestão idempotente)
+      - `POST /api/assistant/actions` (cria action run + enfileira job; suporta `Idempotency-Key`)
+      - `GET /api/assistant/actions/{id}` (status do action run)
+
+- `app/Services/AssistantConnectorService.php`
+   - Lógica do conector: normalização/allowlist de ações, derivação determinística de idempotency key, persistência e update de status de action runs
+   - Scopes do módulo: `assistant:read`, `assistant:write`, `assistant:admin`
+
+- `app/Services/AssistantActionExecutorService.php`
+   - Executor assíncrono acionado via fila (`assistant_action`), delegando para serviços internos existentes:
+      - responder pergunta (`QuestionService`)
+      - atualizar estoque (`ItemService`)
+      - conciliar pedido (`OrderService`)
+      - refresh de token de conta (`UnifiedTokenRefreshService`)
+
+- `app/Services/JobService.php`
+   - Novo tipo de job: `assistant_action`
+   - DLQ best-effort: quando estoura `max_attempts`, marca o `assistant_action_run` como `failed`
+
+- `app/Services/ApiTokenService.php`
+   - Novos scopes disponíveis no catálogo de permissões: `assistant:*`
+
+- `app/Routes/api.php`
+   - Registro das rotas do Assistant Connector
+
+- `tests/Unit/Services/AssistantConnectorServiceTest.php` + `phpunit.xml`
+   - Testes unitários DB-free para normalização e idempotência (`normalizeAction()` / `deriveIdempotencyKey()`)
+   - Inclusão explícita do teste na lista curada da suíte `Unit`
+
+### Validação
+
+- `php -l` ✅ (arquivos novos/alterados)
+- `php vendor/bin/phpunit --testsuite=Unit` ✅ (OK, mas incompleto; MySQL indisponível no sandbox → mensagens de connection refused são esperadas)
+
 ## Sessao: 2026-02-22 — FEAT(WEBHOOK): Integração API com CLAWDBOT (endpoint público assinado)
 
 ### Implementado

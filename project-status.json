@@ -898,6 +898,24 @@
             ],
             "passes": true,
             "last_tested": "2026-02-20"
+        },
+        {
+            "id": "ASSIST-001",
+            "category": "assistant_connector",
+            "description": "Assistant Connector (Opção A) — API protegida por Bearer token + scopes para integração externa (multi-conta), com ingestão de eventos, enfileiramento de ações e idempotência",
+            "files": [
+                "app/Controllers/AssistantConnectorController.php",
+                "app/Services/AssistantConnectorService.php",
+                "app/Services/AssistantActionExecutorService.php",
+                "app/Services/JobService.php",
+                "app/Services/ApiTokenService.php",
+                "app/Routes/api.php",
+                "database/migrations/2026_02_23_create_assistant_connector_tables.sql",
+                "tests/Unit/Services/AssistantConnectorServiceTest.php",
+                "phpunit.xml"
+            ],
+            "passes": true,
+            "last_tested": "2026-02-23"
         }
     ]
 }
