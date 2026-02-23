@@ -20,8 +20,9 @@
     <link href="/css/theme.css?v=<?= @filemtime(__DIR__ . '/../../../../public/css/theme.css') ?: time() ?>" rel="stylesheet">
     <link href="/css/components.css?v=<?= @filemtime(__DIR__ . '/../../../../public/css/components.css') ?: time() ?>" rel="stylesheet">
 
-    <!-- Chart.js -->
-    <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js (with fallback) -->
+    <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+        onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js';s.nonce='<?= $cspNonce ?>';document.head.appendChild(s);"></script>
 
     <!-- Global Styles -->
     <style>

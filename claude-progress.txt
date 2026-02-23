@@ -6,6 +6,45 @@
 
 ---
 
+## Sessão: 2025-06-16 — FIX(DASHBOARD): Resilient Chart.js loading, metrics try/catch, graceful error UI
+
+### Contexto
+Usuário reportou 6 erros no console do navegador na página do dashboard:
+1. `chart.js:1 Failed to load resource: net::ERR_CACHE_READ_FAILURE`
+2. `dashboard-modern.js:1 Failed to load resource: net::ERR_CACHE_READ_FAILURE`
+3. `Uncaught ReferenceError: Chart is not defined at initCharts`
+4. `api/dashboard/metrics 500`
+5. `api/orders/all?limit=6 422`
+6. `api/accounts/2/sync 401`
+
+### Implementado
+
+- **`app/Views/layouts/modern/app.php`** (linha 24)
+  - Chart.js CDN pinned to v4.4.7 with `onerror` fallback to Cloudflare CDN
+
+- **`app/Views/dashboard/index.php`** (4 mudanças)
+  - `initCharts()` guarded with `typeof Chart === 'undefined'` — shows fallback UI
+  - `loadOrders()` rewritten to use `ApiClient.json()` instead of `.request()` — handles 422 gracefully
+  - `loadOrders()` catch block shows user-friendly "Falha ao carregar pedidos" in DOM
+  - `loadMetrics()` catch block shows "Falha ao carregar métricas" with retry link
+
+- **`app/Controllers/DashboardController.php`** (4 mudanças)
+  - `getMetricsData()` wrapped in top-level try/catch Throwable with JSON error response
+  - Core logic extracted into `buildAndSendMetrics()` for clean separation
+  - NotificationService calls wrapped with individual try/catch, fallback `['unread_count' => 0]`
+  - CompetitorService call wrapped with try/catch, fallback empty array
+
+### Validação
+- `php -l` — 3 files, zero errors
+- `phpunit --testsuite=Unit` — 2840 tests, 0 failures, 34 skipped
+
+### Decisões Técnicas
+- 401 on `/api/accounts/2/sync`: NOT fixed — expected behavior (expired token)
+- 422 on `/api/orders/all`: NOT a backend bug — frontend now handles gracefully
+- Chose `ApiClient.json()` over `ApiClient.request()` for orders because it returns `{response, data}` without throwing on non-OK, allowing the frontend to inspect the error payload
+
+---
+
 ## Sessao: 2026-02-23 — FEAT(ASSISTANT): Assistant Connector (Opção A) — API multi-loja (Mercado Livre)
 
 ### Implementado

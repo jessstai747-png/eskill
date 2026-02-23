@@ -93,18 +93,39 @@ class DashboardController extends BaseController
      */
     public function getMetricsData(): void
     {
+        header('Content-Type: application/json');
+
         if (!$this->userService->isAuthenticated()) {
-            header('Content-Type: application/json');
             http_response_code(401);
             echo json_encode(['error' => 'Não autorizado']);
             return;
         }
 
+        try {
+            $this->buildAndSendMetrics();
+        } catch (\Throwable $e) {
+            log_error('DashboardController: metrics endpoint failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            http_response_code(500);
+            echo json_encode([
+                'error' => 'Falha ao carregar métricas',
+                'message' => 'Erro interno do servidor. Tente novamente.',
+            ]);
+        }
+    }
+
+    /**
+     * Monta e envia as métricas do dashboard (extraído para isolar try/catch).
+     */
+    private function buildAndSendMetrics(): void
+    {
         $accountId = $this->request->get('account_id') ?? $this->userService->getActiveAccountId();
         $userId = $this->userService->getCurrentUser()['id'];
 
         // 🚀 CACHE: Try to get from cache first (5 min TTL)
-        // Note: We might want real-time features to NOT be cached as aggressively, 
+        // Note: We might want real-time features to NOT be cached as aggressively,
         // or cached separately. For now, let's keep the main metrics cached
         // and append real-time stuff after.
 
@@ -149,10 +170,18 @@ class DashboardController extends BaseController
         // --- REAL-TIME DATA (Always Fresh) ---
 
         // 1. Unread Notifications
-        $metrics['notifications'] = [
-            'unread_count' => $this->getNotificationService()->getUnreadCount($userId),
-            'recent' => $this->getNotificationService()->getUserNotifications($userId, 5)
-        ];
+        try {
+            $metrics['notifications'] = [
+                'unread_count' => $this->getNotificationService()->getUnreadCount($userId),
+                'recent' => $this->getNotificationService()->getUserNotifications($userId, 5)
+            ];
+        } catch (\Throwable $e) {
+            log_warning('DashboardController: falha ao carregar notificações', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            $metrics['notifications'] = ['unread_count' => 0, 'recent' => []];
+        }
 
         // 2. Open Claims (API Fetch - Fast)
         try {
@@ -187,8 +216,16 @@ class DashboardController extends BaseController
         ];
 
         // 4. Competitor Alerts
-        $competitorService = new \App\Services\CompetitorService($accountId);
-        $metrics['competitor_alerts'] = $competitorService->getRecentAlerts(5);
+        try {
+            $competitorService = new \App\Services\CompetitorService($accountId);
+            $metrics['competitor_alerts'] = $competitorService->getRecentAlerts(5);
+        } catch (\Throwable $e) {
+            log_warning('DashboardController: falha ao carregar alertas de competidores', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+            $metrics['competitor_alerts'] = [];
+        }
 
         // Add growth metadata if needed (already in cache? assuming dashboardService handles it or we append)
         // Original code had growth block. Let's ensure we didn't lose it if it wasn't in dashboardService->getMetrics
@@ -197,7 +234,7 @@ class DashboardController extends BaseController
         // So I must RE-COMPOSE it inside the cache closure, OR accept that I am overwriting the caching logic slightly.
 
         // Let's stick to the original structure but injecting new data
-        // Resetting strategy: I will just Append to the result of the ORIGINAL method body 
+        // Resetting strategy: I will just Append to the result of the ORIGINAL method body
         // by making a targeted replacement of the JSON response part? No, that's messy.
         // I'll replace the whole method body to be clean.
 
@@ -211,7 +248,6 @@ class DashboardController extends BaseController
             'timestamp' => time()
         ];
 
-        header('Content-Type: application/json');
         echo json_encode($metrics);
     }
 
@@ -286,11 +322,11 @@ class DashboardController extends BaseController
                 'user_id' => $currentUser['id'] ?? null
             ];
 
-            // NOTE: Ideally we should use AIContentGeneratorService to build the prompt string here 
+            // NOTE: Ideally we should use AIContentGeneratorService to build the prompt string here
             // OR move the entire logic to the job. For now, let's keep it simple:
             // We'll pass the whole '$input' to the job and let the Job Handler use AIContentGeneratorService
 
-            // Re-targeting to use 'ai_content_generation' type which we need to support in JobService 
+            // Re-targeting to use 'ai_content_generation' type which we need to support in JobService
             // OR just use 'ai_generation' if we build the prompt here.
 
             // Let's use the raw input and let the worker handle it.
@@ -298,8 +334,8 @@ class DashboardController extends BaseController
             // Let's stick to the plan: Dispatch 'ai_generation' with pre-built prompt?
             // Actually better: Modify JobService to handle 'generate_content_full' which calls AIContentGeneratorService.
 
-            // For this iteration, let's just return the Job ID and assume the existing synchronous flow 
-            // IS REPLACED by this async one. 
+            // For this iteration, let's just return the Job ID and assume the existing synchronous flow
+            // IS REPLACED by this async one.
             // Wait, if I change this to async, the frontend breaks immediately.
             // I need to update frontend NEXT.
 
@@ -363,8 +399,8 @@ class DashboardController extends BaseController
     {
         try {
             $db = Database::getInstance();
-            $sql = "SELECT AVG(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.health')) AS DECIMAL(3,2))) as avg_health 
-                    FROM items 
+            $sql = "SELECT AVG(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.health')) AS DECIMAL(3,2))) as avg_health
+                    FROM items
                     WHERE status = 'active'";
             $params = [];
 
