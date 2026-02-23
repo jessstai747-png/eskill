@@ -6,6 +6,43 @@
 
 ---
 
+## Sessão: 2025-06-17 — REFACTOR(financial): Extract FinancialService into 13 focused services + facade
+
+### Contexto
+FinancialService.php era um monolito de ~8000 linhas. Refatoração já estava em progresso (mudanças não commitadas). Esta sessão validou, completou e commitou o refactor.
+
+### Implementado
+
+- **Extração de 13 services** em `app/Services/Financial/`:
+  - ClaimDisputeService (742 linhas) — Reclamações e disputas
+  - CustomerPaymentMethodService (235 linhas) — Métodos de pagamento
+  - FeeCommissionService (1128 linhas) — Taxas e comissões
+  - FinancialForecastService (663 linhas) — Previsões financeiras
+  - OrderFinancialService (882 linhas) — Financeiro de pedidos
+  - PaymentRefundService (510 linhas) — Pagamentos e reembolsos
+  - PnlReportService (596 linhas) — Relatórios P&L
+  - ProductProfitabilityService (441 linhas) — Lucratividade de produtos
+  - SellerReputationService (828 linhas) — Reputação do vendedor
+  - SettlementReportService (720 linhas) — Relatórios de liquidação
+  - ShippingCostService (193 linhas) — Custos de envio
+  - SubscriptionService (611 linhas) — Assinaturas
+
+- **HasFinancialDependencies trait** (118 linhas) — Trait compartilhado com DB, ML client, MP client, cache constants
+
+- **FinancialService.php** (868 linhas) — Refatorado como facade backward-compatible com lazy-loading delegation via `??=`
+
+- **FinancialServiceTest.php** (297 linhas) — Atualizado para escanear facade + todos os sub-services
+
+- **declare(strict_types=1)** — Adicionado a todos os 14 arquivos financeiros
+
+### Validação
+- `php -l` — 14/14 arquivos sem erros de sintaxe
+- `phpunit --testsuite=Unit` — 2840 testes, 6608 assertions, 0 failures
+- Backward compatibility confirmada — único caller (FinancialReportController) inalterado
+- Commit: `f3c4811`
+
+---
+
 ## Sessão: 2025-06-16 — FIX(DASHBOARD): Resilient Chart.js loading, metrics try/catch, graceful error UI
 
 ### Contexto
