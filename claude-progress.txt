@@ -6,6 +6,31 @@
 
 ---
 
+## Sessão: 2026-02-23 — FIX(migrations): versionar migrations SQL + tornar migrations PHP runner-safe
+
+### Contexto
+O repositório tinha dezenas de migrations em `database/migrations/*.sql` presentes no workspace, porém **não versionadas** por causa do `.gitignore` global `*.sql`. Isso quebrava instalação em clone limpo e dificultava replicação do schema.
+
+Além disso, várias migrations `.php` usavam `exit(1)`, o que mata o processo e impede o `bin/migrate.php` de capturar/relatar erros corretamente.
+
+### Implementado
+
+- **`.gitignore`**
+   - Mantido `*.sql` (backup/dumps continuam ignorados)
+   - Exceção adicionada: `!database/migrations/**/*.sql` (migrations agora podem ser commitadas)
+   - Ignorado `/storage/**` (artefatos runtime), sem afetar arquivos já rastreados
+   - Ignorado arquivo vazio `host={}` gerado pelo sandbox
+
+- **Migrations PHP runner-safe**
+   - Substituído `exit(1)` por `throw` em migrations `.php` (runner agora captura corretamente)
+   - `20260122_add_active_account_to_users_table.php`: tolera duplicidade de FK/constraint (idempotência)
+
+### Validação
+- `php -l` nas migrations `.php` editadas — OK
+- `phpunit --testsuite=Unit` — OK (skips esperados por MySQL indisponível)
+
+---
+
 ## Sessão: 2025-06-17 — REFACTOR(financial): Extract FinancialService into 13 focused services + facade
 
 ### Contexto

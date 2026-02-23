@@ -147,5 +147,5 @@ try {
 } catch (PDOException $e) {
     echo "❌ ERRO NA MIGRATION: " . $e->getMessage() . "\n";
     echo "Stacktrace: " . $e->getTraceAsString() . "\n";
-    exit(1);
+    throw $e;
 }

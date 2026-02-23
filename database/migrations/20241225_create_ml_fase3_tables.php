@@ -213,5 +213,5 @@ try {
 } catch (\Exception $e) {
     echo "ERRO na migração: " . $e->getMessage() . "\n";
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
-    exit(1);
+    throw $e;
 }

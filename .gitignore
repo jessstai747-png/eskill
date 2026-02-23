@@ -38,6 +38,9 @@ Thumbs.db
 *.backup
 storage/backups/
 
+# EXCEÇÃO: migrations SQL devem ser versionadas (senão clone limpo não instala schema)
+!database/migrations/**/*.sql
+
 # Temporários
 /tmp/
 /temp/
@@ -76,9 +79,16 @@ cookies.txt
 /storage/nginx-blocked-ips.conf
 /storage/fix_silent_catches.php
 
+# Storage: ignore all runtime artifacts by default (tracked files remain tracked)
+/storage/**
+!/storage/.gitkeep
+
 # Reports with real business data
 /public/storage/reports/
 
 # MCP / agent local debug artifacts
 .mcp-debug-tools/
+
+# Sandbox / environment artifacts
+host={}
 

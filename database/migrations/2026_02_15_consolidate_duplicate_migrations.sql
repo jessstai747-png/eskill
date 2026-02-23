@@ -1,0 +1,43 @@
+-- ============================================================================
+-- Migration: Consolidação de migrations duplicadas
+-- 
+-- Este arquivo documenta as duplicações identificadas e serve como
+-- referência canônica. Nenhum DDL é executado aqui — as tabelas já existem
+-- via IF NOT EXISTS nas migrations originais.
+--
+-- DUPLICAÇÕES ENCONTRADAS:
+--
+-- 1. users:
+--    - 000_install_all.sql (all-in-one install script)
+--    - 001_create_users_table.sql (migration individual)
+--    → Canônica: 001_create_users_table.sql
+--
+-- 2. ml_accounts (4 arquivos!):
+--    - 000_install_all.sql
+--    - 002_create_ml_accounts_table.sql (esquema original)
+--    - 2026_01_11_create_ml_accounts.sql (recriação com campos extras)
+--    - 2026_02_08_create_ml_accounts_table.php (versão mais recente)
+--    → Canônica: 2026_02_08_create_ml_accounts_table.php
+--
+-- 3. tech_sheet_item_summary / tech_sheet_suggestions / tech_sheet_execution_log:
+--    - 2026_01_01_000001_create_tech_sheet_tables.sql
+--    - 20260101_create_tech_sheet_tables.php 
+--    → Canônica: 20260101_create_tech_sheet_tables.php (mais completa)
+--
+-- 4. Conflito de numeração:
+--    - 009_email_and_api_integrations.sql
+--    - 009_optimize_indexes.sql
+--    → Ambas válidas (conteúdo diferente), apenas mesmo prefixo numérico
+--
+-- 5. seo_bulk_jobs:
+--    - 2026_01_16_create_seo_bulk_jobs.sql (tabela AI/Legacy)
+--    - 2026_01_30_create_bulk_seo_jobs.sql (tabela BulkSEOService)
+--    → Ambas válidas (tabelas DIFERENTES: seo_bulk_jobs vs bulk_seo_jobs)
+--
+-- AÇÃO: Nenhuma tabela foi removida. 000_install_all.sql continua
+-- funcional para fresh installs. As migrations individuais são usadas
+-- para upgrades incrementais via bin/migrate.php.
+-- ============================================================================
+
+-- Este é um migration de documentação — nenhum DDL
+SELECT 'Migration consolidation audit completed' AS status;

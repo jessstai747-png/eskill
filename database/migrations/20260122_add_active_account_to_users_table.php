@@ -24,13 +24,20 @@ try {
     echo "\n=== Migração concluída com sucesso! ===\n";
     
 } catch (\Exception $e) {
-    // Check if the error is "duplicate column name" which is safe to ignore
-    if (strpos($e->getMessage(), 'Duplicate column name') !== false) {
+    // Idempotência: ignorar erros de coluna/FK já existentes
+    $msg = $e->getMessage();
+    if (
+        strpos($msg, 'Duplicate column name') !== false
+        || strpos($msg, 'Duplicate key name') !== false
+        || strpos($msg, 'errno: 121') !== false
+        || strpos($msg, 'Error 121') !== false
+        || strpos($msg, 'Duplicate foreign key constraint name') !== false
+    ) {
         echo "✅ Coluna já existe. Nenhuma alteração necessária.\n";
         echo "\n=== Migração concluída com sucesso! ===\n";
     } else {
         echo "❌ Erro: " . $e->getMessage() . "\n";
-        exit(1);
+        throw $e;
     }
 }
 

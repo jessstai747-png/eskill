@@ -118,6 +118,6 @@ try {
         echo "⚠ Já existe: " . $e->getMessage() . "\n";
     } else {
         echo "❌ Erro: " . $e->getMessage() . "\n";
-        exit(1);
+        throw $e;
     }
 }

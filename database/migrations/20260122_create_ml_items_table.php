@@ -45,6 +45,6 @@ try {
     
 } catch (\Exception $e) {
     echo "❌ Erro: " . $e->getMessage() . "\n";
-    exit(1);
+    throw $e;
 }
 

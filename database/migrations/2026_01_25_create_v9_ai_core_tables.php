@@ -206,5 +206,5 @@ try {
 
 } catch (\PDOException $e) {
     echo "❌ Migration failed: " . $e->getMessage() . "\n";
-    exit(1);
+    throw $e;
 }

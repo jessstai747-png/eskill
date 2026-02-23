@@ -190,7 +190,7 @@ try {
         echo "=== Migration concluída com avisos ===\n";
     } else {
         echo "\n❌ Erro na migration: " . $e->getMessage() . "\n";
-        exit(1);
+        throw $e;
     }
-    exit(1);
+    throw $e;
 }
