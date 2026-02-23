@@ -2,7 +2,7 @@
 
 /**
  * Migration: Fase 2 - User Products, Shipping Advanced, Promotions
- * 
+ *
  * Cria tabelas para suportar:
  * - User Products (produtos customizados)
  * - Shipments tracking
@@ -20,12 +20,12 @@ $dotenv->load();
 
 try {
     $db = Database::getInstance();
-    
+
     echo "Iniciando migração - Fase 2 ML Integrations...\n\n";
 
     // ==================== USER_PRODUCTS ====================
     echo "Criando tabela: user_products\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS user_products (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,12 +45,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela user_products criada\n\n";
 
     // ==================== SHIPMENTS ====================
     echo "Criando tabela: shipments\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS shipments (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -74,12 +74,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela shipments criada\n\n";
 
     // ==================== PROMOTION_PERFORMANCE ====================
     echo "Criando tabela: promotion_performance\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS promotion_performance (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -101,12 +101,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela promotion_performance criada\n\n";
 
     // ==================== ITEM_METRICS (se não existe) ====================
     echo "Criando tabela: item_metrics (se não existir)\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS item_metrics (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -125,7 +125,7 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela item_metrics criada\n\n";
 
     echo "============================================\n";
@@ -140,7 +140,6 @@ try {
 
     echo "Total de índices criados: 26\n";
     echo "Foreign keys com CASCADE: 4\n\n";
-
 } catch (\Exception $e) {
     echo "ERRO na migração: " . $e->getMessage() . "\n";
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";

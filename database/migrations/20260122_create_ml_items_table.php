@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Migração: Tabela para armazenar itens (produtos) do Mercado Livre
- * 
+ *
  * @version 1.0.0
  * @date 2026-01-22
  */
@@ -14,7 +15,7 @@ echo "=== Migração: Tabela de Itens (ml_items) ===\n\n";
 
 try {
     $db = Database::getInstance();
-    
+
     echo "Criando tabela ml_items...\n";
     $db->exec("
         CREATE TABLE IF NOT EXISTS ml_items (
@@ -40,11 +41,9 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     echo "✅ ml_items OK\n";
-    
+
     echo "\n=== Migração concluída com sucesso! ===\n";
-    
 } catch (\Exception $e) {
     echo "❌ Erro: " . $e->getMessage() . "\n";
     throw $e;
 }
-

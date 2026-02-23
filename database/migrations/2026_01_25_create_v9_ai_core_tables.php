@@ -2,7 +2,7 @@
 
 /**
  * 🗄️ V9 AI Core Migration
- * 
+ *
  * Creates tables for:
  * - AI Decisions (DecisionEngine)
  * - Learning Pipeline (outcomes, models)
@@ -21,7 +21,7 @@ try {
     // AI DECISIONS TABLE
     // ===========================================
     echo "📊 Creating ai_decisions table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS ai_decisions (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -46,7 +46,7 @@ try {
     // LEARNING OUTCOMES TABLE
     // ===========================================
     echo "📚 Creating learning_outcomes table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS learning_outcomes (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -68,7 +68,7 @@ try {
     // LEARNING MODELS TABLE
     // ===========================================
     echo "🧠 Creating learning_models table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS learning_models (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -88,7 +88,7 @@ try {
     // AUTOMATION WORKFLOWS TABLE
     // ===========================================
     echo "🎭 Creating automation_workflows table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS automation_workflows (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -111,7 +111,7 @@ try {
     // WORKFLOW TASKS TABLE
     // ===========================================
     echo "📋 Creating workflow_tasks table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS workflow_tasks (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -136,7 +136,7 @@ try {
     // TASK STATES TABLE (for rollback)
     // ===========================================
     echo "💾 Creating task_states table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS task_states (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -154,7 +154,7 @@ try {
     // SSE CONNECTIONS TABLE
     // ===========================================
     echo "📡 Creating sse_connections table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS sse_connections (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -176,7 +176,7 @@ try {
     // AI METRICS TABLE
     // ===========================================
     echo "📈 Creating ai_metrics table...\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS ai_metrics (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -203,7 +203,6 @@ try {
     echo "   - task_states\n";
     echo "   - sse_connections\n";
     echo "   - ai_metrics\n";
-
 } catch (\PDOException $e) {
     echo "❌ Migration failed: " . $e->getMessage() . "\n";
     throw $e;

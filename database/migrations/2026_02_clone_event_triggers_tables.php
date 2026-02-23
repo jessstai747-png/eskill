@@ -2,7 +2,7 @@
 
 /**
  * Migration: Clone Event Trigger Tables
- * 
+ *
  * Cria tabelas para sistema de triggers de eventos:
  * - clone_event_triggers: Configurações de triggers
  * - clone_event_trigger_items: Itens monitorados
@@ -45,7 +45,7 @@ try {
             total_actions_executed INT UNSIGNED DEFAULT 0,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NULL,
-            
+
             INDEX idx_account_active (account_id, is_active),
             INDEX idx_event_type (event_type),
             INDEX idx_last_check (last_check_at),
@@ -66,12 +66,12 @@ try {
             last_price DECIMAL(15,2) NULL,
             has_stock TINYINT(1) DEFAULT 1,
             metadata JSON NULL,
-            
+
             UNIQUE KEY uk_trigger_item (trigger_id, item_id),
             INDEX idx_trigger_id (trigger_id),
             INDEX idx_item_id (item_id),
             INDEX idx_last_check (last_check_at),
-            
+
             FOREIGN KEY (trigger_id) REFERENCES clone_event_triggers(trigger_id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
@@ -90,12 +90,12 @@ try {
             inactive_since DATETIME NULL,
             last_price DECIMAL(15,2) NULL,
             last_quantity INT UNSIGNED NULL,
-            
+
             UNIQUE KEY uk_trigger_competitor (trigger_id, item_id),
             INDEX idx_trigger_id (trigger_id),
             INDEX idx_is_active (is_active),
             INDEX idx_seller_id (seller_id),
-            
+
             FOREIGN KEY (trigger_id) REFERENCES clone_event_triggers(trigger_id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
@@ -112,12 +112,12 @@ try {
             event_data JSON NULL,
             action_result JSON NULL,
             created_at DATETIME NOT NULL,
-            
+
             INDEX idx_trigger_id (trigger_id),
             INDEX idx_event_type (event_type),
             INDEX idx_created_at (created_at),
             INDEX idx_item_id (item_id),
-            
+
             FOREIGN KEY (trigger_id) REFERENCES clone_event_triggers(trigger_id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
@@ -125,16 +125,16 @@ try {
 
     // 5. Atualizar tabela clone_schedules para suportar triggers
     echo "Atualizando tabela clone_schedules...\n";
-    
+
     // Verificar se colunas existem antes de adicionar
     $stmt = $db->query("SHOW COLUMNS FROM clone_schedules LIKE 'trigger_id'");
     $hasTrigId = $stmt->rowCount() > 0;
     $stmt = $db->query("SHOW COLUMNS FROM clone_schedules LIKE 'trigger_type'");
     $hasTrigType = $stmt->rowCount() > 0;
-    
+
     if (!$hasTrigId && !$hasTrigType) {
         $db->exec("
-            ALTER TABLE clone_schedules 
+            ALTER TABLE clone_schedules
             ADD COLUMN trigger_id VARCHAR(20) NULL AFTER template_id,
             ADD COLUMN trigger_type ENUM('scheduled', 'new_items', 'price_drop', 'stock_available', 'competitor_out') DEFAULT 'scheduled' AFTER trigger_id,
             ADD INDEX idx_trigger_id (trigger_id)
@@ -144,7 +144,9 @@ try {
         try {
             $db->exec("ALTER TABLE clone_schedules ADD COLUMN trigger_id VARCHAR(20) NULL AFTER template_id, ADD INDEX idx_trigger_id (trigger_id)");
             echo "  ✓ trigger_id adicionada\n";
-        } catch (\PDOException $e) { echo "  - trigger_id: " . $e->getMessage() . "\n"; }
+        } catch (\PDOException $e) {
+            echo "  - trigger_id: " . $e->getMessage() . "\n";
+        }
     } else {
         echo "  - Colunas já existem\n";
     }
@@ -160,7 +162,7 @@ try {
             chart_data JSON NOT NULL,
             expires_at DATETIME NOT NULL,
             created_at DATETIME NOT NULL,
-            
+
             UNIQUE KEY uk_account_chart_key (account_id, chart_type, cache_key),
             INDEX idx_expires (expires_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -180,7 +182,6 @@ try {
     echo "  1. Adicionar worker ao crontab:\n";
     echo "     */5 * * * * php bin/clone-event-trigger-worker.php --once\n";
     echo "  2. Configurar triggers via API ou dashboard\n";
-
 } catch (\Exception $e) {
     // DDL auto-commit - rollback não é possível para DDL
     // Tolerar erros de "already exists" (coluna/tabela/índice já criado)

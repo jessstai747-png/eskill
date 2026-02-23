@@ -2,7 +2,7 @@
 
 /**
  * Migration: Fase 4 - Dynamic Pricing, AI Predictions, Chatbot AI
- * 
+ *
  * Cria tabelas para suportar:
  * - Histórico de ajustes de preço
  * - Tickets de suporte
@@ -21,12 +21,12 @@ $dotenv->load();
 
 try {
     $db = Database::getInstance();
-    
+
     echo "Iniciando migração - Fase 4 ML & AI Features...\n\n";
 
     // ==================== PRICE_ADJUSTMENTS ====================
     echo "Criando tabela: price_adjustments\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS price_adjustments (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,12 +45,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela price_adjustments criada\n\n";
 
     // ==================== SUPPORT_TICKETS ====================
     echo "Criando tabela: support_tickets\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS support_tickets (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,12 +77,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela support_tickets criada\n\n";
 
     // ==================== CHATBOT_INTERACTIONS ====================
     echo "Criando tabela: chatbot_interactions\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS chatbot_interactions (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -104,12 +104,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela chatbot_interactions criada\n\n";
 
     // ==================== ML_PREDICTIONS ====================
     echo "Criando tabela: ml_predictions\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS ml_predictions (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -131,12 +131,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela ml_predictions criada\n\n";
 
     // ==================== COMPETITOR_PRICES ====================
     echo "Criando tabela: competitor_prices\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS competitor_prices (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -156,12 +156,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela competitor_prices criada\n\n";
 
     // ==================== AI_TRAINING_DATA ====================
     echo "Criando tabela: ai_training_data\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS ai_training_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -180,7 +180,7 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela ai_training_data criada\n\n";
 
     echo "============================================\n";
@@ -204,7 +204,6 @@ try {
     echo "✅ Chatbot AI (atendimento inteligente)\n";
     echo "✅ Competitor Tracking (monitoramento de concorrência)\n";
     echo "✅ Continuous Learning (aprendizado contínuo)\n\n";
-
 } catch (\Exception $e) {
     echo "ERRO na migração: " . $e->getMessage() . "\n";
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";

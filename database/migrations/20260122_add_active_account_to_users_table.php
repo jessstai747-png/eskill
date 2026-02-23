@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Migração: Adiciona campo de conta ativa na tabela de usuários
- * 
+ *
  * @version 1.0.0
  * @date 2026-01-22
  */
@@ -14,15 +15,14 @@ echo "=== Migração: Adicionar conta ativa aos usuários ===\n\n";
 
 try {
     $db = Database::getInstance();
-    
+
     echo "Verificando a tabela 'users'...\n";
     $db->exec(
         "ALTER TABLE users\n        ADD COLUMN active_ml_account_id INT NULL DEFAULT NULL,\n        ADD CONSTRAINT fk_active_ml_account\n            FOREIGN KEY (active_ml_account_id)\n            REFERENCES ml_accounts(id)\n            ON DELETE SET NULL;"
     );
     echo "✅ Coluna 'active_ml_account_id' adicionada à tabela 'users'.\n";
-    
+
     echo "\n=== Migração concluída com sucesso! ===\n";
-    
 } catch (\Exception $e) {
     // Idempotência: ignorar erros de coluna/FK já existentes
     $msg = $e->getMessage();
@@ -40,4 +40,3 @@ try {
         throw $e;
     }
 }
-

@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Migração: Tabelas para módulo de Ficha Técnica
- * 
+ *
  * Cria as tabelas tech_sheet_item_summary e tech_sheet_suggestions
- * 
+ *
  * @version 1.0.0
  * @date 2026-01-01
  */
@@ -16,7 +17,7 @@ echo "=== Migração: Ficha Técnica ===\n\n";
 
 try {
     $db = Database::getInstance();
-    
+
     // Tabela: tech_sheet_item_summary
     echo "Criando tabela tech_sheet_item_summary...\n";
     $db->exec("
@@ -44,7 +45,7 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     echo "✅ tech_sheet_item_summary OK\n";
-    
+
     // Tabela: tech_sheet_suggestions
     echo "Criando tabela tech_sheet_suggestions...\n";
     $db->exec("
@@ -74,7 +75,7 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     echo "✅ tech_sheet_suggestions OK\n";
-    
+
     // Tabela: tech_sheet_execution_log (opcional - para auditoria detalhada)
     echo "Criando tabela tech_sheet_execution_log...\n";
     $db->exec("
@@ -95,9 +96,8 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     echo "✅ tech_sheet_execution_log OK\n";
-    
+
     echo "\n=== Migração concluída com sucesso! ===\n";
-    
 } catch (\Exception $e) {
     echo "❌ Erro: " . $e->getMessage() . "\n";
     throw $e;

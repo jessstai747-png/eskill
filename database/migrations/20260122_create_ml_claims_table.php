@@ -1,9 +1,10 @@
 <?php
+
 /**
- * Migração: Tabela para módulo de Reclamações (Claims) 
- * 
+ * Migração: Tabela para módulo de Reclamações (Claims)
+ *
  * Cria a tabela ml_claims para armazenar dados de reclamações do ML
- * 
+ *
  * @version 1.0.0
  * @date 2026-01-22
  */
@@ -16,7 +17,7 @@ echo "=== Migração: Tabela de Reclamações (ml_claims) ===\n\n";
 
 try {
     $db = Database::getInstance();
-    
+
     echo "Criando tabela ml_claims...\n";
     $db->exec("
         CREATE TABLE IF NOT EXISTS ml_claims (
@@ -42,11 +43,9 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     echo "✅ ml_claims OK\n";
-    
+
     echo "\n=== Migração concluída com sucesso! ===\n";
-    
 } catch (\Exception $e) {
     echo "❌ Erro: " . $e->getMessage() . "\n";
     throw $e;
 }
-

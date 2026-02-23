@@ -2,7 +2,7 @@
 
 /**
  * Migration: Fase 3 - Brand Central, Trends, Inventory Advanced, Messaging
- * 
+ *
  * Cria tabelas para suportar:
  * - Inventory multi-origem
  * - Inventory reservations
@@ -22,12 +22,12 @@ $dotenv->load();
 
 try {
     $db = Database::getInstance();
-    
+
     echo "Iniciando migração - Fase 3 ML Integrations...\n\n";
 
     // ==================== INVENTORY_ORIGINS ====================
     echo "Criando tabela: inventory_origins\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS inventory_origins (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -47,12 +47,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela inventory_origins criada\n\n";
 
     // ==================== INVENTORY_RESERVATIONS ====================
     echo "Criando tabela: inventory_reservations\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS inventory_reservations (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -75,12 +75,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela inventory_reservations criada\n\n";
 
     // ==================== INVENTORY_MOVEMENTS ====================
     echo "Criando tabela: inventory_movements\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS inventory_movements (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -99,12 +99,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela inventory_movements criada\n\n";
 
     // ==================== MESSAGE_TEMPLATES ====================
     echo "Criando tabela: message_templates\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS message_templates (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -123,12 +123,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela message_templates criada\n\n";
 
     // ==================== AUTO_RESPONSES ====================
     echo "Criando tabela: auto_responses\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS auto_responses (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -144,12 +144,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela auto_responses criada\n\n";
 
     // ==================== MESSAGES ====================
     echo "Criando tabela: messages\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS messages (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -168,12 +168,12 @@ try {
             FOREIGN KEY (account_id) REFERENCES ml_accounts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela messages criada\n\n";
 
     // ==================== MARKET_KEYWORDS ====================
     echo "Criando tabela: market_keywords\n";
-    
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS market_keywords (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -191,7 +191,7 @@ try {
             INDEX idx_competition (competition_level)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
-    
+
     echo "✓ Tabela market_keywords criada\n\n";
 
     echo "============================================\n";
@@ -209,7 +209,6 @@ try {
 
     echo "Total de índices criados: 37\n";
     echo "Foreign keys com CASCADE: 6\n\n";
-
 } catch (\Exception $e) {
     echo "ERRO na migração: " . $e->getMessage() . "\n";
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
