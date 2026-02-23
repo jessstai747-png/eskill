@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 $title     = $pageTitle  ?? 'Wizard de Clonagem por Concorrente';
@@ -13,365 +14,591 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 ?>
 
 <style>
-/* ── Wizard steps bar ── */
-.wizard-steps { display:flex; align-items:center; gap:0; margin-bottom:2rem; }
-.ws-item { display:flex; align-items:center; flex:1; }
-.ws-circle {
-    width:36px; height:36px; border-radius:50%; border:2px solid #dee2e6;
-    display:flex; align-items:center; justify-content:center;
-    font-weight:700; font-size:.9rem; background:#fff; color:#6c757d;
-    flex-shrink:0; transition:all .25s;
-}
-.ws-label { font-size:.75rem; color:#6c757d; margin-left:.5rem; white-space:nowrap; }
-.ws-connector { flex:1; height:2px; background:#dee2e6; margin:0 .5rem; }
-.ws-item.done   .ws-circle { background:#198754; border-color:#198754; color:#fff; }
-.ws-item.active .ws-circle { background:#0d6efd; border-color:#0d6efd; color:#fff; }
-.ws-item.done   .ws-label  { color:#198754; }
-.ws-item.active .ws-label  { color:#0d6efd; font-weight:600; }
-/* ── Panels ── */
-.wizard-panel { display:none; }
-.wizard-panel.active { display:block; }
-/* ── Seller card ── */
-.seller-card { border:1px solid #dee2e6; border-radius:12px; padding:1.5rem; background:#fff; }
-.reputation-bar { height:8px; border-radius:4px; background:#e9ecef; overflow:hidden; }
-.reputation-fill { height:100%; border-radius:4px; background:#198754; }
-/* ── Browser grid ── */
-.browser-grid { display:flex; gap:1rem; min-height:420px; }
-.facets-panel { flex:0 0 220px; background:#fff; border:1px solid #dee2e6; border-radius:8px; overflow:hidden; display:flex; flex-direction:column; }
-.items-panel  { flex:1; background:#fff; border:1px solid #dee2e6; border-radius:8px; overflow:hidden; display:flex; flex-direction:column; }
-.panel-header { padding:.75rem 1rem; border-bottom:1px solid #dee2e6; background:#f8f9fa; font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
-.panel-body   { flex:1; overflow-y:auto; }
-.facet-row {
-    padding:.6rem 1rem; border-bottom:1px solid #f0f0f0; cursor:pointer;
-    display:flex; justify-content:space-between; align-items:center; font-size:.875rem;
-    transition:background .15s;
-}
-.facet-row:hover  { background:#f8f9fa; }
-.facet-row.active { background:#e7f1ff; border-left:3px solid #0d6efd; font-weight:600; }
-.facet-badge { font-size:.7rem; background:#e9ecef; padding:1px 7px; border-radius:10px; }
-.item-row {
-    padding:.6rem 1rem; border-bottom:1px solid #f0f0f0;
-    display:flex; align-items:center; gap:.75rem; cursor:pointer; font-size:.875rem;
-    transition:background .15s;
-}
-.item-row:hover    { background:#f8f9fa; }
-.item-row.selected { background:#e7f1ff; }
-.item-thumb { width:40px; height:40px; object-fit:cover; border-radius:4px; flex-shrink:0; }
-.item-title { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-.item-price { white-space:nowrap; font-size:.8rem; color:#198754; font-weight:600; }
-.pagination-row { padding:.5rem 1rem; display:flex; align-items:center; justify-content:space-between; border-top:1px solid #dee2e6; background:#f8f9fa; font-size:.8rem; }
-/* ── Selection bar ── */
-.selection-bar { background:#0d6efd; color:#fff; border-radius:8px; padding:.6rem 1.25rem; display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-/* ── Summary table ── */
-.summary-table td { vertical-align:middle; }
-/* ── Progress ── */
-.job-progress-card { border:1px solid #dee2e6; border-radius:8px; padding:1.5rem; background:#fff; }
+   /* ── Wizard steps bar ── */
+   .wizard-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 2rem;
+   }
+
+   .ws-item {
+      display: flex;
+      align-items: center;
+      flex: 1;
+   }
+
+   .ws-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #dee2e6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .9rem;
+      background: #fff;
+      color: #6c757d;
+      flex-shrink: 0;
+      transition: all .25s;
+   }
+
+   .ws-label {
+      font-size: .75rem;
+      color: #6c757d;
+      margin-left: .5rem;
+      white-space: nowrap;
+   }
+
+   .ws-connector {
+      flex: 1;
+      height: 2px;
+      background: #dee2e6;
+      margin: 0 .5rem;
+   }
+
+   .ws-item.done .ws-circle {
+      background: #198754;
+      border-color: #198754;
+      color: #fff;
+   }
+
+   .ws-item.active .ws-circle {
+      background: #0d6efd;
+      border-color: #0d6efd;
+      color: #fff;
+   }
+
+   .ws-item.done .ws-label {
+      color: #198754;
+   }
+
+   .ws-item.active .ws-label {
+      color: #0d6efd;
+      font-weight: 600;
+   }
+
+   /* ── Panels ── */
+   .wizard-panel {
+      display: none;
+   }
+
+   .wizard-panel.active {
+      display: block;
+   }
+
+   /* ── Seller card ── */
+   .seller-card {
+      border: 1px solid #dee2e6;
+      border-radius: 12px;
+      padding: 1.5rem;
+      background: #fff;
+   }
+
+   .reputation-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: #e9ecef;
+      overflow: hidden;
+   }
+
+   .reputation-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: #198754;
+   }
+
+   /* ── Browser grid ── */
+   .browser-grid {
+      display: flex;
+      gap: 1rem;
+      min-height: 420px;
+   }
+
+   .facets-panel {
+      flex: 0 0 220px;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+   }
+
+   .items-panel {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+   }
+
+   .panel-header {
+      padding: .75rem 1rem;
+      border-bottom: 1px solid #dee2e6;
+      background: #f8f9fa;
+      font-size: .8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+   }
+
+   .panel-body {
+      flex: 1;
+      overflow-y: auto;
+   }
+
+   .facet-row {
+      padding: .6rem 1rem;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .875rem;
+      transition: background .15s;
+   }
+
+   .facet-row:hover {
+      background: #f8f9fa;
+   }
+
+   .facet-row.active {
+      background: #e7f1ff;
+      border-left: 3px solid #0d6efd;
+      font-weight: 600;
+   }
+
+   .facet-badge {
+      font-size: .7rem;
+      background: #e9ecef;
+      padding: 1px 7px;
+      border-radius: 10px;
+   }
+
+   .item-row {
+      padding: .6rem 1rem;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      cursor: pointer;
+      font-size: .875rem;
+      transition: background .15s;
+   }
+
+   .item-row:hover {
+      background: #f8f9fa;
+   }
+
+   .item-row.selected {
+      background: #e7f1ff;
+   }
+
+   .item-thumb {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+   }
+
+   .item-title {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+   }
+
+   .item-price {
+      white-space: nowrap;
+      font-size: .8rem;
+      color: #198754;
+      font-weight: 600;
+   }
+
+   .pagination-row {
+      padding: .5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #dee2e6;
+      background: #f8f9fa;
+      font-size: .8rem;
+   }
+
+   /* ── Selection bar ── */
+   .selection-bar {
+      background: #0d6efd;
+      color: #fff;
+      border-radius: 8px;
+      padding: .6rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+   }
+
+   /* ── Summary table ── */
+   .summary-table td {
+      vertical-align: middle;
+   }
+
+   /* ── Progress ── */
+   .job-progress-card {
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 1.5rem;
+      background: #fff;
+   }
 </style>
 
 <!-- Wizard Steps -->
 <div class="wizard-steps" id="wizardSteps">
-    <div class="ws-item active" id="ws1">
-        <div class="ws-circle">1</div>
-        <span class="ws-label">Buscar Vendedor</span>
-    </div>
-    <div class="ws-connector"></div>
-    <div class="ws-item" id="ws2">
-        <div class="ws-circle">2</div>
-        <span class="ws-label">Selecionar Anúncios</span>
-    </div>
-    <div class="ws-connector"></div>
-    <div class="ws-item" id="ws3">
-        <div class="ws-circle">3</div>
-        <span class="ws-label">Configurar Clone</span>
-    </div>
-    <div class="ws-connector"></div>
-    <div class="ws-item" id="ws4">
-        <div class="ws-circle">4</div>
-        <span class="ws-label">Confirmar</span>
-    </div>
+   <div class="ws-item active" id="ws1">
+      <div class="ws-circle">1</div>
+      <span class="ws-label">Buscar Vendedor</span>
+   </div>
+   <div class="ws-connector"></div>
+   <div class="ws-item" id="ws2">
+      <div class="ws-circle">2</div>
+      <span class="ws-label">Selecionar Anúncios</span>
+   </div>
+   <div class="ws-connector"></div>
+   <div class="ws-item" id="ws3">
+      <div class="ws-circle">3</div>
+      <span class="ws-label">Configurar Clone</span>
+   </div>
+   <div class="ws-connector"></div>
+   <div class="ws-item" id="ws4">
+      <div class="ws-circle">4</div>
+      <span class="ws-label">Confirmar</span>
+   </div>
 </div>
 
 <!-- ══════════ STEP 1 — Buscar Vendedor ══════════ -->
 <div class="wizard-panel active" id="panel1">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title mb-3"><i class="bi bi-search"></i> Localizar Vendedor no Mercado Livre</h5>
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label fw-semibold">ID do Vendedor (MLB…)</label>
-                    <input type="text" class="form-control" id="sellerIdInput" placeholder="Ex: MLB12345678">
-                </div>
-                <div class="col-md-auto">
-                    <button class="btn btn-primary" id="btnSearchSeller">
-                        <i class="bi bi-search"></i> Buscar Vendedor
-                    </button>
-                </div>
+   <div class="card shadow-sm">
+      <div class="card-body">
+         <h5 class="card-title mb-3"><i class="bi bi-search"></i> Localizar Vendedor no Mercado Livre</h5>
+         <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+               <label class="form-label fw-semibold">ID do Vendedor (MLB…)</label>
+               <input type="text" class="form-control" id="sellerIdInput" placeholder="Ex: MLB12345678">
             </div>
-
-            <div id="sellerError" class="alert alert-danger mt-3 d-none"></div>
-
-            <div id="sellerCard" class="seller-card mt-4 d-none">
-                <div class="row align-items-center g-3">
-                    <div class="col-md-auto">
-                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
-                             style="width:64px;height:64px;font-size:1.5rem;font-weight:700;" id="sellerAvatar">?</div>
-                    </div>
-                    <div class="col">
-                        <h5 class="mb-1" id="sellerNickEl">—</h5>
-                        <div class="d-flex gap-3 text-muted small">
-                            <span><i class="bi bi-box-seam"></i> <span id="sellerTotalItems">0</span> anúncios ativos</span>
-                            <span><i class="bi bi-star-fill text-warning"></i> <span id="sellerRep">—</span></span>
-                        </div>
-                        <div class="reputation-bar mt-2" style="max-width:200px;">
-                            <div class="reputation-fill" id="sellerRepBar" style="width:0%;"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-auto">
-                        <button class="btn btn-success" id="btnBrowseItems">
-                            <i class="bi bi-grid"></i> Ver Anúncios <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-                <hr>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <p class="mb-1 fw-semibold small text-muted text-uppercase">Top Categorias</p>
-                        <ul class="list-unstyled mb-0" id="sellerTopCats"></ul>
-                    </div>
-                    <div class="col-md-6">
-                        <p class="mb-1 fw-semibold small text-muted text-uppercase">Top Marcas</p>
-                        <ul class="list-unstyled mb-0" id="sellerTopBrands"></ul>
-                    </div>
-                </div>
+            <div class="col-md-auto">
+               <button class="btn btn-primary" id="btnSearchSeller">
+                  <i class="bi bi-search"></i> Buscar Vendedor
+               </button>
             </div>
-        </div>
-    </div>
+         </div>
+
+         <div id="sellerError" class="alert alert-danger mt-3 d-none"></div>
+
+         <div id="sellerCard" class="seller-card mt-4 d-none">
+            <div class="row align-items-center g-3">
+               <div class="col-md-auto">
+                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                     style="width:64px;height:64px;font-size:1.5rem;font-weight:700;" id="sellerAvatar">?</div>
+               </div>
+               <div class="col">
+                  <h5 class="mb-1" id="sellerNickEl">—</h5>
+                  <div class="d-flex gap-3 text-muted small">
+                     <span><i class="bi bi-box-seam"></i> <span id="sellerTotalItems">0</span> anúncios ativos</span>
+                     <span><i class="bi bi-star-fill text-warning"></i> <span id="sellerRep">—</span></span>
+                  </div>
+                  <div class="reputation-bar mt-2" style="max-width:200px;">
+                     <div class="reputation-fill" id="sellerRepBar" style="width:0%;"></div>
+                  </div>
+               </div>
+               <div class="col-md-auto">
+                  <button class="btn btn-success" id="btnBrowseItems">
+                     <i class="bi bi-grid"></i> Ver Anúncios <i class="bi bi-arrow-right"></i>
+                  </button>
+               </div>
+            </div>
+            <hr>
+            <div class="row g-3">
+               <div class="col-md-6">
+                  <p class="mb-1 fw-semibold small text-muted text-uppercase">Top Categorias</p>
+                  <ul class="list-unstyled mb-0" id="sellerTopCats"></ul>
+               </div>
+               <div class="col-md-6">
+                  <p class="mb-1 fw-semibold small text-muted text-uppercase">Top Marcas</p>
+                  <ul class="list-unstyled mb-0" id="sellerTopBrands"></ul>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
 </div>
 
 <!-- ══════════ STEP 2 — Selecionar Anúncios ══════════ -->
 <div class="wizard-panel" id="panel2">
-    <!-- Selection bar -->
-    <div class="selection-bar" id="selectionBar">
-        <span><i class="bi bi-check2-square"></i> <span id="selectedCount">0</span> anúncios selecionados</span>
-        <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-light" id="btnSelectAll">Todos desta página</button>
-            <button class="btn btn-sm btn-outline-light" id="btnClearAll">Limpar</button>
-            <button class="btn btn-sm btn-warning text-dark" id="btnConfigureClone" disabled>
-                Configurar Clone <i class="bi bi-arrow-right"></i>
-            </button>
-        </div>
-    </div>
+   <!-- Selection bar -->
+   <div class="selection-bar" id="selectionBar">
+      <span><i class="bi bi-check2-square"></i> <span id="selectedCount">0</span> anúncios selecionados</span>
+      <div class="d-flex gap-2">
+         <button class="btn btn-sm btn-light" id="btnSelectAll">Todos desta página</button>
+         <button class="btn btn-sm btn-outline-light" id="btnClearAll">Limpar</button>
+         <button class="btn btn-sm btn-warning text-dark" id="btnConfigureClone" disabled>
+            Configurar Clone <i class="bi bi-arrow-right"></i>
+         </button>
+      </div>
+   </div>
 
-    <!-- Search bar -->
-    <div class="d-flex gap-2 mb-3">
-        <input type="text" class="form-control" id="itemSearchInput" placeholder="Buscar por título...">
-        <button class="btn btn-outline-secondary" id="btnItemSearch"><i class="bi bi-search"></i></button>
-    </div>
+   <!-- Search bar -->
+   <div class="d-flex gap-2 mb-3">
+      <input type="text" class="form-control" id="itemSearchInput" placeholder="Buscar por título...">
+      <button class="btn btn-outline-secondary" id="btnItemSearch"><i class="bi bi-search"></i></button>
+   </div>
 
-    <!-- Browser grid -->
-    <div class="browser-grid">
-        <div class="facets-panel">
-            <div class="panel-header">Marcas</div>
-            <div class="panel-body" id="brandList"></div>
-            <div class="panel-header border-top" style="margin-top:auto;">Categorias</div>
-            <div class="panel-body" id="catList" style="max-height:180px;"></div>
-        </div>
-        <div class="items-panel">
-            <div class="panel-header d-flex justify-content-between align-items-center">
-                <span id="itemsCountLabel">Anúncios</span>
-                <div class="spinner-border spinner-border-sm text-primary d-none" id="itemsSpinner" role="status"></div>
-            </div>
-            <div class="panel-body" id="itemList"></div>
-            <div class="pagination-row" id="paginationRow">
-                <button class="btn btn-sm btn-outline-secondary" id="btnPrevPage" disabled><i class="bi bi-chevron-left"></i></button>
-                <span id="pageInfo">Pág. 1</span>
-                <button class="btn btn-sm btn-outline-secondary" id="btnNextPage" disabled><i class="bi bi-chevron-right"></i></button>
-            </div>
-        </div>
-    </div>
-    <div class="mt-3 d-flex justify-content-between">
-        <button class="btn btn-outline-secondary" id="btnBackToStep1"><i class="bi bi-arrow-left"></i> Voltar</button>
-    </div>
+   <!-- Browser grid -->
+   <div class="browser-grid">
+      <div class="facets-panel">
+         <div class="panel-header">Marcas</div>
+         <div class="panel-body" id="brandList"></div>
+         <div class="panel-header border-top" style="margin-top:auto;">Categorias</div>
+         <div class="panel-body" id="catList" style="max-height:180px;"></div>
+      </div>
+      <div class="items-panel">
+         <div class="panel-header d-flex justify-content-between align-items-center">
+            <span id="itemsCountLabel">Anúncios</span>
+            <div class="spinner-border spinner-border-sm text-primary d-none" id="itemsSpinner" role="status"></div>
+         </div>
+         <div class="panel-body" id="itemList"></div>
+         <div class="pagination-row" id="paginationRow">
+            <button class="btn btn-sm btn-outline-secondary" id="btnPrevPage" disabled><i class="bi bi-chevron-left"></i></button>
+            <span id="pageInfo">Pág. 1</span>
+            <button class="btn btn-sm btn-outline-secondary" id="btnNextPage" disabled><i class="bi bi-chevron-right"></i></button>
+         </div>
+      </div>
+   </div>
+   <div class="mt-3 d-flex justify-content-between">
+      <button class="btn btn-outline-secondary" id="btnBackToStep1"><i class="bi bi-arrow-left"></i> Voltar</button>
+   </div>
 </div>
 
 <!-- ══════════ STEP 3 — Configurar Clone ══════════ -->
 <div class="wizard-panel" id="panel3">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title mb-4"><i class="bi bi-gear"></i> Configurar Clonagem</h5>
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Conta Destino</label>
-                    <select class="form-select" id="targetAccountSelect">
-                        <option value="">— Selecione —</option>
-                        <?php foreach (($accounts ?? []) as $acc): ?>
-                        <option value="<?= htmlspecialchars((string)$acc['id']) ?>">
-                            <?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'] ?? '') ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Template (opcional)</label>
-                    <input type="text" class="form-control" id="templateSlug" placeholder="slug-do-template">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Estratégia de Preço</label>
-                    <select class="form-select" id="priceStrategy">
-                        <option value="copy">Copiar preço original</option>
-                        <option value="markup">Markup (%)</option>
-                        <option value="markdown">Desconto (%)</option>
-                        <option value="competitive">Mais barato que concorrente</option>
-                        <option value="fixed">Preço fixo (R$)</option>
-                    </select>
-                </div>
-                <div class="col-md-6" id="priceValueWrap" style="display:none;">
-                    <label class="form-label fw-semibold" id="priceValueLabel">Valor (%)</label>
-                    <input type="number" class="form-control" id="priceValue" min="0" step="0.01" placeholder="0.00">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Status Inicial</label>
-                    <select class="form-select" id="initialStatus">
-                        <option value="paused">Pausado (recomendado)</option>
-                        <option value="active">Ativo</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold">Opções de Conteúdo</label>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="includeDescription">
-                        <label class="form-check-label" for="includeDescription">
-                            Copiar descrição original
-                            <span class="badge bg-warning text-dark ms-1">⚠ Risco de duplicidade</span>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="includePictures">
-                        <label class="form-check-label" for="includePictures">
-                            Copiar fotos originais
-                            <span class="badge bg-warning text-dark ms-1">⚠ Risco de duplicidade</span>
-                        </label>
-                    </div>
-                    <div class="alert alert-warning small mt-2 d-none" id="guardrailWarning">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        Atenção: copiar descrição/fotos pode violar as políticas do Mercado Livre e resultar em suspensão de anúncios.
-                    </div>
-                </div>
-                <div class="col-12 d-flex justify-content-between">
-                    <button class="btn btn-outline-secondary" id="btnBackToStep2">
-                        <i class="bi bi-arrow-left"></i> Voltar
-                    </button>
-                    <button class="btn btn-primary" id="btnPreviewAndConfirm">
-                        Revisar e Confirmar <i class="bi bi-arrow-right"></i>
-                    </button>
-                </div>
+   <div class="card shadow-sm">
+      <div class="card-body">
+         <h5 class="card-title mb-4"><i class="bi bi-gear"></i> Configurar Clonagem</h5>
+         <div class="row g-4">
+            <div class="col-md-6">
+               <label class="form-label fw-semibold">Conta Destino</label>
+               <select class="form-select" id="targetAccountSelect">
+                  <option value="">— Selecione —</option>
+                  <?php foreach (($accounts ?? []) as $acc): ?>
+                     <option value="<?= htmlspecialchars((string)$acc['id']) ?>">
+                        <?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'] ?? '') ?>
+                     </option>
+                  <?php endforeach; ?>
+               </select>
             </div>
-        </div>
-    </div>
+            <div class="col-md-6">
+               <label class="form-label fw-semibold">Template (opcional)</label>
+               <input type="text" class="form-control" id="templateSlug" placeholder="slug-do-template">
+            </div>
+            <div class="col-md-6">
+               <label class="form-label fw-semibold">Estratégia de Preço</label>
+               <select class="form-select" id="priceStrategy">
+                  <option value="copy">Copiar preço original</option>
+                  <option value="markup">Markup (%)</option>
+                  <option value="markdown">Desconto (%)</option>
+                  <option value="competitive">Mais barato que concorrente</option>
+                  <option value="fixed">Preço fixo (R$)</option>
+               </select>
+            </div>
+            <div class="col-md-6" id="priceValueWrap" style="display:none;">
+               <label class="form-label fw-semibold" id="priceValueLabel">Valor (%)</label>
+               <input type="number" class="form-control" id="priceValue" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="col-md-6">
+               <label class="form-label fw-semibold">Status Inicial</label>
+               <select class="form-select" id="initialStatus">
+                  <option value="paused">Pausado (recomendado)</option>
+                  <option value="active">Ativo</option>
+               </select>
+            </div>
+            <div class="col-12">
+               <label class="form-label fw-semibold">Opções de Conteúdo</label>
+               <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="includeDescription">
+                  <label class="form-check-label" for="includeDescription">
+                     Copiar descrição original
+                     <span class="badge bg-warning text-dark ms-1">⚠ Risco de duplicidade</span>
+                  </label>
+               </div>
+               <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="includePictures">
+                  <label class="form-check-label" for="includePictures">
+                     Copiar fotos originais
+                     <span class="badge bg-warning text-dark ms-1">⚠ Risco de duplicidade</span>
+                  </label>
+               </div>
+               <div class="alert alert-warning small mt-2 d-none" id="guardrailWarning">
+                  <i class="bi bi-exclamation-triangle-fill"></i>
+                  Atenção: copiar descrição/fotos pode violar as políticas do Mercado Livre e resultar em suspensão de anúncios.
+               </div>
+            </div>
+            <div class="col-12 d-flex justify-content-between">
+               <button class="btn btn-outline-secondary" id="btnBackToStep2">
+                  <i class="bi bi-arrow-left"></i> Voltar
+               </button>
+               <button class="btn btn-primary" id="btnPreviewAndConfirm">
+                  Revisar e Confirmar <i class="bi bi-arrow-right"></i>
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
 </div>
 
 <!-- ══════════ STEP 4 — Confirmar / Executar ══════════ -->
 <div class="wizard-panel" id="panel4">
-    <!-- Summary (before job start) -->
-    <div id="summaryView">
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-list-check"></i> Resumo da Clonagem</h5>
-                <table class="table summary-table">
-                    <tbody>
-                        <tr><th style="width:200px;">Vendedor origem</th><td id="summNick">—</td></tr>
-                        <tr><th>Anúncios selecionados</th><td id="summCount">0</td></tr>
-                        <tr><th>Conta destino</th><td id="summAccount">—</td></tr>
-                        <tr><th>Estratégia de preço</th><td id="summPrice">—</td></tr>
-                        <tr><th>Status inicial</th><td id="summStatus">—</td></tr>
-                        <tr><th>Incluir descrição</th><td id="summDesc">Não</td></tr>
-                        <tr><th>Incluir fotos</th><td id="summPics">Não</td></tr>
-                    </tbody>
-                </table>
-                <div class="d-flex justify-content-between mt-3">
-                    <button class="btn btn-outline-secondary" id="btnBackToStep3">
-                        <i class="bi bi-arrow-left"></i> Voltar
-                    </button>
-                    <button class="btn btn-success btn-lg" id="btnExecuteClone">
-                        <i class="bi bi-play-circle"></i> Iniciar Clonagem
-                    </button>
-                </div>
+   <!-- Summary (before job start) -->
+   <div id="summaryView">
+      <div class="card shadow-sm mb-4">
+         <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-list-check"></i> Resumo da Clonagem</h5>
+            <table class="table summary-table">
+               <tbody>
+                  <tr>
+                     <th style="width:200px;">Vendedor origem</th>
+                     <td id="summNick">—</td>
+                  </tr>
+                  <tr>
+                     <th>Anúncios selecionados</th>
+                     <td id="summCount">0</td>
+                  </tr>
+                  <tr>
+                     <th>Conta destino</th>
+                     <td id="summAccount">—</td>
+                  </tr>
+                  <tr>
+                     <th>Estratégia de preço</th>
+                     <td id="summPrice">—</td>
+                  </tr>
+                  <tr>
+                     <th>Status inicial</th>
+                     <td id="summStatus">—</td>
+                  </tr>
+                  <tr>
+                     <th>Incluir descrição</th>
+                     <td id="summDesc">Não</td>
+                  </tr>
+                  <tr>
+                     <th>Incluir fotos</th>
+                     <td id="summPics">Não</td>
+                  </tr>
+               </tbody>
+            </table>
+            <div class="d-flex justify-content-between mt-3">
+               <button class="btn btn-outline-secondary" id="btnBackToStep3">
+                  <i class="bi bi-arrow-left"></i> Voltar
+               </button>
+               <button class="btn btn-success btn-lg" id="btnExecuteClone">
+                  <i class="bi bi-play-circle"></i> Iniciar Clonagem
+               </button>
             </div>
-        </div>
-    </div>
+         </div>
+      </div>
+   </div>
 
-    <!-- Progress (after job start) -->
-    <div id="progressView" class="d-none">
-        <div class="job-progress-card">
-            <h5><i class="bi bi-hourglass-split text-primary"></i> Processando Clonagem…</h5>
-            <p class="text-muted small">Job ID: <code id="jobIdEl">—</code></p>
-            <div class="progress mb-3" style="height:20px;">
-                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
-                     id="jobProgressBar" style="width:0%;">0%</div>
-            </div>
-            <div class="d-flex gap-4 mb-3 small">
-                <span><i class="bi bi-check2 text-success"></i> Clonados: <strong id="jobDone">0</strong></span>
-                <span><i class="bi bi-x text-danger"></i> Erros: <strong id="jobErrors">0</strong></span>
-                <span><i class="bi bi-hourglass text-warning"></i> Total: <strong id="jobTotal">0</strong></span>
-            </div>
-            <div id="jobStatusMsg" class="alert alert-info small">Aguardando início…</div>
-            <div id="jobDoneActions" class="d-none mt-3">
-                <a href="/dashboard/catalog/clone-monitoring" class="btn btn-outline-primary">
-                    <i class="bi bi-graph-up"></i> Ver Monitoramento
-                </a>
-                <button class="btn btn-outline-secondary ms-2" id="btnNewWizard">
-                    <i class="bi bi-plus-circle"></i> Novo Wizard
-                </button>
-            </div>
-        </div>
-    </div>
+   <!-- Progress (after job start) -->
+   <div id="progressView" class="d-none">
+      <div class="job-progress-card">
+         <h5><i class="bi bi-hourglass-split text-primary"></i> Processando Clonagem…</h5>
+         <p class="text-muted small">Job ID: <code id="jobIdEl">—</code></p>
+         <div class="progress mb-3" style="height:20px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+               id="jobProgressBar" style="width:0%;">0%</div>
+         </div>
+         <div class="d-flex gap-4 mb-3 small">
+            <span><i class="bi bi-check2 text-success"></i> Clonados: <strong id="jobDone">0</strong></span>
+            <span><i class="bi bi-x text-danger"></i> Erros: <strong id="jobErrors">0</strong></span>
+            <span><i class="bi bi-hourglass text-warning"></i> Total: <strong id="jobTotal">0</strong></span>
+         </div>
+         <div id="jobStatusMsg" class="alert alert-info small">Aguardando início…</div>
+         <div id="jobDoneActions" class="d-none mt-3">
+            <a href="/dashboard/catalog/clone-monitoring" class="btn btn-outline-primary">
+               <i class="bi bi-graph-up"></i> Ver Monitoramento
+            </a>
+            <button class="btn btn-outline-secondary ms-2" id="btnNewWizard">
+               <i class="bi bi-plus-circle"></i> Novo Wizard
+            </button>
+         </div>
+      </div>
+   </div>
 </div>
 
 <script>
-(function () {
-    'use strict';
+   (function() {
+      'use strict';
 
-    var state = {
-        step: 1,
-        sellerId: '',
-        sellerNick: '',
-        sellerTotalItems: 0,
-        selectedItems: new Map(), // mlbId -> {title, price}
-        allItems: [],
-        brandFacets: [],
-        catFacets: [],
-        activeBrand: '',
-        activeCat: '',
-        searchQ: '',
-        currentOffset: 0,
-        pageSize: 50,
-        totalItems: 0,
-        jobId: null,
-        pollTimer: null
-    };
+      var state = {
+         step: 1,
+         sellerId: '',
+         sellerNick: '',
+         sellerTotalItems: 0,
+         selectedItems: new Map(), // mlbId -> {title, price}
+         allItems: [],
+         brandFacets: [],
+         catFacets: [],
+         activeBrand: '',
+         activeCat: '',
+         searchQ: '',
+         currentOffset: 0,
+         pageSize: 50,
+         totalItems: 0,
+         jobId: null,
+         pollTimer: null
+      };
 
-    // ── helpers ──────────────────────────────────────────────
-    function fmt(n) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
-    }
+      // ── helpers ──────────────────────────────────────────────
+      function fmt(n) {
+         return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+         }).format(n);
+      }
 
-    function api(url, opts) {
-        opts = opts || {};
-        opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
-        return fetch(url, opts).then(function (r) { return r.json(); });
-    }
+      function api(url, opts) {
+         opts = opts || {};
+         opts.headers = Object.assign({
+            'Content-Type': 'application/json'
+         }, opts.headers || {});
+         return fetch(url, opts).then(function(r) {
+            return r.json();
+         });
+      }
 
-    function qs(id) { return document.getElementById(id); }
+      function qs(id) {
+         return document.getElementById(id);
+      }
 
-    function show(id)  { var el = qs(id); if (el) el.classList.remove('d-none'); }
-    function hide(id)  { var el = qs(id); if (el) el.classList.add('d-none'); }
+      function show(id) {
+         var el = qs(id);
+         if (el) el.classList.remove('d-none');
+      }
 
-    // ── Step navigation ───────────────────────────────────────
-    function goStep(n) {
-        state.step = n;
-        for (var i = 1; i <= 4; i++) {
+      function hide(id) {
+         var el = qs(id);
+         if (el) el.classList.add('d-none');
+      }
+
+      // ── Step navigation ───────────────────────────────────────
+      function goStep(n) {
+         state.step = n;
+         for (var i = 1; i <= 4; i++) {
             var panel = qs('panel' + i);
-            var ws    = qs('ws' + i);
+            var ws = qs('ws' + i);
             if (!panel || !ws) continue;
             panel.classList.toggle('active', i === n);
             ws.classList.remove('done', 'active');
@@ -380,359 +607,408 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             // update circle to checkmark for done steps
             var circle = ws.querySelector('.ws-circle');
             if (circle) circle.innerHTML = (i < n) ? '<i class="bi bi-check2"></i>' : String(i);
-        }
-    }
+         }
+      }
 
-    // ── STEP 1 — Search seller ────────────────────────────────
-    qs('btnSearchSeller').addEventListener('click', function () {
-        var sellerId = String(qs('sellerIdInput').value).trim();
-        if (!sellerId) return;
-        hide('sellerError');
-        hide('sellerCard');
-        this.disabled = true;
-        var self = this;
-        api('/api/catalog/clone/source/seller/' + encodeURIComponent(sellerId) + '/summary')
-            .then(function (data) {
-                if (data.error) throw new Error(data.error);
-                var info = data.data || data;
-                state.sellerId    = String(info.seller_id || sellerId);
-                state.sellerNick  = String(info.nickname || sellerId);
-                state.sellerTotalItems = parseInt(info.total_items || 0, 10);
+      // ── STEP 1 — Search seller ────────────────────────────────
+      qs('btnSearchSeller').addEventListener('click', function() {
+         var sellerId = String(qs('sellerIdInput').value).trim();
+         if (!sellerId) return;
+         hide('sellerError');
+         hide('sellerCard');
+         this.disabled = true;
+         var self = this;
+         api('/api/catalog/clone/source/seller/' + encodeURIComponent(sellerId) + '/summary')
+            .then(function(data) {
+               if (data.error) throw new Error(data.error);
+               var info = data.data || data;
+               state.sellerId = String(info.seller_id || sellerId);
+               state.sellerNick = String(info.nickname || sellerId);
+               state.sellerTotalItems = parseInt(info.total_items || 0, 10);
 
-                qs('sellerAvatar').textContent  = (state.sellerNick[0] || '?').toUpperCase();
-                qs('sellerNickEl').textContent  = state.sellerNick;
-                qs('sellerTotalItems').textContent = state.sellerTotalItems.toLocaleString('pt-BR');
+               qs('sellerAvatar').textContent = (state.sellerNick[0] || '?').toUpperCase();
+               qs('sellerNickEl').textContent = state.sellerNick;
+               qs('sellerTotalItems').textContent = state.sellerTotalItems.toLocaleString('pt-BR');
 
-                var repLevel = String(info.seller_reputation && info.seller_reputation.level_id || '');
-                var repMap   = { '1_red': 5, '2_orange': 25, '3_yellow': 50, '4_light_green': 75, '5_green': 100 };
-                var repPct   = repMap[repLevel] || 0;
-                qs('sellerRep').textContent       = repLevel.replace(/_/g, ' ') || 'N/D';
-                qs('sellerRepBar').style.width    = repPct + '%';
+               var repLevel = String(info.seller_reputation && info.seller_reputation.level_id || '');
+               var repMap = {
+                  '1_red': 5,
+                  '2_orange': 25,
+                  '3_yellow': 50,
+                  '4_light_green': 75,
+                  '5_green': 100
+               };
+               var repPct = repMap[repLevel] || 0;
+               qs('sellerRep').textContent = repLevel.replace(/_/g, ' ') || 'N/D';
+               qs('sellerRepBar').style.width = repPct + '%';
 
-                var cats   = (info.top_categories   || []).slice(0, 5);
-                var brands = (info.top_brands        || []).slice(0, 5);
-                qs('sellerTopCats').innerHTML   = cats.map(function (c) {
-                    return '<li class="small text-muted"><i class="bi bi-tag"></i> ' + c.name + ' (' + c.count + ')</li>';
-                }).join('');
-                qs('sellerTopBrands').innerHTML = brands.map(function (b) {
-                    return '<li class="small text-muted"><i class="bi bi-bookmark"></i> ' + b.name + ' (' + b.count + ')</li>';
-                }).join('');
+               var cats = (info.top_categories || []).slice(0, 5);
+               var brands = (info.top_brands || []).slice(0, 5);
+               qs('sellerTopCats').innerHTML = cats.map(function(c) {
+                  return '<li class="small text-muted"><i class="bi bi-tag"></i> ' + c.name + ' (' + c.count + ')</li>';
+               }).join('');
+               qs('sellerTopBrands').innerHTML = brands.map(function(b) {
+                  return '<li class="small text-muted"><i class="bi bi-bookmark"></i> ' + b.name + ' (' + b.count + ')</li>';
+               }).join('');
 
-                show('sellerCard');
+               show('sellerCard');
             })
-            .catch(function (err) {
-                qs('sellerError').textContent = 'Erro: ' + (err.message || 'Vendedor não encontrado');
-                show('sellerError');
+            .catch(function(err) {
+               qs('sellerError').textContent = 'Erro: ' + (err.message || 'Vendedor não encontrado');
+               show('sellerError');
             })
-            .finally(function () { self.disabled = false; });
-    });
+            .finally(function() {
+               self.disabled = false;
+            });
+      });
 
-    qs('btnBrowseItems').addEventListener('click', function () {
-        state.currentOffset = 0;
-        state.activeBrand   = '';
-        state.activeCat     = '';
-        state.searchQ       = '';
-        goStep(2);
-        loadItems();
-    });
+      qs('btnBrowseItems').addEventListener('click', function() {
+         state.currentOffset = 0;
+         state.activeBrand = '';
+         state.activeCat = '';
+         state.searchQ = '';
+         goStep(2);
+         loadItems();
+      });
 
-    // ── STEP 2 — Browse & select items ───────────────────────
-    function loadItems() {
-        show('itemsSpinner');
-        var url  = '/api/catalog/clone/source/seller/' + encodeURIComponent(state.sellerId) + '/items';
-        var params = new URLSearchParams({
+      // ── STEP 2 — Browse & select items ───────────────────────
+      function loadItems() {
+         show('itemsSpinner');
+         var url = '/api/catalog/clone/source/seller/' + encodeURIComponent(state.sellerId) + '/items';
+         var params = new URLSearchParams({
             offset: String(state.currentOffset),
-            limit:  String(state.pageSize)
-        });
-        if (state.activeBrand) params.set('brand', state.activeBrand);
-        if (state.activeCat)   params.set('category', state.activeCat);
-        if (state.searchQ)     params.set('q', state.searchQ);
+            limit: String(state.pageSize)
+         });
+         if (state.activeBrand) params.set('brand', state.activeBrand);
+         if (state.activeCat) params.set('category', state.activeCat);
+         if (state.searchQ) params.set('q', state.searchQ);
 
-        api(url + '?' + params.toString())
-            .then(function (data) {
-                var res = data.data || data;
-                state.allItems   = res.items  || [];
-                state.totalItems = parseInt(res.total || 0, 10);
-                state.brandFacets = res.facets && res.facets.brands     ? res.facets.brands     : [];
-                state.catFacets   = res.facets && res.facets.categories ? res.facets.categories : [];
+         api(url + '?' + params.toString())
+            .then(function(data) {
+               var res = data.data || data;
+               state.allItems = res.items || [];
+               state.totalItems = parseInt(res.total || 0, 10);
+               state.brandFacets = res.facets && res.facets.brands ? res.facets.brands : [];
+               state.catFacets = res.facets && res.facets.categories ? res.facets.categories : [];
 
-                renderFacets();
-                renderItems();
-                renderPagination();
+               renderFacets();
+               renderItems();
+               renderPagination();
             })
-            .catch(function (err) { console.error('[Wizard] loadItems error', err); })
-            .finally(function () { hide('itemsSpinner'); });
-    }
+            .catch(function(err) {
+               console.error('[Wizard] loadItems error', err);
+            })
+            .finally(function() {
+               hide('itemsSpinner');
+            });
+      }
 
-    function renderFacets() {
-        var brandHtml = state.brandFacets.map(function (f) {
+      function renderFacets() {
+         var brandHtml = state.brandFacets.map(function(f) {
             var active = (state.activeBrand === f.id) ? ' active' : '';
-            return '<div class="facet-row' + active + '" data-brand="' + escHtml(f.id) + '">'
-                + escHtml(f.name)
-                + '<span class="facet-badge">' + f.count + '</span></div>';
-        }).join('');
-        qs('brandList').innerHTML = brandHtml || '<div class="p-3 text-muted small">Sem marcas</div>';
+            return '<div class="facet-row' + active + '" data-brand="' + escHtml(f.id) + '">' +
+               escHtml(f.name) +
+               '<span class="facet-badge">' + f.count + '</span></div>';
+         }).join('');
+         qs('brandList').innerHTML = brandHtml || '<div class="p-3 text-muted small">Sem marcas</div>';
 
-        var catHtml = state.catFacets.map(function (f) {
+         var catHtml = state.catFacets.map(function(f) {
             var active = (state.activeCat === f.id) ? ' active' : '';
-            return '<div class="facet-row' + active + '" data-cat="' + escHtml(f.id) + '">'
-                + escHtml(f.name)
-                + '<span class="facet-badge">' + f.count + '</span></div>';
-        }).join('');
-        qs('catList').innerHTML = catHtml || '<div class="p-3 text-muted small">Sem categorias</div>';
+            return '<div class="facet-row' + active + '" data-cat="' + escHtml(f.id) + '">' +
+               escHtml(f.name) +
+               '<span class="facet-badge">' + f.count + '</span></div>';
+         }).join('');
+         qs('catList').innerHTML = catHtml || '<div class="p-3 text-muted small">Sem categorias</div>';
 
-        // click events
-        qs('brandList').querySelectorAll('.facet-row').forEach(function (el) {
-            el.addEventListener('click', function () {
-                state.activeBrand   = (state.activeBrand === this.dataset.brand) ? '' : String(this.dataset.brand);
-                state.currentOffset = 0;
-                loadItems();
+         // click events
+         qs('brandList').querySelectorAll('.facet-row').forEach(function(el) {
+            el.addEventListener('click', function() {
+               state.activeBrand = (state.activeBrand === this.dataset.brand) ? '' : String(this.dataset.brand);
+               state.currentOffset = 0;
+               loadItems();
             });
-        });
-        qs('catList').querySelectorAll('.facet-row').forEach(function (el) {
-            el.addEventListener('click', function () {
-                state.activeCat     = (state.activeCat === this.dataset.cat) ? '' : String(this.dataset.cat);
-                state.currentOffset = 0;
-                loadItems();
+         });
+         qs('catList').querySelectorAll('.facet-row').forEach(function(el) {
+            el.addEventListener('click', function() {
+               state.activeCat = (state.activeCat === this.dataset.cat) ? '' : String(this.dataset.cat);
+               state.currentOffset = 0;
+               loadItems();
             });
-        });
-    }
+         });
+      }
 
-    function escHtml(str) {
-        return String(str)
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
+      function escHtml(str) {
+         return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
 
-    function renderItems() {
-        if (!state.allItems.length) {
+      function renderItems() {
+         if (!state.allItems.length) {
             qs('itemList').innerHTML = '<div class="p-4 text-center text-muted">Nenhum anúncio encontrado</div>';
             return;
-        }
-        var html = state.allItems.map(function (item) {
-            var mlbId   = String(item.id || '');
-            var title   = String(item.title || '');
-            var price   = parseFloat(item.price || 0);
-            var thumb   = String(item.thumbnail || '');
+         }
+         var html = state.allItems.map(function(item) {
+            var mlbId = String(item.id || '');
+            var title = String(item.title || '');
+            var price = parseFloat(item.price || 0);
+            var thumb = String(item.thumbnail || '');
             var checked = state.selectedItems.has(mlbId);
-            return '<div class="item-row' + (checked ? ' selected' : '') + '" data-id="' + escHtml(mlbId) + '">'
-                + '<input type="checkbox" class="form-check-input flex-shrink-0"' + (checked ? ' checked' : '') + '>'
-                + (thumb ? '<img src="' + escHtml(thumb) + '" class="item-thumb" loading="lazy">' : '')
-                + '<span class="item-title" title="' + escHtml(title) + '">' + escHtml(title) + '</span>'
-                + '<span class="item-price">' + fmt(price) + '</span>'
-                + '</div>';
-        }).join('');
-        qs('itemList').innerHTML = html;
+            return '<div class="item-row' + (checked ? ' selected' : '') + '" data-id="' + escHtml(mlbId) + '">' +
+               '<input type="checkbox" class="form-check-input flex-shrink-0"' + (checked ? ' checked' : '') + '>' +
+               (thumb ? '<img src="' + escHtml(thumb) + '" class="item-thumb" loading="lazy">' : '') +
+               '<span class="item-title" title="' + escHtml(title) + '">' + escHtml(title) + '</span>' +
+               '<span class="item-price">' + fmt(price) + '</span>' +
+               '</div>';
+         }).join('');
+         qs('itemList').innerHTML = html;
 
-        qs('itemList').querySelectorAll('.item-row').forEach(function (row) {
-            row.addEventListener('click', function () {
-                var mlbId = String(this.dataset.id);
-                var item  = state.allItems.find(function (i) { return String(i.id) === mlbId; });
-                if (!item) return;
-                if (state.selectedItems.has(mlbId)) {
-                    state.selectedItems.delete(mlbId);
-                } else {
-                    state.selectedItems.set(mlbId, { title: item.title, price: item.price });
-                }
-                this.classList.toggle('selected', state.selectedItems.has(mlbId));
-                var cb = this.querySelector('input[type=checkbox]');
-                if (cb) cb.checked = state.selectedItems.has(mlbId);
-                updateSelectionBar();
+         qs('itemList').querySelectorAll('.item-row').forEach(function(row) {
+            row.addEventListener('click', function() {
+               var mlbId = String(this.dataset.id);
+               var item = state.allItems.find(function(i) {
+                  return String(i.id) === mlbId;
+               });
+               if (!item) return;
+               if (state.selectedItems.has(mlbId)) {
+                  state.selectedItems.delete(mlbId);
+               } else {
+                  state.selectedItems.set(mlbId, {
+                     title: item.title,
+                     price: item.price
+                  });
+               }
+               this.classList.toggle('selected', state.selectedItems.has(mlbId));
+               var cb = this.querySelector('input[type=checkbox]');
+               if (cb) cb.checked = state.selectedItems.has(mlbId);
+               updateSelectionBar();
             });
-        });
-    }
+         });
+      }
 
-    function renderPagination() {
-        var page  = Math.floor(state.currentOffset / state.pageSize) + 1;
-        var total = Math.ceil(state.totalItems / state.pageSize) || 1;
-        qs('pageInfo').textContent = 'Pág. ' + page + ' / ' + total;
-        qs('btnPrevPage').disabled = (state.currentOffset === 0);
-        qs('btnNextPage').disabled = (state.currentOffset + state.pageSize >= state.totalItems);
-        qs('itemsCountLabel').textContent = state.totalItems.toLocaleString('pt-BR') + ' anúncios';
-    }
+      function renderPagination() {
+         var page = Math.floor(state.currentOffset / state.pageSize) + 1;
+         var total = Math.ceil(state.totalItems / state.pageSize) || 1;
+         qs('pageInfo').textContent = 'Pág. ' + page + ' / ' + total;
+         qs('btnPrevPage').disabled = (state.currentOffset === 0);
+         qs('btnNextPage').disabled = (state.currentOffset + state.pageSize >= state.totalItems);
+         qs('itemsCountLabel').textContent = state.totalItems.toLocaleString('pt-BR') + ' anúncios';
+      }
 
-    function updateSelectionBar() {
-        var count = state.selectedItems.size;
-        qs('selectedCount').textContent = count;
-        qs('btnConfigureClone').disabled = (count === 0);
-    }
+      function updateSelectionBar() {
+         var count = state.selectedItems.size;
+         qs('selectedCount').textContent = count;
+         qs('btnConfigureClone').disabled = (count === 0);
+      }
 
-    qs('btnPrevPage').addEventListener('click', function () {
-        state.currentOffset = Math.max(0, state.currentOffset - state.pageSize);
-        loadItems();
-    });
-    qs('btnNextPage').addEventListener('click', function () {
-        state.currentOffset += state.pageSize;
-        loadItems();
-    });
-    qs('btnSelectAll').addEventListener('click', function () {
-        state.allItems.forEach(function (item) {
-            state.selectedItems.set(String(item.id), { title: item.title, price: item.price });
-        });
-        renderItems();
-        updateSelectionBar();
-    });
-    qs('btnClearAll').addEventListener('click', function () {
-        state.selectedItems.clear();
-        renderItems();
-        updateSelectionBar();
-    });
-    qs('btnItemSearch').addEventListener('click', function () {
-        state.searchQ       = String(qs('itemSearchInput').value).trim();
-        state.currentOffset = 0;
-        loadItems();
-    });
-    qs('itemSearchInput').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') qs('btnItemSearch').click();
-    });
-    qs('btnConfigureClone').addEventListener('click', function () { goStep(3); });
-    qs('btnBackToStep1').addEventListener('click', function ()    { goStep(1); });
+      qs('btnPrevPage').addEventListener('click', function() {
+         state.currentOffset = Math.max(0, state.currentOffset - state.pageSize);
+         loadItems();
+      });
+      qs('btnNextPage').addEventListener('click', function() {
+         state.currentOffset += state.pageSize;
+         loadItems();
+      });
+      qs('btnSelectAll').addEventListener('click', function() {
+         state.allItems.forEach(function(item) {
+            state.selectedItems.set(String(item.id), {
+               title: item.title,
+               price: item.price
+            });
+         });
+         renderItems();
+         updateSelectionBar();
+      });
+      qs('btnClearAll').addEventListener('click', function() {
+         state.selectedItems.clear();
+         renderItems();
+         updateSelectionBar();
+      });
+      qs('btnItemSearch').addEventListener('click', function() {
+         state.searchQ = String(qs('itemSearchInput').value).trim();
+         state.currentOffset = 0;
+         loadItems();
+      });
+      qs('itemSearchInput').addEventListener('keypress', function(e) {
+         if (e.key === 'Enter') qs('btnItemSearch').click();
+      });
+      qs('btnConfigureClone').addEventListener('click', function() {
+         goStep(3);
+      });
+      qs('btnBackToStep1').addEventListener('click', function() {
+         goStep(1);
+      });
 
-    // ── STEP 3 — Configure ────────────────────────────────────
-    qs('priceStrategy').addEventListener('change', function () {
-        var needsValue = ['markup','markdown','competitive','fixed'].indexOf(this.value) !== -1;
-        qs('priceValueWrap').style.display = needsValue ? '' : 'none';
-        var labelMap = { markup: 'Markup (%)', markdown: 'Desconto (%)', competitive: 'Diferença (%)', fixed: 'Preço fixo (R$)' };
-        qs('priceValueLabel').textContent = labelMap[this.value] || 'Valor';
-    });
+      // ── STEP 3 — Configure ────────────────────────────────────
+      qs('priceStrategy').addEventListener('change', function() {
+         var needsValue = ['markup', 'markdown', 'competitive', 'fixed'].indexOf(this.value) !== -1;
+         qs('priceValueWrap').style.display = needsValue ? '' : 'none';
+         var labelMap = {
+            markup: 'Markup (%)',
+            markdown: 'Desconto (%)',
+            competitive: 'Diferença (%)',
+            fixed: 'Preço fixo (R$)'
+         };
+         qs('priceValueLabel').textContent = labelMap[this.value] || 'Valor';
+      });
 
-    function checkGuardrail() {
-        var warn = qs('includeDescription').checked || qs('includePictures').checked;
-        qs('guardrailWarning').classList.toggle('d-none', !warn);
-    }
-    qs('includeDescription').addEventListener('change', checkGuardrail);
-    qs('includePictures').addEventListener('change', checkGuardrail);
+      function checkGuardrail() {
+         var warn = qs('includeDescription').checked || qs('includePictures').checked;
+         qs('guardrailWarning').classList.toggle('d-none', !warn);
+      }
+      qs('includeDescription').addEventListener('change', checkGuardrail);
+      qs('includePictures').addEventListener('change', checkGuardrail);
 
-    qs('btnBackToStep2').addEventListener('click', function () { goStep(2); });
-    qs('btnPreviewAndConfirm').addEventListener('click', function () {
-        var targetId = String(qs('targetAccountSelect').value);
-        if (!targetId) { alert('Selecione uma conta destino'); return; }
-        populateSummary();
-        goStep(4);
-    });
+      qs('btnBackToStep2').addEventListener('click', function() {
+         goStep(2);
+      });
+      qs('btnPreviewAndConfirm').addEventListener('click', function() {
+         var targetId = String(qs('targetAccountSelect').value);
+         if (!targetId) {
+            alert('Selecione uma conta destino');
+            return;
+         }
+         populateSummary();
+         goStep(4);
+      });
 
-    function populateSummary() {
-        var sel      = qs('targetAccountSelect');
-        var acctName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '—';
-        var strat    = String(qs('priceStrategy').value);
-        var stratMap = { copy: 'Copiar preço', markup: 'Markup', markdown: 'Desconto', competitive: 'Mais barato', fixed: 'Preço fixo' };
-        var pv       = qs('priceValue').value;
-        var stratStr = (stratMap[strat] || strat) + (pv ? ' (' + pv + ')' : '');
+      function populateSummary() {
+         var sel = qs('targetAccountSelect');
+         var acctName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '—';
+         var strat = String(qs('priceStrategy').value);
+         var stratMap = {
+            copy: 'Copiar preço',
+            markup: 'Markup',
+            markdown: 'Desconto',
+            competitive: 'Mais barato',
+            fixed: 'Preço fixo'
+         };
+         var pv = qs('priceValue').value;
+         var stratStr = (stratMap[strat] || strat) + (pv ? ' (' + pv + ')' : '');
 
-        qs('summNick').textContent    = state.sellerNick;
-        qs('summCount').textContent   = state.selectedItems.size.toLocaleString('pt-BR');
-        qs('summAccount').textContent = acctName;
-        qs('summPrice').textContent   = stratStr;
-        qs('summStatus').textContent  = qs('initialStatus').value === 'active' ? 'Ativo' : 'Pausado';
-        qs('summDesc').textContent    = qs('includeDescription').checked ? 'Sim ⚠' : 'Não';
-        qs('summPics').textContent    = qs('includePictures').checked    ? 'Sim ⚠' : 'Não';
-    }
+         qs('summNick').textContent = state.sellerNick;
+         qs('summCount').textContent = state.selectedItems.size.toLocaleString('pt-BR');
+         qs('summAccount').textContent = acctName;
+         qs('summPrice').textContent = stratStr;
+         qs('summStatus').textContent = qs('initialStatus').value === 'active' ? 'Ativo' : 'Pausado';
+         qs('summDesc').textContent = qs('includeDescription').checked ? 'Sim ⚠' : 'Não';
+         qs('summPics').textContent = qs('includePictures').checked ? 'Sim ⚠' : 'Não';
+      }
 
-    qs('btnBackToStep3').addEventListener('click', function () { goStep(3); });
+      qs('btnBackToStep3').addEventListener('click', function() {
+         goStep(3);
+      });
 
-    // ── STEP 4 — Execute ──────────────────────────────────────
-    qs('btnExecuteClone').addEventListener('click', function () {
-        var self = this;
-        self.disabled = true;
+      // ── STEP 4 — Execute ──────────────────────────────────────
+      qs('btnExecuteClone').addEventListener('click', function() {
+         var self = this;
+         self.disabled = true;
 
-        var itemIds      = Array.from(state.selectedItems.keys());
-        var targetId     = parseInt(qs('targetAccountSelect').value, 10);
-        var strat        = String(qs('priceStrategy').value);
-        var pv           = parseFloat(qs('priceValue').value) || 0;
-        var initialSt    = String(qs('initialStatus').value);
-        var inclDesc     = qs('includeDescription').checked;
-        var inclPics     = qs('includePictures').checked;
-        var templateSlug = String(qs('templateSlug').value).trim() || null;
+         var itemIds = Array.from(state.selectedItems.keys());
+         var targetId = parseInt(qs('targetAccountSelect').value, 10);
+         var strat = String(qs('priceStrategy').value);
+         var pv = parseFloat(qs('priceValue').value) || 0;
+         var initialSt = String(qs('initialStatus').value);
+         var inclDesc = qs('includeDescription').checked;
+         var inclPics = qs('includePictures').checked;
+         var templateSlug = String(qs('templateSlug').value).trim() || null;
 
-        var options = {
-            pricing_strategy:     strat,
-            initial_status:       initialSt,
-            include_description:  inclDesc,
-            include_pictures:     inclPics
-        };
-        if (pv) options.price_value = pv;
+         var options = {
+            pricing_strategy: strat,
+            initial_status: initialSt,
+            include_description: inclDesc,
+            include_pictures: inclPics
+         };
+         if (pv) options.price_value = pv;
 
-        var payload = {
+         var payload = {
             target_account_id: targetId,
-            source_seller_id:  state.sellerId,
-            item_ids:          itemIds,
-            options:           options
-        };
-        if (templateSlug) payload.template_slug = templateSlug;
+            source_seller_id: state.sellerId,
+            item_ids: itemIds,
+            options: options
+         };
+         if (templateSlug) payload.template_slug = templateSlug;
 
-        api('/api/catalog/clone/jobs/seller', {
-            method: 'POST',
-            body:   JSON.stringify(payload)
-        })
-        .then(function (data) {
-            if (data.error) throw new Error(data.error);
-            var res = data.data || data;
-            state.jobId = String(res.job_id || res.id || '');
-            qs('jobIdEl').textContent = state.jobId;
-            hide('summaryView');
-            show('progressView');
-            startPolling();
-        })
-        .catch(function (err) {
-            alert('Erro ao criar job: ' + (err.message || 'Tente novamente'));
-            self.disabled = false;
-        });
-    });
-
-    function startPolling() {
-        if (state.pollTimer) clearInterval(state.pollTimer);
-        state.pollTimer = setInterval(pollJobStatus, 3000);
-        pollJobStatus();
-    }
-
-    function pollJobStatus() {
-        if (!state.jobId) return;
-        api('/api/catalog/clone/jobs/' + encodeURIComponent(state.jobId) + '/status')
-            .then(function (data) {
-                var res     = data.data || data;
-                var done    = parseInt(res.processed_items || res.done    || 0, 10);
-                var errors  = parseInt(res.error_count    || res.errors   || 0, 10);
-                var total   = parseInt(res.total_items    || res.total    || 0, 10);
-                var status  = String(res.status || 'pending');
-                var pct     = total > 0 ? Math.round((done / total) * 100) : 0;
-
-                qs('jobProgressBar').style.width    = pct + '%';
-                qs('jobProgressBar').textContent    = pct + '%';
-                qs('jobDone').textContent    = done;
-                qs('jobErrors').textContent  = errors;
-                qs('jobTotal').textContent   = total;
-
-                var msgEl = qs('jobStatusMsg');
-                var statusMsg = {
-                    pending:    'Aguardando processamento…',
-                    processing: 'Processando anúncios…',
-                    completed:  'Clonagem concluída com sucesso!',
-                    failed:     'Job falhou. Verifique os logs.'
-                };
-                msgEl.textContent = statusMsg[status] || 'Status: ' + status;
-                msgEl.className   = 'alert small ' + (status === 'completed' ? 'alert-success' : status === 'failed' ? 'alert-danger' : 'alert-info');
-
-                if (status === 'completed' || status === 'failed') {
-                    clearInterval(state.pollTimer);
-                    show('jobDoneActions');
-                    qs('jobProgressBar').classList.remove('progress-bar-animated');
-                }
+         api('/api/catalog/clone/jobs/seller', {
+               method: 'POST',
+               body: JSON.stringify(payload)
             })
-            .catch(function (err) { console.error('[Wizard] poll error', err); });
-    }
+            .then(function(data) {
+               if (data.error) throw new Error(data.error);
+               var res = data.data || data;
+               state.jobId = String(res.job_id || res.id || '');
+               qs('jobIdEl').textContent = state.jobId;
+               hide('summaryView');
+               show('progressView');
+               startPolling();
+            })
+            .catch(function(err) {
+               alert('Erro ao criar job: ' + (err.message || 'Tente novamente'));
+               self.disabled = false;
+            });
+      });
 
-    qs('btnNewWizard').addEventListener('click', function () {
-        if (state.pollTimer) clearInterval(state.pollTimer);
-        // Reset state
-        state.step = 1; state.sellerId = ''; state.sellerNick = '';
-        state.selectedItems = new Map();
-        state.allItems = []; state.jobId = null;
-        hide('sellerCard'); hide('sellerError');
-        qs('sellerIdInput').value = '';
-        hide('progressView'); show('summaryView');
-        qs('jobDoneActions').classList.add('d-none');
-        goStep(1);
-    });
+      function startPolling() {
+         if (state.pollTimer) clearInterval(state.pollTimer);
+         state.pollTimer = setInterval(pollJobStatus, 3000);
+         pollJobStatus();
+      }
 
-})();
+      function pollJobStatus() {
+         if (!state.jobId) return;
+         api('/api/catalog/clone/jobs/' + encodeURIComponent(state.jobId) + '/status')
+            .then(function(data) {
+               var res = data.data || data;
+               var done = parseInt(res.processed_items || res.done || 0, 10);
+               var errors = parseInt(res.error_count || res.errors || 0, 10);
+               var total = parseInt(res.total_items || res.total || 0, 10);
+               var status = String(res.status || 'pending');
+               var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+               qs('jobProgressBar').style.width = pct + '%';
+               qs('jobProgressBar').textContent = pct + '%';
+               qs('jobDone').textContent = done;
+               qs('jobErrors').textContent = errors;
+               qs('jobTotal').textContent = total;
+
+               var msgEl = qs('jobStatusMsg');
+               var statusMsg = {
+                  pending: 'Aguardando processamento…',
+                  processing: 'Processando anúncios…',
+                  completed: 'Clonagem concluída com sucesso!',
+                  failed: 'Job falhou. Verifique os logs.'
+               };
+               msgEl.textContent = statusMsg[status] || 'Status: ' + status;
+               msgEl.className = 'alert small ' + (status === 'completed' ? 'alert-success' : status === 'failed' ? 'alert-danger' : 'alert-info');
+
+               if (status === 'completed' || status === 'failed') {
+                  clearInterval(state.pollTimer);
+                  show('jobDoneActions');
+                  qs('jobProgressBar').classList.remove('progress-bar-animated');
+               }
+            })
+            .catch(function(err) {
+               console.error('[Wizard] poll error', err);
+            });
+      }
+
+      qs('btnNewWizard').addEventListener('click', function() {
+         if (state.pollTimer) clearInterval(state.pollTimer);
+         // Reset state
+         state.step = 1;
+         state.sellerId = '';
+         state.sellerNick = '';
+         state.selectedItems = new Map();
+         state.allItems = [];
+         state.jobId = null;
+         hide('sellerCard');
+         hide('sellerError');
+         qs('sellerIdInput').value = '';
+         hide('progressView');
+         show('summaryView');
+         qs('jobDoneActions').classList.add('d-none');
+         goStep(1);
+      });
+
+   })();
 </script>
