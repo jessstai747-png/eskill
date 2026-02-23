@@ -15,11 +15,26 @@ use App\Services\FinancialService;
 class FinancialServiceTest extends TestCase
 {
     private string $sourceFile;
+    private string $sourceDir;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->sourceFile = dirname(__DIR__, 3) . '/app/Services/FinancialService.php';
+        $this->sourceDir = dirname(__DIR__, 3) . '/app/Services/Financial';
+    }
+
+    /**
+     * Retorna o conteúdo de todos os arquivos de implementação financeira
+     * (facade + serviços extraídos).
+     */
+    private function getAllFinancialSource(): string
+    {
+        $source = file_get_contents($this->sourceFile);
+        foreach (glob($this->sourceDir . '/*.php') as $file) {
+            $source .= "\n" . file_get_contents($file);
+        }
+        return $source;
     }
 
     // ===========================
@@ -122,7 +137,7 @@ class FinancialServiceTest extends TestCase
 
     public function test_uses_prepared_statements_extensively(): void
     {
-        $source = file_get_contents($this->sourceFile);
+        $source = $this->getAllFinancialSource();
 
         $prepareCount = substr_count($source, '->prepare(');
         $executeCount = substr_count($source, '->execute(');
@@ -136,7 +151,7 @@ class FinancialServiceTest extends TestCase
 
     public function test_no_direct_variable_concatenation_in_sql(): void
     {
-        $source = file_get_contents($this->sourceFile);
+        $source = $this->getAllFinancialSource();
 
         // Procurar por padrões perigosos de SQL injection
         // Padrão: "SELECT ... WHERE col = '$var'" ou "... WHERE col = " . $var
@@ -184,7 +199,7 @@ class FinancialServiceTest extends TestCase
 
     public function test_methods_handle_exceptions(): void
     {
-        $source = file_get_contents($this->sourceFile);
+        $source = $this->getAllFinancialSource();
 
         $tryCatchCount = substr_count($source, 'try {');
         // Serviço robusto deve ter tratamento de erros
@@ -198,7 +213,7 @@ class FinancialServiceTest extends TestCase
 
     public function test_source_contains_no_hardcoded_tax_rates(): void
     {
-        $source = file_get_contents($this->sourceFile);
+        $source = $this->getAllFinancialSource();
 
         // Taxas não devem ser hardcoded como números mágicos nas queries
         // (Podem estar em constantes ou configs, o que é OK)
@@ -210,7 +225,7 @@ class FinancialServiceTest extends TestCase
 
     public function test_monetary_calculations_use_proper_precision(): void
     {
-        $source = file_get_contents($this->sourceFile);
+        $source = $this->getAllFinancialSource();
 
         // Deve usar DECIMAL ou ROUND em queries financeiras, ou bcmath/round em PHP
         $hasPrecision = str_contains($source, 'ROUND(')
@@ -229,7 +244,7 @@ class FinancialServiceTest extends TestCase
 
     public function test_date_methods_accept_date_range_parameters(): void
     {
-        $source = file_get_contents($this->sourceFile);
+        $source = $this->getAllFinancialSource();
 
         // Métodos financeiros devem aceitar filtros de data
         $dateParamCount = substr_count($source, '$startDate') + substr_count($source, '$endDate')
