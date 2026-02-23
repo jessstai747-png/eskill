@@ -2,6 +2,9 @@
 $title = 'Clonador de Anúncios em Lote';
 $subtitle = 'Clone anúncios de catálogo e não-catálogo entre contas';
 $headerButtons = '
+    <a href="/dashboard/catalog/clone-wizard" class="btn btn-outline-warning btn-sm">
+        <i class="bi bi-magic"></i> Wizard Concorrente
+    </a>
     <a href="/dashboard/catalog/clone-metrics" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-graph-up"></i> Métricas
     </a>

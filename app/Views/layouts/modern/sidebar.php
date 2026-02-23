@@ -230,6 +230,12 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                     <span class="badge bg-success ms-auto" style="font-size: 0.6rem;">NOVO</span>
                 </a>
 
+                <a href="/dashboard/catalog/clone-wizard" class="nav-item <?= isActive('/clone-wizard') ? 'active' : '' ?>">
+                    <i class="bi bi-magic"></i>
+                    <span>Wizard Concorrente</span>
+                    <span class="badge bg-warning text-dark ms-auto" style="font-size: 0.6rem;">NOVO</span>
+                </a>
+
                 <a href="/dashboard/catalog/clone-realtime" class="nav-item <?= isActive('/clone-realtime') ? 'active' : '' ?>">
                     <i class="bi bi-broadcast"></i>
                     <span>Clone Real-time</span>

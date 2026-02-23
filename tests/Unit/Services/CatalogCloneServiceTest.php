@@ -67,6 +67,8 @@ class CatalogCloneServiceTest extends TestCase
             ['processScheduledClones'],
             ['listSellerItems'],
             ['getSellerSummary'],
+            ['createSellerBatchJob'],
+            ['createBatchJob'],
             ['resolveItemIds'],
             ['pricePreviewBatch'],
             ['checkLocalDuplicate'],
@@ -398,5 +400,193 @@ class CatalogCloneServiceTest extends TestCase
         ];
         $result = $this->invokePrivateMethod('prepareVariations', [$variations, 75.0]);
         $this->assertSame(75.0, $result[0]['price']);
+    }
+
+    // =========================================================================
+    // Behavioral: createSellerBatchJob
+    // =========================================================================
+
+    public function testCreateSellerBatchJobThrowsOnMissingTargetAccountId(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/target_account_id/');
+        $instance = $this->reflection->newInstanceWithoutConstructor();
+        $instance->createSellerBatchJob([
+            'source_seller_id' => '12345678',
+        ]);
+    }
+
+    public function testCreateSellerBatchJobThrowsOnZeroTargetAccountId(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $instance = $this->reflection->newInstanceWithoutConstructor();
+        $instance->createSellerBatchJob([
+            'target_account_id' => 0,
+            'source_seller_id'  => '12345678',
+        ]);
+    }
+
+    public function testCreateSellerBatchJobThrowsOnMissingSourceSellerId(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/source_seller_id/');
+        $instance = $this->reflection->newInstanceWithoutConstructor();
+        $instance->createSellerBatchJob([
+            'target_account_id' => 5,
+        ]);
+    }
+
+    public function testCreateSellerBatchJobThrowsOnNonNumericSellerId(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $instance = $this->reflection->newInstanceWithoutConstructor();
+        $instance->createSellerBatchJob([
+            'target_account_id' => 5,
+            'source_seller_id'  => 'nao-tem-digitos',
+        ]);
+    }
+
+    public function testCreateSellerBatchJobThrowsWhenItemCountExceedsLimit(): void
+    {
+        $_ENV['CLONE_JOB_MAX_ITEMS'] = '3';
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/limite/i');
+        try {
+            $instance = $this->reflection->newInstanceWithoutConstructor();
+            $instance->createSellerBatchJob([
+                'target_account_id' => 5,
+                'source_seller_id'  => '12345678',
+                'item_ids'          => ['MLB1', 'MLB2', 'MLB3', 'MLB4'],
+            ]);
+        } finally {
+            unset($_ENV['CLONE_JOB_MAX_ITEMS']);
+        }
+    }
+
+    public function testCreateSellerBatchJobAppliesGuardrailDefaultsFalse(): void
+    {
+        /** @var \App\Services\CatalogCloneService&\PHPUnit\Framework\MockObject\MockObject $mock */
+        $mock = $this->getMockBuilder(\App\Services\CatalogCloneService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['createBatchJob'])
+            ->getMock();
+
+        $capturedParams = [];
+        $mock->expects($this->once())
+            ->method('createBatchJob')
+            ->willReturnCallback(function (array $params) use (&$capturedParams): array {
+                $capturedParams = $params;
+                return ['job_id' => 'test_job_001'];
+            });
+
+        $result = $mock->createSellerBatchJob([
+            'target_account_id' => 5,
+            'source_seller_id'  => '12345678',
+        ]);
+
+        $this->assertSame(['job_id' => 'test_job_001'], $result);
+        $this->assertFalse($capturedParams['options']['include_description']);
+        $this->assertFalse($capturedParams['options']['include_pictures']);
+        $this->assertSame('seller', $capturedParams['source_type']);
+    }
+
+    public function testCreateSellerBatchJobRespectsExplicitGuardrailTrue(): void
+    {
+        /** @var \App\Services\CatalogCloneService&\PHPUnit\Framework\MockObject\MockObject $mock */
+        $mock = $this->getMockBuilder(\App\Services\CatalogCloneService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['createBatchJob'])
+            ->getMock();
+
+        $capturedParams = [];
+        $mock->method('createBatchJob')
+            ->willReturnCallback(function (array $params) use (&$capturedParams): array {
+                $capturedParams = $params;
+                return ['job_id' => 'test_job_002'];
+            });
+
+        $mock->createSellerBatchJob([
+            'target_account_id' => 5,
+            'source_seller_id'  => '12345678',
+            'options'           => ['include_description' => true, 'include_pictures' => true],
+        ]);
+
+        $this->assertTrue($capturedParams['options']['include_description']);
+        $this->assertTrue($capturedParams['options']['include_pictures']);
+    }
+
+    public function testCreateSellerBatchJobStoresSellerFiltersInOptions(): void
+    {
+        /** @var \App\Services\CatalogCloneService&\PHPUnit\Framework\MockObject\MockObject $mock */
+        $mock = $this->getMockBuilder(\App\Services\CatalogCloneService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['createBatchJob'])
+            ->getMock();
+
+        $capturedParams = [];
+        $mock->method('createBatchJob')
+            ->willReturnCallback(function (array $params) use (&$capturedParams): array {
+                $capturedParams = $params;
+                return ['job_id' => 'test_job_003'];
+            });
+
+        $mock->createSellerBatchJob([
+            'target_account_id' => 5,
+            'source_seller_id'  => '99887766',
+            'filters'           => ['brand' => 'Honda', 'category' => 'MLB1234'],
+        ]);
+
+        $filters = $capturedParams['options']['seller_filters'];
+        $this->assertSame('Honda', $filters['brand']);
+        $this->assertSame('MLB1234', $filters['category']);
+        $this->assertSame('99887766', $capturedParams['source_seller_id']);
+    }
+
+    public function testCreateSellerBatchJobStripsNonDigitsFromSellerId(): void
+    {
+        /** @var \App\Services\CatalogCloneService&\PHPUnit\Framework\MockObject\MockObject $mock */
+        $mock = $this->getMockBuilder(\App\Services\CatalogCloneService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['createBatchJob'])
+            ->getMock();
+
+        $capturedParams = [];
+        $mock->method('createBatchJob')
+            ->willReturnCallback(function (array $params) use (&$capturedParams): array {
+                $capturedParams = $params;
+                return ['job_id' => 'test_job_004'];
+            });
+
+        $mock->createSellerBatchJob([
+            'target_account_id' => 5,
+            'source_seller_id'  => 'MLB12345678',
+        ]);
+
+        $this->assertSame('12345678', $capturedParams['source_seller_id']);
+    }
+
+    public function testCreateSellerBatchJobPassesItemIdsForward(): void
+    {
+        /** @var \App\Services\CatalogCloneService&\PHPUnit\Framework\MockObject\MockObject $mock */
+        $mock = $this->getMockBuilder(\App\Services\CatalogCloneService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['createBatchJob'])
+            ->getMock();
+
+        $capturedParams = [];
+        $mock->method('createBatchJob')
+            ->willReturnCallback(function (array $params) use (&$capturedParams): array {
+                $capturedParams = $params;
+                return ['job_id' => 'test_job_005'];
+            });
+
+        $itemIds = ['MLB111', 'MLB222', 'MLB333'];
+        $mock->createSellerBatchJob([
+            'target_account_id' => 5,
+            'source_seller_id'  => '12345678',
+            'item_ids'          => $itemIds,
+        ]);
+
+        $this->assertSame($itemIds, $capturedParams['item_ids']);
     }
 }

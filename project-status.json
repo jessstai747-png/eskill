@@ -256,6 +256,22 @@
             "last_tested": "2025-06-28"
         },
         {
+            "id": "CLONE-009",
+            "category": "catalog_clone",
+            "description": "Wizard de Clonagem por Concorrente — fluxo 4 passos: busca vendedor ML, browser de anúncios com facets, configuração com guardrails, execução com polling de progresso",
+            "files": [
+                "app/Controllers/CatalogCloneController.php",
+                "app/Controllers/DashboardController.php",
+                "app/Services/CatalogCloneService.php",
+                "app/Services/JobService.php",
+                "app/Routes/api.php",
+                "app/Routes/web.php",
+                "app/Views/dashboard/catalog_clone_wizard.php"
+            ],
+            "passes": true,
+            "last_tested": "2025-06-28"
+        },
+        {
             "id": "PRICE-001",
             "category": "pricing",
             "description": "Pricing dinâmico baseado em concorrência",

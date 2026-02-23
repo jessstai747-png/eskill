@@ -85,6 +85,7 @@ class CatalogCloneControllerTest extends TestCase
             ['dryRun'],
             ['cloneItemNew'],
             ['createJob'],
+            ['createSellerJob'],
             ['getJobStatus'],
             ['listJobs'],
             ['listActiveJobs'],

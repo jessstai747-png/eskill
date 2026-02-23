@@ -34,6 +34,7 @@ $menuGroups = [
             ['path' => '/dashboard/items', 'icon' => 'bi-tags', 'label' => 'Anúncios'],
             ['path' => '/dashboard/items/bulk', 'icon' => 'bi-pencil-square', 'label' => 'Editor em Lote'],
             ['path' => '/dashboard/catalog/clone', 'icon' => 'bi-files', 'label' => 'Clonador'],
+            ['path' => '/dashboard/catalog/clone-wizard', 'icon' => 'bi-magic', 'label' => 'Wizard Concorrente', 'badge' => 'NOVO'],
             ['path' => '/dashboard/catalog/clone-realtime', 'icon' => 'bi-broadcast', 'label' => 'Clone Real-time', 'badge' => 'NEW'],
             ['path' => '/dashboard/catalog/clone-analytics', 'icon' => 'bi-bar-chart', 'label' => 'Clone Analytics'],
             ['path' => '/dashboard/catalog/clone-compliance', 'icon' => 'bi-shield-check', 'label' => 'Auditoria'],

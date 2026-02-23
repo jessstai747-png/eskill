@@ -6,6 +6,35 @@
 
 ---
 
+## Sessão: 2026-02-24 (continuação) — test(clone-wizard): testes + UX + sidebar
+
+### Contexto
+Continuação da sessão anterior. Todas as openspec changes já estavam concluídas e project-status.json sem falhas. Foco em testes e melhorias de UX do Wizard Concorrente.
+
+### Implementado
+
+- **`tests/Unit/Services/CatalogCloneServiceTest.php`** — 13 novos testes para `createSellerBatchJob()`
+  - Validação: `target_account_id` ausente/zero → `InvalidArgumentException`
+  - Validação: `source_seller_id` ausente/sem dígitos → `InvalidArgumentException`  
+  - Validação: `item_ids` excede limite `CLONE_JOB_MAX_ITEMS` → `InvalidArgumentException`
+  - Guardrails: `include_description` e `include_pictures` default `false`
+  - Guardrails: opt-in explícito `true` é respeitado
+  - `seller_filters` (brand/category) persistidos em `options`
+  - Seller ID: strip de non-digits (ex: "MLB12345678" → "12345678")
+  - Item IDs encaminhados ao `createBatchJob()`
+  - `createSellerBatchJob` e `createBatchJob` adicionados ao `publicMethodsProvider`
+- **`tests/Unit/Controllers/CatalogCloneControllerTest.php`** — `createSellerJob` adicionado ao `advancedEndpointsProvider`
+- **`app/Views/layouts/modern/sidebar.php`** — link "Wizard Concorrente" adicionado após "Clonar em Lote"
+- **`app/Views/layouts/sidebar.php`** — entrada "Wizard Concorrente" adicionada na seção CATALOG
+- **`app/Views/dashboard/catalog_clone_batch.php`** — botão "Wizard Concorrente" adicionado no header
+
+### Validação
+- `php -l` em todos os arquivos modificados — OK
+- `phpunit --testsuite=Unit` — 2857 testes (+13), 0 falhas, 34 skipped
+- `bash bin/init.sh` — ✅ Sistema pronto (3 avisos: MySQL indisponível + arquivos no stage)
+
+---
+
 ## Sessão: 2026-02-24 — feat(clone-wizard): Competitor Clone Wizard completo
 
 ### Contexto
