@@ -164,7 +164,7 @@ class CreateMLAdvancedTables
                 question_type VARCHAR(100) NOT NULL,
                 status ENUM('draft', 'published', 'inactive') DEFAULT 'draft',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (item_id) REFERENCES ml_items(item_id) ON DELETE CASCADE,
+                FOREIGN KEY (item_id) REFERENCES ml_items(id) ON DELETE CASCADE,
                 INDEX idx_item_id (item_id),
                 INDEX idx_status (status),
                 INDEX idx_question_type (question_type)

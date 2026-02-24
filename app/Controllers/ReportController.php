@@ -323,7 +323,7 @@ class ReportController extends BaseController
                 FROM ml_orders o
                 INNER JOIN order_items oi 
                     ON (oi.order_id = o.id OR oi.order_id = o.ml_order_id)
-                LEFT JOIN items i ON i.item_id = oi.item_id
+                LEFT JOIN items i ON i.ml_item_id = oi.item_id
                 WHERE DATE(o.date_created) >= :cutoff
                 AND o.status = 'paid'
                 GROUP BY category_id

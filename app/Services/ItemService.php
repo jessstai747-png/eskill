@@ -533,19 +533,19 @@ class ItemService
             }
 
             try {
-                $stmt = $this->db->prepare("SELECT * FROM ml_items WHERE ml_item_id = :id OR id = :id LIMIT 1");
+                $stmt = $this->db->prepare("SELECT * FROM ml_items WHERE id = :id LIMIT 1");
                 $stmt->execute([':id' => $itemId]);
                 $local = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($local) {
-                    $data = json_decode($local['data'] ?? '{}', true);
+                    $data = json_decode($local['data'] ?? $local['raw_data'] ?? '{}', true);
                     // Usar permalink salvo ou construir URL real do ML
                     $permalink = $local['permalink'] ?? $data['permalink'] ?? null;
                     if (!$permalink) {
-                        $permalink = MercadoLivreHelper::itemUrl($local['ml_item_id']);
+                        $permalink = MercadoLivreHelper::itemUrl($local['id']);
                     }
                     return array_merge($data, [
-                        'id' => $local['ml_item_id'],
+                        'id' => $local['id'],
                         'title' => $local['title'],
                         'price' => (float)$local['price'],
                         'available_quantity' => (int)$local['available_quantity'],
@@ -596,7 +596,7 @@ class ItemService
                 }
 
                 // Buscar dados de health/description do JSON em ml_items
-                $stmt2 = $this->db->prepare("SELECT data FROM ml_items WHERE ml_item_id = :ml_item_id AND account_id = :account_id LIMIT 1");
+                $stmt2 = $this->db->prepare("SELECT raw_data AS data FROM ml_items WHERE id = :ml_item_id AND account_id = :account_id LIMIT 1");
                 $stmt2->execute([':ml_item_id' => $itemId, ':account_id' => $this->accountId]);
                 $localData = $stmt2->fetch(PDO::FETCH_ASSOC);
 
@@ -1267,22 +1267,25 @@ class ItemService
             $stmt = $this->db->prepare("
                 INSERT INTO items (
                     ml_item_id, account_id, title, category_id, price,
-                    currency_id, available_quantity, status, condition_type,
-                    catalog_product_id, sku, data, created_at, updated_at
+                    currency_id, available_quantity, sold_quantity, status, condition_type,
+                    catalog_product_id, sku, thumbnail, permalink, data, created_at, updated_at
                 ) VALUES (
                     :ml_item_id, :account_id, :title, :category_id, :price,
-                    :currency_id, :available_quantity, :status, :condition_type,
-                    :catalog_product_id, :sku, :data, NOW(), NOW()
+                    :currency_id, :available_quantity, :sold_quantity, :status, :condition_type,
+                    :catalog_product_id, :sku, :thumbnail, :permalink, :data, NOW(), NOW()
                 )
                 ON DUPLICATE KEY UPDATE
                     title = VALUES(title),
                     category_id = VALUES(category_id),
                     price = VALUES(price),
                     available_quantity = VALUES(available_quantity),
+                    sold_quantity = VALUES(sold_quantity),
                     status = VALUES(status),
                     condition_type = VALUES(condition_type),
                     catalog_product_id = VALUES(catalog_product_id),
                     sku = VALUES(sku),
+                    thumbnail = VALUES(thumbnail),
+                    permalink = VALUES(permalink),
                     data = VALUES(data),
                     updated_at = NOW()
             ");
@@ -1295,10 +1298,13 @@ class ItemService
                 ':price' => $item['price'] ?? null,
                 ':currency_id' => $item['currency_id'] ?? 'BRL',
                 ':available_quantity' => $item['available_quantity'] ?? 0,
+                ':sold_quantity' => $item['sold_quantity'] ?? 0,
                 ':status' => $item['status'] ?? 'unknown',
                 ':condition_type' => $item['condition'] ?? null,
                 ':catalog_product_id' => $item['catalog_product_id'] ?? null,
                 ':sku' => $item['seller_custom_field'] ?? ($this->extractSku($item) ?? null),
+                ':thumbnail' => $item['thumbnail'] ?? null,
+                ':permalink' => $item['permalink'] ?? null,
                 ':data' => json_encode($this->ensureHealthScore($item)), // Ensure health
             ]);
         } catch (\Exception $e) {

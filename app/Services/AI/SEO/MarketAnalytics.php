@@ -46,7 +46,7 @@ class MarketAnalytics
                 DATE(pm.date) as date,
                 SUM(pm.sales_change) as sales
             FROM seo_performance_metrics pm
-            JOIN items i ON i.item_id = pm.item_id
+            JOIN items i ON i.ml_item_id = pm.item_id
             WHERE pm.account_id = :account_id
               AND i.category_id = :category_id
               AND pm.date >= DATE_SUB(NOW(), INTERVAL 90 DAY)
@@ -120,7 +120,7 @@ class MarketAnalytics
                 YEAR(pm.date) as year,
                 AVG(pm.sales_change) as avg_sales
             FROM seo_performance_metrics pm
-            JOIN items i ON i.item_id = pm.item_id
+            JOIN items i ON i.ml_item_id = pm.item_id
             WHERE pm.account_id = :account_id
               AND i.category_id = :category_id
               AND pm.date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
@@ -205,7 +205,7 @@ class MarketAnalytics
                 SUM(pm.sales_change) as sales_growth,
                 AVG(pm.views_change) as avg_views_growth
             FROM items i
-            JOIN seo_performance_metrics pm ON pm.item_id = i.item_id
+            JOIN seo_performance_metrics pm ON pm.item_id = i.ml_item_id
             WHERE i.account_id = :account_id
               AND pm.date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             GROUP BY i.category_id

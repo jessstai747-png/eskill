@@ -34,7 +34,7 @@ class AdsWizardService
             $limitSql = max(1, min(200, (int)$limit));
             $stmt = $this->db->prepare("
                 SELECT
-                    i.ml_id AS item_id,
+                    i.ml_item_id AS item_id,
                     i.title,
                     i.price,
                     i.available_quantity AS stock,

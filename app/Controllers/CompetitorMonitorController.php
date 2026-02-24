@@ -54,7 +54,7 @@ class CompetitorMonitorController
                     i.price as my_price,
                     i.thumbnail as my_thumbnail
                 FROM competitor_tracking ct
-                LEFT JOIN items i ON ct.my_item_id = i.ml_id AND i.account_id = ct.account_id
+                LEFT JOIN items i ON ct.my_item_id = i.ml_item_id AND i.account_id = ct.account_id
                 WHERE ct.account_id = ?
                 ORDER BY ct.last_checked DESC
             ");
@@ -113,7 +113,7 @@ class CompetitorMonitorController
                     i.title as my_title
                 FROM competitor_alerts ca
                 LEFT JOIN competitor_tracking ct ON ca.tracking_id = ct.id
-                LEFT JOIN items i ON ct.my_item_id = i.ml_id AND i.account_id = ct.account_id
+                LEFT JOIN items i ON ct.my_item_id = i.ml_item_id AND i.account_id = ct.account_id
                 WHERE ct.account_id = ?
                 ORDER BY ca.created_at DESC
                 LIMIT {$limitSql}

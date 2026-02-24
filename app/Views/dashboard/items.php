@@ -641,7 +641,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             if (data.success && data.items && data.items.length > 0) {
                 const tbody = document.querySelector('#itemsGrid tbody');
                 tbody.innerHTML = data.items.map(item => {
-                    const itemId = item.id || item.ml_id;
+                    const itemId = item.id || item.ml_item_id;
                     const thumbnail = fixImageUrl(item.thumbnail || '/images/no-image.png');
                     const statusClass = getStatusClass(item.status);
                     const statusLabel = getStatusLabel(item.status);
@@ -813,7 +813,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             if (data.success && data.items && data.items.length > 0) {
                 const tbody = document.querySelector('#itemsGrid tbody');
                 tbody.innerHTML = data.items.map(item => {
-                    const itemId = item.id || item.ml_id;
+                    const itemId = item.id || item.ml_item_id;
                     const thumbnail = fixImageUrl(item.thumbnail || '/images/no-image.png');
                     const statusClass = getStatusClass(item.status);
                     const statusLabel = getStatusLabel(item.status);
@@ -920,7 +920,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             if (data.success && data.items && data.items.length > 0) {
                 const tbody = document.querySelector('#itemsGrid tbody');
                 tbody.innerHTML = data.items.map(item => {
-                    const itemId = item.id || item.ml_id;
+                    const itemId = item.id || item.ml_item_id;
                     const thumbnail = fixImageUrl(item.thumbnail || '/images/no-image.png');
                     const statusClass = getStatusClass(item.status);
                     const statusLabel = getStatusLabel(item.status);

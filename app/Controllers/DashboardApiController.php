@@ -819,16 +819,16 @@ class DashboardApiController extends BaseController
             $stmt = $this->db->prepare("
                 SELECT 
                     i.title,
-                    i.ml_id,
+                    i.ml_item_id,
                     COUNT(o.id) as order_count,
                     COALESCE(SUM(o.total_amount), 0) as revenue
                 FROM items i
                 LEFT JOIN ml_orders o ON 
                     o.ml_account_id = i.account_id
                     AND o.date_created >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                    AND o.order_data LIKE CONCAT('%\"order_items\"%\"id\":\"', i.ml_id, '\"%')
+                    AND o.order_data LIKE CONCAT('%\"order_items\"%\"id\":\"', i.ml_item_id, '\"%')
                 WHERE i.account_id = ?
-                GROUP BY i.ml_id
+                GROUP BY i.ml_item_id
                 ORDER BY revenue DESC
                 LIMIT 3
             ");
@@ -875,7 +875,7 @@ class DashboardApiController extends BaseController
                 LEFT JOIN ml_orders o ON 
                     o.ml_account_id = i.account_id
                     AND o.date_created >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                    AND o.order_data LIKE CONCAT('%\"order_items\"%\"id\":\"', i.ml_id, '\"%')
+                    AND o.order_data LIKE CONCAT('%\"order_items\"%\"id\":\"', i.ml_item_id, '\"%')
                 WHERE i.account_id = ?
                 AND i.status = 'active'
                 AND o.id IS NULL

@@ -430,7 +430,7 @@ class ClonePostActionsService
     {
         // Primeiro tentar na tabela items local
         try {
-            $stmt = $this->db->prepare("SELECT account_id FROM items WHERE item_id = :item_id LIMIT 1");
+            $stmt = $this->db->prepare("SELECT account_id FROM items WHERE ml_item_id = :item_id LIMIT 1");
             $stmt->execute(['item_id' => $itemId]);
             $result = $stmt->fetchColumn();
             if ($result) {

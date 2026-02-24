@@ -6,6 +6,75 @@
 
 ---
 
+## Sessão: 2026-02-25d — Auditoria massiva de schema da tabela items + migration
+
+### Contexto
+Continuação da sessão 2026-02-25c. Auditoria completa da tabela `items` revelou ~40 SQL column mismatches em 24 arquivos, além de 11 colunas totalmente ausentes da migration. Esta sessão corrigiu TODOS.
+
+### Descobertas Críticas
+1. A tabela `items` (migration 008) tem a coluna `ml_item_id` para o ID do Mercado Livre, mas o código usava `item_id`, `ml_id`, e variantes que NÃO existem.
+2. A tabela `ml_items` (migration 20260122) usa `id VARCHAR(20)` como PK (o próprio ML item ID), mas código usava `ml_item_id` e `item_id` que NÃO existem nela.
+3. A tabela `items` estava sem 11 colunas referenciadas extensivamente no codebase: sku, sold_quantity, thumbnail, permalink, cost_price, tax_rate, pricing_strategy, min_price, max_price, auto_reprice, auto_negotiate.
+
+### Migration Criada
+- `database/migrations/2026_02_25_add_pricing_columns_to_items.sql` — Adiciona 11 colunas + 3 índices à tabela items
+
+### Bugs Corrigidos (24 arquivos, ~40 correções)
+
+**Categoria 1: `i.ml_id` → `i.ml_item_id` (items table) — 23 ocorrências em 6 arquivos:**
+- `app/Services/MercadoLivre/MLAnalyticsIntelligenceService.php` (15x)
+- `app/Controllers/CompetitorMonitorController.php` (2x)
+- `app/Controllers/DashboardApiController.php` (4x)
+- `app/Services/AdsWizardService.php` (1x)
+- `app/Services/MercadoLivre/CompetitorIntelligenceService.php` (1x)
+- `app/Services/AI/ML/LearningEngine.php` (1x)
+
+**Categoria 2: `i.item_id` / `items.item_id` → `ml_item_id` — 9 ocorrências em 7 arquivos:**
+- `app/Controllers/QualityController.php` — SELECT item_id → ml_item_id AS item_id
+- `app/Controllers/ReportController.php` — JOIN i.item_id → i.ml_item_id
+- `app/Services/CatalogCloneService.php` — WHERE item_id → WHERE ml_item_id + seller_custom_field → sku
+- `app/Services/AIPredictionsService.php` — JOIN i.item_id → i.ml_item_id
+- `app/Services/ClonePostActionsService.php` — WHERE item_id → WHERE ml_item_id
+- `app/Services/StatisticsService.php` — JOIN i.item_id → i.ml_item_id
+- `app/Services/AI/SEO/MarketAnalytics.php` — 3x i.item_id → i.ml_item_id
+
+**Categoria 3: `ml_items` table references — 4 correções em 3 arquivos:**
+- `app/Services/ItemService.php` — ml_items.ml_item_id → ml_items.id (2x) + data → raw_data
+- `app/Services/MercadoLivre/SmartQAService.php` — ml_items.item_id → ml_items.id
+- `app/Database/CreateMLAdvancedTables.php` — FK REFERENCES ml_items(item_id) → ml_items(id)
+
+**Categoria 4: Colunas erradas — 2 correções:**
+- `app/Services/DynamicPricingService.php` — items.cost → cost_price; items.item_id → ml_item_id
+- `app/Services/CatalogCloneService.php` — items.seller_custom_field → items.sku
+
+**Categoria 5: JavaScript/Views — 6 correções em 4 arquivos:**
+- `app/Views/dashboard/items.php` — 3x item.ml_id → item.ml_item_id
+- `app/Views/dashboard/seo-killer/components/performance-tracker-tab.php` — 1x
+- `app/Views/dashboard/seo-killer/components/ab-test-tab.php` — 1x
+- `app/Views/dashboard/seo-killer/components/image-analyzer-modal.php` — 1x
+
+**Categoria 6: Coluna inexistente na tabela — 1 correção:**
+- `app/Controllers/FullController.php` — i.logistic_type → JSON_EXTRACT(data, '$.shipping.logistic_type')
+
+**Categoria 7: Funcionalidade expandida:**
+- `app/Services/ItemService.php` — saveItemToDatabase agora persiste sold_quantity, thumbnail, permalink
+- `app/Agents/GuardianAgent.php` — sold_quantity agora usa coluna direta (migration adicionou)
+
+### Validação
+- ✅ 23 arquivos PHP passam `php -l` (zero erros de sintaxe)
+- ✅ 2896 testes passando, 0 failures, 34 skipped
+- ✅ Migration usa `ADD COLUMN IF NOT EXISTS` (idempotente)
+
+### Commit
+`fix: items table schema — add 11 missing columns + fix ~40 wrong column references across 24 files`
+
+### Próximos Passos
+1. Aplicar migration no banco: `php bin/apply-migrations.php` (requer MySQL rodando)
+2. Continuar auditoria de outras tabelas (orders, seo_*, etc.)
+3. Tasks 2-7 do plano de produção (bloqueados por serviços running)
+
+---
+
 ## Sessão: 2026-02-25c — Auditoria estendida app/ layer + fix log paths crontab
 
 ### Contexto

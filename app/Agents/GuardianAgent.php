@@ -70,13 +70,12 @@ class GuardianAgent extends BaseAgent
 
     private function checkStagnantAds(): void
     {
-        // Finds active ads created > 60 days ago with 0 sales (using JSON data if not columns)
-        // Ensure to check actual columns if available, fallback to JSON
+        // Finds active ads created > 60 days ago with 0 sales
         $sql = "
             SELECT ml_item_id, title, price, created_at as date_created
             FROM items 
             WHERE status = 'active' 
-            AND (sold_quantity = 0 OR (sold_quantity IS NULL AND CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.sold_quantity')) AS UNSIGNED) = 0))
+            AND sold_quantity = 0
             AND created_at < DATE_SUB(NOW(), INTERVAL 60 DAY)
             LIMIT 20
         ";

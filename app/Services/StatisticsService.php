@@ -232,7 +232,7 @@ class StatisticsService
                     SUM(oi.quantity) as total_quantity,
                     SUM(oi.unit_price * oi.quantity) as total_revenue
                 FROM ml_order_items oi
-                INNER JOIN items i ON i.item_id = oi.item_id
+                INNER JOIN items i ON i.ml_item_id = oi.item_id
                 WHERE oi.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
                 GROUP BY oi.item_id, i.title, i.price, i.thumbnail, i.category_id
                 ORDER BY total_quantity DESC

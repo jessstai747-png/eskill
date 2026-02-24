@@ -425,7 +425,7 @@ class MLAnalyticsIntelligenceService
                 $stmt = $this->db->prepare("
                     SELECT MAX(CONCAT(metric_date, ' 23:59:59')) as latest
                     FROM seo_performance_metrics pm
-                    JOIN items i ON i.ml_id = pm.item_id
+                    JOIN items i ON i.ml_item_id = pm.item_id
                     WHERE i.account_id = :account_id
                 ");
                 $stmt->execute(['account_id' => $this->accountId]);
@@ -515,12 +515,12 @@ class MLAnalyticsIntelligenceService
             $days = intval($filters['days'] ?? 30);
             $stmt = $this->db->prepare("
                 SELECT 
-                    COUNT(DISTINCT i.ml_id) as active_items,
+                    COUNT(DISTINCT i.ml_item_id) as active_items,
                     COALESCE(SUM(pm.visits), 0) as total_visits,
                     COALESCE(SUM(pm.sold_quantity), 0) as total_sales,
                     COALESCE(SUM(pm.revenue), 0) as total_revenue
                 FROM items i
-                LEFT JOIN seo_performance_metrics pm ON pm.item_id = i.ml_id
+                LEFT JOIN seo_performance_metrics pm ON pm.item_id = i.ml_item_id
                     AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
                 WHERE i.account_id = :account_id AND i.status = 'active'
             ");
@@ -607,7 +607,7 @@ class MLAnalyticsIntelligenceService
                     COALESCE(SUM(pm.visits), 0) as impressions,
                     COALESCE(SUM(pm.sold_quantity), 0) as purchases
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
             ");
@@ -645,7 +645,7 @@ class MLAnalyticsIntelligenceService
                     SUM(CASE WHEN pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 15 DAY) THEN pm.sold_quantity ELSE 0 END) as recent_sales,
                     SUM(CASE WHEN pm.metric_date < DATE_SUB(CURDATE(), INTERVAL 15 DAY) AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN pm.sold_quantity ELSE 0 END) as previous_sales
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
             ");
             $stmt->execute(['account_id' => $this->accountId]);
@@ -923,7 +923,7 @@ class MLAnalyticsIntelligenceService
                 SELECT i.category_id, COUNT(o.id) as sales_count
                 FROM ml_orders o
                 JOIN order_items oi ON (oi.order_id = o.id OR oi.order_id = o.ml_order_id)
-                JOIN items i ON i.ml_id = oi.item_id
+                JOIN items i ON i.ml_item_id = oi.item_id
                 WHERE o.ml_account_id = :account_id AND o.status = 'paid'
                 AND o.date_created >= DATE_SUB(NOW(), INTERVAL 30 DAY)
                 GROUP BY i.category_id
@@ -962,7 +962,7 @@ class MLAnalyticsIntelligenceService
             $stmt = $this->db->prepare("
                 SELECT pm.item_id, SUM(pm.visits) as visits, SUM(pm.sold_quantity) as sales
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
                 GROUP BY pm.item_id
@@ -1331,7 +1331,7 @@ class MLAnalyticsIntelligenceService
                     COALESCE(SUM(pm.sold_quantity), 0) as sales,
                     COALESCE(SUM(pm.revenue), 0) as revenue
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
                 GROUP BY pm.item_id, i.title
@@ -1750,7 +1750,7 @@ class MLAnalyticsIntelligenceService
                     SUM(pm.revenue) as revenue,
                     SUM(pm.sold_quantity) as sales
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
                 GROUP BY pm.item_id
@@ -1779,7 +1779,7 @@ class MLAnalyticsIntelligenceService
                     SUM(pm.sold_quantity) as sales,
                     COUNT(DISTINCT pm.item_id) as items
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
                 GROUP BY i.category_id
@@ -2234,10 +2234,10 @@ class MLAnalyticsIntelligenceService
             $stmt = $this->db->prepare("
                 SELECT i.title, COALESCE(SUM(pm.sold_quantity), 0) as sales
                 FROM items i
-                LEFT JOIN seo_performance_metrics pm ON pm.item_id = i.ml_id
+                LEFT JOIN seo_performance_metrics pm ON pm.item_id = i.ml_item_id
                     AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
                 WHERE i.account_id = :account_id AND i.status = 'active'
-                GROUP BY i.ml_id, i.title
+                GROUP BY i.ml_item_id, i.title
             ");
             $stmt->execute(['account_id' => $this->accountId]);
             $items = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
@@ -2613,7 +2613,7 @@ class MLAnalyticsIntelligenceService
                     COALESCE(SUM(pm.sold_quantity), 0) as total_sales,
                     COALESCE(SUM(pm.revenue), 0) as total_revenue
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
             ");
@@ -2701,7 +2701,7 @@ class MLAnalyticsIntelligenceService
             $stmt = $this->db->prepare("
                 SELECT pm.metric_date as date, SUM(pm.sold_quantity) as sales
                 FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
                 GROUP BY pm.metric_date
@@ -3016,7 +3016,7 @@ class MLAnalyticsIntelligenceService
         try {
             $stmt = $this->db->prepare("
                 SELECT COUNT(*) as total FROM seo_performance_metrics pm
-                JOIN items i ON i.ml_id = pm.item_id
+                JOIN items i ON i.ml_item_id = pm.item_id
                 WHERE i.account_id = :account_id
                 AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
             ");

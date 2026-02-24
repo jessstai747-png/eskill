@@ -422,7 +422,7 @@ class LearningEngine
             $missingAttrs = [];
             try {
                 $stmt = $this->db->prepare("
-                    SELECT i.ml_id FROM items i
+                    SELECT i.ml_item_id FROM items i
                     WHERE i.account_id = :account_id
                     AND i.category_id = :category_id
                     AND i.status = 'active'

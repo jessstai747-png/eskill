@@ -416,7 +416,7 @@ class DynamicPricingService extends MercadoLivreClient
     private function getItemCost(string $itemId): float
     {
         $stmt = $this->db->prepare("
-            SELECT cost FROM items WHERE item_id = :item_id AND account_id = :account_id
+            SELECT cost_price AS cost FROM items WHERE ml_item_id = :item_id AND account_id = :account_id
         ");
         $stmt->execute(['item_id' => $itemId, 'account_id' => $this->accountId]);
         $result = $stmt->fetch();

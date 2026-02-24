@@ -317,7 +317,7 @@ class QualityController extends BaseController
 
             // Buscar itens
             $stmt = $db->prepare("
-                SELECT item_id, title, price, status, available_quantity, sold_quantity
+                SELECT ml_item_id AS item_id, title, price, status, available_quantity, sold_quantity
                 FROM items 
                 WHERE account_id = :account_id 
                 AND status = :status

@@ -115,7 +115,7 @@ class FullController extends BaseController
                 i.available_quantity as current_stock,
                 i.price,
                 i.category_id,
-                COALESCE(i.logistic_type, '') as logistic_type
+                COALESCE(JSON_UNQUOTE(JSON_EXTRACT(i.data, '$.shipping.logistic_type')), '') as logistic_type
             FROM items i
             WHERE i.account_id = :account_id
             AND i.status = 'active'

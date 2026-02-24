@@ -825,7 +825,7 @@ class CompetitorIntelligenceService
                    COALESCE(m.available_quantity, 0) as stock,
                    COALESCE(m.sold_quantity, 0) as sold_quantity
             FROM items i
-            LEFT JOIN ml_items m ON i.ml_id = m.id
+            LEFT JOIN ml_items m ON i.ml_item_id = m.id
             WHERE i.account_id = :account_id AND i.status = 'active' {$categoryFilter}
             ORDER BY i.price DESC
             LIMIT {$limit}

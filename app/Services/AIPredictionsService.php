@@ -285,7 +285,7 @@ class AIPredictionsService extends MercadoLivreClient
             $stmt = $this->db->prepare("
                 SELECT DATE(created_at) as date, SUM(sold_quantity) as total_sales
                 FROM item_metrics_history imh
-                JOIN items i ON imh.item_id = i.item_id
+                JOIN items i ON imh.item_id = i.ml_item_id
                 WHERE i.category_id = :category_id
                 AND imh.account_id = :account_id
                 AND imh.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)

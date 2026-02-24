@@ -317,7 +317,7 @@
 
                 select.innerHTML = '<option value="">Selecione um produto...</option>' +
                     data.items.map(item => `
-                    <option value="${item.id}">${this.escapeHtml(item.title)} (${item.ml_id})</option>
+                    <option value="${item.id}">${this.escapeHtml(item.title)} (${item.ml_item_id})</option>
                 `).join('');
 
             } catch (error) {

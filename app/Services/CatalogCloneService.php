@@ -2688,9 +2688,9 @@ class CatalogCloneService
         if ($sku) {
             try {
                 $stmt = $this->db->prepare("
-                    SELECT item_id FROM items
+                    SELECT ml_item_id FROM items
                     WHERE account_id = :account_id
-                    AND seller_custom_field = :sku
+                    AND sku = :sku
                     AND status != 'closed'
                     LIMIT 1
                 ");
