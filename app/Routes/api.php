@@ -171,6 +171,7 @@ $router->get('api/assistant/actions/{id}', AssistantConnectorController::class, 
 // 🐾 OpenClaw Connector (API tokens + multi-conta)
 // ========================================
 // Observação: rotas /api/openclaw/* são protegidas pelo auth global de /api/* (ver public/index.php)
+$router->get('api/openclaw', OpenClawConnectorController::class, 'index');
 $router->get('api/openclaw/health', OpenClawConnectorController::class, 'health');
 $router->get('api/openclaw/sellers', OpenClawConnectorController::class, 'sellers');
 $router->get('api/openclaw/sellers/{id}', OpenClawConnectorController::class, 'getSeller');

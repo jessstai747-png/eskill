@@ -252,6 +252,11 @@ $publicApiPaths = [
     '/api/status',
 ];
 
+// Exact-match public paths (não usar strpos para evitar match parcial)
+$exactPublicPaths = [
+    '/api/openclaw',
+];
+
 if ($isApi) {
     $isPublicApi = false;
     foreach ($publicApiPaths as $publicPath) {
@@ -259,6 +264,9 @@ if ($isApi) {
             $isPublicApi = true;
             break;
         }
+    }
+    if (!$isPublicApi && in_array($path, $exactPublicPaths, true)) {
+        $isPublicApi = true;
     }
 
     if (!$isPublicApi) {

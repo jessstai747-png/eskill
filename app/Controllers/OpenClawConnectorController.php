@@ -47,6 +47,41 @@ class OpenClawConnectorController extends BaseController
     // Health
     // ========================================
 
+    /**
+     * GET /api/openclaw — Index / discovery do conector
+     */
+    public function index(): void
+    {
+        $this->json([
+            'success' => true,
+            'service' => 'openclaw-connector',
+            'version' => '1.0.0',
+            'documentation' => '/api-docs/',
+            'endpoints' => [
+                'GET  /api/openclaw/health' => 'Health check (requer auth)',
+                'GET  /api/openclaw/sellers' => 'Listar contas ML',
+                'GET  /api/openclaw/sellers/{id}' => 'Detalhe de conta ML',
+                'GET  /api/openclaw/sellers/{id}/items' => 'Listar anúncios',
+                'GET  /api/openclaw/sellers/{id}/items/stats' => 'Estatísticas de itens',
+                'GET  /api/openclaw/sellers/{id}/items/{itemId}' => 'Detalhe de anúncio',
+                'GET  /api/openclaw/sellers/{id}/orders' => 'Listar pedidos',
+                'GET  /api/openclaw/sellers/{id}/orders/{orderId}' => 'Detalhe de pedido',
+                'POST /api/openclaw/actions' => 'Criar ação assíncrona',
+                'GET  /api/openclaw/actions/{id}' => 'Status de ação',
+                'GET  /api/openclaw/webhooks' => 'Listar webhooks',
+                'POST /api/openclaw/webhooks' => 'Registrar webhook',
+                'DELETE /api/openclaw/webhooks/{id}' => 'Remover webhook',
+                'POST /api/openclaw/webhooks/{id}/test' => 'Testar webhook',
+                'GET  /api/openclaw/webhook-events' => 'Eventos disponíveis',
+            ],
+            'auth' => [
+                'type' => 'Bearer Token',
+                'header' => 'Authorization: Bearer <token>',
+                'scopes' => ['openclaw:read', 'openclaw:write', 'openclaw:admin'],
+            ],
+        ], 200);
+    }
+
     public function health(): void
     {
         $this->withErrorHandling(function (): void {
