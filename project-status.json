@@ -258,7 +258,7 @@
         {
             "id": "CLONE-009",
             "category": "catalog_clone",
-            "description": "Wizard de Clonagem por Concorrente — fluxo 4 passos: busca vendedor ML, browser de anúncios com facets, configuração com guardrails, execução com polling de progresso",
+            "description": "Wizard de Clonagem por Concorrente — fluxo 4 passos: busca vendedor ML (por ID, nickname ou URL), browser de anúncios com facets, configuração com guardrails e normalização de opções, execução com polling de progresso",
             "files": [
                 "app/Controllers/CatalogCloneController.php",
                 "app/Controllers/DashboardController.php",
@@ -266,7 +266,8 @@
                 "app/Services/JobService.php",
                 "app/Routes/api.php",
                 "app/Routes/web.php",
-                "app/Views/dashboard/catalog_clone_wizard.php"
+                "app/Views/dashboard/catalog_clone_wizard.php",
+                "tests/Unit/Services/CatalogCloneServiceTest.php"
             ],
             "passes": true,
             "last_tested": "2026-02-24"

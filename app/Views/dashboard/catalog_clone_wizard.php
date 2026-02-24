@@ -287,9 +287,13 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
       <div class="card-body">
          <h5 class="card-title mb-3"><i class="bi bi-search"></i> Localizar Vendedor no Mercado Livre</h5>
          <div class="row g-3 align-items-end">
-            <div class="col-md-4">
-               <label class="form-label fw-semibold">ID do Vendedor (MLB…)</label>
-               <input type="text" class="form-control" id="sellerIdInput" placeholder="Ex: MLB12345678">
+            <div class="col-md-6">
+               <label class="form-label fw-semibold">Vendedor (ID, Nickname ou URL do perfil)</label>
+               <input type="text" class="form-control" id="sellerIdInput"
+                  placeholder="Ex: 123456789 ou LOJA_EXEMPLO ou https://www.mercadolivre.com.br/perfil/...">
+               <small class="form-text text-muted">
+                  Aceita ID numérico, nickname (ex: LOJA_EXEMPLO) ou URL do perfil/loja do Mercado Livre.
+               </small>
             </div>
             <div class="col-md-auto">
                <button class="btn btn-primary" id="btnSearchSeller">
@@ -611,47 +615,99 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
       }
 
       // ── STEP 1 — Search seller ────────────────────────────────
+
+      /**
+       * Detecta se o input é um ID numérico puro (>= 4 dígitos).
+       * Se sim, pode ir direto para /summary sem passar pelo search.
+       */
+      function isNumericSellerId(input) {
+         return /^\d{4,}$/.test(input);
+      }
+
+      /**
+       * Popula o card do seller a partir dos dados retornados.
+       * Aceita tanto resposta de /search quanto de /summary.
+       */
+      function populateSellerCard(info) {
+         state.sellerId = String(info.seller_id || '');
+         state.sellerNick = String(info.nickname || info.seller_nickname || state.sellerId);
+         state.sellerTotalItems = parseInt(info.total_items || 0, 10);
+
+         qs('sellerAvatar').textContent = (state.sellerNick[0] || '?').toUpperCase();
+         qs('sellerNickEl').textContent = state.sellerNick;
+         qs('sellerTotalItems').textContent = state.sellerTotalItems.toLocaleString('pt-BR');
+
+         var repLevel = String(info.seller_reputation && info.seller_reputation.level_id || '');
+         var repMap = {
+            '1_red': 5,
+            '2_orange': 25,
+            '3_yellow': 50,
+            '4_light_green': 75,
+            '5_green': 100
+         };
+         var repPct = repMap[repLevel] || 0;
+         qs('sellerRep').textContent = repLevel.replace(/_/g, ' ') || 'N/D';
+         qs('sellerRepBar').style.width = repPct + '%';
+
+         // Top categories e brands (vêm do /summary, podem estar ausentes no /search)
+         var cats = (info.top_categories || []).slice(0, 5);
+         var brands = (info.top_brands || []).slice(0, 5);
+         qs('sellerTopCats').innerHTML = cats.map(function(c) {
+            return '<li class="small text-muted"><i class="bi bi-tag"></i> ' + c.name + ' (' + c.count + ')</li>';
+         }).join('') || '<li class="small text-muted">—</li>';
+         qs('sellerTopBrands').innerHTML = brands.map(function(b) {
+            return '<li class="small text-muted"><i class="bi bi-bookmark"></i> ' + b.name + ' (' + b.count + ')</li>';
+         }).join('') || '<li class="small text-muted">—</li>';
+
+         show('sellerCard');
+      }
+
       qs('btnSearchSeller').addEventListener('click', function() {
-         var sellerId = String(qs('sellerIdInput').value).trim();
-         if (!sellerId) return;
+         var input = String(qs('sellerIdInput').value).trim();
+         if (!input) return;
          hide('sellerError');
          hide('sellerCard');
          this.disabled = true;
          var self = this;
-         api('/api/catalog/clone/source/seller/' + encodeURIComponent(sellerId) + '/summary')
+
+         // Se for ID numérico puro, ir direto para /summary (mais completo)
+         if (isNumericSellerId(input)) {
+            api('/api/catalog/clone/source/seller/' + encodeURIComponent(input) + '/summary')
+               .then(function(data) {
+                  if (data.error) throw new Error(data.message || data.error);
+                  var info = data.data || data;
+                  populateSellerCard(info);
+               })
+               .catch(function(err) {
+                  qs('sellerError').textContent = 'Erro: ' + (err.message || 'Vendedor não encontrado');
+                  show('sellerError');
+               })
+               .finally(function() {
+                  self.disabled = false;
+               });
+            return;
+         }
+
+         // Para nickname ou URL, usar o endpoint de busca primeiro
+         api('/api/catalog/clone/source/seller/search?q=' + encodeURIComponent(input))
             .then(function(data) {
-               if (data.error) throw new Error(data.error);
+               if (data.error) throw new Error(data.message || data.error);
                var info = data.data || data;
-               state.sellerId = String(info.seller_id || sellerId);
-               state.sellerNick = String(info.nickname || sellerId);
-               state.sellerTotalItems = parseInt(info.total_items || 0, 10);
+               // O /search retorna dados básicos — popular o card imediatamente
+               populateSellerCard(info);
 
-               qs('sellerAvatar').textContent = (state.sellerNick[0] || '?').toUpperCase();
-               qs('sellerNickEl').textContent = state.sellerNick;
-               qs('sellerTotalItems').textContent = state.sellerTotalItems.toLocaleString('pt-BR');
-
-               var repLevel = String(info.seller_reputation && info.seller_reputation.level_id || '');
-               var repMap = {
-                  '1_red': 5,
-                  '2_orange': 25,
-                  '3_yellow': 50,
-                  '4_light_green': 75,
-                  '5_green': 100
-               };
-               var repPct = repMap[repLevel] || 0;
-               qs('sellerRep').textContent = repLevel.replace(/_/g, ' ') || 'N/D';
-               qs('sellerRepBar').style.width = repPct + '%';
-
-               var cats = (info.top_categories || []).slice(0, 5);
-               var brands = (info.top_brands || []).slice(0, 5);
-               qs('sellerTopCats').innerHTML = cats.map(function(c) {
-                  return '<li class="small text-muted"><i class="bi bi-tag"></i> ' + c.name + ' (' + c.count + ')</li>';
-               }).join('');
-               qs('sellerTopBrands').innerHTML = brands.map(function(b) {
-                  return '<li class="small text-muted"><i class="bi bi-bookmark"></i> ' + b.name + ' (' + b.count + ')</li>';
-               }).join('');
-
-               show('sellerCard');
+               // Em background, buscar o summary completo para top_categories e top_brands
+               if (info.seller_id) {
+                  api('/api/catalog/clone/source/seller/' + encodeURIComponent(info.seller_id) + '/summary')
+                     .then(function(summaryData) {
+                        var summary = summaryData.data || summaryData;
+                        if (!summary.error) {
+                           // Atualizar card com dados mais completos do summary
+                           populateSellerCard(summary);
+                        }
+                     })
+                     .catch(function() { /* summary falhou — card básico já exibido */ });
+               }
             })
             .catch(function(err) {
                qs('sellerError').textContent = 'Erro: ' + (err.message || 'Vendedor não encontrado');
@@ -660,6 +716,14 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             .finally(function() {
                self.disabled = false;
             });
+      });
+
+      // Habilitar Enter no campo de busca
+      qs('sellerIdInput').addEventListener('keypress', function(e) {
+         if (e.key === 'Enter') {
+            e.preventDefault();
+            qs('btnSearchSeller').click();
+         }
       });
 
       qs('btnBrowseItems').addEventListener('click', function() {

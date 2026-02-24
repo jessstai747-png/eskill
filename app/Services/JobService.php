@@ -500,9 +500,12 @@ class JobService
             }
         }
 
-        // Extrair pricing/stock do options quando vierem aninhados
-        $pricingStrategy = $options['pricing_strategy'] ?? null;
-        $stockStrategy = $options['stock_strategy'] ?? null;
+        // Normalizar opções do wizard (flat) para formato structured do cloneItem()
+        $normalized = CatalogCloneService::normalizeCloneOptions($options);
+        $pricingStrategy = $normalized['pricing_strategy'];
+        $stockStrategy = $normalized['stock_strategy'];
+        // Mesclar opções normalizadas com as originais (preserva seller_filters, etc.)
+        $options = array_merge($options, $normalized['options']);
 
         // ── Resolução lazy de itens para jobs source_type=seller ──────────────
         // Quando o job foi criado sem item_ids (modo "clone all"), o worker busca

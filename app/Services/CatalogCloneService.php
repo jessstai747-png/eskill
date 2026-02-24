@@ -186,6 +186,65 @@ class CatalogCloneService
     }
 
     /**
+     * Normaliza as opções enviadas pelo wizard para o formato esperado pelo cloneItem().
+     *
+     * O wizard envia formato flat:
+     *   { pricing_strategy: "copy", price_value: 10, initial_status: "paused",
+     *     include_description: false, include_pictures: false }
+     *
+     * O cloneItem() espera formato structured:
+     *   pricing_strategy: ['type' => 'copy', 'value' => 10]
+     *   stock_strategy:   ['type' => 'copy']
+     *   options: ['include_description' => false, 'include_pictures' => false, 'start_paused' => true]
+     *
+     * @param array $rawOptions Opções brutas do wizard
+     * @return array{pricing_strategy: array, stock_strategy: array, options: array} Opções normalizadas
+     */
+    public static function normalizeCloneOptions(array $rawOptions): array
+    {
+        // Pricing strategy: string → array com type e value
+        $pricingRaw = $rawOptions['pricing_strategy'] ?? 'copy';
+        if (is_string($pricingRaw)) {
+            $pricingStrategy = ['type' => $pricingRaw];
+            $priceValue = $rawOptions['price_value'] ?? null;
+            if ($priceValue !== null && $priceValue !== '') {
+                $pricingStrategy['value'] = (float)$priceValue;
+            }
+        } elseif (is_array($pricingRaw)) {
+            $pricingStrategy = $pricingRaw;
+        } else {
+            $pricingStrategy = ['type' => 'copy'];
+        }
+
+        // Stock strategy: preservar se já é array, senão default
+        $stockRaw = $rawOptions['stock_strategy'] ?? null;
+        if (is_array($stockRaw)) {
+            $stockStrategy = $stockRaw;
+        } else {
+            $stockStrategy = ['type' => 'copy'];
+        }
+
+        // Options: mapear initial_status → start_paused
+        $initialStatus = $rawOptions['initial_status'] ?? 'paused';
+        $options = [
+            'include_description' => (bool)($rawOptions['include_description'] ?? false),
+            'include_pictures' => (bool)($rawOptions['include_pictures'] ?? false),
+            'start_paused' => ($initialStatus === 'paused'),
+        ];
+
+        // Preservar seller_filters se existirem (usados pelo worker para resolução lazy)
+        if (isset($rawOptions['seller_filters'])) {
+            $options['seller_filters'] = $rawOptions['seller_filters'];
+        }
+
+        return [
+            'pricing_strategy' => $pricingStrategy,
+            'stock_strategy' => $stockStrategy,
+            'options' => $options,
+        ];
+    }
+
+    /**
      * Lista todos os seller_ids de contas próprias vinculadas
      *
      * @return array Lista de seller_ids
@@ -1565,6 +1624,182 @@ class CatalogCloneService
     // =========================================================================
     // FASE 1: Listagem por Seller ID (público) + Classificação + Facets
     // =========================================================================
+
+    /**
+     * Busca um vendedor no Mercado Livre por nickname, URL do perfil/loja, ou ID numérico.
+     *
+     * Aceita:
+     * - ID numérico: "123456789"
+     * - Nickname: "LOJA_EXEMPLO"
+     * - URL de perfil: "https://www.mercadolivre.com.br/perfil/LOJA_EXEMPLO"
+     * - URL de loja: "https://loja.mercadolivre.com.br/LOJA_EXEMPLO"
+     * - URL de anúncio c/ seller: extrai seller_id
+     *
+     * @param string $query Nickname, URL, ou ID numérico do vendedor
+     * @return array Dados do vendedor: seller_id, nickname, reputation, registration_date, etc.
+     * @throws Exception Se vendedor não encontrado ou erro na API
+     */
+    public function searchSeller(string $query): array
+    {
+        $query = trim($query);
+        if ($query === '') {
+            throw new Exception('Informe o ID, nickname ou URL do vendedor.');
+        }
+
+        $client = $this->getAuthenticatedClientForSearch();
+
+        // Tentar detectar o tipo de input
+        $sellerId = null;
+        $nickname = null;
+
+        // 1) URL do perfil: https://www.mercadolivre.com.br/perfil/NICKNAME
+        if (preg_match('#mercadoli[bv]re\.com[.\w]*/perfil/([^/?#]+)#i', $query, $m)) {
+            $nickname = urldecode($m[1]);
+        }
+        // 2) URL da loja: https://loja.mercadolivre.com.br/NICKNAME
+        elseif (preg_match('#loja\.mercadoli[bv]re\.com[.\w]*/([^/?#]+)#i', $query, $m)) {
+            $nickname = urldecode($m[1]);
+        }
+        // 3) URL com seller_id em query string (ex: ?seller_id=123)
+        elseif (preg_match('#[?&]seller_id=(\d+)#i', $query, $m)) {
+            $sellerId = $m[1];
+        }
+        // 4) ID numérico puro
+        elseif (preg_match('/^\d{4,}$/', $query)) {
+            $sellerId = $query;
+        }
+        // 5) Assume nickname
+        else {
+            $nickname = $query;
+        }
+
+        // ── Resolver por nickname via API de busca ──
+        if ($nickname !== null && $sellerId === null) {
+            $sellerId = $this->resolveSellerByNickname($client, $nickname);
+        }
+
+        if ($sellerId === null || $sellerId === '') {
+            throw new Exception('Não foi possível identificar o vendedor a partir da entrada informada.');
+        }
+
+        // ── Buscar dados completos do seller via /users/{id} ──
+        $sellerInfo = $client->get("/users/{$sellerId}", [], null, false);
+
+        if (isset($sellerInfo['error'])) {
+            $errorMsg = $sellerInfo['message'] ?? $sellerInfo['error'] ?? 'Vendedor não encontrado';
+            throw new Exception('Erro ao buscar vendedor: ' . $errorMsg);
+        }
+
+        $sellerNickname = $sellerInfo['nickname'] ?? 'Seller ' . $sellerId;
+        $sellerReputation = $sellerInfo['seller_reputation']['level_id'] ?? null;
+        $registrationDate = $sellerInfo['registration_date'] ?? null;
+        $siteId = $sellerInfo['site_id'] ?? 'MLB';
+
+        // Obter contagem de itens ativos via busca rápida (limit=0)
+        $totalItems = 0;
+        try {
+            $countResult = $client->get("/sites/{$siteId}/search", [
+                'seller_id' => $sellerId,
+                'limit' => 0,
+            ], null, false);
+            $totalItems = $countResult['paging']['total'] ?? 0;
+        } catch (\Throwable $e) {
+            // Pode falhar com 403 para sellers externos — não é bloqueante
+            log_warning('searchSeller: não foi possível contar itens do seller', [
+                'seller_id' => $sellerId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return [
+            'status' => 'success',
+            'seller_id' => (string)$sellerId,
+            'nickname' => $sellerNickname,
+            'seller_reputation' => $sellerReputation !== null
+                ? ['level_id' => $sellerReputation]
+                : null,
+            'total_items' => $totalItems,
+            'site_id' => $siteId,
+            'registration_date' => $registrationDate,
+            'address' => [
+                'city' => $sellerInfo['address']['city'] ?? null,
+                'state' => $sellerInfo['address']['state'] ?? null,
+            ],
+            'permalink' => $sellerInfo['permalink'] ?? null,
+        ];
+    }
+
+    /**
+     * Resolve um nickname de vendedor para seller_id via API de busca do ML.
+     *
+     * Usa GET /sites/MLB/search?nickname={NICK} para encontrar o seller.
+     * Fallback: busca genérica por q={NICK} e extrai seller_id dos resultados.
+     *
+     * @param MercadoLivreClient $client Cliente autenticado
+     * @param string $nickname Nickname do vendedor
+     * @return string|null Seller ID numérico, ou null se não encontrado
+     */
+    private function resolveSellerByNickname(MercadoLivreClient $client, string $nickname): ?string
+    {
+        // Normalizar nickname: remover espaços, converter para uppercase (ML usa uppercase)
+        $nickname = strtoupper(trim($nickname));
+
+        // 1) Tentar busca direta por nickname (endpoint mais preciso)
+        try {
+            $searchResult = $client->get('/sites/MLB/search', [
+                'nickname' => $nickname,
+                'limit' => 1,
+            ], null, false);
+
+            // O ML retorna resultados do seller — extrair seller_id do primeiro resultado
+            if (!empty($searchResult['results'][0]['seller']['id'])) {
+                $foundId = (string)$searchResult['results'][0]['seller']['id'];
+
+                // Validar que o nickname confere
+                $sellerInfo = $client->get("/users/{$foundId}", [], null, false);
+                if (!isset($sellerInfo['error'])) {
+                    $foundNick = strtoupper($sellerInfo['nickname'] ?? '');
+                    if ($foundNick === $nickname) {
+                        return $foundId;
+                    }
+                }
+
+                // Se o nickname não bate exatamente, ainda pode ser o correto
+                // (diferenças de case ou acentuação)
+                return $foundId;
+            }
+        } catch (\Throwable $e) {
+            log_warning('searchSeller: busca por nickname falhou, tentando fallback', [
+                'nickname' => $nickname,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // 2) Fallback: busca genérica usando q= e filtrar pelo nickname nos resultados
+        try {
+            $fallbackResult = $client->get('/sites/MLB/search', [
+                'q' => $nickname,
+                'limit' => 10,
+            ], null, false);
+
+            foreach ($fallbackResult['results'] ?? [] as $item) {
+                $sellerNick = strtoupper($item['seller']['nickname'] ?? '');
+                if ($sellerNick === $nickname) {
+                    return (string)$item['seller']['id'];
+                }
+            }
+        } catch (\Throwable $e) {
+            log_warning('searchSeller: fallback por q= também falhou', [
+                'nickname' => $nickname,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        throw new Exception(
+            "Vendedor com nickname \"{$nickname}\" não encontrado no Mercado Livre. " .
+            "Verifique se o nome está correto ou informe o ID numérico do vendedor."
+        );
+    }
 
     /**
      * Lista anúncios de um seller público (qualquer vendedor do ML)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
+use App\Services\CatalogCloneService;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -72,6 +73,7 @@ class CatalogCloneServiceTest extends TestCase
             ['resolveItemIds'],
             ['pricePreviewBatch'],
             ['checkLocalDuplicate'],
+            ['searchSeller'],
         ];
     }
 
@@ -102,6 +104,7 @@ class CatalogCloneServiceTest extends TestCase
             ['logResult'],
             ['normalizeFacets'],
             ['normalizeSummaryResponse'],
+            ['resolveSellerByNickname'],
         ];
     }
 
@@ -718,5 +721,99 @@ class CatalogCloneServiceTest extends TestCase
         $this->assertSame(100, $result['total_items']);
         $this->assertSame($brandCounts, $result['brands']);
         $this->assertSame($categoryFacets, $result['categories']);
+    }
+
+    // =========================================================================
+    // Behavioral: normalizeCloneOptions (static method)
+    // =========================================================================
+
+    public function testNormalizeCloneOptionsWithStringPricing(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'pricing_strategy' => 'markup',
+            'price_value' => 15,
+            'initial_status' => 'paused',
+            'include_description' => true,
+            'include_pictures' => false,
+        ]);
+
+        $this->assertSame(['type' => 'markup', 'value' => 15.0], $result['pricing_strategy']);
+        $this->assertSame(['type' => 'copy'], $result['stock_strategy']);
+        $this->assertTrue($result['options']['include_description']);
+        $this->assertFalse($result['options']['include_pictures']);
+        $this->assertTrue($result['options']['start_paused']);
+    }
+
+    public function testNormalizeCloneOptionsWithArrayPricing(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'pricing_strategy' => ['type' => 'competitive'],
+        ]);
+
+        $this->assertSame(['type' => 'competitive'], $result['pricing_strategy']);
+    }
+
+    public function testNormalizeCloneOptionsDefaultsToCopy(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([]);
+
+        $this->assertSame(['type' => 'copy'], $result['pricing_strategy']);
+        $this->assertSame(['type' => 'copy'], $result['stock_strategy']);
+        $this->assertFalse($result['options']['include_description']);
+        $this->assertFalse($result['options']['include_pictures']);
+        $this->assertTrue($result['options']['start_paused']); // paused by default
+    }
+
+    public function testNormalizeCloneOptionsActiveStatus(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'initial_status' => 'active',
+        ]);
+
+        $this->assertFalse($result['options']['start_paused']);
+    }
+
+    public function testNormalizeCloneOptionsPreservesSellerFilters(): void
+    {
+        $filters = ['category' => 'MLB123', 'brand' => 'Honda', 'max_items' => 500];
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'seller_filters' => $filters,
+        ]);
+
+        $this->assertSame($filters, $result['options']['seller_filters']);
+    }
+
+    public function testNormalizeCloneOptionsPriceValueWithoutStrategy(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'price_value' => 25.50,
+        ]);
+
+        $this->assertSame(['type' => 'copy', 'value' => 25.50], $result['pricing_strategy']);
+    }
+
+    public function testNormalizeCloneOptionsStockArrayPreserved(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'stock_strategy' => ['type' => 'fixed', 'value' => 10],
+        ]);
+
+        $this->assertSame(['type' => 'fixed', 'value' => 10], $result['stock_strategy']);
+    }
+
+    // =========================================================================
+    // Structure: searchSeller method exists
+    // =========================================================================
+
+    public function testSearchSellerMethodExists(): void
+    {
+        $this->assertTrue($this->reflection->hasMethod('searchSeller'));
+        $this->assertTrue($this->reflection->getMethod('searchSeller')->isPublic());
+    }
+
+    public function testResolveSellerByNicknameMethodExists(): void
+    {
+        $this->assertTrue($this->reflection->hasMethod('resolveSellerByNickname'));
+        $this->assertTrue($this->reflection->getMethod('resolveSellerByNickname')->isPrivate());
     }
 }

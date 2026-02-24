@@ -415,6 +415,43 @@ class CatalogCloneController extends BaseController
     // =========================================================================
 
     /**
+     * Busca vendedor no Mercado Livre por nickname, URL ou ID numérico
+     * GET /api/catalog/clone/source/seller/search?q={query}
+     */
+    public function searchSeller(): void
+    {
+        header('Content-Type: application/json');
+
+        $query = trim((string)($this->request->get('q') ?? ''));
+
+        if ($query === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Parâmetro "q" é obrigatório (nickname, URL ou ID do vendedor).']);
+            return;
+        }
+
+        try {
+            $result = $this->service->searchSeller($query);
+            http_response_code(200);
+            echo json_encode($result);
+        } catch (\Exception $e) {
+            $message = $e->getMessage();
+            $statusCode = 404;
+
+            // 403 se for bloqueio da API
+            if (stripos($message, 'forbidden') !== false || stripos($message, 'não permite') !== false) {
+                $statusCode = 403;
+            }
+
+            http_response_code($statusCode);
+            echo json_encode([
+                'error' => 'Vendedor não encontrado',
+                'message' => $message,
+            ]);
+        }
+    }
+
+    /**
      * Lista anúncios de um seller público
      * GET /api/catalog/clone/source/seller/{sellerId}/items
      */

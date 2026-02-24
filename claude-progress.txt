@@ -6,6 +6,52 @@
 
 ---
 
+## Sessão: 2026-02-24 — feat(clone-wizard): integrar busca de vendedor com API ML + corrigir normalização de opções
+
+### Contexto
+Diagnóstico da integração do Clone Wizard com a API do Mercado Livre revelou 3 gaps críticos:
+1. Wizard só aceita IDs numéricos de vendedor — sem suporte a nickname/URL
+2. `pricing_strategy` enviado como string pelo wizard mas esperado como array pelo `cloneItem()`
+3. `initial_status: "paused"` não mapeado para `start_paused: true` que `cloneItem()` espera
+
+### Implementado
+
+#### A. Busca de vendedor por nickname/URL (`searchSeller()` + `resolveSellerByNickname()`)
+- **`CatalogCloneService::searchSeller(string $query)`** — aceita ID numérico, nickname, URL de perfil (`mercadolivre.com.br/perfil/NICK`), URL de loja (`loja.mercadolivre.com.br/NICK`)
+- **`CatalogCloneService::resolveSellerByNickname()`** — usa `/sites/MLB/search?nickname={NICK}` com fallback para `?q={NICK}`
+- **`CatalogCloneController::searchSeller()`** — endpoint `GET /api/catalog/clone/source/seller/search?q={query}`
+- **Rota** adicionada em `api.php` antes das rotas `{sellerId}` para evitar conflito
+
+#### B. Normalização de opções (`normalizeCloneOptions()`)
+- **`CatalogCloneService::normalizeCloneOptions(array $rawOptions)`** — converte formato flat do wizard para formato estruturado do `cloneItem()`
+  - `pricing_strategy: "markup"` → `['type' => 'markup', 'value' => N]`
+  - `initial_status: "paused"` → `start_paused: true`
+  - Preserva `seller_filters` para resolução lazy no worker
+
+#### C. Fix do batch worker (`JobService.catalogCloneBatchJob()`)
+- Substituída extração manual de `$options['pricing_strategy']` por chamada a `normalizeCloneOptions()`
+- Agora passa corretamente pricing/stock strategy como arrays para `cloneItem()`
+
+#### D. Wizard UI atualizado
+- Input aceita ID, nickname ou URL (label e placeholder atualizados)
+- JS: `isNumericSellerId()` helper + smart routing (numérico→/summary, nickname→/search→/summary)
+- Extraída função `populateSellerCard()` para reuso
+- Suporte a tecla Enter no input
+
+### Testes
+- 9 novos testes: 7 para `normalizeCloneOptions()` + 2 estruturais (searchSeller, resolveSellerByNickname)
+- Total: 99 testes no CatalogCloneServiceTest, 2880 na suite completa, 0 falhas
+
+### Arquivos modificados
+- `app/Services/CatalogCloneService.php` — +176 linhas (searchSeller, resolveSellerByNickname, normalizeCloneOptions)
+- `app/Services/JobService.php` — fix normalização de opções no worker
+- `app/Controllers/CatalogCloneController.php` — novo método searchSeller
+- `app/Routes/api.php` — nova rota /search
+- `app/Views/dashboard/catalog_clone_wizard.php` — UI + JS para busca por nickname/URL
+- `tests/Unit/Services/CatalogCloneServiceTest.php` — +9 testes
+
+---
+
 ## Sessão: 2026-02-24 — fix(clone-wizard): corrigir polling de progresso do job
 
 ### Contexto

@@ -792,6 +792,7 @@ $router->delete('api/catalog/schedules/{id}', CatalogCloneController::class, 'ca
 $router->get('api/catalog/losing', CatalogController::class, 'listLosingItems');
 
 // FASE 1-4: Novas rotas de Clonagem em Lote (Multi-conta)
+$router->get('api/catalog/clone/source/seller/search', CatalogCloneController::class, 'searchSeller');
 $router->get('api/catalog/clone/source/seller/{sellerId}/items', CatalogCloneController::class, 'listSellerItems');
 $router->get('api/catalog/clone/source/seller/{sellerId}/summary', CatalogCloneController::class, 'getSellerSummary');
 $router->post('api/catalog/clone/source/items', CatalogCloneController::class, 'resolveItemIds');
