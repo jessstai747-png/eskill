@@ -249,6 +249,11 @@ class OpenClawConnectorController extends BaseController
 
             $filters = [
                 'status' => $this->request->input('status'),
+                'date_from' => $this->request->input('date_from'),
+                'date_to' => $this->request->input('date_to'),
+                'search' => $this->request->input('search'),
+                'sort' => $this->request->input('sort'),
+                'order' => $this->request->input('order'),
                 'page' => $this->request->inputInt('page', 1),
                 'per_page' => min($this->request->inputInt('per_page', 50), 200),
             ];
