@@ -6,6 +6,41 @@
 
 ---
 
+## Sessão: 2026-02-24g — integração OpenClaw com paginação/filtros da API do Mercado Livre
+
+### Contexto
+Solicitação do usuário para integrar a implementação recente com a API do Mercado Livre no conector OpenClaw. A análise mostrou desalinhamento entre os parâmetros do contrato OpenClaw (`per_page`, `category_id`) e os parâmetros esperados pelos services ML (`limit`, `category`).
+
+### Implementado
+- **`app/Services/OpenClawConnectorService.php`**
+   - Adicionada normalização de filtros para itens (`normalizeConnectorItemFilters`) com mapeamento:
+      - `per_page`/`limit` → paginação OpenClaw
+      - `category_id`/`category` → filtro consumido por `ItemService`
+   - Adicionada ponte de paginação (`listItemsWithMlPaginationBridge`) para suportar `per_page` até **200** no OpenClaw, respeitando limite de **50** por chamada na API de itens do ML.
+   - Adicionada normalização de filtros para pedidos (`normalizeConnectorOrderFilters`) com mapeamento:
+      - `per_page` → `limit`
+      - preservação de `status`, `date_from`, `date_to`, `search`, `sort`, `order`.
+   - `listItems()` e `listOrders()` passaram a delegar para os filtros normalizados.
+
+- **`tests/Unit/Services/OpenClawConnectorServiceTest.php`** (novo)
+   - Testes unitários DB-free para:
+      - mapeamento de filtros de itens (`category_id`, `per_page`);
+      - mapeamento de filtros de pedidos (`per_page` → `limit`);
+      - agregação de paginação de itens acima de 50 registros;
+      - tratamento de erro na primeira chamada da ponte de paginação.
+
+- **`project-status.json`**
+   - Atualizado `last_tested` de `ITEMS-001` para `2026-02-24`.
+   - Atualizado `last_tested` de `ORDERS-001` para `2026-02-24`.
+
+### Validação
+- `php -l app/Services/OpenClawConnectorService.php`: sem erros.
+- `php -l tests/Unit/Services/OpenClawConnectorServiceTest.php`: sem erros.
+- `php vendor/bin/phpunit tests/Unit/Services/OpenClawConnectorServiceTest.php`: **4 testes, 26 assertions, 0 falhas**.
+- `php vendor/bin/phpunit tests/Unit/Services/OrderServiceTest.php`: **48 testes, 128 assertions, 0 falhas**.
+- `php vendor/bin/phpunit`: **2896 testes, 6727 assertions, 0 falhas** (34 skipped esperados no ambiente com MySQL indisponível).
+- `get_errors` nos arquivos alterados: sem erros.
+
 ## Sessão: 2026-02-24f — fix completo: bootstrap realtime duplicado + preflight ML no Catalog Clone
 
 ### Contexto

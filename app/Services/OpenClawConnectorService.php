@@ -123,7 +123,18 @@ class OpenClawConnectorService
 
         try {
             $itemService = new ItemService($accountId);
-            return $itemService->listItems($filters);
+            $normalized = $this->normalizeConnectorItemFilters($filters);
+            $page = $normalized['page'];
+            $perPage = $normalized['per_page'];
+
+            unset($normalized['page'], $normalized['per_page']);
+
+            return $this->listItemsWithMlPaginationBridge(
+                itemService: $itemService,
+                filters: $normalized,
+                page: $page,
+                perPage: $perPage
+            );
         } catch (Throwable $e) {
             log_error('OpenClawConnectorService::listItems failed', [
                 'service' => 'OpenClawConnectorService',
@@ -210,7 +221,8 @@ class OpenClawConnectorService
 
         try {
             $orderService = new OrderService($accountId);
-            return $orderService->listOrders($filters);
+            $normalized = $this->normalizeConnectorOrderFilters($filters);
+            return $orderService->listOrders($normalized);
         } catch (Throwable $e) {
             log_error('OpenClawConnectorService::listOrders failed', [
                 'service' => 'OpenClawConnectorService',
@@ -624,6 +636,159 @@ class OpenClawConnectorService
     public function resolveAccountId(int $userId, ?int $accountId, ?string $sellerId): ?int
     {
         return $this->assistantConnector->resolveAccountIdForUser($userId, $accountId, $sellerId);
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    private function normalizeConnectorItemFilters(array $filters): array
+    {
+        $page = max(1, (int)($filters['page'] ?? 1));
+        $perPageRaw = $filters['per_page'] ?? $filters['limit'] ?? 50;
+        $perPage = max(1, min(200, (int)$perPageRaw));
+
+        $normalized = [
+            'status' => $filters['status'] ?? null,
+            'search' => $filters['search'] ?? null,
+            'q' => $filters['q'] ?? null,
+            'category' => $filters['category'] ?? $filters['category_id'] ?? null,
+            'order' => $filters['order'] ?? null,
+            'allow_local_cache' => $filters['allow_local_cache'] ?? null,
+            'source' => $filters['source'] ?? null,
+            'page' => $page,
+            'per_page' => $perPage,
+        ];
+
+        return array_filter($normalized, fn($value) => $value !== null && $value !== '');
+    }
+
+    /**
+     * Converte paginação OpenClaw (até 200 por página) para o limite da API de itens do ML (50).
+     *
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    private function listItemsWithMlPaginationBridge(ItemService $itemService, array $filters, int $page, int $perPage): array
+    {
+        $items = [];
+        $warnings = [];
+        $total = 0;
+        $aggregate = null;
+
+        $remaining = $perPage;
+        $offset = ($page - 1) * $perPage;
+        $maxCalls = max(1, (int)ceil($perPage / 50));
+        $calls = 0;
+
+        while ($remaining > 0 && $calls < $maxCalls) {
+            $chunkLimit = min(50, $remaining);
+            $chunkFilters = $filters;
+            $chunkFilters['limit'] = $chunkLimit;
+            $chunkFilters['offset'] = $offset;
+
+            $result = $itemService->listItems($chunkFilters);
+            if (!($result['success'] ?? false)) {
+                if ($calls === 0) {
+                    return $result;
+                }
+
+                $warnings[] = 'Resposta parcial: uma das páginas da API do Mercado Livre falhou durante paginação ampliada.';
+                break;
+            }
+
+            if (!is_array($aggregate)) {
+                $aggregate = $result;
+            }
+
+            $chunkItems = $result['items'] ?? [];
+            if (!is_array($chunkItems)) {
+                $chunkItems = [];
+            }
+
+            $items = array_merge($items, $chunkItems);
+            $received = count($chunkItems);
+            $total = (int)($result['total'] ?? $total);
+
+            if (isset($result['warning']) && is_string($result['warning']) && $result['warning'] !== '') {
+                $warnings[] = $result['warning'];
+            }
+
+            $calls++;
+            $remaining -= $received;
+
+            if ($received === 0 || !($result['has_more'] ?? false)) {
+                break;
+            }
+
+            $offset += $received;
+        }
+
+        if (!is_array($aggregate)) {
+            return [
+                'success' => false,
+                'error' => 'ml_api_error',
+                'message' => 'Falha ao buscar itens na API do Mercado Livre',
+                'items' => [],
+                'page' => $page,
+                'pages' => 1,
+                'limit' => $perPage,
+                'total' => 0,
+                'has_more' => false,
+            ];
+        }
+
+        $items = array_slice($items, 0, $perPage);
+
+        if ($total <= 0) {
+            $total = (int)($aggregate['total'] ?? count($items));
+        }
+
+        $pages = max(1, (int)ceil($total / $perPage));
+        $aggregate['items'] = $items;
+        $aggregate['results'] = array_values(array_filter(
+            array_map(
+                static fn(array $item): ?string => isset($item['id']) && is_string($item['id']) ? $item['id'] : null,
+                $items
+            )
+        ));
+        $aggregate['page'] = $page;
+        $aggregate['pages'] = $pages;
+        $aggregate['limit'] = $perPage;
+        $aggregate['total'] = $total;
+        $aggregate['has_more'] = ($page * $perPage) < $total;
+
+        if (!empty($warnings)) {
+            $aggregate['warning'] = implode(' | ', array_values(array_unique($warnings)));
+        }
+
+        return $aggregate;
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    private function normalizeConnectorOrderFilters(array $filters): array
+    {
+        $page = max(1, (int)($filters['page'] ?? 1));
+        $perPageRaw = $filters['per_page'] ?? $filters['limit'] ?? 50;
+        $perPage = max(1, min(200, (int)$perPageRaw));
+
+        $normalized = [
+            'status' => $filters['status'] ?? null,
+            'date_from' => $filters['date_from'] ?? null,
+            'date_to' => $filters['date_to'] ?? null,
+            'search' => $filters['search'] ?? null,
+            'sort' => $filters['sort'] ?? null,
+            'order' => $filters['order'] ?? null,
+            'allow_local_cache' => $filters['allow_local_cache'] ?? null,
+            'source' => $filters['source'] ?? null,
+            'page' => $page,
+            'limit' => $perPage,
+        ];
+
+        return array_filter($normalized, fn($value) => $value !== null && $value !== '');
     }
 
     /**
