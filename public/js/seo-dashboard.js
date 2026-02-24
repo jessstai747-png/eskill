@@ -23,10 +23,10 @@ class SEODashboard {
         document.getElementById('titleInput')?.addEventListener('input', (e) => {
             const count = e.target.value.length;
             document.getElementById('charCount').textContent = count;
-            
+
             const progress = Math.min((count / 60) * 100, 100);
             document.getElementById('charProgress').style.width = progress + '%';
-            
+
             // Color coding
             const progressBar = document.getElementById('charProgress');
             if (count >= 45 && count <= 60) {
@@ -47,13 +47,7 @@ class SEODashboard {
     }
 
     async requestJson(url, options = {}) {
-        if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-            return window.ApiClient.json(url, options);
-        }
-
-        const response = await fetch(url, options);
-        const data = await response.json();
-        return { response, data };
+        return requestJson(url, options);
     }
 
     async loadUserInfo() {
@@ -106,19 +100,19 @@ class SEODashboard {
         if (!element) return;
 
         const startTime = performance.now();
-        
+
         const updateValue = (currentTime) => {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            
+
             const value = start + (end - start) * this.easeOutQuad(progress);
             element.textContent = Math.round(value) + suffix;
-            
+
             if (progress < 1) {
                 requestAnimationFrame(updateValue);
             }
         };
-        
+
         requestAnimationFrame(updateValue);
     }
 
@@ -147,10 +141,10 @@ class SEODashboard {
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        
+
         const container = document.querySelector('.container-fluid');
         container.insertBefore(alertDiv, container.firstChild);
-        
+
         // Auto dismiss after 5 seconds
         setTimeout(() => {
             alertDiv.remove();
@@ -264,10 +258,6 @@ class SEODashboard {
 let dashboard;
 
 async function requestJson(url, options = {}) {
-    if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-        return window.ApiClient.json(url, options);
-    }
-
     const response = await fetch(url, options);
     const data = await response.json();
     return { response, data };
@@ -275,7 +265,7 @@ async function requestJson(url, options = {}) {
 
 async function analyzeProduct() {
     dashboard.showLoading();
-    
+
     const productId = document.getElementById('productId').value;
     const title = document.getElementById('productTitle').value;
     const category = document.getElementById('productCategory').value;
@@ -315,12 +305,12 @@ function displayAnalysisResults(results) {
     const resultsDiv = document.getElementById('analysisResults');
     const scoreDiv = document.getElementById('analysisScore');
     const actionList = document.getElementById('actionList');
-    
+
     // Update score
     const score = results.score || 0;
     scoreDiv.textContent = `Score: ${score}/100`;
     scoreDiv.className = `optimization-score ${score >= 75 ? 'score-high' : score >= 50 ? 'score-medium' : 'score-low'}`;
-    
+
     // Create action list
     const actions = results.action_summary || [];
     actionList.innerHTML = actions.map(action => `
@@ -330,10 +320,10 @@ function displayAnalysisResults(results) {
             <span class="badge bg-warning ms-2">${action.priority}</span>
         </div>
     `).join('');
-    
+
     // Create chart
     createAnalysisChart(results);
-    
+
     resultsDiv.style.display = 'block';
 }
 
@@ -396,7 +386,7 @@ function createAnalysisChart(data) {
 
 async function optimizeTitle() {
     dashboard.showLoading();
-    
+
     const title = document.getElementById('titleInput').value;
     const category = document.getElementById('titleCategory').value;
 
@@ -430,7 +420,7 @@ function displayTitleResults(data) {
     const resultsDiv = document.getElementById('titleResults');
     const suggestionsDiv = document.getElementById('suggestedTitles');
     const gapsDiv = document.getElementById('titleGaps');
-    
+
     // Display suggested titles
     const optimizedTitles = data.optimized_titles?.optimized_titles || [];
     suggestionsDiv.innerHTML = optimizedTitles.map((titleObj, index) => `
@@ -443,7 +433,7 @@ function displayTitleResults(data) {
             </div>
         </div>
     `).join('');
-    
+
     // Display gaps analysis
     const gaps = data.analysis?.gaps;
     if (gaps) {
@@ -468,13 +458,13 @@ function displayTitleResults(data) {
             </div>
         `;
     }
-    
+
     resultsDiv.style.display = 'block';
 }
 
 async function analyzeKeywordGaps() {
     dashboard.showLoading();
-    
+
     const productId = document.getElementById('gapProductId').value;
     const competitorCount = document.getElementById('competitorCount').value;
 
@@ -508,7 +498,7 @@ function displayGapResults(data) {
     const resultsDiv = document.getElementById('gapResults');
     const criticalGapsDiv = document.getElementById('criticalGaps');
     const longTailDiv = document.getElementById('longTailOpportunities');
-    
+
     // Display critical gaps
     const criticalGaps = data.gap_analysis?.gap_severity?.critical || [];
     criticalGapsDiv.innerHTML = criticalGaps.map(gap => `
@@ -520,7 +510,7 @@ function displayGapResults(data) {
             </div>
         </div>
     `).join('');
-    
+
     // Display long tail opportunities
     const longTail = data.long_tail_opportunities?.long_tail_keywords || [];
     longTailDiv.innerHTML = longTail.map(opp => `
@@ -532,10 +522,10 @@ function displayGapResults(data) {
             </div>
         </div>
     `).join('');
-    
+
     // Create gap chart
     createGapChart(data);
-    
+
     resultsDiv.style.display = 'block';
 }
 
@@ -600,7 +590,7 @@ function createGapChart(data) {
 
 async function analyzeSemantic() {
     dashboard.showLoading();
-    
+
     const text = document.getElementById('semanticInput').value;
     const category = document.getElementById('semanticCategory').value;
     const type = document.getElementById('semanticType').value;
@@ -639,16 +629,16 @@ function displaySemanticResults(data, type) {
     const cloudDiv = document.getElementById('semanticCloud');
     const clustersDiv = document.getElementById('semanticClusters');
     const intentDiv = document.getElementById('intentMapping');
-    
+
     if (type === 'structure') {
         // Display semantic cloud
         const keywords = data.semantic_core?.semantic_clusters || [];
-        cloudDiv.innerHTML = keywords.flatMap(cluster => 
-            cluster.keywords.map(keyword => 
+        cloudDiv.innerHTML = keywords.flatMap(cluster =>
+            cluster.keywords.map(keyword =>
                 `<span class="semantic-tag">${keyword}</span>`
             )
         ).join('');
-        
+
         // Display clusters
         clustersDiv.innerHTML = keywords.map(cluster => `
             <div class="alert alert-info alert-seo">
@@ -657,7 +647,7 @@ function displaySemanticResults(data, type) {
                 <small>Peso: ${(cluster.semantic_weight * 100).toFixed(1)}%</small>
             </div>
         `).join('');
-        
+
         // Display intent mapping
         const intent = data.user_intent_mapping;
         intentDiv.innerHTML = `
@@ -668,7 +658,7 @@ function displaySemanticResults(data, type) {
             </div>
         `;
     }
-    
+
     resultsDiv.style.display = 'block';
 }
 
@@ -686,7 +676,7 @@ async function validateModel() {
 
 async function processModelAttribute(action) {
     dashboard.showLoading();
-    
+
     const title = document.getElementById('modelTitle').value;
     const category = document.getElementById('modelCategory').value;
     const currentModel = document.getElementById('currentModel').value;
@@ -726,7 +716,7 @@ function displayModelResults(data, action) {
     const suggestionsDiv = document.getElementById('modelSuggestions');
     const patternsDiv = document.getElementById('modelPatterns');
     const validationDiv = document.getElementById('modelValidation');
-    
+
     if (action === 'extract' || action === 'optimize') {
         const suggestions = data.suggestions || [];
         suggestionsDiv.innerHTML = `
@@ -738,7 +728,7 @@ function displayModelResults(data, action) {
                 </div>
             </div>
         `;
-        
+
         // Display alternatives
         if (suggestions.alternatives) {
             suggestionsDiv.innerHTML += suggestions.alternatives.map(alt => `
@@ -748,7 +738,7 @@ function displayModelResults(data, action) {
             `).join('');
         }
     }
-    
+
     if (action === 'validate') {
         const validation = data.validation_results || {};
         validationDiv.innerHTML = `
@@ -759,7 +749,7 @@ function displayModelResults(data, action) {
                 ${validation.recommendation?.final_model ? `<div>Modelo Final: <strong>${validation.recommendation.final_model}</strong></div>` : ''}
             </div>
         `;
-        
+
         // Display issues
         if (data.issues_found) {
             validationDiv.innerHTML += data.issues_found.map(issue => `
@@ -771,13 +761,13 @@ function displayModelResults(data, action) {
             `).join('');
         }
     }
-    
+
     resultsDiv.style.display = 'block';
 }
 
 async function startMonitoring() {
     dashboard.showLoading();
-    
+
     const products = document.getElementById('monitoringProducts').value
         .split('\n')
         .map(p => p.trim())
@@ -812,10 +802,10 @@ function displayMonitoringResults(data) {
     const resultsDiv = document.getElementById('monitoringResults');
     const alertsDiv = document.getElementById('monitoringAlerts');
     const improvementsDiv = document.getElementById('monitoringImprovements');
-    
+
     // Create monitoring chart
     dashboard.updateMonitoringCharts(data);
-    
+
     // Display alerts
     const alerts = data.summary?.alerts || [];
     alertsDiv.innerHTML = alerts.map(alert => `
@@ -824,7 +814,7 @@ function displayMonitoringResults(data) {
             ${alert}
         </div>
     `).join('');
-    
+
     // Display improvements
     const improvements = data.summary?.improvements || [];
     improvementsDiv.innerHTML = improvements.map(improvement => `
@@ -833,7 +823,7 @@ function displayMonitoringResults(data) {
             ${improvement}
         </div>
     `).join('');
-    
+
     resultsDiv.style.display = 'block';
 }
 

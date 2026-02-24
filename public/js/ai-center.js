@@ -1,9 +1,4 @@
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
+// requestJson is defined globally in <head> via the layout
 
 const AICenter = {
     init: function () {

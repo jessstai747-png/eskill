@@ -4,12 +4,7 @@
  * Improved UI with account cards, drag & drop, and item preview.
  */
 
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
+// requestJson is defined globally in <head> via the layout
 
 class CatalogClone {
     constructor() {

@@ -103,8 +103,8 @@ const Notifications = {
         announce(message);
         const alertClass = `alert-${type === 'error' ? 'danger' : type}`;
         const alertHtml = `
-            <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
-                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" 
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed"
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;"
                  role="alert">
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -313,33 +313,7 @@ function throttle(func, limit = 300) {
     };
 }
 
-// ============================================
-// GLOBAL REQUEST HELPER
-// ============================================
-
-/**
- * Make a JSON API request. Returns { response, data }.
- * Canonical implementation — do NOT redeclare in component files.
- * @param {string} url
- * @param {object} options - Fetch options
- * @returns {Promise<{response: Response, data: any}>}
- */
-async function requestJson(url, options = {}) {
-    if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-        return window.ApiClient.json(url, options);
-    }
-    const response = await fetch(url, {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-        ...options
-    });
-    if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(text || `Erro HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return { response, data };
-}
+// requestJson is defined globally in <head> via the layout
 
 // ============================================
 // API HELPERS
