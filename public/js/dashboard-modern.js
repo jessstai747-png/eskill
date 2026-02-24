@@ -2866,7 +2866,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update or create team member elements
         team.forEach(member => {
             let memberEl = teamContainer.querySelector(`[data-member-id="${member.id}"]`);
-            
+
             if (!memberEl) {
                 // Create new member element
                 memberEl = document.createElement('div');
@@ -3070,7 +3070,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!auditContainer) return;
 
         auditContainer.innerHTML = entries.map(entry => {
-            const severityClass = entry.severity === 'critical' ? 'danger' : 
+            const severityClass = entry.severity === 'critical' ? 'danger' :
                                   entry.severity === 'warning' ? 'warning' : 'info';
             return `
                 <div class="audit-entry audit-${entry.severity}">

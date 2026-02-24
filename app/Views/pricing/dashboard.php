@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Dashboard de Precificação Inteligente
- * 
+ *
  * Interface principal do módulo de precificação com:
  * - Listagem de anúncios com margem
  * - Filtros por categoria, status, margem
@@ -39,11 +40,11 @@ $accountId = SessionHelper::getActiveAccountId();
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" onclick="exportarDados()">
-                        <i class="bi bi-file-earmark-spreadsheet me-2"></i>Custos (CSV)
-                    </a></li>
+                            <i class="bi bi-file-earmark-spreadsheet me-2"></i>Custos (CSV)
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="exportarHistorico()">
-                        <i class="bi bi-clock-history me-2"></i>Histórico de Preços
-                    </a></li>
+                            <i class="bi bi-clock-history me-2"></i>Histórico de Preços
+                        </a></li>
                 </ul>
             </div>
             <div class="dropdown">
@@ -52,68 +53,78 @@ $accountId = SessionHelper::getActiveAccountId();
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" onclick="abrirRelatorioPerformance()">
-                        <i class="bi bi-speedometer2 me-2"></i>Performance (30 dias)
-                    </a></li>
+                            <i class="bi bi-speedometer2 me-2"></i>Performance (30 dias)
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirMonitorConcorrentes()">
-                        <i class="bi bi-people me-2"></i>Monitorar Concorrentes
-                    </a></li>
+                            <i class="bi bi-people me-2"></i>Monitorar Concorrentes
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirPrevisaoMargem()">
-                        <i class="bi bi-calculator me-2"></i>Previsão de Margem
-                    </a></li>
+                            <i class="bi bi-calculator me-2"></i>Previsão de Margem
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirRentabilidade()">
-                        <i class="bi bi-piggy-bank me-2"></i>Análise de Rentabilidade
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="bi bi-piggy-bank me-2"></i>Análise de Rentabilidade
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li><a class="dropdown-item" href="#" onclick="abrirPrecoIdeal()">
-                        <i class="bi bi-bullseye me-2"></i>Calcular Preço Ideal
-                    </a></li>
+                            <i class="bi bi-bullseye me-2"></i>Calcular Preço Ideal
+                        </a></li>
                     <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#autoSuggestModal">
-                        <i class="bi bi-magic me-2"></i>Sugestão Automática
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="bi bi-magic me-2"></i>Sugestão Automática
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li><a class="dropdown-item" href="#" onclick="abrirAlertasPreco()">
-                        <i class="bi bi-bell me-2"></i>Alertas de Preço
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="bi bi-bell me-2"></i>Alertas de Preço
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li><a class="dropdown-item" href="#" onclick="abrirAutoOptimizer()">
-                        <i class="bi bi-robot me-2 text-success"></i>Auto-Otimizador
-                        <span class="badge bg-success ms-2">Novo</span>
-                    </a></li>
+                            <i class="bi bi-robot me-2 text-success"></i>Auto-Otimizador
+                            <span class="badge bg-success ms-2">Novo</span>
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirAbTests()">
-                        <i class="bi bi-signpost-split me-2 text-info"></i>Testes A/B
-                        <span class="badge bg-info ms-2">Novo</span>
-                    </a></li>
+                            <i class="bi bi-signpost-split me-2 text-info"></i>Testes A/B
+                            <span class="badge bg-info ms-2">Novo</span>
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirCompetitorMonitor()">
-                        <i class="bi bi-eye me-2 text-dark"></i>Monitor de Concorrentes
-                        <span class="badge bg-dark ms-2">Novo</span>
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="bi bi-eye me-2 text-dark"></i>Monitor de Concorrentes
+                            <span class="badge bg-dark ms-2">Novo</span>
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li><a class="dropdown-item" href="#" onclick="abrirAIPricing()">
-                        <i class="bi bi-cpu me-2 text-purple"></i>IA Preditiva
-                        <span class="badge bg-purple ms-2">AI</span>
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="bi bi-cpu me-2 text-purple"></i>IA Preditiva
+                            <span class="badge bg-purple ms-2">AI</span>
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li class="dropdown-header">🚀 Phase 3 - Automação Avançada</li>
                     <li><a class="dropdown-item" href="#" onclick="abrirRulesEngine()">
-                        <i class="bi bi-gear-wide-connected me-2 text-primary"></i>Motor de Regras
-                        <span class="badge bg-primary ms-2">Novo</span>
-                    </a></li>
+                            <i class="bi bi-gear-wide-connected me-2 text-primary"></i>Motor de Regras
+                            <span class="badge bg-primary ms-2">Novo</span>
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirScheduledPrices()">
-                        <i class="bi bi-calendar-event me-2 text-success"></i>Agendamento de Preços
-                        <span class="badge bg-success ms-2">Novo</span>
-                    </a></li>
+                            <i class="bi bi-calendar-event me-2 text-success"></i>Agendamento de Preços
+                            <span class="badge bg-success ms-2">Novo</span>
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirPriceAnalytics()">
-                        <i class="bi bi-graph-up-arrow me-2 text-info"></i>Analytics Avançado
-                        <span class="badge bg-info ms-2">Novo</span>
-                    </a></li>
+                            <i class="bi bi-graph-up-arrow me-2 text-info"></i>Analytics Avançado
+                            <span class="badge bg-info ms-2">Novo</span>
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirBulkEditor()">
-                        <i class="bi bi-pencil-square me-2 text-warning"></i>Editor em Massa
-                        <span class="badge bg-warning text-dark ms-2">Novo</span>
-                    </a></li>
+                            <i class="bi bi-pencil-square me-2 text-warning"></i>Editor em Massa
+                            <span class="badge bg-warning text-dark ms-2">Novo</span>
+                        </a></li>
                     <li><a class="dropdown-item" href="#" onclick="abrirNotifications()">
-                        <i class="bi bi-bell-fill me-2 text-danger"></i>Central de Notificações
-                        <span class="badge bg-danger ms-2">Novo</span>
-                    </a></li>
+                            <i class="bi bi-bell-fill me-2 text-danger"></i>Central de Notificações
+                            <span class="badge bg-danger ms-2">Novo</span>
+                        </a></li>
                 </ul>
             </div>
             <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importCostsModal">
@@ -194,8 +205,8 @@ $accountId = SessionHelper::getActiveAccountId();
 
     <!-- Métricas Avançadas (colapsável) -->
     <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center" 
-             style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#metricsCollapse">
+        <div class="card-header d-flex justify-content-between align-items-center"
+            style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#metricsCollapse">
             <span>
                 <i class="bi bi-graph-up-arrow me-2"></i>
                 Métricas Avançadas
@@ -230,7 +241,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Gráfico de Distribuição -->
                 <div class="row mt-4">
                     <div class="col-md-6">
@@ -329,7 +340,7 @@ $accountId = SessionHelper::getActiveAccountId();
                 </table>
             </div>
         </div>
-        
+
         <!-- Paginação -->
         <div class="card-footer d-flex justify-content-between align-items-center">
             <div class="text-muted" id="paginationInfo">
@@ -381,7 +392,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </button>
                     </li>
                 </ul>
-                
+
                 <!-- Tab Content -->
                 <div class="tab-content p-3">
                     <!-- Tab: Simulador -->
@@ -394,9 +405,9 @@ $accountId = SessionHelper::getActiveAccountId();
                                 </div>
                                 <h6 class="fw-bold" id="modalItemTitle">-</h6>
                                 <p class="text-muted small mb-2" id="modalItemId">MLB000000000</p>
-                                
+
                                 <hr>
-                                
+
                                 <div class="row text-center">
                                     <div class="col-6">
                                         <div class="fw-bold text-primary fs-4" id="modalCurrentPrice">R$ 0,00</div>
@@ -408,166 +419,166 @@ $accountId = SessionHelper::getActiveAccountId();
                                     </div>
                                 </div>
                             </div>
-                    
-                    <!-- Coluna Central: Simulador -->
-                    <div class="col-md-5 border-end">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-sliders me-1"></i> Simulador de Preço</h6>
-                        
-                        <!-- Input Novo Preço -->
-                        <div class="mb-4">
-                            <label class="form-label">Novo Preço (R$)</label>
-                            <div class="input-group input-group-lg">
-                                <span class="input-group-text">R$</span>
-                                <input type="number" class="form-control form-control-lg" id="newPriceInput" 
-                                       step="0.01" min="0" placeholder="0,00" oninput="calcularSimulacao()">
+
+                            <!-- Coluna Central: Simulador -->
+                            <div class="col-md-5 border-end">
+                                <h6 class="fw-bold mb-3"><i class="bi bi-sliders me-1"></i> Simulador de Preço</h6>
+
+                                <!-- Input Novo Preço -->
+                                <div class="mb-4">
+                                    <label class="form-label">Novo Preço (R$)</label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="number" class="form-control form-control-lg" id="newPriceInput"
+                                            step="0.01" min="0" placeholder="0,00" oninput="calcularSimulacao()">
+                                    </div>
+                                    <div class="form-text" id="priceChangePercent"></div>
+                                </div>
+
+                                <!-- Alerta de Ranking -->
+                                <div class="alert d-none mb-3" id="rankingAlert" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <span id="rankingAlertText"></span>
+                                </div>
+
+                                <!-- Breakdown Financeiro -->
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body py-2">
+                                        <h6 class="card-title small mb-2">Breakdown Financeiro</h6>
+                                        <table class="table table-sm table-borderless mb-0 small">
+                                            <tbody>
+                                                <tr>
+                                                    <td>Preço de Venda</td>
+                                                    <td class="text-end fw-bold" id="bkPreco">R$ 0,00</td>
+                                                </tr>
+                                                <tr class="text-danger">
+                                                    <td>(-) Comissão ML <span class="text-muted" id="bkComissaoPercent"></span></td>
+                                                    <td class="text-end" id="bkComissao">R$ 0,00</td>
+                                                </tr>
+                                                <tr class="text-danger">
+                                                    <td>(-) Impostos <span class="text-muted" id="bkImpostoPercent"></span></td>
+                                                    <td class="text-end" id="bkImposto">R$ 0,00</td>
+                                                </tr>
+                                                <tr class="text-danger">
+                                                    <td>(-) Ads (ACOS) <span class="text-muted" id="bkAdsPercent"></span></td>
+                                                    <td class="text-end" id="bkAds">R$ 0,00</td>
+                                                </tr>
+                                                <tr class="text-danger">
+                                                    <td>(-) Custo Produto</td>
+                                                    <td class="text-end" id="bkCusto">R$ 0,00</td>
+                                                </tr>
+                                                <tr class="text-danger">
+                                                    <td>(-) Frete Grátis</td>
+                                                    <td class="text-end" id="bkFrete">R$ 0,00</td>
+                                                </tr>
+                                                <tr class="border-top">
+                                                    <td class="fw-bold">= Lucro Unitário</td>
+                                                    <td class="text-end fw-bold" id="bkLucro">R$ 0,00</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-bold">= Margem Real</td>
+                                                    <td class="text-end fw-bold" id="bkMargem">0%</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Cenários de Desconto -->
+                                <div class="mb-3">
+                                    <h6 class="small fw-bold mb-2">Cenários de Desconto</h6>
+                                    <div class="d-flex flex-wrap gap-2" id="discountScenarios">
+                                        <!-- Preenchido via JS -->
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-text" id="priceChangePercent"></div>
-                        </div>
-                        
-                        <!-- Alerta de Ranking -->
-                        <div class="alert d-none mb-3" id="rankingAlert" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            <span id="rankingAlertText"></span>
-                        </div>
-                        
-                        <!-- Breakdown Financeiro -->
-                        <div class="card bg-light mb-3">
-                            <div class="card-body py-2">
-                                <h6 class="card-title small mb-2">Breakdown Financeiro</h6>
-                                <table class="table table-sm table-borderless mb-0 small">
-                                    <tbody>
-                                        <tr>
-                                            <td>Preço de Venda</td>
-                                            <td class="text-end fw-bold" id="bkPreco">R$ 0,00</td>
-                                        </tr>
-                                        <tr class="text-danger">
-                                            <td>(-) Comissão ML <span class="text-muted" id="bkComissaoPercent"></span></td>
-                                            <td class="text-end" id="bkComissao">R$ 0,00</td>
-                                        </tr>
-                                        <tr class="text-danger">
-                                            <td>(-) Impostos <span class="text-muted" id="bkImpostoPercent"></span></td>
-                                            <td class="text-end" id="bkImposto">R$ 0,00</td>
-                                        </tr>
-                                        <tr class="text-danger">
-                                            <td>(-) Ads (ACOS) <span class="text-muted" id="bkAdsPercent"></span></td>
-                                            <td class="text-end" id="bkAds">R$ 0,00</td>
-                                        </tr>
-                                        <tr class="text-danger">
-                                            <td>(-) Custo Produto</td>
-                                            <td class="text-end" id="bkCusto">R$ 0,00</td>
-                                        </tr>
-                                        <tr class="text-danger">
-                                            <td>(-) Frete Grátis</td>
-                                            <td class="text-end" id="bkFrete">R$ 0,00</td>
-                                        </tr>
-                                        <tr class="border-top">
-                                            <td class="fw-bold">= Lucro Unitário</td>
-                                            <td class="text-end fw-bold" id="bkLucro">R$ 0,00</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="fw-bold">= Margem Real</td>
-                                            <td class="text-end fw-bold" id="bkMargem">0%</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <!-- Cenários de Desconto -->
-                        <div class="mb-3">
-                            <h6 class="small fw-bold mb-2">Cenários de Desconto</h6>
-                            <div class="d-flex flex-wrap gap-2" id="discountScenarios">
-                                <!-- Preenchido via JS -->
+
+                            <!-- Coluna Direita: Custos e Histórico -->
+                            <div class="col-md-3">
+                                <!-- Form Custos -->
+                                <h6 class="fw-bold mb-3"><i class="bi bi-gear me-1"></i> Custos do Produto</h6>
+
+                                <div class="mb-2">
+                                    <label class="form-label small">Custo de Aquisição</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="number" class="form-control" id="costProducao" step="0.01" oninput="calcularSimulacao()">
+                                    </div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label small">Embalagem</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="number" class="form-control" id="costEmbalagem" step="0.01" value="0" oninput="calcularSimulacao()">
+                                    </div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label small">Frete Grátis</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="number" class="form-control" id="costFreteGratis" step="0.01" value="0" oninput="calcularSimulacao()">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <label class="form-label small">Comissão ML</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="taxaComissao" step="0.1" value="16" oninput="calcularSimulacao()">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">Impostos</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="taxaImposto" step="0.1" value="9" oninput="calcularSimulacao()">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small">ACOS Médio (Ads)</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="taxaAcos" step="0.1" value="0" oninput="calcularSimulacao()">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-outline-primary btn-sm w-100 mb-3" onclick="salvarCustos()">
+                                    <i class="bi bi-save me-1"></i> Salvar Custos
+                                </button>
+
+                                <hr>
+
+                                <!-- Concorrência -->
+                                <h6 class="small fw-bold mb-2"><i class="bi bi-people me-1"></i> Concorrência</h6>
+                                <div class="small" id="competitorInfo">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Menor preço:</span>
+                                        <span id="compMin">-</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Preço médio:</span>
+                                        <span id="compAvg">-</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Sua posição:</span>
+                                        <span id="compPosition">-</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Coluna Direita: Custos e Histórico -->
-                    <div class="col-md-3">
-                        <!-- Form Custos -->
-                        <h6 class="fw-bold mb-3"><i class="bi bi-gear me-1"></i> Custos do Produto</h6>
-                        
-                        <div class="mb-2">
-                            <label class="form-label small">Custo de Aquisição</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">R$</span>
-                                <input type="number" class="form-control" id="costProducao" step="0.01" oninput="calcularSimulacao()">
-                            </div>
-                        </div>
-                        
-                        <div class="mb-2">
-                            <label class="form-label small">Embalagem</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">R$</span>
-                                <input type="number" class="form-control" id="costEmbalagem" step="0.01" value="0" oninput="calcularSimulacao()">
-                            </div>
-                        </div>
-                        
-                        <div class="mb-2">
-                            <label class="form-label small">Frete Grátis</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">R$</span>
-                                <input type="number" class="form-control" id="costFreteGratis" step="0.01" value="0" oninput="calcularSimulacao()">
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-2">
-                            <div class="col-6">
-                                <label class="form-label small">Comissão ML</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" class="form-control" id="taxaComissao" step="0.1" value="16" oninput="calcularSimulacao()">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small">Impostos</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" class="form-control" id="taxaImposto" step="0.1" value="9" oninput="calcularSimulacao()">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label small">ACOS Médio (Ads)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="number" class="form-control" id="taxaAcos" step="0.1" value="0" oninput="calcularSimulacao()">
-                                <span class="input-group-text">%</span>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-outline-primary btn-sm w-100 mb-3" onclick="salvarCustos()">
-                            <i class="bi bi-save me-1"></i> Salvar Custos
-                        </button>
-                        
-                        <hr>
-                        
-                        <!-- Concorrência -->
-                        <h6 class="small fw-bold mb-2"><i class="bi bi-people me-1"></i> Concorrência</h6>
-                        <div class="small" id="competitorInfo">
-                            <div class="d-flex justify-content-between">
-                                <span>Menor preço:</span>
-                                <span id="compMin">-</span>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span>Preço médio:</span>
-                                <span id="compAvg">-</span>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span>Sua posição:</span>
-                                <span id="compPosition">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-                    
+
                     <!-- Tab: Promoções -->
                     <div class="tab-pane fade" id="promocoes-panel" role="tabpanel">
                         <div class="row">
                             <div class="col-md-6">
                                 <h5 class="mb-3"><i class="bi bi-percent text-danger me-2"></i>Simulador de Promoções</h5>
-                                
+
                                 <div class="mb-4">
                                     <label class="form-label">Percentual de Desconto</label>
                                     <input type="range" class="form-range" id="promoDesconto" min="5" max="50" step="5" value="10" oninput="updatePromoPreview()">
@@ -577,7 +588,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                         <span class="text-muted small">50%</span>
                                     </div>
                                 </div>
-                                
+
                                 <div class="card bg-light mb-3">
                                     <div class="card-body">
                                         <div class="row text-center">
@@ -596,20 +607,20 @@ $accountId = SessionHelper::getActiveAccountId();
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="alert d-none" id="promoAlerta" role="alert">
                                     <i class="bi bi-exclamation-triangle me-2"></i>
                                     <span id="promoAlertaText"></span>
                                 </div>
-                                
+
                                 <button class="btn btn-danger w-100" onclick="simularPromocao()">
                                     <i class="bi bi-calculator me-1"></i> Simular Promoção Completa
                                 </button>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <h5 class="mb-3"><i class="bi bi-lightning text-warning me-2"></i>Cenários de Desconto</h5>
-                                
+
                                 <div class="table-responsive">
                                     <table class="table table-sm table-striped" id="promoCenariosTable">
                                         <thead>
@@ -621,19 +632,21 @@ $accountId = SessionHelper::getActiveAccountId();
                                             </tr>
                                         </thead>
                                         <tbody id="promoCenariosBody">
-                                            <tr><td colspan="4" class="text-center text-muted">Clique em simular...</td></tr>
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted">Clique em simular...</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
-                                
+
                                 <hr>
-                                
+
                                 <h6 class="mb-2"><i class="bi bi-shop me-1"></i> Central de Ofertas ML</h6>
                                 <p class="text-muted small mb-2">Simule participação em campanhas do Mercado Livre</p>
                                 <button class="btn btn-outline-warning btn-sm w-100" onclick="simularCentralOfertas()">
                                     <i class="bi bi-stars me-1"></i> Simular Central de Ofertas
                                 </button>
-                                
+
                                 <div class="mt-3 d-none" id="centralOfertasResult">
                                     <div class="card border-warning">
                                         <div class="card-body py-2 small" id="centralOfertasContent"></div>
@@ -642,7 +655,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Tab: Histórico -->
                     <div class="tab-pane fade" id="historico-panel" role="tabpanel">
                         <div class="row">
@@ -651,7 +664,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                 <div style="height: 300px;">
                                     <canvas id="priceHistoryChart"></canvas>
                                 </div>
-                                
+
                                 <!-- Análise de Tendência -->
                                 <div class="mt-3 p-3 bg-light rounded" id="trendAnalysis">
                                     <div class="row text-center">
@@ -682,18 +695,18 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Tab: Regras Automáticas -->
                     <div class="tab-pane fade" id="regras-panel" role="tabpanel">
                         <div class="row">
                             <div class="col-md-6">
                                 <h5 class="mb-3"><i class="bi bi-gear-fill text-secondary me-2"></i>Criar Regra Automática</h5>
-                                
+
                                 <div class="mb-3">
                                     <label class="form-label">Nome da Regra</label>
                                     <input type="text" class="form-control" id="regraNome" placeholder="Ex: Manter margem mínima 15%">
                                 </div>
-                                
+
                                 <div class="mb-3">
                                     <label class="form-label">Tipo de Regra</label>
                                     <select class="form-select" id="regraTipo">
@@ -703,7 +716,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                         <option value="margem_alvo">Margem Alvo</option>
                                     </select>
                                 </div>
-                                
+
                                 <div class="mb-3">
                                     <label class="form-label">Valor</label>
                                     <div class="input-group">
@@ -711,17 +724,17 @@ $accountId = SessionHelper::getActiveAccountId();
                                         <span class="input-group-text" id="regraUnidade">%</span>
                                     </div>
                                 </div>
-                                
+
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="regraAtiva" checked>
                                     <label class="form-check-label" for="regraAtiva">Ativar imediatamente</label>
                                 </div>
-                                
+
                                 <button class="btn btn-primary w-100" onclick="criarRegraAutomatica()">
                                     <i class="bi bi-plus-lg me-1"></i> Criar Regra
                                 </button>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <h5 class="mb-3"><i class="bi bi-list-check me-2"></i>Regras Ativas</h5>
                                 <div class="list-group" id="regrasAtivas">
@@ -752,8 +765,8 @@ $accountId = SessionHelper::getActiveAccountId();
             </div>
             <div class="modal-body">
                 <p class="text-muted">Cole os dados no formato CSV (item_id, sku, custo_producao)</p>
-                <textarea class="form-control" rows="10" id="importCostsData" 
-                          placeholder="MLB123456789,SKU001,50.00&#10;MLB987654321,SKU002,75.50"></textarea>
+                <textarea class="form-control" rows="10" id="importCostsData"
+                    placeholder="MLB123456789,SKU001,50.00&#10;MLB987654321,SKU002,75.50"></textarea>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -800,7 +813,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </div>
                         <div class="mb-3">
                             <label class="form-label">IDs dos Itens (um por linha ou separados por vírgula)</label>
-                            <textarea class="form-control" id="bulkRuleItemIds" rows="4" 
+                            <textarea class="form-control" id="bulkRuleItemIds" rows="4"
                                 placeholder="MLB123456789&#10;MLB987654321"></textarea>
                         </div>
                         <div class="form-check mb-3">
@@ -834,7 +847,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </div>
                         <div class="mb-3">
                             <label class="form-label">IDs dos Itens</label>
-                            <textarea class="form-control" id="bulkCostItemIds" rows="3" 
+                            <textarea class="form-control" id="bulkCostItemIds" rows="3"
                                 placeholder="MLB123456789, MLB987654321"></textarea>
                         </div>
                         <div class="mb-3">
@@ -953,14 +966,14 @@ $accountId = SessionHelper::getActiveAccountId();
                                 <i class="bi bi-trash me-1"></i> Excluir Conta
                             </button>
                         </div>
-                        
+
                         <div class="alert alert-info mt-3 small">
                             <i class="bi bi-info-circle me-1"></i>
                             <strong>Sobre os Tokens:</strong> O token de acesso do Mercado Livre expira a cada 6 horas.
-                            O sistema tenta renovar automaticamente, mas se o <em>refresh_token</em> também expirar 
+                            O sistema tenta renovar automaticamente, mas se o <em>refresh_token</em> também expirar
                             (por inatividade prolongada), você precisará reconectar sua conta manualmente.
                         </div>
-                        
+
                         <!-- Zona de Perigo -->
                         <div class="card border-danger mt-4">
                             <div class="card-header bg-danger text-white">
@@ -1078,13 +1091,13 @@ $accountId = SessionHelper::getActiveAccountId();
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Selecione um item</label>
-                    <input type="text" class="form-control" id="autoSuggestItemId" 
-                           placeholder="Ex: MLB1234567890">
+                    <input type="text" class="form-control" id="autoSuggestItemId"
+                        placeholder="Ex: MLB1234567890">
                 </div>
                 <button type="button" class="btn btn-primary" onclick="buscarSugestaoAutomatica()">
                     <i class="bi bi-search me-1"></i> Analisar
                 </button>
-                
+
                 <div id="autoSuggestResult" class="mt-4" style="display: none;">
                     <!-- Resultado será inserido aqui -->
                 </div>
@@ -1106,13 +1119,13 @@ $accountId = SessionHelper::getActiveAccountId();
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Item ID</label>
-                    <input type="text" class="form-control" id="forecastItemId" 
-                           placeholder="Ex: MLB1234567890">
+                    <input type="text" class="form-control" id="forecastItemId"
+                        placeholder="Ex: MLB1234567890">
                 </div>
                 <button type="button" class="btn btn-warning" onclick="calcularPrevisao()">
                     <i class="bi bi-graph-up me-1"></i> Calcular Previsões
                 </button>
-                
+
                 <div id="forecastResult" class="mt-4" style="display: none;">
                     <!-- Resultado será inserido aqui -->
                 </div>
@@ -1134,13 +1147,13 @@ $accountId = SessionHelper::getActiveAccountId();
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Item para monitorar</label>
-                    <input type="text" class="form-control" id="competitorItemId" 
-                           placeholder="Ex: MLB1234567890">
+                    <input type="text" class="form-control" id="competitorItemId"
+                        placeholder="Ex: MLB1234567890">
                 </div>
                 <button type="button" class="btn btn-success" onclick="monitorarConcorrentes()">
                     <i class="bi bi-search me-1"></i> Buscar Concorrentes
                 </button>
-                
+
                 <div id="competitorsResult" class="mt-4" style="display: none;">
                     <!-- Resultado será inserido aqui -->
                 </div>
@@ -1206,7 +1219,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Lista de alertas -->
                 <h6><i class="bi bi-list-ul me-1"></i> Alertas Configurados</h6>
                 <div id="alertasList">
@@ -1237,7 +1250,7 @@ $accountId = SessionHelper::getActiveAccountId();
                     <hr>
                     <small>Apenas <strong>item_id</strong> e <strong>custo_produto</strong> são obrigatórios.</small>
                 </div>
-                
+
                 <form id="importCostsForm" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label">Arquivo CSV</label>
@@ -1247,7 +1260,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         <i class="bi bi-cloud-upload me-1"></i> Importar
                     </button>
                 </form>
-                
+
                 <div id="importResult" class="mt-3" style="display: none;"></div>
             </div>
         </div>
@@ -1276,7 +1289,7 @@ $accountId = SessionHelper::getActiveAccountId();
                 <button type="button" class="btn btn-primary w-100" onclick="calcularPrecoIdeal()">
                     <i class="bi bi-calculator me-1"></i> Calcular
                 </button>
-                
+
                 <div id="idealPriceResult" class="mt-4" style="display: none;"></div>
             </div>
         </div>
@@ -1339,7 +1352,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </button>
                     </li>
                 </ul>
-                
+
                 <div class="tab-content">
                     <!-- Tab: Configuração -->
                     <div class="tab-pane fade show active" id="optimizer-config">
@@ -1356,7 +1369,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                                 <strong>Ativar Auto-Otimizador</strong>
                                             </label>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label class="form-label">Modo de Operação</label>
                                             <select class="form-select" id="optimizerMode">
@@ -1365,7 +1378,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                             </select>
                                             <small class="text-muted">No modo automático, os preços são ajustados sem confirmação</small>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label class="form-label">Margem Mínima (%)</label>
                                             <input type="number" class="form-control" id="optimizerMinMargin" value="10" min="0" max="100" step="0.5">
@@ -1374,7 +1387,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <div class="card">
                                     <div class="card-header">
@@ -1389,7 +1402,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                                 <option value="stay_above">Ficar acima do menor</option>
                                             </select>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label class="form-label">Buffer de Margem (%)</label>
                                             <input type="number" class="form-control" id="optimizerBuffer" value="2" min="0" max="20" step="0.5">
@@ -1398,7 +1411,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <div class="card">
                                     <div class="card-header">
@@ -1410,7 +1423,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                             <input type="number" class="form-control" id="optimizerMaxIncrease" value="8" min="1" max="50">
                                             <small class="text-muted">Limite para não prejudicar ranking</small>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label class="form-label">Máxima Redução (%)</label>
                                             <input type="number" class="form-control" id="optimizerMaxDecrease" value="15" min="1" max="50">
@@ -1418,7 +1431,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <div class="card">
                                     <div class="card-header">
@@ -1431,7 +1444,7 @@ $accountId = SessionHelper::getActiveAccountId();
                                                 Notificar por E-mail
                                             </label>
                                         </div>
-                                        
+
                                         <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="optimizerNotifyChanges" checked>
                                             <label class="form-check-label" for="optimizerNotifyChanges">
@@ -1442,30 +1455,30 @@ $accountId = SessionHelper::getActiveAccountId();
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="mt-4">
                             <button type="button" class="btn btn-primary" onclick="salvarConfigOptimizer()">
                                 <i class="bi bi-check-lg me-1"></i> Salvar Configuração
                             </button>
                         </div>
                     </div>
-                    
+
                     <!-- Tab: Executar -->
                     <div class="tab-pane fade" id="optimizer-run">
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle me-2"></i>
                             Execute a otimização manualmente para analisar todos os itens e gerar sugestões de preço.
                         </div>
-                        
+
                         <button type="button" class="btn btn-success btn-lg mb-4" onclick="executarOptimizer()">
                             <i class="bi bi-play-fill me-1"></i> Executar Otimização
                         </button>
-                        
+
                         <div id="optimizerResults" style="display: none;">
                             <!-- Resultados serão inseridos aqui -->
                         </div>
                     </div>
-                    
+
                     <!-- Tab: Histórico -->
                     <div class="tab-pane fade" id="optimizer-history">
                         <div id="optimizerHistoryContent">
@@ -1475,7 +1488,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Tab: Estatísticas -->
                     <div class="tab-pane fade" id="optimizer-stats">
                         <div id="optimizerStatsContent">
@@ -1519,7 +1532,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </button>
                     </li>
                 </ul>
-                
+
                 <div class="tab-content">
                     <!-- Lista de Testes -->
                     <div class="tab-pane fade show active" id="abtest-list">
@@ -1538,7 +1551,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Novo Teste -->
                     <div class="tab-pane fade" id="abtest-new">
                         <form id="newAbTestForm" onsubmit="criarAbTest(event)">
@@ -1609,7 +1622,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </form>
                     </div>
-                    
+
                     <!-- Análise Detalhada -->
                     <div class="tab-pane fade" id="abtest-analysis">
                         <div id="abTestAnalysis">
@@ -1659,7 +1672,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </button>
                     </li>
                 </ul>
-                
+
                 <div class="tab-content">
                     <!-- Watchlist -->
                     <div class="tab-pane fade show active" id="monitor-watchlist">
@@ -1685,7 +1698,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Escanear -->
                     <div class="tab-pane fade" id="monitor-scan">
                         <div class="row mb-3">
@@ -1711,7 +1724,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Alertas -->
                     <div class="tab-pane fade" id="monitor-alerts">
                         <div class="mb-3">
@@ -1731,7 +1744,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Análise de Mercado -->
                     <div class="tab-pane fade" id="monitor-analysis">
                         <div class="row mb-3">
@@ -1790,7 +1803,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </button>
                     </li>
                 </ul>
-                
+
                 <div class="tab-content">
                     <!-- Sugestão IA -->
                     <div class="tab-pane fade show active" id="ai-suggest">
@@ -1821,7 +1834,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Elasticidade -->
                     <div class="tab-pane fade" id="ai-elasticity">
                         <div class="row mb-3">
@@ -1839,12 +1852,12 @@ $accountId = SessionHelper::getActiveAccountId();
                         <div id="aiElasticityResults">
                             <div class="alert alert-info">
                                 <i class="bi bi-info-circle me-2"></i>
-                                A elasticidade de preço mede o quanto a demanda reage a mudanças de preço. 
+                                A elasticidade de preço mede o quanto a demanda reage a mudanças de preço.
                                 Elasticidade > 1 significa alta sensibilidade a preço.
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Previsão de Receita -->
                     <div class="tab-pane fade" id="ai-forecast">
                         <div class="row mb-3">
@@ -1870,7 +1883,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Pricing Dinâmico -->
                     <div class="tab-pane fade" id="ai-dynamic">
                         <div class="row mb-3">
@@ -1902,7 +1915,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         <div id="aiDynamicResults">
                             <div class="alert alert-info">
                                 <i class="bi bi-info-circle me-2"></i>
-                                O pricing dinâmico calcula o preço ótimo baseado em concorrência em tempo real, 
+                                O pricing dinâmico calcula o preço ótimo baseado em concorrência em tempo real,
                                 respeitando sua margem mínima.
                             </div>
                         </div>
@@ -2320,10 +2333,10 @@ $accountId = SessionHelper::getActiveAccountId();
             <div class="modal-body">
                 <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>Atenção:</strong> Alterações em massa afetam múltiplos produtos. 
+                    <strong>Atenção:</strong> Alterações em massa afetam múltiplos produtos.
                     Sempre faça preview antes de aplicar.
                 </div>
-                
+
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label class="form-label">Operação</label>
@@ -2346,7 +2359,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="mb-3">
                     <label class="form-label">Filtrar Itens</label>
                     <div class="row g-2">
@@ -2360,7 +2373,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="d-flex gap-2 mb-3">
                     <button class="btn btn-primary" onclick="previewBulkEdit()">
                         <i class="bi bi-eye me-1"></i>Preview
@@ -2369,7 +2382,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         <i class="bi bi-check-lg me-1"></i>Aplicar
                     </button>
                 </div>
-                
+
                 <div id="bulkPreviewContainer" class="d-none">
                     <h6>Preview das Alterações:</h6>
                     <div class="table-responsive">
@@ -2386,7 +2399,7 @@ $accountId = SessionHelper::getActiveAccountId();
                         </table>
                     </div>
                 </div>
-                
+
                 <hr>
                 <h6>Histórico de Operações</h6>
                 <div id="bulkBatchesHistory"></div>
@@ -2431,7 +2444,7 @@ $accountId = SessionHelper::getActiveAccountId();
                             </button>
                         </div>
                         <div id="channelsListContainer"></div>
-                        
+
                         <div id="createChannelForm" class="d-none border rounded p-3 mt-3">
                             <h6>Criar Novo Canal</h6>
                             <div class="row g-2">
@@ -2481,130 +2494,175 @@ $accountId = SessionHelper::getActiveAccountId();
 </div>
 
 <style>
-.bg-purple { background-color: #667eea !important; }
-.text-purple { color: #667eea !important; }
-.badge.bg-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+    .bg-purple {
+        background-color: #667eea !important;
+    }
 
-.margin-indicator {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 5px;
-}
-.margin-indicator.verde { background-color: #198754; }
-.margin-indicator.amarelo { background-color: #ffc107; }
-.margin-indicator.laranja { background-color: #fd7e14; }
-.margin-indicator.vermelho { background-color: #dc3545; }
-.margin-indicator.cinza { background-color: #6c757d; }
+    .text-purple {
+        color: #667eea !important;
+    }
 
-.discount-badge {
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.discount-badge:hover {
-    transform: scale(1.05);
-}
-.discount-badge.viable { border-color: #198754 !important; }
-.discount-badge.not-viable { border-color: #dc3545 !important; opacity: 0.6; }
+    .badge.bg-purple {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
 
-#rankingAlert.alert-success { background-color: #d1e7dd; border-color: #badbcc; }
-#rankingAlert.alert-warning { background-color: #fff3cd; border-color: #ffecb5; }
-#rankingAlert.alert-danger { background-color: #f8d7da; border-color: #f5c2c7; }
+    .margin-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+
+    .margin-indicator.verde {
+        background-color: #198754;
+    }
+
+    .margin-indicator.amarelo {
+        background-color: #ffc107;
+    }
+
+    .margin-indicator.laranja {
+        background-color: #fd7e14;
+    }
+
+    .margin-indicator.vermelho {
+        background-color: #dc3545;
+    }
+
+    .margin-indicator.cinza {
+        background-color: #6c757d;
+    }
+
+    .discount-badge {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .discount-badge:hover {
+        transform: scale(1.05);
+    }
+
+    .discount-badge.viable {
+        border-color: #198754 !important;
+    }
+
+    .discount-badge.not-viable {
+        border-color: #dc3545 !important;
+        opacity: 0.6;
+    }
+
+    #rankingAlert.alert-success {
+        background-color: #d1e7dd;
+        border-color: #badbcc;
+    }
+
+    #rankingAlert.alert-warning {
+        background-color: #fff3cd;
+        border-color: #ffecb5;
+    }
+
+    #rankingAlert.alert-danger {
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+    }
 </style>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
-
-const ACCOUNT_ID = <?= json_encode($accountId) ?>;
-const API_BASE = `/api/pricing-intelligence/${ACCOUNT_ID}`;
-
-let currentPage = 1;
-let totalPages = 1;
-let currentItemId = null;
-let currentItemData = null;
-let currentCosts = null;
-let previewMode = false;
-
-// Inicialização
-document.addEventListener('DOMContentLoaded', async function() {
-    // Verificar status da conexão ML
-    await checkConnectionStatus();
-    
-    loadItems();
-    loadDashboardStats();
-    loadAdvancedMetrics();
-    
-    // Enter no campo de busca
-    document.getElementById('searchInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') aplicarFiltros();
-    });
-    
-    // Toggle chevron no collapse de métricas
-    const metricsCollapse = document.getElementById('metricsCollapse');
-    if (metricsCollapse) {
-        metricsCollapse.addEventListener('show.bs.collapse', function() {
-            document.getElementById('metricsChevron').classList.replace('bi-chevron-down', 'bi-chevron-up');
+    async function requestJson(url, options = {}) {
+        if (window.ApiClient) return window.ApiClient.request(url, options);
+        const resp = await fetch(url, {
+            credentials: 'include',
+            ...options
         });
-        metricsCollapse.addEventListener('hide.bs.collapse', function() {
-            document.getElementById('metricsChevron').classList.replace('bi-chevron-up', 'bi-chevron-down');
-        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
     }
-});
 
-// Verificar status da conexão
-async function checkConnectionStatus() {
-    try {
-        const response = await fetch(`${API_BASE}/status`);
-        const data = await response.json();
-        
-        if (data.preview_mode_available || data.ml_connection !== 'conectado') {
-            showPreviewBanner(data);
+    const ACCOUNT_ID = <?= json_encode($accountId) ?>;
+    const API_BASE = `/api/pricing-intelligence/${ACCOUNT_ID}`;
+
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentItemId = null;
+    let currentItemData = null;
+    let currentCosts = null;
+    let previewMode = false;
+
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Verificar status da conexão ML
+        await checkConnectionStatus();
+
+        loadItems();
+        loadDashboardStats();
+        loadAdvancedMetrics();
+
+        // Enter no campo de busca
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') aplicarFiltros();
+        });
+
+        // Toggle chevron no collapse de métricas
+        const metricsCollapse = document.getElementById('metricsCollapse');
+        if (metricsCollapse) {
+            metricsCollapse.addEventListener('show.bs.collapse', function() {
+                document.getElementById('metricsChevron').classList.replace('bi-chevron-down', 'bi-chevron-up');
+            });
+            metricsCollapse.addEventListener('hide.bs.collapse', function() {
+                document.getElementById('metricsChevron').classList.replace('bi-chevron-up', 'bi-chevron-down');
+            });
         }
-    } catch (err) {
-        console.warn('Não foi possível verificar status da conexão');
-    }
-}
+    });
 
-// Mostrar banner de conexão/preview local
-function showPreviewBanner(statusData) {
-    const container = document.querySelector('.container-fluid');
-    const existingBanner = document.getElementById('previewBanner');
-    if (existingBanner) existingBanner.remove();
-    
-    const accountInfo = statusData?.account ? 
-        `Conta: <strong>${statusData.account.nickname}</strong> (${statusData.account.email})` : 
-        'Nenhuma conta configurada';
-    
-    const tokenExpired = statusData?.account?.token_status === 'expirado';
-    const refreshTokenInvalid = statusData?.ml_error?.includes('invalid_grant') || statusData?.ml_error?.includes('missing_access_token');
-    
-    let actionMessage = '';
-    if (refreshTokenInvalid || tokenExpired) {
-        actionMessage = `
+    // Verificar status da conexão
+    async function checkConnectionStatus() {
+        try {
+            const response = await fetch(`${API_BASE}/status`);
+            const data = await response.json();
+
+            if (data.preview_mode_available || data.ml_connection !== 'conectado') {
+                showPreviewBanner(data);
+            }
+        } catch (err) {
+            console.warn('Não foi possível verificar status da conexão');
+        }
+    }
+
+    // Mostrar banner de conexão/preview local
+    function showPreviewBanner(statusData) {
+        const container = document.querySelector('.container-fluid');
+        const existingBanner = document.getElementById('previewBanner');
+        if (existingBanner) existingBanner.remove();
+
+        const accountInfo = statusData?.account ?
+            `Conta: <strong>${statusData.account.nickname}</strong> (${statusData.account.email})` :
+            'Nenhuma conta configurada';
+
+        const tokenExpired = statusData?.account?.token_status === 'expirado';
+        const refreshTokenInvalid = statusData?.ml_error?.includes('invalid_grant') || statusData?.ml_error?.includes('missing_access_token');
+
+        let actionMessage = '';
+        if (refreshTokenInvalid || tokenExpired) {
+            actionMessage = `
             <div class="alert alert-danger mt-2 mb-0 py-2">
                 <i class="bi bi-exclamation-octagon me-1"></i>
                 <strong>Refresh Token Expirado!</strong> O token de atualização do Mercado Livre expirou.
                 Para ver seus produtos reais, você precisa <a href="/auth/authorize" class="alert-link fw-bold">reconectar sua conta</a>.
             </div>
         `;
-    }
-    
-    const banner = document.createElement('div');
-    banner.id = 'previewBanner';
-    banner.className = 'alert alert-warning alert-dismissible fade show mb-3';
-    banner.innerHTML = `
+        }
+
+        const banner = document.createElement('div');
+        banner.id = 'previewBanner';
+        banner.className = 'alert alert-warning alert-dismissible fade show mb-3';
+        banner.innerHTML = `
         <div class="d-flex align-items-center">
             <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
             <div class="flex-grow-1">
                 <strong>Preview Local Disponível</strong>
                 <div class="small">
-                    ${accountInfo} • 
+                    ${accountInfo} •
                     Token: <span class="badge bg-${statusData?.account?.token_status === 'válido' ? 'success' : 'danger'}">${statusData?.account?.token_status || 'N/A'}</span> •
                     ML: <span class="badge bg-${statusData?.ml_connection === 'conectado' ? 'success' : 'danger'}">${statusData?.ml_connection || 'Desconectado'}</span>
                 </div>
@@ -2621,91 +2679,91 @@ function showPreviewBanner(statusData) {
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
-    container.insertBefore(banner, container.firstChild);
-}
 
-// Alternar modo preview local
-function togglePreviewMode() {
-    previewMode = !previewMode;
-    loadItems(1);
-    if (!previewMode) {
-        const banner = document.getElementById('previewBanner');
-        if (banner) banner.remove();
+        container.insertBefore(banner, container.firstChild);
     }
-}
 
-// Carregar itens
-async function loadItems(page = 1) {
-    currentPage = page;
-    const status = document.getElementById('filterStatus').value;
-    const search = document.getElementById('searchInput').value;
-    const margemFilter = document.getElementById('filterMargem').value;
-    
-    let url = `${API_BASE}/items?page=${page}&limit=20`;
-    if (status) url += `&status=${status}`;
-    if (search) url += `&q=${encodeURIComponent(search)}`;
-    
-    // Filtro de margem
-    if (margemFilter === 'critica') url += '&margem_max=5';
-    else if (margemFilter === 'baixa') url += '&margem_min=5&margem_max=10';
-    else if (margemFilter === 'media') url += '&margem_min=10&margem_max=20';
-    else if (margemFilter === 'boa') url += '&margem_min=20';
-    
-    // Adicionar modo preview local se necessário
-    if (previewMode) url += '&preview=true';
-    
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.success) {
-            // Se a API retornou preview local, manter estado local
-            if (data.preview_mode && !previewMode) {
-                previewMode = true;
-                checkConnectionStatus();
-            }
-            
-            // Se há aviso da API, exibir
-            if (data.aviso && !document.getElementById('previewBanner')) {
-                showApiWarning(data.aviso);
-            }
-            
-            renderItems(data.items);
-            updatePagination(data.page, Math.ceil(data.total / 20), data.total);
-            updateStats(data.items);
-        } else {
-            showError('Erro ao carregar itens');
+    // Alternar modo preview local
+    function togglePreviewMode() {
+        previewMode = !previewMode;
+        loadItems(1);
+        if (!previewMode) {
+            const banner = document.getElementById('previewBanner');
+            if (banner) banner.remove();
         }
-    } catch (err) {
-        console.error(err);
-        showError('Erro de conexão');
     }
-}
 
-// Mostrar aviso da API
-function showApiWarning(message) {
-    const container = document.querySelector('.container-fluid');
-    const existingWarning = document.getElementById('apiWarning');
-    if (existingWarning) existingWarning.remove();
-    
-    const warning = document.createElement('div');
-    warning.id = 'apiWarning';
-    warning.className = 'alert alert-info alert-dismissible fade show mb-3';
-    warning.innerHTML = `
+    // Carregar itens
+    async function loadItems(page = 1) {
+        currentPage = page;
+        const status = document.getElementById('filterStatus').value;
+        const search = document.getElementById('searchInput').value;
+        const margemFilter = document.getElementById('filterMargem').value;
+
+        let url = `${API_BASE}/items?page=${page}&limit=20`;
+        if (status) url += `&status=${status}`;
+        if (search) url += `&q=${encodeURIComponent(search)}`;
+
+        // Filtro de margem
+        if (margemFilter === 'critica') url += '&margem_max=5';
+        else if (margemFilter === 'baixa') url += '&margem_min=5&margem_max=10';
+        else if (margemFilter === 'media') url += '&margem_min=10&margem_max=20';
+        else if (margemFilter === 'boa') url += '&margem_min=20';
+
+        // Adicionar modo preview local se necessário
+        if (previewMode) url += '&preview=true';
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.success) {
+                // Se a API retornou preview local, manter estado local
+                if (data.preview_mode && !previewMode) {
+                    previewMode = true;
+                    checkConnectionStatus();
+                }
+
+                // Se há aviso da API, exibir
+                if (data.aviso && !document.getElementById('previewBanner')) {
+                    showApiWarning(data.aviso);
+                }
+
+                renderItems(data.items);
+                updatePagination(data.page, Math.ceil(data.total / 20), data.total);
+                updateStats(data.items);
+            } else {
+                showError('Erro ao carregar itens');
+            }
+        } catch (err) {
+            console.error(err);
+            showError('Erro de conexão');
+        }
+    }
+
+    // Mostrar aviso da API
+    function showApiWarning(message) {
+        const container = document.querySelector('.container-fluid');
+        const existingWarning = document.getElementById('apiWarning');
+        if (existingWarning) existingWarning.remove();
+
+        const warning = document.createElement('div');
+        warning.id = 'apiWarning';
+        warning.className = 'alert alert-info alert-dismissible fade show mb-3';
+        warning.innerHTML = `
         <i class="bi bi-info-circle me-2"></i>
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    container.insertBefore(warning, container.firstChild);
-}
+        container.insertBefore(warning, container.firstChild);
+    }
 
-// Renderizar tabela
-function renderItems(items) {
-    const tbody = document.getElementById('itemsTableBody');
-    
-    if (!items || items.length === 0) {
-        tbody.innerHTML = `
+    // Renderizar tabela
+    function renderItems(items) {
+        const tbody = document.getElementById('itemsTableBody');
+
+        if (!items || items.length === 0) {
+            tbody.innerHTML = `
             <tr>
                 <td colspan="8" class="text-center py-5">
                     <i class="bi bi-inbox fs-1 text-muted"></i>
@@ -2716,13 +2774,13 @@ function renderItems(items) {
                 </td>
             </tr>
         `;
-        return;
-    }
-    
-    tbody.innerHTML = items.map(item => `
+            return;
+        }
+
+        tbody.innerHTML = items.map(item => `
         <tr>
             <td>
-                <img src="${item.thumbnail || '/images/no-image.png'}" 
+                <img src="${item.thumbnail || '/images/no-image.png'}"
                      class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
             </td>
             <td>
@@ -2737,19 +2795,19 @@ function renderItems(items) {
                 <span class="fw-bold">R$ ${formatNumber(item.preco)}</span>
             </td>
             <td class="text-center">
-                ${item.custos_cadastrados 
+                ${item.custos_cadastrados
                     ? `<span>R$ ${formatNumber(item.lucro_unitario ? item.preco - item.lucro_unitario - (item.preco * 0.25) : '-')}</span>`
                     : '<span class="text-muted">-</span>'
                 }
             </td>
             <td class="text-center">
-                ${item.margem !== null 
+                ${item.margem !== null
                     ? `<span class="margin-indicator ${item.indicador}"></span>${formatNumber(item.margem)}%`
                     : '<span class="badge bg-secondary">Configurar</span>'
                 }
             </td>
             <td class="text-center">
-                ${item.lucro_unitario !== null 
+                ${item.lucro_unitario !== null
                     ? `<span class="${item.lucro_unitario >= 0 ? 'text-success' : 'text-danger'}">
                          R$ ${formatNumber(item.lucro_unitario)}
                        </span>`
@@ -2763,502 +2821,543 @@ function renderItems(items) {
                 <button class="btn btn-sm btn-primary" onclick="abrirPrecificador('${item.id}')" title="Precificador">
                     <i class="bi bi-calculator"></i>
                 </button>
-                <a href="${ML.itemUrl(item.id)}" target="_blank" 
+                <a href="${ML.itemUrl(item.id)}" target="_blank"
                    class="btn btn-sm btn-outline-secondary" title="Ver no ML">
                     <i class="bi bi-box-arrow-up-right"></i>
                 </a>
             </td>
         </tr>
     `).join('');
-}
+    }
 
-// Abrir modal do precificador
-async function abrirPrecificador(itemId) {
-    currentItemId = itemId;
-    
-    // Mostrar modal com loading
-    const modal = new bootstrap.Modal(document.getElementById('pricingModal'));
-    modal.show();
-    
-    try {
-        // Buscar dados do item e custos
-        const [costsRes] = await Promise.all([
-            fetch(`${API_BASE}/costs/${itemId}`).then(r => r.json())
-        ]);
-        
-        if (costsRes.success) {
-            currentItemData = costsRes.item_info;
-            currentCosts = costsRes.custos;
-            
-            // Preencher dados do modal
-            document.getElementById('modalItemId').textContent = itemId;
-            document.getElementById('modalItemTitle').textContent = currentItemData?.titulo || itemId;
-            document.getElementById('modalItemImage').src = currentItemData?.thumbnail || '/images/no-image.png';
-            document.getElementById('modalCurrentPrice').textContent = `R$ ${formatNumber(currentItemData?.preco || 0)}`;
-            
-            // Preencher custos se existirem
-            if (currentCosts) {
-                document.getElementById('costProducao').value = currentCosts.custo_producao || '';
-                document.getElementById('costEmbalagem').value = currentCosts.custo_embalagem || 0;
-                document.getElementById('costFreteGratis').value = currentCosts.custo_frete_gratis || 0;
-                document.getElementById('taxaComissao').value = currentCosts.taxa_comissao_ml || 16;
-                document.getElementById('taxaImposto').value = currentCosts.taxa_imposto || 9;
-                document.getElementById('taxaAcos').value = currentCosts.acos_medio || 0;
+    // Abrir modal do precificador
+    async function abrirPrecificador(itemId) {
+        currentItemId = itemId;
+
+        // Mostrar modal com loading
+        const modal = new bootstrap.Modal(document.getElementById('pricingModal'));
+        modal.show();
+
+        try {
+            // Buscar dados do item e custos
+            const [costsRes] = await Promise.all([
+                fetch(`${API_BASE}/costs/${itemId}`).then(r => r.json())
+            ]);
+
+            if (costsRes.success) {
+                currentItemData = costsRes.item_info;
+                currentCosts = costsRes.custos;
+
+                // Preencher dados do modal
+                document.getElementById('modalItemId').textContent = itemId;
+                document.getElementById('modalItemTitle').textContent = currentItemData?.titulo || itemId;
+                document.getElementById('modalItemImage').src = currentItemData?.thumbnail || '/images/no-image.png';
+                document.getElementById('modalCurrentPrice').textContent = `R$ ${formatNumber(currentItemData?.preco || 0)}`;
+
+                // Preencher custos se existirem
+                if (currentCosts) {
+                    document.getElementById('costProducao').value = currentCosts.custo_producao || '';
+                    document.getElementById('costEmbalagem').value = currentCosts.custo_embalagem || 0;
+                    document.getElementById('costFreteGratis').value = currentCosts.custo_frete_gratis || 0;
+                    document.getElementById('taxaComissao').value = currentCosts.taxa_comissao_ml || 16;
+                    document.getElementById('taxaImposto').value = currentCosts.taxa_imposto || 9;
+                    document.getElementById('taxaAcos').value = currentCosts.acos_medio || 0;
+                }
+
+                // Setar preço atual no input
+                document.getElementById('newPriceInput').value = currentItemData?.preco || '';
+
+                // Calcular simulação inicial
+                calcularSimulacao();
+
+                // Buscar concorrência (async)
+                loadCompetitorData(currentItemData?.categoria);
             }
-            
-            // Setar preço atual no input
-            document.getElementById('newPriceInput').value = currentItemData?.preco || '';
-            
-            // Calcular simulação inicial
-            calcularSimulacao();
-            
-            // Buscar concorrência (async)
-            loadCompetitorData(currentItemData?.categoria);
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao carregar dados', 'danger');
         }
-    } catch (err) {
-        console.error(err);
-        showToast('Erro ao carregar dados', 'danger');
     }
-}
 
-// Calcular simulação em tempo real
-async function calcularSimulacao() {
-    const novoPreco = parseFloat(document.getElementById('newPriceInput').value) || 0;
-    const precoAtual = currentItemData?.preco || 0;
-    
-    const custos = {
-        preco_venda: novoPreco,
-        custo_producao: parseFloat(document.getElementById('costProducao').value) || 0,
-        custo_embalagem: parseFloat(document.getElementById('costEmbalagem').value) || 0,
-        custo_frete_gratis: parseFloat(document.getElementById('costFreteGratis').value) || 0,
-        taxa_comissao_ml: parseFloat(document.getElementById('taxaComissao').value) || 16,
-        taxa_imposto: parseFloat(document.getElementById('taxaImposto').value) || 9,
-        acos_medio: parseFloat(document.getElementById('taxaAcos').value) || 0
-    };
-    
-    if (novoPreco <= 0) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/margin/calculate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(custos)
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            // Atualizar breakdown
-            const bk = data.breakdown;
-            document.getElementById('bkPreco').textContent = `R$ ${formatNumber(novoPreco)}`;
-            document.getElementById('bkComissao').textContent = `-R$ ${formatNumber(bk.custos_variaveis.comissao_ml)}`;
-            document.getElementById('bkComissaoPercent').textContent = `(${bk.custos_variaveis.comissao_ml_percent}%)`;
-            document.getElementById('bkImposto').textContent = `-R$ ${formatNumber(bk.custos_variaveis.imposto)}`;
-            document.getElementById('bkImpostoPercent').textContent = `(${bk.custos_variaveis.imposto_percent}%)`;
-            document.getElementById('bkAds').textContent = `-R$ ${formatNumber(bk.custos_variaveis.ads)}`;
-            document.getElementById('bkAdsPercent').textContent = `(${bk.custos_variaveis.ads_percent}%)`;
-            document.getElementById('bkCusto').textContent = `-R$ ${formatNumber(bk.custos_fixos.producao)}`;
-            document.getElementById('bkFrete').textContent = `-R$ ${formatNumber(bk.custos_fixos.frete_gratis)}`;
-            document.getElementById('bkLucro').textContent = `R$ ${formatNumber(data.lucro_unitario)}`;
-            document.getElementById('bkLucro').className = `text-end fw-bold ${data.lucro_unitario >= 0 ? 'text-success' : 'text-danger'}`;
-            document.getElementById('bkMargem').textContent = `${formatNumber(data.margem_real)}%`;
-            document.getElementById('bkMargem').className = `text-end fw-bold text-${data.indicador === 'verde' ? 'success' : data.indicador === 'amarelo' ? 'warning' : 'danger'}`;
-            
-            // Margem atual no header
-            document.getElementById('modalCurrentMargin').textContent = `${formatNumber(data.margem_real)}%`;
-            document.getElementById('modalCurrentMargin').className = `fw-bold fs-4 text-${data.indicador === 'verde' ? 'success' : data.indicador === 'amarelo' ? 'warning' : 'danger'}`;
-            
-            // Variação de preço
-            if (precoAtual > 0) {
-                const variacao = ((novoPreco - precoAtual) / precoAtual) * 100;
-                document.getElementById('priceChangePercent').innerHTML = variacao !== 0 
-                    ? `<span class="${variacao > 0 ? 'text-danger' : 'text-success'}">${variacao > 0 ? '+' : ''}${formatNumber(variacao)}% em relação ao preço atual</span>`
-                    : '';
-                    
-                // Verificar impacto no ranking
-                checkRankingImpact(precoAtual, novoPreco);
+    // Calcular simulação em tempo real
+    async function calcularSimulacao() {
+        const novoPreco = parseFloat(document.getElementById('newPriceInput').value) || 0;
+        const precoAtual = currentItemData?.preco || 0;
+
+        const custos = {
+            preco_venda: novoPreco,
+            custo_producao: parseFloat(document.getElementById('costProducao').value) || 0,
+            custo_embalagem: parseFloat(document.getElementById('costEmbalagem').value) || 0,
+            custo_frete_gratis: parseFloat(document.getElementById('costFreteGratis').value) || 0,
+            taxa_comissao_ml: parseFloat(document.getElementById('taxaComissao').value) || 16,
+            taxa_imposto: parseFloat(document.getElementById('taxaImposto').value) || 9,
+            acos_medio: parseFloat(document.getElementById('taxaAcos').value) || 0
+        };
+
+        if (novoPreco <= 0) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/margin/calculate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(custos)
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                // Atualizar breakdown
+                const bk = data.breakdown;
+                document.getElementById('bkPreco').textContent = `R$ ${formatNumber(novoPreco)}`;
+                document.getElementById('bkComissao').textContent = `-R$ ${formatNumber(bk.custos_variaveis.comissao_ml)}`;
+                document.getElementById('bkComissaoPercent').textContent = `(${bk.custos_variaveis.comissao_ml_percent}%)`;
+                document.getElementById('bkImposto').textContent = `-R$ ${formatNumber(bk.custos_variaveis.imposto)}`;
+                document.getElementById('bkImpostoPercent').textContent = `(${bk.custos_variaveis.imposto_percent}%)`;
+                document.getElementById('bkAds').textContent = `-R$ ${formatNumber(bk.custos_variaveis.ads)}`;
+                document.getElementById('bkAdsPercent').textContent = `(${bk.custos_variaveis.ads_percent}%)`;
+                document.getElementById('bkCusto').textContent = `-R$ ${formatNumber(bk.custos_fixos.producao)}`;
+                document.getElementById('bkFrete').textContent = `-R$ ${formatNumber(bk.custos_fixos.frete_gratis)}`;
+                document.getElementById('bkLucro').textContent = `R$ ${formatNumber(data.lucro_unitario)}`;
+                document.getElementById('bkLucro').className = `text-end fw-bold ${data.lucro_unitario >= 0 ? 'text-success' : 'text-danger'}`;
+                document.getElementById('bkMargem').textContent = `${formatNumber(data.margem_real)}%`;
+                document.getElementById('bkMargem').className = `text-end fw-bold text-${data.indicador === 'verde' ? 'success' : data.indicador === 'amarelo' ? 'warning' : 'danger'}`;
+
+                // Margem atual no header
+                document.getElementById('modalCurrentMargin').textContent = `${formatNumber(data.margem_real)}%`;
+                document.getElementById('modalCurrentMargin').className = `fw-bold fs-4 text-${data.indicador === 'verde' ? 'success' : data.indicador === 'amarelo' ? 'warning' : 'danger'}`;
+
+                // Variação de preço
+                if (precoAtual > 0) {
+                    const variacao = ((novoPreco - precoAtual) / precoAtual) * 100;
+                    document.getElementById('priceChangePercent').innerHTML = variacao !== 0 ?
+                        `<span class="${variacao > 0 ? 'text-danger' : 'text-success'}">${variacao > 0 ? '+' : ''}${formatNumber(variacao)}% em relação ao preço atual</span>` :
+                        '';
+
+                    // Verificar impacto no ranking
+                    checkRankingImpact(precoAtual, novoPreco);
+                }
+
+                // Gerar cenários de desconto
+                generateDiscountScenarios(novoPreco, custos);
             }
-            
-            // Gerar cenários de desconto
-            generateDiscountScenarios(novoPreco, custos);
+        } catch (err) {
+            console.error(err);
         }
-    } catch (err) {
-        console.error(err);
     }
-}
 
-// Verificar impacto no ranking
-async function checkRankingImpact(precoAtual, precoNovo) {
-    try {
-        const response = await fetch(`${API_BASE}/ranking-impact`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ preco_atual: precoAtual, preco_novo: precoNovo })
-        });
-        const data = await response.json();
-        
-        const alertEl = document.getElementById('rankingAlert');
-        const alertText = document.getElementById('rankingAlertText');
-        
-        if (data.alerta !== 'verde') {
-            alertEl.classList.remove('d-none', 'alert-success', 'alert-warning', 'alert-danger');
-            alertEl.classList.add(`alert-${data.alerta === 'amarelo' ? 'warning' : 'danger'}`);
-            alertText.textContent = data.mensagem;
-        } else {
-            alertEl.classList.add('d-none');
+    // Verificar impacto no ranking
+    async function checkRankingImpact(precoAtual, precoNovo) {
+        try {
+            const response = await fetch(`${API_BASE}/ranking-impact`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    preco_atual: precoAtual,
+                    preco_novo: precoNovo
+                })
+            });
+            const data = await response.json();
+
+            const alertEl = document.getElementById('rankingAlert');
+            const alertText = document.getElementById('rankingAlertText');
+
+            if (data.alerta !== 'verde') {
+                alertEl.classList.remove('d-none', 'alert-success', 'alert-warning', 'alert-danger');
+                alertEl.classList.add(`alert-${data.alerta === 'amarelo' ? 'warning' : 'danger'}`);
+                alertText.textContent = data.mensagem;
+            } else {
+                alertEl.classList.add('d-none');
+            }
+        } catch (err) {
+            console.error(err);
         }
-    } catch (err) {
-        console.error(err);
     }
-}
 
-// Gerar cenários de desconto
-async function generateDiscountScenarios(precoBase, custos) {
-    try {
-        const response = await fetch(`${API_BASE}/simulate-discount`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ preco_original: precoBase, desconto_percent: 10, ...custos })
-        });
-        const data = await response.json();
-        
-        if (data.cenarios) {
-            const container = document.getElementById('discountScenarios');
-            container.innerHTML = data.cenarios.map(c => `
-                <span class="badge border discount-badge ${c.viavel ? 'viable text-success' : 'not-viable text-danger'}" 
+    // Gerar cenários de desconto
+    async function generateDiscountScenarios(precoBase, custos) {
+        try {
+            const response = await fetch(`${API_BASE}/simulate-discount`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    preco_original: precoBase,
+                    desconto_percent: 10,
+                    ...custos
+                })
+            });
+            const data = await response.json();
+
+            if (data.cenarios) {
+                const container = document.getElementById('discountScenarios');
+                container.innerHTML = data.cenarios.map(c => `
+                <span class="badge border discount-badge ${c.viavel ? 'viable text-success' : 'not-viable text-danger'}"
                       onclick="aplicarDesconto(${c.preco})" title="Margem: ${formatNumber(c.margem)}%">
                     -${c.desconto}%<br>
                     <small>R$ ${formatNumber(c.preco)}</small>
                 </span>
             `).join('');
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-function aplicarDesconto(preco) {
-    document.getElementById('newPriceInput').value = preco.toFixed(2);
-    calcularSimulacao();
-}
-
-// Salvar custos
-async function salvarCustos() {
-    const custos = {
-        custo_producao: parseFloat(document.getElementById('costProducao').value) || 0,
-        custo_embalagem: parseFloat(document.getElementById('costEmbalagem').value) || 0,
-        custo_frete_gratis: parseFloat(document.getElementById('costFreteGratis').value) || 0,
-        taxa_comissao_ml: parseFloat(document.getElementById('taxaComissao').value) || 16,
-        taxa_imposto: parseFloat(document.getElementById('taxaImposto').value) || 9,
-        acos_medio: parseFloat(document.getElementById('taxaAcos').value) || 0
-    };
-    
-    try {
-        const response = await fetch(`${API_BASE}/costs/${currentItemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(custos)
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Custos salvos com sucesso!', 'success');
-            currentCosts = custos;
-        } else {
-            showToast('Erro ao salvar custos', 'danger');
-        }
-    } catch (err) {
-        showToast('Erro de conexão', 'danger');
-    }
-}
-
-// Aplicar preço no ML
-async function aplicarPreco() {
-    const novoPreco = parseFloat(document.getElementById('newPriceInput').value);
-    
-    if (!novoPreco || novoPreco <= 0) {
-        showToast('Informe um preço válido', 'warning');
-        return;
-    }
-    
-    const btn = document.getElementById('btnAplicarPreco');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Aplicando...';
-    
-    try {
-        const response = await fetch(`${API_BASE}/apply/${currentItemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                novo_preco: novoPreco,
-                motivo: 'Ajuste via Precificador Inteligente'
-            })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast(`Preço atualizado para R$ ${formatNumber(novoPreco)}`, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('pricingModal')).hide();
-            loadItems(currentPage);
-        } else if (data.warning) {
-            if (confirm(`${data.message}\n\nDeseja aplicar mesmo assim?`)) {
-                // Forçar aplicação
-                const forceResponse = await fetch(`${API_BASE}/apply/${currentItemId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ novo_preco: novoPreco, force: true })
-                });
-                const forceData = await forceResponse.json();
-                
-                if (forceData.success) {
-                    showToast('Preço atualizado!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('pricingModal')).hide();
-                    loadItems(currentPage);
-                }
             }
-        } else {
-            showToast(data.error || 'Erro ao aplicar preço', 'danger');
+        } catch (err) {
+            console.error(err);
         }
-    } catch (err) {
-        showToast('Erro de conexão', 'danger');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Aplicar Preço no ML';
     }
-}
 
-// Carregar dados de concorrência
-async function loadCompetitorData(categoryId) {
-    if (!categoryId) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/competitors/${categoryId}`);
-        const data = await response.json();
-        
-        if (data.price_stats) {
-            document.getElementById('compMin').textContent = `R$ ${formatNumber(data.price_stats.min)}`;
-            document.getElementById('compAvg').textContent = `R$ ${formatNumber(data.price_stats.average)}`;
-            document.getElementById('compPosition').textContent = `${data.price_stats.count} concorrentes`;
-        }
-    } catch (err) {
-        console.error(err);
+    function aplicarDesconto(preco) {
+        document.getElementById('newPriceInput').value = preco.toFixed(2);
+        calcularSimulacao();
     }
-}
 
-// Dashboard stats
-async function loadDashboardStats() {
-    try {
-        const response = await fetch(`${API_BASE}/dashboard`);
-        const data = await response.json();
-        
-        if (data.success && data.estatisticas) {
-            const stats = data.estatisticas;
-            document.getElementById('alertVermelho').textContent = stats.distribuicao?.critica || 0;
-            document.getElementById('alertAmarelo').textContent = stats.distribuicao?.baixa || 0;
-            document.getElementById('alertVerde').textContent = stats.distribuicao?.boa || 0;
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
+    // Salvar custos
+    async function salvarCustos() {
+        const custos = {
+            custo_producao: parseFloat(document.getElementById('costProducao').value) || 0,
+            custo_embalagem: parseFloat(document.getElementById('costEmbalagem').value) || 0,
+            custo_frete_gratis: parseFloat(document.getElementById('costFreteGratis').value) || 0,
+            taxa_comissao_ml: parseFloat(document.getElementById('taxaComissao').value) || 16,
+            taxa_imposto: parseFloat(document.getElementById('taxaImposto').value) || 9,
+            acos_medio: parseFloat(document.getElementById('taxaAcos').value) || 0
+        };
 
-// Métricas avançadas com gráficos
-let marginChart = null;
-let trendChart = null;
-
-async function loadAdvancedMetrics() {
-    try {
-        const response = await fetch(`${API_BASE}/metrics`);
-        const data = await response.json();
-        
-        if (data.success) {
-            // Atualizar cards de métricas
-            document.getElementById('metricMargemMedia').textContent = 
-                formatNumber(data.margens?.media || 0) + '%';
-            document.getElementById('metricLucroTotal').textContent = 
-                'R$ ' + formatNumber(data.lucro_potencial_mensal || 0);
-            document.getElementById('metricAlteracoes').textContent = 
-                data.alteracoes_7_dias || 0;
-            document.getElementById('metricAlertas').textContent = 
-                data.alertas_pendentes || 0;
-            
-            // Renderizar gráfico de distribuição
-            renderMarginDistributionChart(data.distribuicao);
-            
-            // Renderizar gráfico de tendência
-            renderPriceTrendChart(data.tendencia_7_dias);
-        }
-    } catch (err) {
-        console.error('Erro ao carregar métricas:', err);
-    }
-}
-
-function renderMarginDistributionChart(distribuicao) {
-    const ctx = document.getElementById('marginDistributionChart');
-    if (!ctx) return;
-    
-    if (marginChart) marginChart.destroy();
-    
-    const data = {
-        labels: ['Crítica (<5%)', 'Baixa (5-10%)', 'Média (10-20%)', 'Boa (>20%)', 'Sem custos'],
-        datasets: [{
-            data: [
-                distribuicao?.critica || 0,
-                distribuicao?.baixa || 0,
-                distribuicao?.media || 0,
-                distribuicao?.boa || 0,
-                distribuicao?.sem_custos || 0
-            ],
-            backgroundColor: [
-                '#dc3545',
-                '#ffc107', 
-                '#17a2b8',
-                '#28a745',
-                '#6c757d'
-            ],
-            borderWidth: 0
-        }]
-    };
-    
-    marginChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: data,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        boxWidth: 12,
-                        font: { size: 11 }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function renderPriceTrendChart(tendencia) {
-    const ctx = document.getElementById('priceTrendChart');
-    if (!ctx) return;
-    
-    if (trendChart) trendChart.destroy();
-    
-    // Se não houver dados, usar dados padrão
-    const labels = tendencia?.map(t => t.data) || ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-    const alteracoes = tendencia?.map(t => t.alteracoes) || [0, 0, 0, 0, 0, 0, 0];
-    const aumentos = tendencia?.map(t => t.aumentos) || [0, 0, 0, 0, 0, 0, 0];
-    const reducoes = tendencia?.map(t => t.reducoes) || [0, 0, 0, 0, 0, 0, 0];
-    
-    trendChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Aumentos',
-                    data: aumentos,
-                    backgroundColor: '#28a745',
-                    stack: 'Stack 0'
+        try {
+            const response = await fetch(`${API_BASE}/costs/${currentItemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
                 },
-                {
-                    label: 'Reduções',
-                    data: reducoes,
-                    backgroundColor: '#dc3545',
-                    stack: 'Stack 0'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        font: { size: 11 }
+                body: JSON.stringify(custos)
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Custos salvos com sucesso!', 'success');
+                currentCosts = custos;
+            } else {
+                showToast('Erro ao salvar custos', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro de conexão', 'danger');
+        }
+    }
+
+    // Aplicar preço no ML
+    async function aplicarPreco() {
+        const novoPreco = parseFloat(document.getElementById('newPriceInput').value);
+
+        if (!novoPreco || novoPreco <= 0) {
+            showToast('Informe um preço válido', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnAplicarPreco');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Aplicando...';
+
+        try {
+            const response = await fetch(`${API_BASE}/apply/${currentItemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    novo_preco: novoPreco,
+                    motivo: 'Ajuste via Precificador Inteligente'
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(`Preço atualizado para R$ ${formatNumber(novoPreco)}`, 'success');
+                bootstrap.Modal.getInstance(document.getElementById('pricingModal')).hide();
+                loadItems(currentPage);
+            } else if (data.warning) {
+                if (confirm(`${data.message}\n\nDeseja aplicar mesmo assim?`)) {
+                    // Forçar aplicação
+                    const forceResponse = await fetch(`${API_BASE}/apply/${currentItemId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            novo_preco: novoPreco,
+                            force: true
+                        })
+                    });
+                    const forceData = await forceResponse.json();
+
+                    if (forceData.success) {
+                        showToast('Preço atualizado!', 'success');
+                        bootstrap.Modal.getInstance(document.getElementById('pricingModal')).hide();
+                        loadItems(currentPage);
                     }
                 }
-            },
-            scales: {
-                x: { stacked: true },
-                y: { 
-                    stacked: true,
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 }
+            } else {
+                showToast(data.error || 'Erro ao aplicar preço', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro de conexão', 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Aplicar Preço no ML';
+        }
+    }
+
+    // Carregar dados de concorrência
+    async function loadCompetitorData(categoryId) {
+        if (!categoryId) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/competitors/${categoryId}`);
+            const data = await response.json();
+
+            if (data.price_stats) {
+                document.getElementById('compMin').textContent = `R$ ${formatNumber(data.price_stats.min)}`;
+                document.getElementById('compAvg').textContent = `R$ ${formatNumber(data.price_stats.average)}`;
+                document.getElementById('compPosition').textContent = `${data.price_stats.count} concorrentes`;
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // Dashboard stats
+    async function loadDashboardStats() {
+        try {
+            const response = await fetch(`${API_BASE}/dashboard`);
+            const data = await response.json();
+
+            if (data.success && data.estatisticas) {
+                const stats = data.estatisticas;
+                document.getElementById('alertVermelho').textContent = stats.distribuicao?.critica || 0;
+                document.getElementById('alertAmarelo').textContent = stats.distribuicao?.baixa || 0;
+                document.getElementById('alertVerde').textContent = stats.distribuicao?.boa || 0;
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // Métricas avançadas com gráficos
+    let marginChart = null;
+    let trendChart = null;
+
+    async function loadAdvancedMetrics() {
+        try {
+            const response = await fetch(`${API_BASE}/metrics`);
+            const data = await response.json();
+
+            if (data.success) {
+                // Atualizar cards de métricas
+                document.getElementById('metricMargemMedia').textContent =
+                    formatNumber(data.margens?.media || 0) + '%';
+                document.getElementById('metricLucroTotal').textContent =
+                    'R$ ' + formatNumber(data.lucro_potencial_mensal || 0);
+                document.getElementById('metricAlteracoes').textContent =
+                    data.alteracoes_7_dias || 0;
+                document.getElementById('metricAlertas').textContent =
+                    data.alertas_pendentes || 0;
+
+                // Renderizar gráfico de distribuição
+                renderMarginDistributionChart(data.distribuicao);
+
+                // Renderizar gráfico de tendência
+                renderPriceTrendChart(data.tendencia_7_dias);
+            }
+        } catch (err) {
+            console.error('Erro ao carregar métricas:', err);
+        }
+    }
+
+    function renderMarginDistributionChart(distribuicao) {
+        const ctx = document.getElementById('marginDistributionChart');
+        if (!ctx) return;
+
+        if (marginChart) marginChart.destroy();
+
+        const data = {
+            labels: ['Crítica (<5%)', 'Baixa (5-10%)', 'Média (10-20%)', 'Boa (>20%)', 'Sem custos'],
+            datasets: [{
+                data: [
+                    distribuicao?.critica || 0,
+                    distribuicao?.baixa || 0,
+                    distribuicao?.media || 0,
+                    distribuicao?.boa || 0,
+                    distribuicao?.sem_custos || 0
+                ],
+                backgroundColor: [
+                    '#dc3545',
+                    '#ffc107',
+                    '#17a2b8',
+                    '#28a745',
+                    '#6c757d'
+                ],
+                borderWidth: 0
+            }]
+        };
+
+        marginChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
                 }
             }
-        }
-    });
-}
-
-function updateStats(items) {
-    let semCusto = 0, critica = 0, baixa = 0, boa = 0;
-    
-    items.forEach(item => {
-        if (!item.custos_cadastrados) semCusto++;
-        else if (item.margem < 5) critica++;
-        else if (item.margem < 10) baixa++;
-        else if (item.margem >= 20) boa++;
-    });
-    
-    document.getElementById('alertSemCusto').textContent = semCusto;
-}
-
-// Paginação
-function updatePagination(current, total, totalItems) {
-    totalPages = total;
-    document.getElementById('paginationInfo').textContent = 
-        `Mostrando ${((current-1)*20)+1}-${Math.min(current*20, totalItems)} de ${totalItems} itens`;
-    
-    const pagination = document.getElementById('pagination');
-    let html = '';
-    
-    if (current > 1) {
-        html += `<li class="page-item"><a class="page-link" href="#" onclick="loadItems(${current-1})">«</a></li>`;
+        });
     }
-    
-    for (let i = Math.max(1, current-2); i <= Math.min(total, current+2); i++) {
-        html += `<li class="page-item ${i === current ? 'active' : ''}">
+
+    function renderPriceTrendChart(tendencia) {
+        const ctx = document.getElementById('priceTrendChart');
+        if (!ctx) return;
+
+        if (trendChart) trendChart.destroy();
+
+        // Se não houver dados, usar dados padrão
+        const labels = tendencia?.map(t => t.data) || ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+        const alteracoes = tendencia?.map(t => t.alteracoes) || [0, 0, 0, 0, 0, 0, 0];
+        const aumentos = tendencia?.map(t => t.aumentos) || [0, 0, 0, 0, 0, 0, 0];
+        const reducoes = tendencia?.map(t => t.reducoes) || [0, 0, 0, 0, 0, 0, 0];
+
+        trendChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                        label: 'Aumentos',
+                        data: aumentos,
+                        backgroundColor: '#28a745',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: 'Reduções',
+                        data: reducoes,
+                        backgroundColor: '#dc3545',
+                        stack: 'Stack 0'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateStats(items) {
+        let semCusto = 0,
+            critica = 0,
+            baixa = 0,
+            boa = 0;
+
+        items.forEach(item => {
+            if (!item.custos_cadastrados) semCusto++;
+            else if (item.margem < 5) critica++;
+            else if (item.margem < 10) baixa++;
+            else if (item.margem >= 20) boa++;
+        });
+
+        document.getElementById('alertSemCusto').textContent = semCusto;
+    }
+
+    // Paginação
+    function updatePagination(current, total, totalItems) {
+        totalPages = total;
+        document.getElementById('paginationInfo').textContent =
+            `Mostrando ${((current-1)*20)+1}-${Math.min(current*20, totalItems)} de ${totalItems} itens`;
+
+        const pagination = document.getElementById('pagination');
+        let html = '';
+
+        if (current > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadItems(${current-1})">«</a></li>`;
+        }
+
+        for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+            html += `<li class="page-item ${i === current ? 'active' : ''}">
             <a class="page-link" href="#" onclick="loadItems(${i})">${i}</a>
         </li>`;
+        }
+
+        if (current < total) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="loadItems(${current+1})">»</a></li>`;
+        }
+
+        pagination.innerHTML = html;
     }
-    
-    if (current < total) {
-        html += `<li class="page-item"><a class="page-link" href="#" onclick="loadItems(${current+1})">»</a></li>`;
+
+    // Helpers
+    function formatNumber(num) {
+        return parseFloat(num || 0).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
-    
-    pagination.innerHTML = html;
-}
 
-// Helpers
-function formatNumber(num) {
-    return parseFloat(num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+    function aplicarFiltros() {
+        loadItems(1);
+    }
 
-function aplicarFiltros() { loadItems(1); }
-function limparFiltros() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('filterStatus').value = 'active';
-    document.getElementById('filterMargem').value = '';
-    loadItems(1);
-}
-function refreshItems() { loadItems(currentPage); }
+    function limparFiltros() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterStatus').value = 'active';
+        document.getElementById('filterMargem').value = '';
+        loadItems(1);
+    }
 
-// Toast Notifications
-function showToast(message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer');
-    const toastId = 'toast-' + Date.now();
-    
-    const icons = {
-        success: 'bi-check-circle-fill',
-        danger: 'bi-exclamation-triangle-fill',
-        warning: 'bi-exclamation-circle-fill',
-        info: 'bi-info-circle-fill'
-    };
-    
-    const toastHtml = `
+    function refreshItems() {
+        loadItems(currentPage);
+    }
+
+    // Toast Notifications
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        const toastId = 'toast-' + Date.now();
+
+        const icons = {
+            success: 'bi-check-circle-fill',
+            danger: 'bi-exclamation-triangle-fill',
+            warning: 'bi-exclamation-circle-fill',
+            info: 'bi-info-circle-fill'
+        };
+
+        const toastHtml = `
         <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert">
             <div class="d-flex">
                 <div class="toast-body">
@@ -3269,17 +3368,19 @@ function showToast(message, type = 'info') {
             </div>
         </div>
     `;
-    
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-    const toastEl = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-    toast.show();
-    
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-}
 
-function showError(message) {
-    document.getElementById('itemsTableBody').innerHTML = `
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl, {
+            delay: 4000
+        });
+        toast.show();
+
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    function showError(message) {
+        document.getElementById('itemsTableBody').innerHTML = `
         <tr>
             <td colspan="8" class="text-center py-5 text-danger">
                 <i class="bi bi-exclamation-triangle fs-1"></i>
@@ -3287,259 +3388,280 @@ function showError(message) {
             </td>
         </tr>
     `;
-}
+    }
 
-function exportarDados() {
-    // Usar nova rota de exportação
-    window.location.href = `${API_BASE}/export/csv`;
-}
+    function exportarDados() {
+        // Usar nova rota de exportação
+        window.location.href = `${API_BASE}/export/csv`;
+    }
 
-// Exportar histórico de preços
-function exportarHistorico() {
-    const itemId = document.getElementById('filterItemId')?.value || '';
-    const dataInicio = document.getElementById('filterDataInicio')?.value || '';
-    const dataFim = document.getElementById('filterDataFim')?.value || '';
-    
-    let url = `${API_BASE}/export/history`;
-    const params = new URLSearchParams();
-    if (itemId) params.append('item_id', itemId);
-    if (dataInicio) params.append('data_inicio', dataInicio);
-    if (dataFim) params.append('data_fim', dataFim);
-    
-    if (params.toString()) url += '?' + params.toString();
-    window.location.href = url;
-}
+    // Exportar histórico de preços
+    function exportarHistorico() {
+        const itemId = document.getElementById('filterItemId')?.value || '';
+        const dataInicio = document.getElementById('filterDataInicio')?.value || '';
+        const dataFim = document.getElementById('filterDataFim')?.value || '';
 
-async function processarImportacao() {
-    const data = document.getElementById('importCostsData').value;
-    const lines = data.trim().split('\n');
-    const items = [];
-    
-    lines.forEach(line => {
-        const [item_id, sku, custo] = line.split(',').map(s => s.trim());
-        if (item_id && custo) {
-            items.push({ item_id, sku, custo_producao: parseFloat(custo) });
+        let url = `${API_BASE}/export/history`;
+        const params = new URLSearchParams();
+        if (itemId) params.append('item_id', itemId);
+        if (dataInicio) params.append('data_inicio', dataInicio);
+        if (dataFim) params.append('data_fim', dataFim);
+
+        if (params.toString()) url += '?' + params.toString();
+        window.location.href = url;
+    }
+
+    async function processarImportacao() {
+        const data = document.getElementById('importCostsData').value;
+        const lines = data.trim().split('\n');
+        const items = [];
+
+        lines.forEach(line => {
+            const [item_id, sku, custo] = line.split(',').map(s => s.trim());
+            if (item_id && custo) {
+                items.push({
+                    item_id,
+                    sku,
+                    custo_producao: parseFloat(custo)
+                });
+            }
+        });
+
+        if (items.length === 0) {
+            showToast('Nenhum item válido encontrado', 'warning');
+            return;
         }
-    });
-    
-    if (items.length === 0) {
-        showToast('Nenhum item válido encontrado', 'warning');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/bulk-costs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items })
-        });
-        const result = await response.json();
-        
-        showToast(`Importados: ${result.sucesso} | Falhas: ${result.falhas}`, result.falhas > 0 ? 'warning' : 'success');
-        bootstrap.Modal.getInstance(document.getElementById('importCostsModal')).hide();
-        loadItems(currentPage);
-    } catch (err) {
-        showToast('Erro na importação', 'danger');
-    }
-}
 
-// =========================================
-// AÇÕES EM LOTE
-// =========================================
-async function executarBulkRules() {
-    const textareaValue = document.getElementById('bulkRuleItemIds').value;
-    const simulate = document.getElementById('bulkRuleSimulate').checked;
-    
-    // Parsear IDs (suporta vírgula, quebra de linha, ou espaço)
-    const itemIds = textareaValue.split(/[,\n\s]+/)
-        .map(id => id.trim())
-        .filter(id => id.length > 0);
-    
-    if (itemIds.length === 0) {
-        showToast('Informe pelo menos um ID de item', 'warning');
-        return;
+        try {
+            const response = await fetch(`${API_BASE}/bulk-costs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    items
+                })
+            });
+            const result = await response.json();
+
+            showToast(`Importados: ${result.sucesso} | Falhas: ${result.falhas}`, result.falhas > 0 ? 'warning' : 'success');
+            bootstrap.Modal.getInstance(document.getElementById('importCostsModal')).hide();
+            loadItems(currentPage);
+        } catch (err) {
+            showToast('Erro na importação', 'danger');
+        }
     }
-    
-    const resultDiv = document.getElementById('bulkRulesResult');
-    resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div> Processando...';
-    
-    try {
-        const response = await fetch(`${API_BASE}/bulk/apply-rules`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_ids: itemIds, simulate })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            let html = `<div class="alert alert-success">
+
+    // =========================================
+    // AÇÕES EM LOTE
+    // =========================================
+    async function executarBulkRules() {
+        const textareaValue = document.getElementById('bulkRuleItemIds').value;
+        const simulate = document.getElementById('bulkRuleSimulate').checked;
+
+        // Parsear IDs (suporta vírgula, quebra de linha, ou espaço)
+        const itemIds = textareaValue.split(/[,\n\s]+/)
+            .map(id => id.trim())
+            .filter(id => id.length > 0);
+
+        if (itemIds.length === 0) {
+            showToast('Informe pelo menos um ID de item', 'warning');
+            return;
+        }
+
+        const resultDiv = document.getElementById('bulkRulesResult');
+        resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div> Processando...';
+
+        try {
+            const response = await fetch(`${API_BASE}/bulk/apply-rules`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_ids: itemIds,
+                    simulate
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                let html = `<div class="alert alert-success">
                 <strong>${simulate ? 'Simulação concluída!' : 'Regras aplicadas!'}</strong><br>
                 Sucesso: ${data.success_count} | Falhas: ${data.error_count}
             </div>`;
-            
-            if (data.results && data.results.length > 0) {
-                html += '<div class="table-responsive"><table class="table table-sm table-bordered">';
-                html += '<thead><tr><th>Item ID</th><th>Status</th><th>Resultado</th></tr></thead><tbody>';
-                data.results.forEach(r => {
-                    const statusClass = r.success ? 'text-success' : 'text-danger';
-                    html += `<tr>
+
+                if (data.results && data.results.length > 0) {
+                    html += '<div class="table-responsive"><table class="table table-sm table-bordered">';
+                    html += '<thead><tr><th>Item ID</th><th>Status</th><th>Resultado</th></tr></thead><tbody>';
+                    data.results.forEach(r => {
+                        const statusClass = r.success ? 'text-success' : 'text-danger';
+                        html += `<tr>
                         <td>${r.item_id}</td>
                         <td><span class="${statusClass}">${r.success ? '✓' : '✗'}</span></td>
                         <td class="small">${r.message || r.error || '-'}</td>
                     </tr>`;
-                });
-                html += '</tbody></table></div>';
-            }
-            
-            resultDiv.innerHTML = html;
-            
-            if (!simulate) {
-                loadItems(currentPage);
-            }
-        } else {
-            resultDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'Erro ao processar'}</div>`;
-        }
-    } catch (err) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">Erro de conexão</div>`;
-    }
-}
+                    });
+                    html += '</tbody></table></div>';
+                }
 
-async function executarBulkCosts() {
-    const field = document.getElementById('bulkCostField').value;
-    const value = parseFloat(document.getElementById('bulkCostValue').value);
-    const textareaValue = document.getElementById('bulkCostItemIds').value;
-    
-    const itemIds = textareaValue.split(/[,\n\s]+/)
-        .map(id => id.trim())
-        .filter(id => id.length > 0);
-    
-    if (itemIds.length === 0) {
-        showToast('Informe pelo menos um ID de item', 'warning');
-        return;
+                resultDiv.innerHTML = html;
+
+                if (!simulate) {
+                    loadItems(currentPage);
+                }
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'Erro ao processar'}</div>`;
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">Erro de conexão</div>`;
+        }
     }
-    
-    if (isNaN(value)) {
-        showToast('Informe um valor válido', 'warning');
-        return;
-    }
-    
-    const resultDiv = document.getElementById('bulkCostsResult');
-    resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div> Processando...';
-    
-    try {
-        const response = await fetch(`${API_BASE}/bulk/update-costs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_ids: itemIds, field, value })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            resultDiv.innerHTML = `<div class="alert alert-success">
+
+    async function executarBulkCosts() {
+        const field = document.getElementById('bulkCostField').value;
+        const value = parseFloat(document.getElementById('bulkCostValue').value);
+        const textareaValue = document.getElementById('bulkCostItemIds').value;
+
+        const itemIds = textareaValue.split(/[,\n\s]+/)
+            .map(id => id.trim())
+            .filter(id => id.length > 0);
+
+        if (itemIds.length === 0) {
+            showToast('Informe pelo menos um ID de item', 'warning');
+            return;
+        }
+
+        if (isNaN(value)) {
+            showToast('Informe um valor válido', 'warning');
+            return;
+        }
+
+        const resultDiv = document.getElementById('bulkCostsResult');
+        resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div> Processando...';
+
+        try {
+            const response = await fetch(`${API_BASE}/bulk/update-costs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_ids: itemIds,
+                    field,
+                    value
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                resultDiv.innerHTML = `<div class="alert alert-success">
                 <strong>Custos atualizados!</strong><br>
                 Sucesso: ${data.success_count} | Falhas: ${data.error_count}
             </div>`;
-            loadItems(currentPage);
-        } else {
-            resultDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'Erro ao processar'}</div>`;
+                loadItems(currentPage);
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'Erro ao processar'}</div>`;
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">Erro de conexão</div>`;
         }
-    } catch (err) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">Erro de conexão</div>`;
     }
-}
 
-// =========================================
-// SIMULADOR DE PROMOÇÕES
-// =========================================
-let priceHistoryChart = null;
+    // =========================================
+    // SIMULADOR DE PROMOÇÕES
+    // =========================================
+    let priceHistoryChart = null;
 
-function updatePromoPreview() {
-    const desconto = parseInt(document.getElementById('promoDesconto').value);
-    const preco = currentItemData?.preco || 0;
-    const precoFinal = preco * (1 - desconto / 100);
-    
-    document.getElementById('promoDescontoValue').textContent = desconto + '%';
-    document.getElementById('promoPrecoOriginal').textContent = `R$ ${formatNumber(preco)}`;
-    document.getElementById('promoPrecoFinal').textContent = `R$ ${formatNumber(precoFinal)}`;
-    
-    // Calcular margem estimada
-    const custos = getCurrentCosts();
-    const custoTotal = custos.custo_producao + custos.custo_embalagem + custos.custo_frete_gratis;
-    const taxas = precoFinal * ((custos.taxa_comissao_ml + custos.taxa_imposto + custos.acos_medio) / 100);
-    const lucro = precoFinal - custoTotal - taxas;
-    const margem = preco > 0 ? (lucro / precoFinal) * 100 : 0;
-    
-    document.getElementById('promoMargem').textContent = `${formatNumber(margem)}%`;
-    document.getElementById('promoMargem').className = `fs-5 fw-bold ${margem >= 10 ? 'text-success' : margem >= 5 ? 'text-warning' : 'text-danger'}`;
-    
-    // Alerta
-    const alertEl = document.getElementById('promoAlerta');
-    if (margem < 5) {
-        alertEl.classList.remove('d-none', 'alert-warning', 'alert-success');
-        alertEl.classList.add('alert-danger');
-        document.getElementById('promoAlertaText').textContent = 'Desconto inviável! Margem abaixo do mínimo seguro.';
-    } else if (margem < 10) {
-        alertEl.classList.remove('d-none', 'alert-danger', 'alert-success');
-        alertEl.classList.add('alert-warning');
-        document.getElementById('promoAlertaText').textContent = 'Atenção: margem baixa. Considere um desconto menor.';
-    } else {
-        alertEl.classList.add('d-none');
-    }
-}
+    function updatePromoPreview() {
+        const desconto = parseInt(document.getElementById('promoDesconto').value);
+        const preco = currentItemData?.preco || 0;
+        const precoFinal = preco * (1 - desconto / 100);
 
-function getCurrentCosts() {
-    return {
-        custo_producao: parseFloat(document.getElementById('costProducao').value) || 0,
-        custo_embalagem: parseFloat(document.getElementById('costEmbalagem').value) || 0,
-        custo_frete_gratis: parseFloat(document.getElementById('costFreteGratis').value) || 0,
-        taxa_comissao_ml: parseFloat(document.getElementById('taxaComissao').value) || 16,
-        taxa_imposto: parseFloat(document.getElementById('taxaImposto').value) || 9,
-        acos_medio: parseFloat(document.getElementById('taxaAcos').value) || 0
-    };
-}
+        document.getElementById('promoDescontoValue').textContent = desconto + '%';
+        document.getElementById('promoPrecoOriginal').textContent = `R$ ${formatNumber(preco)}`;
+        document.getElementById('promoPrecoFinal').textContent = `R$ ${formatNumber(precoFinal)}`;
 
-async function simularPromocao() {
-    if (!currentItemId || !currentItemData) {
-        showToast('Selecione um produto primeiro', 'warning');
-        return;
-    }
-    
-    const desconto = parseInt(document.getElementById('promoDesconto').value);
-    const custos = getCurrentCosts();
-    
-    try {
-        const response = await fetch(`${API_BASE}/promotion/simulate/${currentItemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                desconto: desconto,
-                custos: custos
-            })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            // Atualizar cenários
-            renderPromoCenarios(data.cenarios || []);
-            showToast('Simulação concluída!', 'success');
+        // Calcular margem estimada
+        const custos = getCurrentCosts();
+        const custoTotal = custos.custo_producao + custos.custo_embalagem + custos.custo_frete_gratis;
+        const taxas = precoFinal * ((custos.taxa_comissao_ml + custos.taxa_imposto + custos.acos_medio) / 100);
+        const lucro = precoFinal - custoTotal - taxas;
+        const margem = preco > 0 ? (lucro / precoFinal) * 100 : 0;
+
+        document.getElementById('promoMargem').textContent = `${formatNumber(margem)}%`;
+        document.getElementById('promoMargem').className = `fs-5 fw-bold ${margem >= 10 ? 'text-success' : margem >= 5 ? 'text-warning' : 'text-danger'}`;
+
+        // Alerta
+        const alertEl = document.getElementById('promoAlerta');
+        if (margem < 5) {
+            alertEl.classList.remove('d-none', 'alert-warning', 'alert-success');
+            alertEl.classList.add('alert-danger');
+            document.getElementById('promoAlertaText').textContent = 'Desconto inviável! Margem abaixo do mínimo seguro.';
+        } else if (margem < 10) {
+            alertEl.classList.remove('d-none', 'alert-danger', 'alert-success');
+            alertEl.classList.add('alert-warning');
+            document.getElementById('promoAlertaText').textContent = 'Atenção: margem baixa. Considere um desconto menor.';
         } else {
-            showToast(data.error || 'Erro na simulação', 'danger');
+            alertEl.classList.add('d-none');
         }
-    } catch (err) {
-        console.error(err);
-        showToast('Erro de conexão', 'danger');
     }
-}
 
-function renderPromoCenarios(cenarios) {
-    const tbody = document.getElementById('promoCenariosBody');
-    
-    if (!cenarios.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum cenário gerado</td></tr>';
-        return;
+    function getCurrentCosts() {
+        return {
+            custo_producao: parseFloat(document.getElementById('costProducao').value) || 0,
+            custo_embalagem: parseFloat(document.getElementById('costEmbalagem').value) || 0,
+            custo_frete_gratis: parseFloat(document.getElementById('costFreteGratis').value) || 0,
+            taxa_comissao_ml: parseFloat(document.getElementById('taxaComissao').value) || 16,
+            taxa_imposto: parseFloat(document.getElementById('taxaImposto').value) || 9,
+            acos_medio: parseFloat(document.getElementById('taxaAcos').value) || 0
+        };
     }
-    
-    tbody.innerHTML = cenarios.map(c => `
+
+    async function simularPromocao() {
+        if (!currentItemId || !currentItemData) {
+            showToast('Selecione um produto primeiro', 'warning');
+            return;
+        }
+
+        const desconto = parseInt(document.getElementById('promoDesconto').value);
+        const custos = getCurrentCosts();
+
+        try {
+            const response = await fetch(`${API_BASE}/promotion/simulate/${currentItemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    desconto: desconto,
+                    custos: custos
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                // Atualizar cenários
+                renderPromoCenarios(data.cenarios || []);
+                showToast('Simulação concluída!', 'success');
+            } else {
+                showToast(data.error || 'Erro na simulação', 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro de conexão', 'danger');
+        }
+    }
+
+    function renderPromoCenarios(cenarios) {
+        const tbody = document.getElementById('promoCenariosBody');
+
+        if (!cenarios.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum cenário gerado</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = cenarios.map(c => `
         <tr class="${c.viavel ? '' : 'table-danger'}">
             <td><span class="badge bg-danger">-${c.desconto}%</span></td>
             <td>R$ ${formatNumber(c.preco_final)}</td>
@@ -3547,47 +3669,49 @@ function renderPromoCenarios(cenarios) {
                 ${formatNumber(c.margem)}%
             </td>
             <td>
-                ${c.viavel 
+                ${c.viavel
                     ? '<span class="badge bg-success">Viável</span>'
                     : '<span class="badge bg-danger">Inviável</span>'}
             </td>
         </tr>
     `).join('');
-}
-
-async function simularCentralOfertas() {
-    if (!currentItemId || !currentItemData) {
-        showToast('Selecione um produto primeiro', 'warning');
-        return;
     }
-    
-    const custos = getCurrentCosts();
-    
-    try {
-        const response = await fetch(`${API_BASE}/promotion/central-ofertas/${currentItemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                custos: custos
-            })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            const result = document.getElementById('centralOfertasResult');
-            const content = document.getElementById('centralOfertasContent');
-            
-            result.classList.remove('d-none');
-            content.innerHTML = `
+
+    async function simularCentralOfertas() {
+        if (!currentItemId || !currentItemData) {
+            showToast('Selecione um produto primeiro', 'warning');
+            return;
+        }
+
+        const custos = getCurrentCosts();
+
+        try {
+            const response = await fetch(`${API_BASE}/promotion/central-ofertas/${currentItemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    custos: custos
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                const result = document.getElementById('centralOfertasResult');
+                const content = document.getElementById('centralOfertasContent');
+
+                result.classList.remove('d-none');
+                content.innerHTML = `
                 <div class="mb-2">
-                    <strong>Desconto Recomendado:</strong> 
+                    <strong>Desconto Recomendado:</strong>
                     <span class="badge bg-warning text-dark">${data.desconto_recomendado}%</span>
                 </div>
                 <div class="mb-2">
                     <strong>Preço Promocional:</strong> R$ ${formatNumber(data.preco_promocional)}
                 </div>
                 <div class="mb-2">
-                    <strong>Margem na Promoção:</strong> 
+                    <strong>Margem na Promoção:</strong>
                     <span class="${data.margem_promocao >= 10 ? 'text-success' : data.margem_promocao >= 5 ? 'text-warning' : 'text-danger'}">
                         ${formatNumber(data.margem_promocao)}%
                     </span>
@@ -3597,138 +3721,143 @@ async function simularCentralOfertas() {
                 </div>
                 ${data.alerta ? `<div class="alert alert-warning mt-2 mb-0 py-1">${data.alerta}</div>` : ''}
             `;
-            
-            showToast('Simulação Central de Ofertas concluída!', 'success');
-        } else {
-            showToast(data.error || 'Erro na simulação', 'danger');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('Erro de conexão', 'danger');
-    }
-}
 
-// =========================================
-// HISTÓRICO DE PREÇOS
-// =========================================
-async function loadPriceHistory() {
-    if (!currentItemId) return;
-    
-    try {
-        // Carregar histórico e tendência em paralelo
-        const [historyRes, trendsRes] = await Promise.all([
-            fetch(`${API_BASE}/history/${currentItemId}?dias=30`).then(r => r.json()),
-            fetch(`${API_BASE}/trends/${currentItemId}?days=30`).then(r => r.json()).catch(() => null)
-        ]);
-        
-        if (historyRes.success && historyRes.historico) {
-            renderPriceChart(historyRes.historico);
-            renderPriceHistoryList(historyRes.historico);
+                showToast('Simulação Central de Ofertas concluída!', 'success');
+            } else {
+                showToast(data.error || 'Erro na simulação', 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro de conexão', 'danger');
         }
-        
-        // Atualizar análise de tendência
-        if (trendsRes && trendsRes.success) {
-            updateTrendAnalysis(trendsRes);
+    }
+
+    // =========================================
+    // HISTÓRICO DE PREÇOS
+    // =========================================
+    async function loadPriceHistory() {
+        if (!currentItemId) return;
+
+        try {
+            // Carregar histórico e tendência em paralelo
+            const [historyRes, trendsRes] = await Promise.all([
+                fetch(`${API_BASE}/history/${currentItemId}?dias=30`).then(r => r.json()),
+                fetch(`${API_BASE}/trends/${currentItemId}?days=30`).then(r => r.json()).catch(() => null)
+            ]);
+
+            if (historyRes.success && historyRes.historico) {
+                renderPriceChart(historyRes.historico);
+                renderPriceHistoryList(historyRes.historico);
+            }
+
+            // Atualizar análise de tendência
+            if (trendsRes && trendsRes.success) {
+                updateTrendAnalysis(trendsRes);
+            }
+        } catch (err) {
+            console.error(err);
         }
-    } catch (err) {
-        console.error(err);
     }
-}
 
-function updateTrendAnalysis(data) {
-    // Direção da tendência
-    const trendDirection = document.getElementById('trendDirection');
-    if (data.tendencia) {
-        const icons = {
-            'alta': '<i class="bi bi-arrow-up-circle text-success"></i> Alta',
-            'baixa': '<i class="bi bi-arrow-down-circle text-danger"></i> Baixa',
-            'estavel': '<i class="bi bi-dash-circle text-secondary"></i> Estável'
-        };
-        trendDirection.innerHTML = icons[data.tendencia] || data.tendencia;
-    }
-    
-    // Volatilidade
-    const volatility = document.getElementById('trendVolatility');
-    if (data.volatilidade !== undefined) {
-        const vol = parseFloat(data.volatilidade);
-        let volClass = vol < 5 ? 'text-success' : vol < 15 ? 'text-warning' : 'text-danger';
-        let volLabel = vol < 5 ? 'Baixa' : vol < 15 ? 'Média' : 'Alta';
-        volatility.innerHTML = `<span class="${volClass}">${formatNumber(vol)}%</span> <small>(${volLabel})</small>`;
-    }
-    
-    // Preço mínimo e máximo
-    if (data.preco_minimo !== undefined) {
-        document.getElementById('trendPriceMin').innerHTML = `R$ ${formatNumber(data.preco_minimo)}`;
-    }
-    if (data.preco_maximo !== undefined) {
-        document.getElementById('trendPriceMax').innerHTML = `R$ ${formatNumber(data.preco_maximo)}`;
-    }
-}
+    function updateTrendAnalysis(data) {
+        // Direção da tendência
+        const trendDirection = document.getElementById('trendDirection');
+        if (data.tendencia) {
+            const icons = {
+                'alta': '<i class="bi bi-arrow-up-circle text-success"></i> Alta',
+                'baixa': '<i class="bi bi-arrow-down-circle text-danger"></i> Baixa',
+                'estavel': '<i class="bi bi-dash-circle text-secondary"></i> Estável'
+            };
+            trendDirection.innerHTML = icons[data.tendencia] || data.tendencia;
+        }
 
-function renderPriceChart(historico) {
-    const ctx = document.getElementById('priceHistoryChart');
-    if (!ctx) return;
-    
-    // Destruir gráfico anterior se existir
-    if (priceHistoryChart) {
-        priceHistoryChart.destroy();
+        // Volatilidade
+        const volatility = document.getElementById('trendVolatility');
+        if (data.volatilidade !== undefined) {
+            const vol = parseFloat(data.volatilidade);
+            let volClass = vol < 5 ? 'text-success' : vol < 15 ? 'text-warning' : 'text-danger';
+            let volLabel = vol < 5 ? 'Baixa' : vol < 15 ? 'Média' : 'Alta';
+            volatility.innerHTML = `<span class="${volClass}">${formatNumber(vol)}%</span> <small>(${volLabel})</small>`;
+        }
+
+        // Preço mínimo e máximo
+        if (data.preco_minimo !== undefined) {
+            document.getElementById('trendPriceMin').innerHTML = `R$ ${formatNumber(data.preco_minimo)}`;
+        }
+        if (data.preco_maximo !== undefined) {
+            document.getElementById('trendPriceMax').innerHTML = `R$ ${formatNumber(data.preco_maximo)}`;
+        }
     }
-    
-    const labels = historico.map(h => {
-        const date = new Date(h.data);
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    });
-    
-    const precos = historico.map(h => h.preco);
-    
-    priceHistoryChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Preço (R$)',
-                data: precos,
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
+
+    function renderPriceChart(historico) {
+        const ctx = document.getElementById('priceHistoryChart');
+        if (!ctx) return;
+
+        // Destruir gráfico anterior se existir
+        if (priceHistoryChart) {
+            priceHistoryChart.destroy();
+        }
+
+        const labels = historico.map(h => {
+            const date = new Date(h.data);
+            return date.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit'
+            });
+        });
+
+        const precos = historico.map(h => h.preco);
+
+        priceHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Preço (R$)',
+                    data: precos,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toFixed(2);
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value.toFixed(2);
+                            }
                         }
                     }
                 }
             }
-        }
-    });
-}
-
-function renderPriceHistoryList(historico) {
-    const container = document.getElementById('priceHistoryList');
-    
-    if (!historico.length) {
-        container.innerHTML = '<div class="text-center text-muted py-3">Sem histórico disponível</div>';
-        return;
+        });
     }
-    
-    container.innerHTML = historico.slice(0, 10).map(h => {
-        const date = new Date(h.data);
-        const variacao = h.variacao || 0;
-        const varClass = variacao > 0 ? 'text-success' : variacao < 0 ? 'text-danger' : 'text-muted';
-        const varIcon = variacao > 0 ? 'bi-arrow-up' : variacao < 0 ? 'bi-arrow-down' : 'bi-dash';
-        
-        return `
+
+    function renderPriceHistoryList(historico) {
+        const container = document.getElementById('priceHistoryList');
+
+        if (!historico.length) {
+            container.innerHTML = '<div class="text-center text-muted py-3">Sem histórico disponível</div>';
+            return;
+        }
+
+        container.innerHTML = historico.slice(0, 10).map(h => {
+            const date = new Date(h.data);
+            const variacao = h.variacao || 0;
+            const varClass = variacao > 0 ? 'text-success' : variacao < 0 ? 'text-danger' : 'text-muted';
+            const varIcon = variacao > 0 ? 'bi-arrow-up' : variacao < 0 ? 'bi-arrow-down' : 'bi-dash';
+
+            return `
             <div class="list-group-item d-flex justify-content-between align-items-center py-2">
                 <div>
                     <div class="fw-bold">R$ ${formatNumber(h.preco)}</div>
@@ -3739,80 +3868,82 @@ function renderPriceHistoryList(historico) {
                 </span>
             </div>
         `;
-    }).join('');
-}
+        }).join('');
+    }
 
-// =========================================
-// REGRAS AUTOMÁTICAS
-// =========================================
-async function criarRegraAutomatica() {
-    const nome = document.getElementById('regraNome').value.trim();
-    const tipo = document.getElementById('regraTipo').value;
-    const valor = parseFloat(document.getElementById('regraValor').value);
-    const ativa = document.getElementById('regraAtiva').checked;
-    
-    if (!nome) {
-        showToast('Informe um nome para a regra', 'warning');
-        return;
-    }
-    
-    if (isNaN(valor)) {
-        showToast('Informe um valor válido', 'warning');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/rules`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                nome,
-                tipo,
-                valor,
-                ativa,
-                item_id: currentItemId || null
-            })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Regra criada com sucesso!', 'success');
-            loadRegrasAtivas();
-            
-            // Limpar form
-            document.getElementById('regraNome').value = '';
-            document.getElementById('regraValor').value = '';
-        } else {
-            showToast(data.error || 'Erro ao criar regra', 'danger');
+    // =========================================
+    // REGRAS AUTOMÁTICAS
+    // =========================================
+    async function criarRegraAutomatica() {
+        const nome = document.getElementById('regraNome').value.trim();
+        const tipo = document.getElementById('regraTipo').value;
+        const valor = parseFloat(document.getElementById('regraValor').value);
+        const ativa = document.getElementById('regraAtiva').checked;
+
+        if (!nome) {
+            showToast('Informe um nome para a regra', 'warning');
+            return;
         }
-    } catch (err) {
-        console.error(err);
-        showToast('Erro de conexão', 'danger');
-    }
-}
 
-async function loadRegrasAtivas() {
-    try {
-        const response = await fetch(`${API_BASE}/rules`);
-        const data = await response.json();
-        
-        if (data.success && data.regras) {
-            renderRegras(data.regras);
+        if (isNaN(valor)) {
+            showToast('Informe um valor válido', 'warning');
+            return;
         }
-    } catch (err) {
-        console.error(err);
-    }
-}
 
-function renderRegras(regras) {
-    const container = document.getElementById('regrasAtivas');
-    
-    if (!regras.length) {
-        container.innerHTML = '<div class="text-center text-muted py-3">Nenhuma regra configurada</div>';
-        return;
+        try {
+            const response = await fetch(`${API_BASE}/rules`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    nome,
+                    tipo,
+                    valor,
+                    ativa,
+                    item_id: currentItemId || null
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Regra criada com sucesso!', 'success');
+                loadRegrasAtivas();
+
+                // Limpar form
+                document.getElementById('regraNome').value = '';
+                document.getElementById('regraValor').value = '';
+            } else {
+                showToast(data.error || 'Erro ao criar regra', 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro de conexão', 'danger');
+        }
     }
-    
-    container.innerHTML = regras.map(r => `
+
+    async function loadRegrasAtivas() {
+        try {
+            const response = await fetch(`${API_BASE}/rules`);
+            const data = await response.json();
+
+            if (data.success && data.regras) {
+                renderRegras(data.regras);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function renderRegras(regras) {
+        const container = document.getElementById('regrasAtivas');
+
+        if (!regras.length) {
+            container.innerHTML = '<div class="text-center text-muted py-3">Nenhuma regra configurada</div>';
+            return;
+        }
+
+        container.innerHTML = regras.map(r => `
         <div class="list-group-item d-flex justify-content-between align-items-center">
             <div>
                 <div class="fw-bold">${r.nome}</div>
@@ -3820,144 +3951,149 @@ function renderRegras(regras) {
             </div>
             <div>
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" 
-                           ${r.ativa ? 'checked' : ''} 
+                    <input class="form-check-input" type="checkbox"
+                           ${r.ativa ? 'checked' : ''}
                            onchange="toggleRegra(${r.id}, this.checked)">
                 </div>
             </div>
         </div>
     `).join('');
-}
-
-function getTipoRegraLabel(tipo) {
-    const labels = {
-        margem_minima: 'Margem mínima',
-        acompanhar_concorrencia: 'Acompanhar concorrência',
-        preco_maximo: 'Preço máximo',
-        margem_alvo: 'Margem alvo'
-    };
-    return labels[tipo] || tipo;
-}
-
-async function toggleRegra(id, ativa) {
-    try {
-        const response = await fetch(`${API_BASE}/rules/${id}/toggle`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ativa })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast(ativa ? 'Regra ativada' : 'Regra desativada', 'success');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('Erro ao atualizar regra', 'danger');
     }
-}
 
-// =========================================
-// CONFIGURAÇÕES
-// =========================================
+    function getTipoRegraLabel(tipo) {
+        const labels = {
+            margem_minima: 'Margem mínima',
+            acompanhar_concorrencia: 'Acompanhar concorrência',
+            preco_maximo: 'Preço máximo',
+            margem_alvo: 'Margem alvo'
+        };
+        return labels[tipo] || tipo;
+    }
 
-// Carregar configurações salvas do localStorage
-function loadSavedSettings() {
-    const defaults = {
-        defaultComissao: 16,
-        defaultImposto: 9,
-        defaultAcos: 5,
-        defaultEmbalagem: 3,
-        defaultEtiqueta: 0.5,
-        defaultFreteGratis: 15,
-        defaultMargemMinima: 5,
-        defaultMargemAlvo: 15,
-        alertaCritica: 5,
-        alertaBaixa: 10,
-        alertaBoa: 20,
-        notifyBrowser: true,
-        notifySound: true
-    };
-    
-    Object.keys(defaults).forEach(key => {
-        const saved = localStorage.getItem(`pricing_${key}`);
-        const el = document.getElementById(key);
-        if (el) {
-            if (el.type === 'checkbox') {
-                el.checked = saved !== null ? saved === 'true' : defaults[key];
-            } else {
-                el.value = saved !== null ? saved : defaults[key];
+    async function toggleRegra(id, ativa) {
+        try {
+            const response = await fetch(`${API_BASE}/rules/${id}/toggle`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ativa
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(ativa ? 'Regra ativada' : 'Regra desativada', 'success');
             }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao atualizar regra', 'danger');
         }
-    });
-}
-
-// Salvar custos padrão
-function salvarCustosPadrao() {
-    const fields = ['defaultComissao', 'defaultImposto', 'defaultAcos', 'defaultEmbalagem', 
-                    'defaultEtiqueta', 'defaultFreteGratis', 'defaultMargemMinima', 'defaultMargemAlvo'];
-    
-    fields.forEach(field => {
-        const el = document.getElementById(field);
-        if (el) localStorage.setItem(`pricing_${field}`, el.value);
-    });
-    
-    showToast('Configurações de custos salvas!', 'success');
-}
-
-// Salvar configuração de alertas
-function salvarConfiguracaoAlertas() {
-    const fields = ['alertaCritica', 'alertaBaixa', 'alertaBoa'];
-    const checkboxes = ['notifyBrowser', 'notifySound'];
-    
-    fields.forEach(field => {
-        const el = document.getElementById(field);
-        if (el) localStorage.setItem(`pricing_${field}`, el.value);
-    });
-    
-    checkboxes.forEach(field => {
-        const el = document.getElementById(field);
-        if (el) localStorage.setItem(`pricing_${field}`, el.checked);
-    });
-    
-    // Solicitar permissão de notificação se ativado
-    if (document.getElementById('notifyBrowser').checked && Notification.permission === 'default') {
-        Notification.requestPermission();
     }
-    
-    showToast('Configurações de alertas salvas!', 'success');
-}
 
-// Verificar conexão ML
-async function verificarConexaoML() {
-    const statusDiv = document.getElementById('connectionStatus');
-    statusDiv.innerHTML = `
+    // =========================================
+    // CONFIGURAÇÕES
+    // =========================================
+
+    // Carregar configurações salvas do localStorage
+    function loadSavedSettings() {
+        const defaults = {
+            defaultComissao: 16,
+            defaultImposto: 9,
+            defaultAcos: 5,
+            defaultEmbalagem: 3,
+            defaultEtiqueta: 0.5,
+            defaultFreteGratis: 15,
+            defaultMargemMinima: 5,
+            defaultMargemAlvo: 15,
+            alertaCritica: 5,
+            alertaBaixa: 10,
+            alertaBoa: 20,
+            notifyBrowser: true,
+            notifySound: true
+        };
+
+        Object.keys(defaults).forEach(key => {
+            const saved = localStorage.getItem(`pricing_${key}`);
+            const el = document.getElementById(key);
+            if (el) {
+                if (el.type === 'checkbox') {
+                    el.checked = saved !== null ? saved === 'true' : defaults[key];
+                } else {
+                    el.value = saved !== null ? saved : defaults[key];
+                }
+            }
+        });
+    }
+
+    // Salvar custos padrão
+    function salvarCustosPadrao() {
+        const fields = ['defaultComissao', 'defaultImposto', 'defaultAcos', 'defaultEmbalagem',
+            'defaultEtiqueta', 'defaultFreteGratis', 'defaultMargemMinima', 'defaultMargemAlvo'
+        ];
+
+        fields.forEach(field => {
+            const el = document.getElementById(field);
+            if (el) localStorage.setItem(`pricing_${field}`, el.value);
+        });
+
+        showToast('Configurações de custos salvas!', 'success');
+    }
+
+    // Salvar configuração de alertas
+    function salvarConfiguracaoAlertas() {
+        const fields = ['alertaCritica', 'alertaBaixa', 'alertaBoa'];
+        const checkboxes = ['notifyBrowser', 'notifySound'];
+
+        fields.forEach(field => {
+            const el = document.getElementById(field);
+            if (el) localStorage.setItem(`pricing_${field}`, el.value);
+        });
+
+        checkboxes.forEach(field => {
+            const el = document.getElementById(field);
+            if (el) localStorage.setItem(`pricing_${field}`, el.checked);
+        });
+
+        // Solicitar permissão de notificação se ativado
+        if (document.getElementById('notifyBrowser').checked && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        showToast('Configurações de alertas salvas!', 'success');
+    }
+
+    // Verificar conexão ML
+    async function verificarConexaoML() {
+        const statusDiv = document.getElementById('connectionStatus');
+        statusDiv.innerHTML = `
         <div class="d-flex align-items-center p-3 border rounded">
             <div class="spinner-border spinner-border-sm me-3" role="status"></div>
             <div>Verificando conexão...</div>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/status`);
-        const data = await response.json();
-        
-        const isConnected = data.ml_connection === 'conectado';
-        const statusClass = isConnected ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10';
-        const statusIcon = isConnected ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger';
-        const statusText = isConnected ? 'Conectado' : 'Desconectado';
-        
-        let tokenRenewedMsg = '';
-        if (data.token_renewed) {
-            tokenRenewedMsg = `
+
+        try {
+            const response = await fetch(`${API_BASE}/status`);
+            const data = await response.json();
+
+            const isConnected = data.ml_connection === 'conectado';
+            const statusClass = isConnected ? 'border-success bg-success bg-opacity-10' : 'border-danger bg-danger bg-opacity-10';
+            const statusIcon = isConnected ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger';
+            const statusText = isConnected ? 'Conectado' : 'Desconectado';
+
+            let tokenRenewedMsg = '';
+            if (data.token_renewed) {
+                tokenRenewedMsg = `
                 <div class="alert alert-success mt-2 mb-0 py-2">
                     <i class="bi bi-check-circle me-1"></i>
                     Token renovado automaticamente!
                 </div>
             `;
-        }
-        
-        statusDiv.innerHTML = `
+            }
+
+            statusDiv.innerHTML = `
             <div class="p-3 border rounded ${statusClass}">
                 <div class="d-flex align-items-center mb-2">
                     <i class="bi ${statusIcon} fs-3 me-3"></i>
@@ -3979,7 +4115,7 @@ async function verificarConexaoML() {
                                 <strong>ML User ID:</strong> ${data.account.ml_user_id || '-'}
                             </div>
                             <div class="col-6">
-                                <strong>Token:</strong> 
+                                <strong>Token:</strong>
                                 <span class="badge ${data.account.token_status === 'válido' ? 'bg-success' : 'bg-danger'}">
                                     ${data.account.token_status || 'N/A'}
                                 </span>
@@ -4030,44 +4166,46 @@ async function verificarConexaoML() {
                 ` : ''}
             </div>
         `;
-    } catch (err) {
-        statusDiv.innerHTML = `
+        } catch (err) {
+            statusDiv.innerHTML = `
             <div class="alert alert-danger">
                 <i class="bi bi-exclamation-triangle me-2"></i>
                 Erro ao verificar conexão: ${err.message}
             </div>
         `;
+        }
     }
-}
 
-// Renovar token ML manualmente
-async function renovarTokenML() {
-    const statusDiv = document.getElementById('connectionStatus');
-    const originalContent = statusDiv.innerHTML;
-    
-    statusDiv.innerHTML = `
+    // Renovar token ML manualmente
+    async function renovarTokenML() {
+        const statusDiv = document.getElementById('connectionStatus');
+        const originalContent = statusDiv.innerHTML;
+
+        statusDiv.innerHTML = `
         <div class="d-flex align-items-center p-3 border rounded">
             <div class="spinner-border spinner-border-sm me-3" role="status"></div>
             <div>Renovando token...</div>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/refresh-token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Token renovado com sucesso! Recarregando...', 'success');
-            // Re-verificar conexão após renovação
-            setTimeout(() => {
-                verificarConexaoML();
-                refreshItems(); // Recarregar itens
-            }, 1000);
-        } else {
-            statusDiv.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/refresh-token`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Token renovado com sucesso! Recarregando...', 'success');
+                // Re-verificar conexão após renovação
+                setTimeout(() => {
+                    verificarConexaoML();
+                    refreshItems(); // Recarregar itens
+                }, 1000);
+            } else {
+                statusDiv.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="bi bi-x-circle me-2"></i>
                     <strong>Falha ao renovar token:</strong> ${data.message || 'Erro desconhecido'}
@@ -4079,28 +4217,28 @@ async function renovarTokenML() {
                     </a>
                 </div>
             `;
-        }
-    } catch (err) {
-        statusDiv.innerHTML = `
+            }
+        } catch (err) {
+            statusDiv.innerHTML = `
             <div class="alert alert-danger">
                 <i class="bi bi-exclamation-triangle me-2"></i>
                 Erro ao renovar token: ${err.message}
             </div>
         `;
+        }
     }
-}
 
-// Confirmar exclusão da conta
-function confirmarExclusaoConta() {
-    // Primeiro, buscar info da conta para mostrar no modal
-    fetch(`${API_BASE}/status`)
-        .then(r => r.json())
-        .then(data => {
-            const accountName = data.account?.nickname || 'Esta conta';
-            const accountEmail = data.account?.email || '';
-            
-            // Criar modal de confirmação
-            const modalHtml = `
+    // Confirmar exclusão da conta
+    function confirmarExclusaoConta() {
+        // Primeiro, buscar info da conta para mostrar no modal
+        fetch(`${API_BASE}/status`)
+            .then(r => r.json())
+            .then(data => {
+                const accountName = data.account?.nickname || 'Esta conta';
+                const accountEmail = data.account?.email || '';
+
+                // Criar modal de confirmação
+                const modalHtml = `
                 <div class="modal fade" id="deleteAccountModal" tabindex="-1">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
@@ -4124,12 +4262,12 @@ function confirmarExclusaoConta() {
                                     </div>
                                 </div>
                                 <p class="small text-muted mb-3">
-                                    Todos os dados serão perdidos, incluindo custos, histórico de preços, 
+                                    Todos os dados serão perdidos, incluindo custos, histórico de preços,
                                     regras de precificação e alertas.
                                 </p>
                                 <div class="form-group">
                                     <label class="form-label">Digite <strong>EXCLUIR</strong> para confirmar:</label>
-                                    <input type="text" class="form-control" id="confirmDeleteInput" 
+                                    <input type="text" class="form-control" id="confirmDeleteInput"
                                            placeholder="EXCLUIR" autocomplete="off">
                                 </div>
                             </div>
@@ -4146,139 +4284,141 @@ function confirmarExclusaoConta() {
                     </div>
                 </div>
             `;
-            
-            // Remover modal anterior se existir
-            const existingModal = document.getElementById('deleteAccountModal');
-            if (existingModal) existingModal.remove();
-            
-            // Adicionar modal ao DOM
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Habilitar botão apenas quando digitar EXCLUIR
-            const input = document.getElementById('confirmDeleteInput');
-            const btn = document.getElementById('btnConfirmDelete');
-            input.addEventListener('input', function() {
-                btn.disabled = this.value.toUpperCase() !== 'EXCLUIR';
+
+                // Remover modal anterior se existir
+                const existingModal = document.getElementById('deleteAccountModal');
+                if (existingModal) existingModal.remove();
+
+                // Adicionar modal ao DOM
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                // Habilitar botão apenas quando digitar EXCLUIR
+                const input = document.getElementById('confirmDeleteInput');
+                const btn = document.getElementById('btnConfirmDelete');
+                input.addEventListener('input', function() {
+                    btn.disabled = this.value.toUpperCase() !== 'EXCLUIR';
+                });
+
+                // Abrir modal
+                const modal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
+                modal.show();
+            })
+            .catch(err => {
+                showToast('Erro ao carregar informações da conta', 'danger');
             });
-            
-            // Abrir modal
-            const modal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
-            modal.show();
-        })
-        .catch(err => {
-            showToast('Erro ao carregar informações da conta', 'danger');
-        });
-}
+    }
 
-// Executar exclusão da conta
-async function executarExclusaoConta() {
-    const btn = document.getElementById('btnConfirmDelete');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Excluindo...';
-    
-    try {
-        const data = await requestJson(`/auth/account/${ACCOUNT_ID}`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (data.success) {
-            // Fechar modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAccountModal'));
-            modal.hide();
-            
-            // Mostrar mensagem de sucesso
-            showToast('Conta excluída com sucesso! Redirecionando...', 'success');
-            
-            // Redirecionar para página inicial ou seleção de conta
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 2000);
-        } else {
-            throw new Error(data.error || data.message || 'Erro ao excluir conta');
+    // Executar exclusão da conta
+    async function executarExclusaoConta() {
+        const btn = document.getElementById('btnConfirmDelete');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Excluindo...';
+
+        try {
+            const data = await requestJson(`/auth/account/${ACCOUNT_ID}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (data.success) {
+                // Fechar modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAccountModal'));
+                modal.hide();
+
+                // Mostrar mensagem de sucesso
+                showToast('Conta excluída com sucesso! Redirecionando...', 'success');
+
+                // Redirecionar para página inicial ou seleção de conta
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 2000);
+            } else {
+                throw new Error(data.error || data.message || 'Erro ao excluir conta');
+            }
+        } catch (err) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            showToast('Erro ao excluir conta: ' + err.message, 'danger');
         }
-    } catch (err) {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        showToast('Erro ao excluir conta: ' + err.message, 'danger');
     }
-}
 
-// Notificação sonora para alertas críticos
-function playAlertSound() {
-    if (localStorage.getItem('pricing_notifySound') !== 'false') {
-        // Criar audio context para notificação sonora
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        
-        oscillator.frequency.value = 440;
-        oscillator.type = 'sine';
-        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        
-        oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + 0.5);
+    // Notificação sonora para alertas críticos
+    function playAlertSound() {
+        if (localStorage.getItem('pricing_notifySound') !== 'false') {
+            // Criar audio context para notificação sonora
+            const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.frequency.value = 440;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
     }
-}
 
-// Notificação do navegador
-function showBrowserNotification(title, body) {
-    if (localStorage.getItem('pricing_notifyBrowser') !== 'false' && Notification.permission === 'granted') {
-        new Notification(title, {
-            body: body,
-            icon: '/icons/icon-192x192.png',
-            tag: 'pricing-alert'
-        });
+    // Notificação do navegador
+    function showBrowserNotification(title, body) {
+        if (localStorage.getItem('pricing_notifyBrowser') !== 'false' && Notification.permission === 'granted') {
+            new Notification(title, {
+                body: body,
+                icon: '/icons/icon-192x192.png',
+                tag: 'pricing-alert'
+            });
+        }
     }
-}
 
-// Inicializar configurações ao abrir modal
-document.getElementById('settingsModal')?.addEventListener('show.bs.modal', function() {
-    loadSavedSettings();
-    verificarConexaoML();
-});
+    // Inicializar configurações ao abrir modal
+    document.getElementById('settingsModal')?.addEventListener('show.bs.modal', function() {
+        loadSavedSettings();
+        verificarConexaoML();
+    });
 
-// ========================================
-// Funções de Relatórios Avançados
-// ========================================
+    // ========================================
+    // Funções de Relatórios Avançados
+    // ========================================
 
-// Abrir Relatório de Performance
-function abrirRelatorioPerformance() {
-    const modal = new bootstrap.Modal(document.getElementById('performanceReportModal'));
-    modal.show();
-    carregarPerformance();
-}
+    // Abrir Relatório de Performance
+    function abrirRelatorioPerformance() {
+        const modal = new bootstrap.Modal(document.getElementById('performanceReportModal'));
+        modal.show();
+        carregarPerformance();
+    }
 
-// Carregar dados de performance
-async function carregarPerformance() {
-    const days = document.getElementById('performancePeriodo').value;
-    const container = document.getElementById('performanceContent');
-    
-    container.innerHTML = `
+    // Carregar dados de performance
+    async function carregarPerformance() {
+        const days = document.getElementById('performancePeriodo').value;
+        const container = document.getElementById('performanceContent');
+
+        container.innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-info"></div>
             <p class="mt-2 text-muted">Carregando relatório...</p>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/performance?days=${days}`);
-        const data = await response.json();
-        
-        if (!data.success) {
-            container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro ao carregar'}</div>`;
-            return;
-        }
-        
-        const m = data.metricas;
-        const a = data.alertas;
-        
-        container.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/performance?days=${days}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro ao carregar'}</div>`;
+                return;
+            }
+
+            const m = data.metricas;
+            const a = data.alertas;
+
+            container.innerHTML = `
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
                     <div class="card bg-primary text-white">
@@ -4313,7 +4453,7 @@ async function carregarPerformance() {
                     </div>
                 </div>
             </div>
-            
+
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="card">
@@ -4336,7 +4476,7 @@ async function carregarPerformance() {
                     </div>
                 </div>
             </div>
-            
+
             <div class="card mb-4">
                 <div class="card-header">
                     <i class="bi bi-bell me-1"></i> Alertas no Período
@@ -4358,7 +4498,7 @@ async function carregarPerformance() {
                     </div>
                 </div>
             </div>
-            
+
             ${data.top_items && data.top_items.length > 0 ? `
             <div class="card">
                 <div class="card-header">
@@ -4393,52 +4533,52 @@ async function carregarPerformance() {
             </div>
             ` : ''}
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
     }
-}
 
-// Abrir Modal de Monitorar Concorrentes
-function abrirMonitorConcorrentes() {
-    const modal = new bootstrap.Modal(document.getElementById('competitorsModal'));
-    modal.show();
-}
-
-// Monitorar Concorrentes
-async function monitorarConcorrentes() {
-    const itemId = document.getElementById('competitorItemId').value.trim();
-    if (!itemId) {
-        showToast('Digite o ID do item', 'warning');
-        return;
+    // Abrir Modal de Monitorar Concorrentes
+    function abrirMonitorConcorrentes() {
+        const modal = new bootstrap.Modal(document.getElementById('competitorsModal'));
+        modal.show();
     }
-    
-    const container = document.getElementById('competitorsResult');
-    container.style.display = 'block';
-    container.innerHTML = `
+
+    // Monitorar Concorrentes
+    async function monitorarConcorrentes() {
+        const itemId = document.getElementById('competitorItemId').value.trim();
+        if (!itemId) {
+            showToast('Digite o ID do item', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('competitorsResult');
+        container.style.display = 'block';
+        container.innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-success"></div>
             <p class="mt-2 text-muted">Buscando concorrentes...</p>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/monitor/competitors/${itemId}`);
-        const data = await response.json();
-        
-        if (!data.success) {
-            container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
-            return;
-        }
-        
-        const stats = data.estatisticas;
-        
-        container.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/monitor/competitors/${itemId}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
+                return;
+            }
+
+            const stats = data.estatisticas;
+
+            container.innerHTML = `
             <div class="alert alert-info">
                 <strong>${data.item.titulo}</strong><br>
-                Seu preço: <strong>R$ ${data.item.preco.toFixed(2)}</strong> • 
+                Seu preço: <strong>R$ ${data.item.preco.toFixed(2)}</strong> •
                 Posição: <strong>${data.posicao_preco}º de ${data.posicao_total}</strong>
             </div>
-            
+
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
                     <div class="border rounded p-2 text-center">
@@ -4465,7 +4605,7 @@ async function monitorarConcorrentes() {
                     </div>
                 </div>
             </div>
-            
+
             <div class="table-responsive">
                 <table class="table table-sm table-hover">
                     <thead class="table-light">
@@ -4498,53 +4638,57 @@ async function monitorarConcorrentes() {
                 </table>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
     }
-}
 
-// Abrir Modal de Previsão
-function abrirPrevisaoMargem() {
-    const modal = new bootstrap.Modal(document.getElementById('forecastModal'));
-    modal.show();
-}
-
-// Calcular Previsão de Margem
-async function calcularPrevisao() {
-    const itemId = document.getElementById('forecastItemId').value.trim();
-    if (!itemId) {
-        showToast('Digite o ID do item', 'warning');
-        return;
+    // Abrir Modal de Previsão
+    function abrirPrevisaoMargem() {
+        const modal = new bootstrap.Modal(document.getElementById('forecastModal'));
+        modal.show();
     }
-    
-    const container = document.getElementById('forecastResult');
-    container.style.display = 'block';
-    container.innerHTML = `
+
+    // Calcular Previsão de Margem
+    async function calcularPrevisao() {
+        const itemId = document.getElementById('forecastItemId').value.trim();
+        if (!itemId) {
+            showToast('Digite o ID do item', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('forecastResult');
+        container.style.display = 'block';
+        container.innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-warning"></div>
             <p class="mt-2 text-muted">Calculando previsões...</p>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/forecast`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId })
-        });
-        const data = await response.json();
-        
-        if (!data.success) {
-            container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
-            return;
-        }
-        
-        container.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/forecast`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId
+                })
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
+                return;
+            }
+
+            container.innerHTML = `
             <div class="alert alert-secondary">
-                <strong>Preço Atual:</strong> R$ ${data.preco_atual.toFixed(2)} • 
+                <strong>Preço Atual:</strong> R$ ${data.preco_atual.toFixed(2)} •
                 <strong>Margem Atual:</strong> ${data.margem_atual.toFixed(2)}%
             </div>
-            
+
             <div class="table-responsive">
                 <table class="table table-bordered">
                     <thead class="table-light">
@@ -4581,43 +4725,45 @@ async function calcularPrevisao() {
                 </table>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
     }
-}
 
-// Buscar Sugestão Automática
-async function buscarSugestaoAutomatica() {
-    const itemId = document.getElementById('autoSuggestItemId').value.trim();
-    if (!itemId) {
-        showToast('Digite o ID do item', 'warning');
-        return;
-    }
-    
-    const container = document.getElementById('autoSuggestResult');
-    container.style.display = 'block';
-    container.innerHTML = `
+    // Buscar Sugestão Automática
+    async function buscarSugestaoAutomatica() {
+        const itemId = document.getElementById('autoSuggestItemId').value.trim();
+        if (!itemId) {
+            showToast('Digite o ID do item', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('autoSuggestResult');
+        container.style.display = 'block';
+        container.innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-primary"></div>
             <p class="mt-2 text-muted">Analisando item...</p>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/auto-suggest/${itemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        
-        if (!data.success) {
-            container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
-            return;
-        }
-        
-        const estrategias = Object.entries(data.estrategias);
-        
-        container.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/auto-suggest/${itemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
+                return;
+            }
+
+            const estrategias = Object.entries(data.estrategias);
+
+            container.innerHTML = `
             <div class="alert alert-info">
                 <div class="row">
                     <div class="col-md-6">
@@ -4630,7 +4776,7 @@ async function buscarSugestaoAutomatica() {
                     </div>
                 </div>
             </div>
-            
+
             <h6 class="mt-3"><i class="bi bi-lightbulb me-1"></i> Estratégias Sugeridas</h6>
             <div class="row g-3">
                 ${estrategias.map(([key, e]) => `
@@ -4651,34 +4797,34 @@ async function buscarSugestaoAutomatica() {
                 `).join('')}
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
-
-// ========================================
-// Funções de Alertas de Preço
-// ========================================
-
-function abrirAlertasPreco() {
-    const modal = new bootstrap.Modal(document.getElementById('priceAlertsModal'));
-    modal.show();
-    carregarAlertas();
-}
-
-async function carregarAlertas() {
-    const container = document.getElementById('alertasList');
-    
-    try {
-        const response = await fetch(`${API_BASE}/price-alerts`);
-        const data = await response.json();
-        
-        if (!data.success || data.alertas.length === 0) {
-            container.innerHTML = '<p class="text-muted text-center">Nenhum alerta configurado</p>';
-            return;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-        
-        container.innerHTML = `
+    }
+
+    // ========================================
+    // Funções de Alertas de Preço
+    // ========================================
+
+    function abrirAlertasPreco() {
+        const modal = new bootstrap.Modal(document.getElementById('priceAlertsModal'));
+        modal.show();
+        carregarAlertas();
+    }
+
+    async function carregarAlertas() {
+        const container = document.getElementById('alertasList');
+
+        try {
+            const response = await fetch(`${API_BASE}/price-alerts`);
+            const data = await response.json();
+
+            if (!data.success || data.alertas.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">Nenhum alerta configurado</p>';
+                return;
+            }
+
+            container.innerHTML = `
             <div class="table-responsive">
                 <table class="table table-sm">
                     <thead>
@@ -4712,115 +4858,122 @@ async function carregarAlertas() {
                 </table>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
-
-async function criarAlertaPreco() {
-    const itemId = document.getElementById('alertItemId').value.trim();
-    const tipo = document.getElementById('alertTipo').value;
-    const valor = document.getElementById('alertValor').value;
-    const email = document.getElementById('alertEmail').checked;
-    const whatsapp = document.getElementById('alertWhatsapp').checked;
-    
-    if (!itemId) {
-        showToast('Digite o ID do item', 'warning');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/price-alerts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                item_id: itemId,
-                tipo: tipo,
-                valor_gatilho: valor,
-                notificar_email: email,
-                notificar_whatsapp: whatsapp
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Alerta criado com sucesso!', 'success');
-            document.getElementById('alertItemId').value = '';
-            carregarAlertas();
-        } else {
-            showToast(data.message || 'Erro ao criar alerta', 'danger');
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
     }
-}
 
-async function removerAlerta(alertId) {
-    if (!confirm('Remover este alerta?')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/price-alerts/${alertId}`, {
-            method: 'DELETE'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Alerta removido', 'success');
-            carregarAlertas();
-        } else {
-            showToast(data.message || 'Erro', 'danger');
+    async function criarAlertaPreco() {
+        const itemId = document.getElementById('alertItemId').value.trim();
+        const tipo = document.getElementById('alertTipo').value;
+        const valor = document.getElementById('alertValor').value;
+        const email = document.getElementById('alertEmail').checked;
+        const whatsapp = document.getElementById('alertWhatsapp').checked;
+
+        if (!itemId) {
+            showToast('Digite o ID do item', 'warning');
+            return;
         }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
+
+        try {
+            const response = await fetch(`${API_BASE}/price-alerts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    tipo: tipo,
+                    valor_gatilho: valor,
+                    notificar_email: email,
+                    notificar_whatsapp: whatsapp
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Alerta criado com sucesso!', 'success');
+                document.getElementById('alertItemId').value = '';
+                carregarAlertas();
+            } else {
+                showToast(data.message || 'Erro ao criar alerta', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
     }
-}
 
-// ========================================
-// Funções de Preço Ideal e Rentabilidade
-// ========================================
+    async function removerAlerta(alertId) {
+        if (!confirm('Remover este alerta?')) return;
 
-function abrirPrecoIdeal() {
-    const modal = new bootstrap.Modal(document.getElementById('idealPriceModal'));
-    modal.show();
-}
+        try {
+            const response = await fetch(`${API_BASE}/price-alerts/${alertId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
 
-async function calcularPrecoIdeal() {
-    const itemId = document.getElementById('idealItemId').value.trim();
-    const margem = document.getElementById('idealMargem').value;
-    
-    if (!itemId) {
-        showToast('Digite o ID do item', 'warning');
-        return;
+            if (data.success) {
+                showToast('Alerta removido', 'success');
+                carregarAlertas();
+            } else {
+                showToast(data.message || 'Erro', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
     }
-    
-    const container = document.getElementById('idealPriceResult');
-    container.style.display = 'block';
-    container.innerHTML = `
+
+    // ========================================
+    // Funções de Preço Ideal e Rentabilidade
+    // ========================================
+
+    function abrirPrecoIdeal() {
+        const modal = new bootstrap.Modal(document.getElementById('idealPriceModal'));
+        modal.show();
+    }
+
+    async function calcularPrecoIdeal() {
+        const itemId = document.getElementById('idealItemId').value.trim();
+        const margem = document.getElementById('idealMargem').value;
+
+        if (!itemId) {
+            showToast('Digite o ID do item', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('idealPriceResult');
+        container.style.display = 'block';
+        container.innerHTML = `
         <div class="text-center py-3">
             <div class="spinner-border text-primary spinner-border-sm"></div>
             <span class="ms-2">Calculando...</span>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/calculate-ideal-price`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId, margem_desejada: parseFloat(margem) })
-        });
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
-            return;
-        }
-        
-        const acaoClass = data.analise.acao_sugerida === 'aumentar_preco' ? 'success' : 
-                          data.analise.acao_sugerida === 'reduzir_preco' ? 'danger' : 'secondary';
-        
-        container.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/calculate-ideal-price`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    margem_desejada: parseFloat(margem)
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
+                return;
+            }
+
+            const acaoClass = data.analise.acao_sugerida === 'aumentar_preco' ? 'success' :
+                data.analise.acao_sugerida === 'reduzir_preco' ? 'danger' : 'secondary';
+
+            container.innerHTML = `
             <div class="card">
                 <div class="card-body">
                     <h6 class="text-muted mb-3">${data.titulo}</h6>
@@ -4835,8 +4988,8 @@ async function calcularPrecoIdeal() {
                         </div>
                     </div>
                     <div class="alert alert-${acaoClass}">
-                        <strong>Ação:</strong> 
-                        ${data.analise.acao_sugerida === 'aumentar_preco' ? 'Aumentar preço' : 
+                        <strong>Ação:</strong>
+                        ${data.analise.acao_sugerida === 'aumentar_preco' ? 'Aumentar preço' :
                           data.analise.acao_sugerida === 'reduzir_preco' ? 'Reduzir preço' : 'Manter preço'}
                         (${data.diferenca_percentual > 0 ? '+' : ''}${data.diferenca_percentual.toFixed(2)}%)
                     </div>
@@ -4846,37 +4999,37 @@ async function calcularPrecoIdeal() {
                 </div>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
     }
-}
 
-function abrirRentabilidade() {
-    const modal = new bootstrap.Modal(document.getElementById('profitabilityModal'));
-    modal.show();
-    carregarRentabilidade();
-}
+    function abrirRentabilidade() {
+        const modal = new bootstrap.Modal(document.getElementById('profitabilityModal'));
+        modal.show();
+        carregarRentabilidade();
+    }
 
-async function carregarRentabilidade() {
-    const container = document.getElementById('profitabilityContent');
-    
-    try {
-        const response = await fetch(`${API_BASE}/profitability`);
-        const data = await response.json();
-        
-        if (!data.success) {
-            container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
-            return;
-        }
-        
-        if (data.itens_analisados === 0 && data.resumo?.total_itens === 0) {
-            container.innerHTML = `<div class="alert alert-info">Nenhum custo cadastrado. Configure os custos dos seus produtos para análise.</div>`;
-            return;
-        }
-        
-        const r = data.resumo;
-        
-        container.innerHTML = `
+    async function carregarRentabilidade() {
+        const container = document.getElementById('profitabilityContent');
+
+        try {
+            const response = await fetch(`${API_BASE}/profitability`);
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="alert alert-warning">${data.message || 'Erro'}</div>`;
+                return;
+            }
+
+            if (data.itens_analisados === 0 && data.resumo?.total_itens === 0) {
+                container.innerHTML = `<div class="alert alert-info">Nenhum custo cadastrado. Configure os custos dos seus produtos para análise.</div>`;
+                return;
+            }
+
+            const r = data.resumo;
+
+            container.innerHTML = `
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
                     <div class="card bg-primary text-white">
@@ -4911,7 +5064,7 @@ async function carregarRentabilidade() {
                     </div>
                 </div>
             </div>
-            
+
             ${data.top_lucrativos && data.top_lucrativos.length > 0 ? `
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
@@ -4949,7 +5102,7 @@ async function carregarRentabilidade() {
                 </div>
             </div>
             ` : ''}
-            
+
             ${data.prejuizo && data.prejuizo.length > 0 ? `
             <div class="card">
                 <div class="card-header bg-danger text-white">
@@ -4986,47 +5139,47 @@ async function carregarRentabilidade() {
             </div>
             ` : ''}
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
     }
-}
 
-// ========================================
-// Funções de Importação de Custos
-// ========================================
+    // ========================================
+    // Funções de Importação de Custos
+    // ========================================
 
-document.getElementById('importCostsForm')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const fileInput = document.getElementById('importFile');
-    const resultDiv = document.getElementById('importResult');
-    
-    if (!fileInput.files.length) {
-        showToast('Selecione um arquivo', 'warning');
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    
-    resultDiv.style.display = 'block';
-    resultDiv.innerHTML = `
+    document.getElementById('importCostsForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('importFile');
+        const resultDiv = document.getElementById('importResult');
+
+        if (!fileInput.files.length) {
+            showToast('Selecione um arquivo', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
         <div class="text-center py-3">
             <div class="spinner-border text-secondary spinner-border-sm"></div>
             <span class="ms-2">Importando...</span>
         </div>
     `;
-    
-    try {
-        const response = await fetch(`${API_BASE}/import/costs`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            resultDiv.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/import/costs`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                resultDiv.innerHTML = `
                 <div class="alert alert-success">
                     <strong>Importação concluída!</strong><br>
                     ${data.importados} registros importados, ${data.erros} erros.
@@ -5036,97 +5189,99 @@ document.getElementById('importCostsForm')?.addEventListener('submit', async fun
                     ` : ''}
                 </div>
             `;
-            fileInput.value = '';
-            loadItems(); // Recarregar lista
-        } else {
-            resultDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'Erro na importação'}</div>`;
+                fileInput.value = '';
+                loadItems(); // Recarregar lista
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'Erro na importação'}</div>`;
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-    } catch (err) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-});
+    });
 
-// Event: Carregar dados ao mudar de aba
-document.addEventListener('DOMContentLoaded', function() {
-    const tabPromo = document.getElementById('tab-promocoes');
-    const tabHistorico = document.getElementById('tab-historico');
-    const tabRegras = document.getElementById('tab-regras');
-    
-    if (tabPromo) {
-        tabPromo.addEventListener('shown.bs.tab', function() {
-            updatePromoPreview();
-        });
-    }
-    
-    if (tabHistorico) {
-        tabHistorico.addEventListener('shown.bs.tab', function() {
-            loadPriceHistory();
-        });
-    }
-    
-    if (tabRegras) {
-        tabRegras.addEventListener('shown.bs.tab', function() {
-            loadRegrasAtivas();
-        });
-    }
-    
-    // Solicitar permissão de notificação se necessário
-    if (Notification.permission === 'default' && localStorage.getItem('pricing_notifyBrowser') !== 'false') {
-        // Aguardar interação do usuário
-        document.body.addEventListener('click', function requestNotification() {
-            Notification.requestPermission();
-            document.body.removeEventListener('click', requestNotification);
-        }, { once: true });
-    }
-});
+    // Event: Carregar dados ao mudar de aba
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabPromo = document.getElementById('tab-promocoes');
+        const tabHistorico = document.getElementById('tab-historico');
+        const tabRegras = document.getElementById('tab-regras');
 
-// ========================================
-// Funções do Auto-Otimizador de Preços
-// ========================================
-
-function abrirAutoOptimizer() {
-    const modal = new bootstrap.Modal(document.getElementById('autoOptimizerModal'));
-    modal.show();
-    carregarConfigOptimizer();
-}
-
-async function carregarConfigOptimizer() {
-    const container = document.getElementById('optimizerConfigForm');
-    if (!container) return;
-    
-    try {
-        container.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
-        
-        const response = await fetch(`${API_BASE}/auto-optimizer/config`);
-        const data = await response.json();
-        
-        if (data.success && data.config) {
-            const config = data.config;
-            
-            // Preencher form
-            document.getElementById('optimizerEnabled').checked = config.enabled;
-            document.getElementById('optimizerMode').value = config.mode || 'suggest';
-            document.getElementById('optimizerMinMargin').value = config.min_margin || 10;
-            document.getElementById('optimizerMaxMargin').value = config.max_margin || 50;
-            document.getElementById('optimizerStrategy').value = config.strategy || 'match_lowest';
-            document.getElementById('optimizerDiffPercent').value = config.strategy_diff_percent || 1;
-            document.getElementById('optimizerMaxAdjust').value = config.max_adjust_percent || 15;
-            document.getElementById('optimizerMinInterval').value = config.min_interval_hours || 24;
-            document.getElementById('optimizerNotifyEmail').checked = config.notify_email;
-            document.getElementById('optimizerNotifySlack').checked = config.notify_slack;
-            
-            renderOptimizerConfigForm();
-        } else {
-            renderOptimizerConfigForm();
+        if (tabPromo) {
+            tabPromo.addEventListener('shown.bs.tab', function() {
+                updatePromoPreview();
+            });
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
 
-function renderOptimizerConfigForm() {
-    const container = document.getElementById('optimizerConfigForm');
-    container.innerHTML = `
+        if (tabHistorico) {
+            tabHistorico.addEventListener('shown.bs.tab', function() {
+                loadPriceHistory();
+            });
+        }
+
+        if (tabRegras) {
+            tabRegras.addEventListener('shown.bs.tab', function() {
+                loadRegrasAtivas();
+            });
+        }
+
+        // Solicitar permissão de notificação se necessário
+        if (Notification.permission === 'default' && localStorage.getItem('pricing_notifyBrowser') !== 'false') {
+            // Aguardar interação do usuário
+            document.body.addEventListener('click', function requestNotification() {
+                Notification.requestPermission();
+                document.body.removeEventListener('click', requestNotification);
+            }, {
+                once: true
+            });
+        }
+    });
+
+    // ========================================
+    // Funções do Auto-Otimizador de Preços
+    // ========================================
+
+    function abrirAutoOptimizer() {
+        const modal = new bootstrap.Modal(document.getElementById('autoOptimizerModal'));
+        modal.show();
+        carregarConfigOptimizer();
+    }
+
+    async function carregarConfigOptimizer() {
+        const container = document.getElementById('optimizerConfigForm');
+        if (!container) return;
+
+        try {
+            container.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
+
+            const response = await fetch(`${API_BASE}/auto-optimizer/config`);
+            const data = await response.json();
+
+            if (data.success && data.config) {
+                const config = data.config;
+
+                // Preencher form
+                document.getElementById('optimizerEnabled').checked = config.enabled;
+                document.getElementById('optimizerMode').value = config.mode || 'suggest';
+                document.getElementById('optimizerMinMargin').value = config.min_margin || 10;
+                document.getElementById('optimizerMaxMargin').value = config.max_margin || 50;
+                document.getElementById('optimizerStrategy').value = config.strategy || 'match_lowest';
+                document.getElementById('optimizerDiffPercent').value = config.strategy_diff_percent || 1;
+                document.getElementById('optimizerMaxAdjust').value = config.max_adjust_percent || 15;
+                document.getElementById('optimizerMinInterval').value = config.min_interval_hours || 24;
+                document.getElementById('optimizerNotifyEmail').checked = config.notify_email;
+                document.getElementById('optimizerNotifySlack').checked = config.notify_slack;
+
+                renderOptimizerConfigForm();
+            } else {
+                renderOptimizerConfigForm();
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function renderOptimizerConfigForm() {
+        const container = document.getElementById('optimizerConfigForm');
+        container.innerHTML = `
         <div class="row g-3">
             <div class="col-12">
                 <div class="form-check form-switch">
@@ -5137,7 +5292,7 @@ function renderOptimizerConfigForm() {
                 </div>
                 <small class="text-muted">Quando ativo, o sistema analisa e ajusta preços automaticamente</small>
             </div>
-            
+
             <div class="col-md-6">
                 <label class="form-label">Modo de Operação</label>
                 <select class="form-select" id="optimizerMode">
@@ -5146,7 +5301,7 @@ function renderOptimizerConfigForm() {
                 </select>
                 <small class="text-muted">Sugestões requerem aprovação manual</small>
             </div>
-            
+
             <div class="col-md-6">
                 <label class="form-label">Estratégia</label>
                 <select class="form-select" id="optimizerStrategy">
@@ -5155,35 +5310,35 @@ function renderOptimizerConfigForm() {
                     <option value="stay_above">Ficar Acima do Menor</option>
                 </select>
             </div>
-            
+
             <div class="col-md-4">
                 <label class="form-label">Margem Mínima (%)</label>
                 <input type="number" class="form-control" id="optimizerMinMargin" value="10" min="0" step="0.1">
             </div>
-            
+
             <div class="col-md-4">
                 <label class="form-label">Margem Máxima (%)</label>
                 <input type="number" class="form-control" id="optimizerMaxMargin" value="50" min="0" step="0.1">
             </div>
-            
+
             <div class="col-md-4">
                 <label class="form-label">Diferença Estratégia (%)</label>
                 <input type="number" class="form-control" id="optimizerDiffPercent" value="1" min="0" step="0.1">
                 <small class="text-muted">Usado em "ficar abaixo/acima"</small>
             </div>
-            
+
             <div class="col-md-6">
                 <label class="form-label">Ajuste Máximo por Vez (%)</label>
                 <input type="number" class="form-control" id="optimizerMaxAdjust" value="15" min="1" max="50">
                 <small class="text-muted">Limite de variação por otimização</small>
             </div>
-            
+
             <div class="col-md-6">
                 <label class="form-label">Intervalo Mínimo (horas)</label>
                 <input type="number" class="form-control" id="optimizerMinInterval" value="24" min="1">
                 <small class="text-muted">Tempo entre otimizações do mesmo item</small>
             </div>
-            
+
             <div class="col-12">
                 <hr>
                 <label class="form-label">Notificações</label>
@@ -5196,7 +5351,7 @@ function renderOptimizerConfigForm() {
                     <label class="form-check-label" for="optimizerNotifySlack">Notificar no Slack</label>
                 </div>
             </div>
-            
+
             <div class="col-12 text-end">
                 <button type="button" class="btn btn-primary" onclick="salvarConfigOptimizer()">
                     <i class="bi bi-check-lg me-1"></i>Salvar Configuração
@@ -5204,102 +5359,106 @@ function renderOptimizerConfigForm() {
             </div>
         </div>
     `;
-}
-
-async function salvarConfigOptimizer() {
-    const config = {
-        enabled: document.getElementById('optimizerEnabled').checked,
-        mode: document.getElementById('optimizerMode').value,
-        min_margin: parseFloat(document.getElementById('optimizerMinMargin').value),
-        max_margin: parseFloat(document.getElementById('optimizerMaxMargin').value),
-        strategy: document.getElementById('optimizerStrategy').value,
-        strategy_diff_percent: parseFloat(document.getElementById('optimizerDiffPercent').value),
-        max_adjust_percent: parseFloat(document.getElementById('optimizerMaxAdjust').value),
-        min_interval_hours: parseInt(document.getElementById('optimizerMinInterval').value),
-        notify_email: document.getElementById('optimizerNotifyEmail').checked,
-        notify_slack: document.getElementById('optimizerNotifySlack').checked
-    };
-    
-    try {
-        const response = await fetch(`${API_BASE}/auto-optimizer/config`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Configuração salva com sucesso!', 'success');
-        } else {
-            showToast(data.message || 'Erro ao salvar', 'danger');
-        }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
     }
-}
 
-async function executarOptimizer() {
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Executando...';
-    
-    const resultsDiv = document.getElementById('optimizerResults');
-    resultsDiv.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Analisando itens e concorrentes...</p></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/auto-optimizer/run`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            renderOptimizerResults(data);
-        } else {
-            resultsDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'Erro na otimização'}</div>`;
+    async function salvarConfigOptimizer() {
+        const config = {
+            enabled: document.getElementById('optimizerEnabled').checked,
+            mode: document.getElementById('optimizerMode').value,
+            min_margin: parseFloat(document.getElementById('optimizerMinMargin').value),
+            max_margin: parseFloat(document.getElementById('optimizerMaxMargin').value),
+            strategy: document.getElementById('optimizerStrategy').value,
+            strategy_diff_percent: parseFloat(document.getElementById('optimizerDiffPercent').value),
+            max_adjust_percent: parseFloat(document.getElementById('optimizerMaxAdjust').value),
+            min_interval_hours: parseInt(document.getElementById('optimizerMinInterval').value),
+            notify_email: document.getElementById('optimizerNotifyEmail').checked,
+            notify_slack: document.getElementById('optimizerNotifySlack').checked
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/auto-optimizer/config`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Configuração salva com sucesso!', 'success');
+            } else {
+                showToast(data.message || 'Erro ao salvar', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
         }
-    } catch (err) {
-        resultsDiv.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
     }
-}
 
-function renderOptimizerResults(data) {
-    const resultsDiv = document.getElementById('optimizerResults');
-    const results = data.results || [];
-    
-    if (results.length === 0) {
-        resultsDiv.innerHTML = `
+    async function executarOptimizer() {
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Executando...';
+
+        const resultsDiv = document.getElementById('optimizerResults');
+        resultsDiv.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Analisando itens e concorrentes...</p></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/auto-optimizer/run`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                renderOptimizerResults(data);
+            } else {
+                resultsDiv.innerHTML = `<div class="alert alert-danger">${data.message || 'Erro na otimização'}</div>`;
+            }
+        } catch (err) {
+            resultsDiv.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    function renderOptimizerResults(data) {
+        const resultsDiv = document.getElementById('optimizerResults');
+        const results = data.results || [];
+
+        if (results.length === 0) {
+            resultsDiv.innerHTML = `
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
-                Nenhum item necessita ajuste no momento. 
+                Nenhum item necessita ajuste no momento.
                 ${data.items_analyzed || 0} itens foram analisados.
             </div>
         `;
-        return;
-    }
-    
-    const suggestions = results.filter(r => r.status === 'suggested');
-    const applied = results.filter(r => r.status === 'applied');
-    const errors = results.filter(r => r.status === 'error');
-    
-    let html = `
+            return;
+        }
+
+        const suggestions = results.filter(r => r.status === 'suggested');
+        const applied = results.filter(r => r.status === 'applied');
+        const errors = results.filter(r => r.status === 'error');
+
+        let html = `
         <div class="alert alert-success mb-3">
             <i class="bi bi-check-circle me-2"></i>
             <strong>Otimização concluída!</strong><br>
-            ${data.items_analyzed || 0} itens analisados, 
-            ${applied.length} preços aplicados, 
+            ${data.items_analyzed || 0} itens analisados,
+            ${applied.length} preços aplicados,
             ${suggestions.length} sugestões pendentes
         </div>
     `;
-    
-    if (suggestions.length > 0) {
-        html += `
+
+        if (suggestions.length > 0) {
+            html += `
             <h6 class="mb-2"><i class="bi bi-lightbulb text-warning me-1"></i>Sugestões (requer aprovação)</h6>
             <div class="table-responsive mb-3">
                 <table class="table table-sm table-hover">
@@ -5315,13 +5474,13 @@ function renderOptimizerResults(data) {
                     </thead>
                     <tbody>
         `;
-        
-        suggestions.forEach(item => {
-            const variacao = ((item.suggested_price - item.current_price) / item.current_price * 100).toFixed(1);
-            const varClass = variacao >= 0 ? 'text-success' : 'text-danger';
-            const varIcon = variacao >= 0 ? 'arrow-up' : 'arrow-down';
-            
-            html += `
+
+            suggestions.forEach(item => {
+                const variacao = ((item.suggested_price - item.current_price) / item.current_price * 100).toFixed(1);
+                const varClass = variacao >= 0 ? 'text-success' : 'text-danger';
+                const varIcon = variacao >= 0 ? 'arrow-up' : 'arrow-down';
+
+                html += `
                 <tr>
                     <td>
                         <small class="text-muted">${item.item_id}</small><br>
@@ -5338,84 +5497,88 @@ function renderOptimizerResults(data) {
                     </td>
                 </tr>
             `;
-        });
-        
-        html += '</tbody></table></div>';
-    }
-    
-    if (applied.length > 0) {
-        html += `
+            });
+
+            html += '</tbody></table></div>';
+        }
+
+        if (applied.length > 0) {
+            html += `
             <h6 class="mb-2"><i class="bi bi-check-circle text-success me-1"></i>Aplicados automaticamente</h6>
             <ul class="list-group mb-3">
         `;
-        
-        applied.forEach(item => {
-            html += `
+
+            applied.forEach(item => {
+                html += `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <span>${item.item_id} - ${item.title || ''}</span>
                     <span class="badge bg-success">R$ ${formatNumber(item.current_price)} → R$ ${formatNumber(item.new_price)}</span>
                 </li>
             `;
-        });
-        
-        html += '</ul>';
-    }
-    
-    if (errors.length > 0) {
-        html += `
+            });
+
+            html += '</ul>';
+        }
+
+        if (errors.length > 0) {
+            html += `
             <h6 class="mb-2"><i class="bi bi-exclamation-triangle text-danger me-1"></i>Erros</h6>
             <ul class="list-group">
         `;
-        
-        errors.forEach(item => {
-            html += `
+
+            errors.forEach(item => {
+                html += `
                 <li class="list-group-item list-group-item-danger">
                     ${item.item_id}: ${item.error || 'Erro desconhecido'}
                 </li>
             `;
-        });
-        
-        html += '</ul>';
-    }
-    
-    resultsDiv.innerHTML = html;
-}
+            });
 
-async function aplicarSugestaoOptimizer(itemId, newPrice) {
-    if (!confirm(`Aplicar preço R$ ${formatNumber(newPrice)} ao item ${itemId}?`)) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/auto-optimizer/apply/${itemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ new_price: newPrice })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Preço aplicado com sucesso!', 'success');
-            executarOptimizer(); // Recarregar resultados
-        } else {
-            showToast(data.message || 'Erro ao aplicar', 'danger');
+            html += '</ul>';
         }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
-    }
-}
 
-async function carregarHistoricoOptimizer() {
-    const container = document.getElementById('optimizerHistory');
-    if (!container) return;
-    
-    container.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/auto-optimizer/history?limit=50`);
-        const data = await response.json();
-        
-        if (data.success && data.history && data.history.length > 0) {
-            let html = `
+        resultsDiv.innerHTML = html;
+    }
+
+    async function aplicarSugestaoOptimizer(itemId, newPrice) {
+        if (!confirm(`Aplicar preço R$ ${formatNumber(newPrice)} ao item ${itemId}?`)) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/auto-optimizer/apply/${itemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    new_price: newPrice
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Preço aplicado com sucesso!', 'success');
+                executarOptimizer(); // Recarregar resultados
+            } else {
+                showToast(data.message || 'Erro ao aplicar', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function carregarHistoricoOptimizer() {
+        const container = document.getElementById('optimizerHistory');
+        if (!container) return;
+
+        container.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/auto-optimizer/history?limit=50`);
+            const data = await response.json();
+
+            if (data.success && data.history && data.history.length > 0) {
+                let html = `
                 <div class="table-responsive">
                     <table class="table table-sm table-striped">
                         <thead>
@@ -5430,14 +5593,14 @@ async function carregarHistoricoOptimizer() {
                         </thead>
                         <tbody>
             `;
-            
-            data.history.forEach(log => {
-                const date = new Date(log.created_at).toLocaleString('pt-BR');
-                const actionBadge = log.action === 'applied' 
-                    ? '<span class="badge bg-success">Aplicado</span>'
-                    : '<span class="badge bg-warning">Sugerido</span>';
-                
-                html += `
+
+                data.history.forEach(log => {
+                    const date = new Date(log.created_at).toLocaleString('pt-BR');
+                    const actionBadge = log.action === 'applied' ?
+                        '<span class="badge bg-success">Aplicado</span>' :
+                        '<span class="badge bg-warning">Sugerido</span>';
+
+                    html += `
                     <tr>
                         <td><small>${date}</small></td>
                         <td><small>${log.item_id}</small></td>
@@ -5447,32 +5610,32 @@ async function carregarHistoricoOptimizer() {
                         <td><small>${log.reason || '-'}</small></td>
                     </tr>
                 `;
-            });
-            
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        } else {
-            container.innerHTML = '<div class="alert alert-info">Nenhum histórico encontrado.</div>';
-        }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
+                });
 
-async function carregarStatsOptimizer() {
-    const container = document.getElementById('optimizerStats');
-    if (!container) return;
-    
-    container.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/auto-optimizer/stats`);
-        const data = await response.json();
-        
-        if (data.success && data.stats) {
-            const stats = data.stats;
-            
-            container.innerHTML = `
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="alert alert-info">Nenhum histórico encontrado.</div>';
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    async function carregarStatsOptimizer() {
+        const container = document.getElementById('optimizerStats');
+        if (!container) return;
+
+        container.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/auto-optimizer/stats`);
+            const data = await response.json();
+
+            if (data.success && data.stats) {
+                const stats = data.stats;
+
+                container.innerHTML = `
                 <div class="row g-3">
                     <div class="col-md-3">
                         <div class="card bg-primary text-white">
@@ -5506,7 +5669,7 @@ async function carregarStatsOptimizer() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-body">
@@ -5517,7 +5680,7 @@ async function carregarStatsOptimizer() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-body">
@@ -5526,7 +5689,7 @@ async function carregarStatsOptimizer() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header">Otimizações por Dia (Últimos 7 dias)</div>
@@ -5537,125 +5700,126 @@ async function carregarStatsOptimizer() {
                     </div>
                 </div>
             `;
-            
-            // Renderizar gráfico se houver dados
-            if (stats.daily_stats && stats.daily_stats.length > 0) {
-                renderOptimizerChart(stats.daily_stats);
-            }
-        } else {
-            container.innerHTML = '<div class="alert alert-info">Estatísticas não disponíveis.</div>';
-        }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
 
-function renderOptimizerChart(dailyStats) {
-    const ctx = document.getElementById('optimizerChart');
-    if (!ctx) return;
-    
-    const labels = dailyStats.map(d => d.date);
-    const appliedData = dailyStats.map(d => d.applied || 0);
-    const suggestedData = dailyStats.map(d => d.suggested || 0);
-    
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Aplicados',
-                    data: appliedData,
-                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                    borderColor: 'rgb(40, 167, 69)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Sugeridos',
-                    data: suggestedData,
-                    backgroundColor: 'rgba(255, 193, 7, 0.7)',
-                    borderColor: 'rgb(255, 193, 7)',
-                    borderWidth: 1
+                // Renderizar gráfico se houver dados
+                if (stats.daily_stats && stats.daily_stats.length > 0) {
+                    renderOptimizerChart(stats.daily_stats);
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true }
+            } else {
+                container.innerHTML = '<div class="alert alert-info">Estatísticas não disponíveis.</div>';
             }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-    });
-}
+    }
 
-// Event listeners para tabs do Auto-Otimizador
-document.addEventListener('DOMContentLoaded', function() {
-    const optimizerModal = document.getElementById('autoOptimizerModal');
-    if (optimizerModal) {
-        optimizerModal.addEventListener('shown.bs.tab', function(e) {
-            const target = e.target.getAttribute('data-bs-target');
-            if (target === '#optimizerHistory') {
-                carregarHistoricoOptimizer();
-            } else if (target === '#optimizerStats') {
-                carregarStatsOptimizer();
+    function renderOptimizerChart(dailyStats) {
+        const ctx = document.getElementById('optimizerChart');
+        if (!ctx) return;
+
+        const labels = dailyStats.map(d => d.date);
+        const appliedData = dailyStats.map(d => d.applied || 0);
+        const suggestedData = dailyStats.map(d => d.suggested || 0);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                        label: 'Aplicados',
+                        data: appliedData,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                        borderColor: 'rgb(40, 167, 69)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Sugeridos',
+                        data: suggestedData,
+                        backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                        borderColor: 'rgb(255, 193, 7)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
             }
         });
     }
-});
 
-// ========================================
-// Funções de Testes A/B de Preços
-// ========================================
-
-let abTestFilter = 'all';
-let selectedAbTest = null;
-
-function abrirAbTests() {
-    const modal = new bootstrap.Modal(document.getElementById('abTestModal'));
-    modal.show();
-    carregarAbTests();
-}
-
-async function carregarAbTests() {
-    const container = document.getElementById('abTestList');
-    container.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
-    
-    try {
-        let url = `${API_BASE}/ab-tests`;
-        if (abTestFilter !== 'all') {
-            url += `?status=${abTestFilter}`;
+    // Event listeners para tabs do Auto-Otimizador
+    document.addEventListener('DOMContentLoaded', function() {
+        const optimizerModal = document.getElementById('autoOptimizerModal');
+        if (optimizerModal) {
+            optimizerModal.addEventListener('shown.bs.tab', function(e) {
+                const target = e.target.getAttribute('data-bs-target');
+                if (target === '#optimizerHistory') {
+                    carregarHistoricoOptimizer();
+                } else if (target === '#optimizerStats') {
+                    carregarStatsOptimizer();
+                }
+            });
         }
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.success && data.tests) {
-            renderAbTestList(data.tests);
-        } else {
-            container.innerHTML = '<div class="alert alert-warning">Nenhum teste encontrado.</div>';
+    });
+
+    // ========================================
+    // Funções de Testes A/B de Preços
+    // ========================================
+
+    let abTestFilter = 'all';
+    let selectedAbTest = null;
+
+    function abrirAbTests() {
+        const modal = new bootstrap.Modal(document.getElementById('abTestModal'));
+        modal.show();
+        carregarAbTests();
+    }
+
+    async function carregarAbTests() {
+        const container = document.getElementById('abTestList');
+        container.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
+
+        try {
+            let url = `${API_BASE}/ab-tests`;
+            if (abTestFilter !== 'all') {
+                url += `?status=${abTestFilter}`;
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.success && data.tests) {
+                renderAbTestList(data.tests);
+            } else {
+                container.innerHTML = '<div class="alert alert-warning">Nenhum teste encontrado.</div>';
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
     }
-}
 
-function filtrarAbTests(status) {
-    abTestFilter = status;
-    document.querySelectorAll('#abtest-list .btn-group .btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    carregarAbTests();
-}
-
-function renderAbTestList(tests) {
-    const container = document.getElementById('abTestList');
-    
-    if (tests.length === 0) {
-        container.innerHTML = '<div class="alert alert-info">Nenhum teste A/B encontrado.</div>';
-        return;
+    function filtrarAbTests(status) {
+        abTestFilter = status;
+        document.querySelectorAll('#abtest-list .btn-group .btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        carregarAbTests();
     }
-    
-    let html = '<div class="table-responsive"><table class="table table-sm table-hover">';
-    html += `
+
+    function renderAbTestList(tests) {
+        const container = document.getElementById('abTestList');
+
+        if (tests.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">Nenhum teste A/B encontrado.</div>';
+            return;
+        }
+
+        let html = '<div class="table-responsive"><table class="table table-sm table-hover">';
+        html += `
         <thead class="table-light">
             <tr>
                 <th>Nome</th>
@@ -5668,34 +5832,34 @@ function renderAbTestList(tests) {
         </thead>
         <tbody>
     `;
-    
-    const statusBadges = {
-        'draft': '<span class="badge bg-secondary">Rascunho</span>',
-        'running': '<span class="badge bg-success">Em Execução</span>',
-        'paused': '<span class="badge bg-warning">Pausado</span>',
-        'completed': '<span class="badge bg-primary">Finalizado</span>',
-        'cancelled': '<span class="badge bg-danger">Cancelado</span>'
-    };
-    
-    tests.forEach(test => {
-        const diff = ((test.variant_price - test.control_price) / test.control_price * 100).toFixed(1);
-        const diffClass = diff >= 0 ? 'text-success' : 'text-danger';
-        const diffIcon = diff >= 0 ? 'arrow-up' : 'arrow-down';
-        
-        let actions = '';
-        if (test.status === 'draft' || test.status === 'paused') {
-            actions += `<button class="btn btn-sm btn-success me-1" onclick="iniciarAbTest(${test.id})" title="Iniciar"><i class="bi bi-play"></i></button>`;
-        }
-        if (test.status === 'running') {
-            actions += `<button class="btn btn-sm btn-warning me-1" onclick="pausarAbTest(${test.id})" title="Pausar"><i class="bi bi-pause"></i></button>`;
-            actions += `<button class="btn btn-sm btn-primary me-1" onclick="finalizarAbTest(${test.id})" title="Finalizar"><i class="bi bi-check-lg"></i></button>`;
-        }
-        if (test.status !== 'completed' && test.status !== 'cancelled') {
-            actions += `<button class="btn btn-sm btn-outline-danger me-1" onclick="cancelarAbTest(${test.id})" title="Cancelar"><i class="bi bi-x"></i></button>`;
-        }
-        actions += `<button class="btn btn-sm btn-info" onclick="analisarAbTest(${test.id})" title="Analisar"><i class="bi bi-graph-up"></i></button>`;
-        
-        html += `
+
+        const statusBadges = {
+            'draft': '<span class="badge bg-secondary">Rascunho</span>',
+            'running': '<span class="badge bg-success">Em Execução</span>',
+            'paused': '<span class="badge bg-warning">Pausado</span>',
+            'completed': '<span class="badge bg-primary">Finalizado</span>',
+            'cancelled': '<span class="badge bg-danger">Cancelado</span>'
+        };
+
+        tests.forEach(test => {
+            const diff = ((test.variant_price - test.control_price) / test.control_price * 100).toFixed(1);
+            const diffClass = diff >= 0 ? 'text-success' : 'text-danger';
+            const diffIcon = diff >= 0 ? 'arrow-up' : 'arrow-down';
+
+            let actions = '';
+            if (test.status === 'draft' || test.status === 'paused') {
+                actions += `<button class="btn btn-sm btn-success me-1" onclick="iniciarAbTest(${test.id})" title="Iniciar"><i class="bi bi-play"></i></button>`;
+            }
+            if (test.status === 'running') {
+                actions += `<button class="btn btn-sm btn-warning me-1" onclick="pausarAbTest(${test.id})" title="Pausar"><i class="bi bi-pause"></i></button>`;
+                actions += `<button class="btn btn-sm btn-primary me-1" onclick="finalizarAbTest(${test.id})" title="Finalizar"><i class="bi bi-check-lg"></i></button>`;
+            }
+            if (test.status !== 'completed' && test.status !== 'cancelled') {
+                actions += `<button class="btn btn-sm btn-outline-danger me-1" onclick="cancelarAbTest(${test.id})" title="Cancelar"><i class="bi bi-x"></i></button>`;
+            }
+            actions += `<button class="btn btn-sm btn-info" onclick="analisarAbTest(${test.id})" title="Analisar"><i class="bi bi-graph-up"></i></button>`;
+
+            html += `
             <tr>
                 <td>
                     <strong>${test.name}</strong>
@@ -5711,187 +5875,193 @@ function renderAbTestList(tests) {
                 <td>${actions}</td>
             </tr>
         `;
-    });
-    
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
-}
-
-async function criarAbTest(event) {
-    event.preventDefault();
-    
-    const data = {
-        name: document.getElementById('abTestName').value,
-        item_id: document.getElementById('abTestItemId').value,
-        description: document.getElementById('abTestDescription').value,
-        control_price: parseFloat(document.getElementById('abTestControlPrice').value),
-        variant_price: parseFloat(document.getElementById('abTestVariantPrice').value),
-        traffic_split: parseInt(document.getElementById('abTestSplit').value),
-        target_metric: document.getElementById('abTestMetric').value,
-        min_sample_size: parseInt(document.getElementById('abTestMinSample').value),
-        confidence_level: parseFloat(document.getElementById('abTestConfidence').value)
-    };
-    
-    try {
-        const response = await fetch(`${API_BASE}/ab-tests`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
         });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            showToast('Teste A/B criado com sucesso!', 'success');
-            document.getElementById('newAbTestForm').reset();
-            // Mudar para aba de lista
-            const listTab = document.querySelector('[data-bs-target="#abtest-list"]');
-            if (listTab) listTab.click();
-            carregarAbTests();
-        } else {
-            showToast(result.message || 'Erro ao criar teste', 'danger');
-        }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
-    }
-}
 
-async function iniciarAbTest(testId) {
-    if (!confirm('Iniciar este teste A/B? O preço do item será alterado.')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/ab-tests/${testId}/start`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Teste iniciado!', 'success');
-            carregarAbTests();
-        } else {
-            showToast(data.message || 'Erro ao iniciar', 'danger');
-        }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
     }
-}
 
-async function pausarAbTest(testId) {
-    try {
-        const response = await fetch(`${API_BASE}/ab-tests/${testId}/pause`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Teste pausado', 'warning');
-            carregarAbTests();
-        } else {
-            showToast(data.message || 'Erro ao pausar', 'danger');
-        }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
-    }
-}
+    async function criarAbTest(event) {
+        event.preventDefault();
 
-async function finalizarAbTest(testId) {
-    const winner = prompt('Qual a variante vencedora? (control/variant) ou deixe em branco para calcular automaticamente');
-    
-    try {
-        const response = await fetch(`${API_BASE}/ab-tests/${testId}/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ winner: winner || null })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast(`Teste finalizado! Vencedor: ${data.winner}. Preço final: R$ ${formatNumber(data.final_price)}`, 'success');
-            carregarAbTests();
-        } else {
-            showToast(data.message || 'Erro ao finalizar', 'danger');
-        }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
-    }
-}
+        const data = {
+            name: document.getElementById('abTestName').value,
+            item_id: document.getElementById('abTestItemId').value,
+            description: document.getElementById('abTestDescription').value,
+            control_price: parseFloat(document.getElementById('abTestControlPrice').value),
+            variant_price: parseFloat(document.getElementById('abTestVariantPrice').value),
+            traffic_split: parseInt(document.getElementById('abTestSplit').value),
+            target_metric: document.getElementById('abTestMetric').value,
+            min_sample_size: parseInt(document.getElementById('abTestMinSample').value),
+            confidence_level: parseFloat(document.getElementById('abTestConfidence').value)
+        };
 
-async function cancelarAbTest(testId) {
-    if (!confirm('Cancelar este teste? O preço original será restaurado.')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/ab-tests/${testId}/cancel`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Teste cancelado', 'info');
-            carregarAbTests();
-        } else {
-            showToast(data.message || 'Erro ao cancelar', 'danger');
-        }
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'danger');
-    }
-}
+        try {
+            const response = await fetch(`${API_BASE}/ab-tests`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
 
-async function analisarAbTest(testId) {
-    selectedAbTest = testId;
-    
-    // Mudar para aba de análise
-    const analysisTab = document.querySelector('[data-bs-target="#abtest-analysis"]');
-    if (analysisTab) analysisTab.click();
-    
-    const container = document.getElementById('abTestAnalysis');
-    container.innerHTML = '<div class="text-center p-4"><div class="spinner-border"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/ab-tests/${testId}/analyze`);
-        const data = await response.json();
-        
-        if (data.success) {
-            renderAbTestAnalysis(data);
-        } else {
-            container.innerHTML = `<div class="alert alert-danger">${data.message || 'Erro na análise'}</div>`;
-        }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
+            const result = await response.json();
 
-function renderAbTestAnalysis(data) {
-    const container = document.getElementById('abTestAnalysis');
-    const test = data.test;
-    const control = data.control;
-    const variant = data.variant;
-    const analysis = data.analysis;
-    
-    const statusBadges = {
-        'draft': '<span class="badge bg-secondary">Rascunho</span>',
-        'running': '<span class="badge bg-success">Em Execução</span>',
-        'paused': '<span class="badge bg-warning">Pausado</span>',
-        'completed': '<span class="badge bg-primary">Finalizado</span>',
-        'cancelled': '<span class="badge bg-danger">Cancelado</span>'
-    };
-    
-    let winnerHtml = '';
-    if (data.winner === 'variant') {
-        winnerHtml = '<div class="alert alert-success"><i class="bi bi-trophy me-2"></i><strong>Variante vencendo!</strong></div>';
-    } else if (data.winner === 'control') {
-        winnerHtml = '<div class="alert alert-info"><i class="bi bi-shield-check me-2"></i><strong>Controle vencendo!</strong></div>';
-    } else {
-        winnerHtml = '<div class="alert alert-warning"><i class="bi bi-hourglass-split me-2"></i><strong>Resultados inconclusivos</strong></div>';
+            if (result.success) {
+                showToast('Teste A/B criado com sucesso!', 'success');
+                document.getElementById('newAbTestForm').reset();
+                // Mudar para aba de lista
+                const listTab = document.querySelector('[data-bs-target="#abtest-list"]');
+                if (listTab) listTab.click();
+                carregarAbTests();
+            } else {
+                showToast(result.message || 'Erro ao criar teste', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
     }
-    
-    container.innerHTML = `
+
+    async function iniciarAbTest(testId) {
+        if (!confirm('Iniciar este teste A/B? O preço do item será alterado.')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/ab-tests/${testId}/start`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Teste iniciado!', 'success');
+                carregarAbTests();
+            } else {
+                showToast(data.message || 'Erro ao iniciar', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function pausarAbTest(testId) {
+        try {
+            const response = await fetch(`${API_BASE}/ab-tests/${testId}/pause`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Teste pausado', 'warning');
+                carregarAbTests();
+            } else {
+                showToast(data.message || 'Erro ao pausar', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function finalizarAbTest(testId) {
+        const winner = prompt('Qual a variante vencedora? (control/variant) ou deixe em branco para calcular automaticamente');
+
+        try {
+            const response = await fetch(`${API_BASE}/ab-tests/${testId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    winner: winner || null
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(`Teste finalizado! Vencedor: ${data.winner}. Preço final: R$ ${formatNumber(data.final_price)}`, 'success');
+                carregarAbTests();
+            } else {
+                showToast(data.message || 'Erro ao finalizar', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function cancelarAbTest(testId) {
+        if (!confirm('Cancelar este teste? O preço original será restaurado.')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/ab-tests/${testId}/cancel`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Teste cancelado', 'info');
+                carregarAbTests();
+            } else {
+                showToast(data.message || 'Erro ao cancelar', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function analisarAbTest(testId) {
+        selectedAbTest = testId;
+
+        // Mudar para aba de análise
+        const analysisTab = document.querySelector('[data-bs-target="#abtest-analysis"]');
+        if (analysisTab) analysisTab.click();
+
+        const container = document.getElementById('abTestAnalysis');
+        container.innerHTML = '<div class="text-center p-4"><div class="spinner-border"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/ab-tests/${testId}/analyze`);
+            const data = await response.json();
+
+            if (data.success) {
+                renderAbTestAnalysis(data);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">${data.message || 'Erro na análise'}</div>`;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function renderAbTestAnalysis(data) {
+        const container = document.getElementById('abTestAnalysis');
+        const test = data.test;
+        const control = data.control;
+        const variant = data.variant;
+        const analysis = data.analysis;
+
+        const statusBadges = {
+            'draft': '<span class="badge bg-secondary">Rascunho</span>',
+            'running': '<span class="badge bg-success">Em Execução</span>',
+            'paused': '<span class="badge bg-warning">Pausado</span>',
+            'completed': '<span class="badge bg-primary">Finalizado</span>',
+            'cancelled': '<span class="badge bg-danger">Cancelado</span>'
+        };
+
+        let winnerHtml = '';
+        if (data.winner === 'variant') {
+            winnerHtml = '<div class="alert alert-success"><i class="bi bi-trophy me-2"></i><strong>Variante vencendo!</strong></div>';
+        } else if (data.winner === 'control') {
+            winnerHtml = '<div class="alert alert-info"><i class="bi bi-shield-check me-2"></i><strong>Controle vencendo!</strong></div>';
+        } else {
+            winnerHtml = '<div class="alert alert-warning"><i class="bi bi-hourglass-split me-2"></i><strong>Resultados inconclusivos</strong></div>';
+        }
+
+        container.innerHTML = `
         <div class="mb-3">
             <h5>${test.name} ${statusBadges[test.status]}</h5>
             <small class="text-muted">Item: ${test.item_id}</small>
         </div>
-        
+
         ${winnerHtml}
-        
+
         <div class="row g-3 mb-4">
             <div class="col-md-6">
                 <div class="card border-secondary">
@@ -5927,7 +6097,7 @@ function renderAbTestAnalysis(data) {
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-md-6">
                 <div class="card border-primary">
                     <div class="card-header bg-primary text-white">
@@ -5963,7 +6133,7 @@ function renderAbTestAnalysis(data) {
                 </div>
             </div>
         </div>
-        
+
         <div class="card mb-3">
             <div class="card-header">
                 <i class="bi bi-graph-up me-1"></i> Análise Estatística
@@ -5993,9 +6163,9 @@ function renderAbTestAnalysis(data) {
                         <small>Amostra</small>
                     </div>
                 </div>
-                
+
                 <hr>
-                
+
                 <div class="row">
                     <div class="col-md-6">
                         <strong>Estatisticamente Significativo:</strong>
@@ -6008,54 +6178,54 @@ function renderAbTestAnalysis(data) {
                 </div>
             </div>
         </div>
-        
+
         <div class="alert alert-light">
             <i class="bi bi-lightbulb me-2"></i>
             <strong>Recomendação:</strong> ${data.recommendation}
         </div>
     `;
-}
+    }
 
-// ========================================
-// Funções do Monitor de Concorrentes
-// ========================================
+    // ========================================
+    // Funções do Monitor de Concorrentes
+    // ========================================
 
-let currentAlertFilter = 'all';
+    let currentAlertFilter = 'all';
 
-function abrirCompetitorMonitor() {
-    const modal = new bootstrap.Modal(document.getElementById('competitorMonitorModal'));
-    modal.show();
-    carregarWatchlist();
-    carregarAlertas();
-}
+    function abrirCompetitorMonitor() {
+        const modal = new bootstrap.Modal(document.getElementById('competitorMonitorModal'));
+        modal.show();
+        carregarWatchlist();
+        carregarAlertas();
+    }
 
-async function carregarWatchlist() {
-    const container = document.getElementById('watchlistContent');
-    container.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/competitors/watchlist`);
-        const data = await response.json();
-        
-        if (data.success && data.watchlist && data.watchlist.length > 0) {
-            renderWatchlist(data.watchlist);
-        } else {
-            container.innerHTML = `
+    async function carregarWatchlist() {
+        const container = document.getElementById('watchlistContent');
+        container.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/competitors/watchlist`);
+            const data = await response.json();
+
+            if (data.success && data.watchlist && data.watchlist.length > 0) {
+                renderWatchlist(data.watchlist);
+            } else {
+                container.innerHTML = `
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle me-2"></i>
                     Nenhum item na watchlist. Adicione itens para monitorar concorrentes.
                 </div>
             `;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
     }
-}
 
-function renderWatchlist(items) {
-    const container = document.getElementById('watchlistContent');
-    let html = '<div class="table-responsive"><table class="table table-hover">';
-    html += `
+    function renderWatchlist(items) {
+        const container = document.getElementById('watchlistContent');
+        let html = '<div class="table-responsive"><table class="table table-hover">';
+        html += `
         <thead>
             <tr>
                 <th>Item</th>
@@ -6069,14 +6239,14 @@ function renderWatchlist(items) {
         </thead>
         <tbody>
     `;
-    
-    items.forEach(item => {
-        const positionClass = item.position_percentile <= 30 ? 'text-success' : 
-                              item.position_percentile <= 60 ? 'text-warning' : 'text-danger';
-        const trendIcon = item.trend === 'up' ? 'bi-arrow-up text-success' :
-                          item.trend === 'down' ? 'bi-arrow-down text-danger' : 'bi-dash text-muted';
-        
-        html += `
+
+        items.forEach(item => {
+            const positionClass = item.position_percentile <= 30 ? 'text-success' :
+                item.position_percentile <= 60 ? 'text-warning' : 'text-danger';
+            const trendIcon = item.trend === 'up' ? 'bi-arrow-up text-success' :
+                item.trend === 'down' ? 'bi-arrow-down text-danger' : 'bi-dash text-muted';
+
+            html += `
             <tr>
                 <td>
                     <div class="fw-bold">${item.item_id}</div>
@@ -6106,107 +6276,112 @@ function renderWatchlist(items) {
                 </td>
             </tr>
         `;
-    });
-    
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
-}
-
-async function adicionarWatchlist() {
-    const itemId = document.getElementById('watchlistItemId').value.trim();
-    const keywords = document.getElementById('watchlistKeywords').value.trim();
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/competitors/watchlist`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId, keywords: keywords || null })
         });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Item adicionado à watchlist!', 'success');
-            document.getElementById('watchlistItemId').value = '';
-            document.getElementById('watchlistKeywords').value = '';
-            carregarWatchlist();
-        } else {
-            showAlert(data.error || 'Erro ao adicionar', 'danger');
-        }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
-    }
-}
 
-async function removerWatchlist(itemId) {
-    if (!confirm('Remover item da watchlist?')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/competitors/watchlist/${itemId}`, {
-            method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Item removido da watchlist', 'success');
-            carregarWatchlist();
-        } else {
-            showAlert(data.error || 'Erro ao remover', 'danger');
-        }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
     }
-}
 
-function escanearItem(itemId) {
-    document.getElementById('scanItemId').value = itemId;
-    document.querySelector('[data-bs-target="#monitor-scan"]').click();
-    escanearConcorrentes();
-}
+    async function adicionarWatchlist() {
+        const itemId = document.getElementById('watchlistItemId').value.trim();
+        const keywords = document.getElementById('watchlistKeywords').value.trim();
 
-async function escanearConcorrentes() {
-    const itemId = document.getElementById('scanItemId').value.trim();
-    const keywords = document.getElementById('scanKeywords').value.trim();
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
-    }
-    
-    const container = document.getElementById('scanResults');
-    container.innerHTML = '<div class="text-center p-4"><div class="spinner-border"></div><p class="mt-2">Escaneando concorrentes...</p></div>';
-    
-    try {
-        let url = `${API_BASE}/competitors/scan/${itemId}`;
-        if (keywords) {
-            url += `?keywords=${encodeURIComponent(keywords)}`;
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
         }
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.success) {
-            renderScanResults(data);
-        } else {
-            container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error}</div>`;
-        }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
 
-function renderScanResults(data) {
-    const container = document.getElementById('scanResults');
-    const item = data.item;
-    const competitors = data.competitors || [];
-    
-    let html = `
+        try {
+            const response = await fetch(`${API_BASE}/competitors/watchlist`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    keywords: keywords || null
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Item adicionado à watchlist!', 'success');
+                document.getElementById('watchlistItemId').value = '';
+                document.getElementById('watchlistKeywords').value = '';
+                carregarWatchlist();
+            } else {
+                showAlert(data.error || 'Erro ao adicionar', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function removerWatchlist(itemId) {
+        if (!confirm('Remover item da watchlist?')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/competitors/watchlist/${itemId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Item removido da watchlist', 'success');
+                carregarWatchlist();
+            } else {
+                showAlert(data.error || 'Erro ao remover', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    function escanearItem(itemId) {
+        document.getElementById('scanItemId').value = itemId;
+        document.querySelector('[data-bs-target="#monitor-scan"]').click();
+        escanearConcorrentes();
+    }
+
+    async function escanearConcorrentes() {
+        const itemId = document.getElementById('scanItemId').value.trim();
+        const keywords = document.getElementById('scanKeywords').value.trim();
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('scanResults');
+        container.innerHTML = '<div class="text-center p-4"><div class="spinner-border"></div><p class="mt-2">Escaneando concorrentes...</p></div>';
+
+        try {
+            let url = `${API_BASE}/competitors/scan/${itemId}`;
+            if (keywords) {
+                url += `?keywords=${encodeURIComponent(keywords)}`;
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.success) {
+                renderScanResults(data);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error}</div>`;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function renderScanResults(data) {
+        const container = document.getElementById('scanResults');
+        const item = data.item;
+        const competitors = data.competitors || [];
+
+        let html = `
         <div class="card mb-3">
             <div class="card-header">
                 <i class="bi bi-box me-2"></i>Seu Produto
@@ -6226,23 +6401,23 @@ function renderScanResults(data) {
                 </div>
             </div>
         </div>
-        
+
         <div class="card mb-3">
             <div class="card-header">
                 <i class="bi bi-people me-2"></i>Concorrentes Encontrados (${competitors.length})
             </div>
             <div class="card-body p-0">
     `;
-    
-    if (competitors.length > 0) {
-        html += '<table class="table table-hover mb-0"><thead><tr><th>Vendedor</th><th>Título</th><th>Preço</th><th>Reputação</th><th>Vendas</th></tr></thead><tbody>';
-        
-        competitors.forEach((comp, i) => {
-            const priceClass = comp.price < item.price ? 'text-danger' : 
-                               comp.price > item.price ? 'text-success' : 'text-muted';
-            const priceDiff = ((comp.price - item.price) / item.price * 100).toFixed(1);
-            
-            html += `
+
+        if (competitors.length > 0) {
+            html += '<table class="table table-hover mb-0"><thead><tr><th>Vendedor</th><th>Título</th><th>Preço</th><th>Reputação</th><th>Vendas</th></tr></thead><tbody>';
+
+            competitors.forEach((comp, i) => {
+                const priceClass = comp.price < item.price ? 'text-danger' :
+                    comp.price > item.price ? 'text-success' : 'text-muted';
+                const priceDiff = ((comp.price - item.price) / item.price * 100).toFixed(1);
+
+                html += `
                 <tr>
                     <td>
                         <span class="badge bg-secondary">#${i + 1}</span>
@@ -6254,7 +6429,7 @@ function renderScanResults(data) {
                         <small class="${priceClass}">(${priceDiff > 0 ? '+' : ''}${priceDiff}%)</small>
                     </td>
                     <td>
-                        <span class="badge ${comp.seller_reputation === 'platinum' ? 'bg-primary' : 
+                        <span class="badge ${comp.seller_reputation === 'platinum' ? 'bg-primary' :
                                            comp.seller_reputation === 'gold' ? 'bg-warning' : 'bg-secondary'}">
                             ${comp.seller_reputation || 'N/A'}
                         </span>
@@ -6262,17 +6437,17 @@ function renderScanResults(data) {
                     <td>${comp.sold_quantity || 0}</td>
                 </tr>
             `;
-        });
-        
-        html += '</tbody></table>';
-    } else {
-        html += '<div class="p-3 text-center text-muted">Nenhum concorrente encontrado</div>';
-    }
-    
-    html += `
+            });
+
+            html += '</tbody></table>';
+        } else {
+            html += '<div class="p-3 text-center text-muted">Nenhum concorrente encontrado</div>';
+        }
+
+        html += `
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header">
                 <i class="bi bi-graph-up me-2"></i>Resumo de Mercado
@@ -6299,49 +6474,49 @@ function renderScanResults(data) {
             </div>
         </div>
     `;
-    
-    container.innerHTML = html;
-}
 
-function verAnaliseItem(itemId) {
-    document.getElementById('analysisItemId').value = itemId;
-    document.querySelector('[data-bs-target="#monitor-analysis"]').click();
-    carregarAnalise();
-}
-
-async function carregarAnalise() {
-    const itemId = document.getElementById('analysisItemId').value.trim();
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
+        container.innerHTML = html;
     }
-    
-    const container = document.getElementById('analysisContent');
-    container.innerHTML = '<div class="text-center p-4"><div class="spinner-border"></div><p class="mt-2">Carregando análise de mercado...</p></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/competitors/analysis/${itemId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            renderMarketAnalysis(data);
-        } else {
-            container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error}</div>`;
+
+    function verAnaliseItem(itemId) {
+        document.getElementById('analysisItemId').value = itemId;
+        document.querySelector('[data-bs-target="#monitor-analysis"]').click();
+        carregarAnalise();
+    }
+
+    async function carregarAnalise() {
+        const itemId = document.getElementById('analysisItemId').value.trim();
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
 
-function renderMarketAnalysis(data) {
-    const container = document.getElementById('analysisContent');
-    const analysis = data.analysis || {};
-    const distribution = analysis.price_distribution || {};
-    const trends = analysis.price_trends || {};
-    const recommendations = data.recommendations || [];
-    
-    let html = `
+        const container = document.getElementById('analysisContent');
+        container.innerHTML = '<div class="text-center p-4"><div class="spinner-border"></div><p class="mt-2">Carregando análise de mercado...</p></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/competitors/analysis/${itemId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                renderMarketAnalysis(data);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error}</div>`;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function renderMarketAnalysis(data) {
+        const container = document.getElementById('analysisContent');
+        const analysis = data.analysis || {};
+        const distribution = analysis.price_distribution || {};
+        const trends = analysis.price_trends || {};
+        const recommendations = data.recommendations || [];
+
+        let html = `
         <div class="row mb-3">
             <div class="col-md-8">
                 <div class="card">
@@ -6380,7 +6555,7 @@ function renderMarketAnalysis(data) {
                 </div>
             </div>
         </div>
-        
+
         <div class="row mb-3">
             <div class="col-md-6">
                 <div class="card">
@@ -6410,161 +6585,164 @@ function renderMarketAnalysis(data) {
                 </div>
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header">
                 <i class="bi bi-lightbulb me-2"></i>Recomendações
             </div>
             <div class="card-body">
     `;
-    
-    if (recommendations.length > 0) {
-        recommendations.forEach(rec => {
-            const typeClass = rec.type === 'success' ? 'success' : rec.type === 'warning' ? 'warning' : 'info';
-            html += `
+
+        if (recommendations.length > 0) {
+            recommendations.forEach(rec => {
+                const typeClass = rec.type === 'success' ? 'success' : rec.type === 'warning' ? 'warning' : 'info';
+                html += `
                 <div class="alert alert-${typeClass} mb-2">
                     <strong>${rec.title}</strong>
                     <p class="mb-0">${rec.message}</p>
                 </div>
             `;
-        });
-    } else {
-        html += '<p class="text-muted">Sem recomendações no momento.</p>';
-    }
-    
-    html += `
+            });
+        } else {
+            html += '<p class="text-muted">Sem recomendações no momento.</p>';
+        }
+
+        html += `
             </div>
         </div>
     `;
-    
-    container.innerHTML = html;
-    
-    // Renderizar gráficos
-    setTimeout(() => {
-        renderPriceDistributionChart(distribution);
-        renderPriceTrendChart(trends);
-    }, 100);
-}
 
-function renderPriceDistributionChart(distribution) {
-    const ctx = document.getElementById('priceDistributionChart');
-    if (!ctx) return;
-    
-    const labels = Object.keys(distribution);
-    const values = Object.values(distribution);
-    
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Qtd Concorrentes',
-                data: values,
-                backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true }
-            }
-        }
-    });
-}
+        container.innerHTML = html;
 
-function renderPriceTrendChart(trends) {
-    const ctx = document.getElementById('priceTrendChart');
-    if (!ctx || !trends.dates) return;
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: trends.dates,
-            datasets: [
-                {
-                    label: 'Preço Mínimo',
-                    data: trends.min,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    fill: false
-                },
-                {
-                    label: 'Preço Médio',
-                    data: trends.avg,
-                    borderColor: 'rgba(255, 159, 64, 1)',
-                    fill: false
-                },
-                {
-                    label: 'Seu Preço',
-                    data: trends.yours,
+        // Renderizar gráficos
+        setTimeout(() => {
+            renderPriceDistributionChart(distribution);
+            renderPriceTrendChart(trends);
+        }, 100);
+    }
+
+    function renderPriceDistributionChart(distribution) {
+        const ctx = document.getElementById('priceDistributionChart');
+        if (!ctx) return;
+
+        const labels = Object.keys(distribution);
+        const values = Object.values(distribution);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Qtd Concorrentes',
+                    data: values,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
                     borderColor: 'rgba(54, 162, 235, 1)',
-                    borderDash: [5, 5],
-                    fill: false
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: false }
             }
-        }
-    });
-}
+        });
+    }
 
-async function carregarAlertas() {
-    const container = document.getElementById('alertsContent');
-    container.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/competitors/alerts`);
-        const data = await response.json();
-        
-        if (data.success && data.alerts) {
-            renderAlertas(data.alerts);
-            
-            // Atualizar contador de alertas não lidos
-            const unread = data.alerts.filter(a => !a.read_at).length;
-            const badge = document.getElementById('unreadAlertsCount');
-            if (unread > 0) {
-                badge.textContent = unread;
-                badge.style.display = 'inline';
+    function renderPriceTrendChart(trends) {
+        const ctx = document.getElementById('priceTrendChart');
+        if (!ctx || !trends.dates) return;
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: trends.dates,
+                datasets: [{
+                        label: 'Preço Mínimo',
+                        data: trends.min,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        fill: false
+                    },
+                    {
+                        label: 'Preço Médio',
+                        data: trends.avg,
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        fill: false
+                    },
+                    {
+                        label: 'Seu Preço',
+                        data: trends.yours,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderDash: [5, 5],
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    }
+
+    async function carregarAlertas() {
+        const container = document.getElementById('alertsContent');
+        container.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/competitors/alerts`);
+            const data = await response.json();
+
+            if (data.success && data.alerts) {
+                renderAlertas(data.alerts);
+
+                // Atualizar contador de alertas não lidos
+                const unread = data.alerts.filter(a => !a.read_at).length;
+                const badge = document.getElementById('unreadAlertsCount');
+                if (unread > 0) {
+                    badge.textContent = unread;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
             } else {
-                badge.style.display = 'none';
+                container.innerHTML = '<div class="alert alert-info">Nenhum alerta encontrado.</div>';
             }
-        } else {
-            container.innerHTML = '<div class="alert alert-info">Nenhum alerta encontrado.</div>';
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
     }
-}
 
-function renderAlertas(alerts) {
-    const container = document.getElementById('alertsContent');
-    
-    // Filtrar por severidade
-    let filteredAlerts = alerts;
-    if (currentAlertFilter !== 'all') {
-        filteredAlerts = alerts.filter(a => a.severity === currentAlertFilter);
-    }
-    
-    if (filteredAlerts.length === 0) {
-        container.innerHTML = '<div class="alert alert-info">Nenhum alerta encontrado.</div>';
-        return;
-    }
-    
-    let html = '<div class="list-group">';
-    
-    filteredAlerts.forEach(alert => {
-        const severityClass = alert.severity === 'critical' ? 'danger' : 
-                              alert.severity === 'high' ? 'warning' : 'info';
-        const severityIcon = alert.severity === 'critical' ? 'exclamation-triangle-fill' :
-                             alert.severity === 'high' ? 'exclamation-circle-fill' : 'info-circle-fill';
-        const readClass = alert.read_at ? 'text-muted' : '';
-        
-        html += `
+    function renderAlertas(alerts) {
+        const container = document.getElementById('alertsContent');
+
+        // Filtrar por severidade
+        let filteredAlerts = alerts;
+        if (currentAlertFilter !== 'all') {
+            filteredAlerts = alerts.filter(a => a.severity === currentAlertFilter);
+        }
+
+        if (filteredAlerts.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">Nenhum alerta encontrado.</div>';
+            return;
+        }
+
+        let html = '<div class="list-group">';
+
+        filteredAlerts.forEach(alert => {
+            const severityClass = alert.severity === 'critical' ? 'danger' :
+                alert.severity === 'high' ? 'warning' : 'info';
+            const severityIcon = alert.severity === 'critical' ? 'exclamation-triangle-fill' :
+                alert.severity === 'high' ? 'exclamation-circle-fill' : 'info-circle-fill';
+            const readClass = alert.read_at ? 'text-muted' : '';
+
+            html += `
             <div class="list-group-item ${readClass}">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -6580,104 +6758,109 @@ function renderAlertas(alerts) {
                 <small class="text-muted">Item: ${alert.item_id}</small>
             </div>
         `;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-function filtrarAlertas(filter) {
-    currentAlertFilter = filter;
-    
-    // Atualizar botões ativos
-    document.querySelectorAll('#monitor-alerts .btn-group .btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.textContent.toLowerCase().includes(filter) || 
-            (filter === 'all' && btn.textContent.includes('Todos'))) {
-            btn.classList.add('active');
-        }
-    });
-    
-    carregarAlertas();
-}
-
-async function marcarTodosAlertasLidos() {
-    try {
-        const response = await fetch(`${API_BASE}/competitors/alerts/read`, {
-            method: 'POST'
         });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Alertas marcados como lidos', 'success');
-            carregarAlertas();
-        }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
-    }
-}
 
-// Event listener para carregar alertas quando abrir a aba
-document.addEventListener('DOMContentLoaded', function() {
-    const monitorModal = document.getElementById('competitorMonitorModal');
-    if (monitorModal) {
-        monitorModal.addEventListener('shown.bs.tab', function(e) {
-            const target = e.target.getAttribute('data-bs-target');
-            if (target === '#monitor-alerts') {
-                carregarAlertas();
-            } else if (target === '#monitor-watchlist') {
-                carregarWatchlist();
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function filtrarAlertas(filter) {
+        currentAlertFilter = filter;
+
+        // Atualizar botões ativos
+        document.querySelectorAll('#monitor-alerts .btn-group .btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.toLowerCase().includes(filter) ||
+                (filter === 'all' && btn.textContent.includes('Todos'))) {
+                btn.classList.add('active');
             }
         });
+
+        carregarAlertas();
     }
-});
 
-// ========================================
-// Funções de IA Preditiva de Preços
-// ========================================
+    async function marcarTodosAlertasLidos() {
+        try {
+            const response = await fetch(`${API_BASE}/competitors/alerts/read`, {
+                method: 'POST'
+            });
 
-function abrirAIPricing() {
-    const modal = new bootstrap.Modal(document.getElementById('aiPricingModal'));
-    modal.show();
-}
+            const data = await response.json();
 
-async function obterSugestaoIA() {
-    const itemId = document.getElementById('aiSuggestItemId').value.trim();
-    const goal = document.getElementById('aiGoal').value;
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
-    }
-    
-    const container = document.getElementById('aiSuggestResults');
-    container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Analisando com IA...</p></div>';
-    
-    try {
-        const data = await requestJson('/api/ai/pricing/suggest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId, goal: goal })
-        });
-        
-        if (data.success && data.data) {
-            renderSugestaoIA(data.data);
-        } else {
-            container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Falha na análise'}</div>`;
+            if (data.success) {
+                showAlert('Alertas marcados como lidos', 'success');
+                carregarAlertas();
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
     }
-}
 
-function renderSugestaoIA(data) {
-    const container = document.getElementById('aiSuggestResults');
-    const priceDiff = data.suggested_price - data.current_price;
-    const priceDiffPercent = ((priceDiff / data.current_price) * 100).toFixed(1);
-    const priceClass = priceDiff > 0 ? 'text-success' : priceDiff < 0 ? 'text-danger' : 'text-muted';
-    
-    let html = `
+    // Event listener para carregar alertas quando abrir a aba
+    document.addEventListener('DOMContentLoaded', function() {
+        const monitorModal = document.getElementById('competitorMonitorModal');
+        if (monitorModal) {
+            monitorModal.addEventListener('shown.bs.tab', function(e) {
+                const target = e.target.getAttribute('data-bs-target');
+                if (target === '#monitor-alerts') {
+                    carregarAlertas();
+                } else if (target === '#monitor-watchlist') {
+                    carregarWatchlist();
+                }
+            });
+        }
+    });
+
+    // ========================================
+    // Funções de IA Preditiva de Preços
+    // ========================================
+
+    function abrirAIPricing() {
+        const modal = new bootstrap.Modal(document.getElementById('aiPricingModal'));
+        modal.show();
+    }
+
+    async function obterSugestaoIA() {
+        const itemId = document.getElementById('aiSuggestItemId').value.trim();
+        const goal = document.getElementById('aiGoal').value;
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('aiSuggestResults');
+        container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Analisando com IA...</p></div>';
+
+        try {
+            const data = await requestJson('/api/ai/pricing/suggest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    goal: goal
+                })
+            });
+
+            if (data.success && data.data) {
+                renderSugestaoIA(data.data);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Falha na análise'}</div>`;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function renderSugestaoIA(data) {
+        const container = document.getElementById('aiSuggestResults');
+        const priceDiff = data.suggested_price - data.current_price;
+        const priceDiffPercent = ((priceDiff / data.current_price) * 100).toFixed(1);
+        const priceClass = priceDiff > 0 ? 'text-success' : priceDiff < 0 ? 'text-danger' : 'text-muted';
+
+        let html = `
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-3">
@@ -6727,7 +6910,7 @@ function renderSugestaoIA(data) {
                         ` : '<p class="text-muted">Dados não disponíveis</p>'}
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-bullseye me-2"></i>Posição no Mercado
@@ -6751,58 +6934,62 @@ function renderSugestaoIA(data) {
                 </div>
             </div>
         </div>
-        
+
         ${data.reasoning ? `
             <div class="alert alert-light mt-3">
                 <i class="bi bi-chat-left-text me-2"></i>
                 <strong>Raciocínio:</strong> ${data.reasoning}
             </div>
         ` : ''}
-        
+
         <div class="text-end mt-3">
             <button class="btn btn-success" onclick="aplicarPrecoSugerido('${data.item_id}', ${data.suggested_price})">
                 <i class="bi bi-check-circle me-1"></i>Aplicar Preço Sugerido
             </button>
         </div>
     `;
-    
-    container.innerHTML = html;
-}
 
-async function analisarElasticidade() {
-    const itemId = document.getElementById('aiElasticityItemId').value.trim();
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
+        container.innerHTML = html;
     }
-    
-    const container = document.getElementById('aiElasticityResults');
-    container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Calculando elasticidade...</p></div>';
-    
-    try {
-        const data = await requestJson('/api/ai/pricing/elasticity', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId })
-        });
-        
-        if (data.success && data.data) {
-            renderElasticidade(data.data);
-        } else {
-            container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Dados insuficientes para análise'}</div>`;
+
+    async function analisarElasticidade() {
+        const itemId = document.getElementById('aiElasticityItemId').value.trim();
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
 
-function renderElasticidade(data) {
-    const container = document.getElementById('aiElasticityResults');
-    const elasticity = data.elasticity_coefficient || 0;
-    const isElastic = Math.abs(elasticity) > 1;
-    
-    let html = `
+        const container = document.getElementById('aiElasticityResults');
+        container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Calculando elasticidade...</p></div>';
+
+        try {
+            const data = await requestJson('/api/ai/pricing/elasticity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId
+                })
+            });
+
+            if (data.success && data.data) {
+                renderElasticidade(data.data);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Dados insuficientes para análise'}</div>`;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function renderElasticidade(data) {
+        const container = document.getElementById('aiElasticityResults');
+        const elasticity = data.elasticity_coefficient || 0;
+        const isElastic = Math.abs(elasticity) > 1;
+
+        let html = `
         <div class="row">
             <div class="col-md-4">
                 <div class="card text-center">
@@ -6835,7 +7022,7 @@ function renderElasticidade(data) {
                 </div>
             </div>
         </div>
-        
+
         ${data.scenarios && data.scenarios.length > 0 ? `
             <div class="card mt-3">
                 <div class="card-header">
@@ -6870,7 +7057,7 @@ function renderElasticidade(data) {
                 </div>
             </div>
         ` : ''}
-        
+
         ${data.recommendations && data.recommendations.length > 0 ? `
             <div class="alert alert-info mt-3">
                 <i class="bi bi-lightbulb me-2"></i>
@@ -6881,52 +7068,57 @@ function renderElasticidade(data) {
             </div>
         ` : ''}
     `;
-    
-    container.innerHTML = html;
-}
 
-async function preverReceita() {
-    const itemId = document.getElementById('aiForecastItemId').value.trim();
-    const pricesInput = document.getElementById('aiForecastPrices').value.trim();
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
+        container.innerHTML = html;
     }
-    
-    const pricePoints = pricesInput.split(',').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
-    
-    if (pricePoints.length === 0) {
-        showAlert('Informe pelo menos um preço válido', 'warning');
-        return;
-    }
-    
-    const container = document.getElementById('aiForecastResults');
-    container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Calculando previsões...</p></div>';
-    
-    try {
-        const data = await requestJson('/api/ai/pricing/forecast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId, price_points: pricePoints })
-        });
-        
-        if (data.success && data.data) {
-            renderPrevisaoReceita(data.data);
-        } else {
-            container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Falha na previsão'}</div>`;
+
+    async function preverReceita() {
+        const itemId = document.getElementById('aiForecastItemId').value.trim();
+        const pricesInput = document.getElementById('aiForecastPrices').value.trim();
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
 
-function renderPrevisaoReceita(data) {
-    const container = document.getElementById('aiForecastResults');
-    const scenarios = data.scenarios || data.forecasts || [];
-    const best = data.best_scenario || scenarios[0];
-    
-    let html = `
+        const pricePoints = pricesInput.split(',').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+
+        if (pricePoints.length === 0) {
+            showAlert('Informe pelo menos um preço válido', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('aiForecastResults');
+        container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Calculando previsões...</p></div>';
+
+        try {
+            const data = await requestJson('/api/ai/pricing/forecast', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    price_points: pricePoints
+                })
+            });
+
+            if (data.success && data.data) {
+                renderPrevisaoReceita(data.data);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Falha na previsão'}</div>`;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function renderPrevisaoReceita(data) {
+        const container = document.getElementById('aiForecastResults');
+        const scenarios = data.scenarios || data.forecasts || [];
+        const best = data.best_scenario || scenarios[0];
+
+        let html = `
         <div class="row mb-3">
             <div class="col-md-4">
                 <div class="card bg-success text-white">
@@ -6945,7 +7137,7 @@ function renderPrevisaoReceita(data) {
                 </div>
             </div>
         </div>
-        
+
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -6982,72 +7174,79 @@ function renderPrevisaoReceita(data) {
             </table>
         </div>
     `;
-    
-    container.innerHTML = html;
-    
-    // Renderizar gráfico
-    setTimeout(() => {
-        const ctx = document.getElementById('forecastChart');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: scenarios.map(s => 'R$ ' + formatNumber(s.price)),
-                    datasets: [{
-                        label: 'Receita Estimada',
-                        data: scenarios.map(s => s.estimated_revenue),
-                        backgroundColor: scenarios.map(s => s.price === best?.price ? 'rgba(40, 167, 69, 0.7)' : 'rgba(54, 162, 235, 0.5)'),
-                        borderColor: scenarios.map(s => s.price === best?.price ? 'rgba(40, 167, 69, 1)' : 'rgba(54, 162, 235, 1)'),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { beginAtZero: true }
+
+        container.innerHTML = html;
+
+        // Renderizar gráfico
+        setTimeout(() => {
+            const ctx = document.getElementById('forecastChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: scenarios.map(s => 'R$ ' + formatNumber(s.price)),
+                        datasets: [{
+                            label: 'Receita Estimada',
+                            data: scenarios.map(s => s.estimated_revenue),
+                            backgroundColor: scenarios.map(s => s.price === best?.price ? 'rgba(40, 167, 69, 0.7)' : 'rgba(54, 162, 235, 0.5)'),
+                            borderColor: scenarios.map(s => s.price === best?.price ? 'rgba(40, 167, 69, 1)' : 'rgba(54, 162, 235, 1)'),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
                     }
-                }
+                });
+            }
+        }, 100);
+    }
+
+    async function calcularPricingDinamico() {
+        const itemId = document.getElementById('aiDynamicItemId').value.trim();
+        const minMargin = parseFloat(document.getElementById('aiDynamicMinMargin').value) / 100;
+        const aggressive = document.getElementById('aiDynamicAggressive').value === 'true';
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('aiDynamicResults');
+        container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Calculando preço ótimo...</p></div>';
+
+        try {
+            const data = await requestJson(`/api/pricing/${ACCOUNT_ID}/calculate/${itemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    min_margin: minMargin,
+                    aggressive: aggressive
+                })
             });
-        }
-    }, 100);
-}
 
-async function calcularPricingDinamico() {
-    const itemId = document.getElementById('aiDynamicItemId').value.trim();
-    const minMargin = parseFloat(document.getElementById('aiDynamicMinMargin').value) / 100;
-    const aggressive = document.getElementById('aiDynamicAggressive').value === 'true';
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
-    }
-    
-    const container = document.getElementById('aiDynamicResults');
-    container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div><p class="mt-2">Calculando preço ótimo...</p></div>';
-    
-    try {
-        const data = await requestJson(`/api/pricing/${ACCOUNT_ID}/calculate/${itemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ min_margin: minMargin, aggressive: aggressive })
-        });
-        
-        if (data.success) {
-            renderPricingDinamico(data);
-        } else {
-            container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Falha no cálculo'}</div>`;
+            if (data.success) {
+                renderPricingDinamico(data);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Falha no cálculo'}</div>`;
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
     }
-}
 
-function renderPricingDinamico(data) {
-    const container = document.getElementById('aiDynamicResults');
-    const changePercent = data.change_percent || 0;
-    const changeClass = changePercent > 0 ? 'text-success' : changePercent < 0 ? 'text-danger' : 'text-muted';
-    
-    let html = `
+    function renderPricingDinamico(data) {
+        const container = document.getElementById('aiDynamicResults');
+        const changePercent = data.change_percent || 0;
+        const changeClass = changePercent > 0 ? 'text-success' : changePercent < 0 ? 'text-danger' : 'text-muted';
+
+        let html = `
         <div class="row">
             <div class="col-md-6">
                 <div class="card">
@@ -7083,7 +7282,7 @@ function renderPricingDinamico(data) {
                     </div>
                     <div class="card-body">
                         <p><strong>Motivo:</strong> ${data.reason || 'Otimização baseada em concorrência'}</p>
-                        
+
                         ${data.market_data ? `
                             <hr>
                             <h6>Dados de Mercado</h6>
@@ -7098,84 +7297,88 @@ function renderPricingDinamico(data) {
                 </div>
             </div>
         </div>
-        
+
         ${data.constraints ? `
             <div class="alert alert-light mt-3">
                 <i class="bi bi-shield-check me-2"></i>
                 <strong>Limites Aplicados:</strong>
-                Margem mínima: ${(data.constraints.min_margin * 100).toFixed(0)}% | 
+                Margem mínima: ${(data.constraints.min_margin * 100).toFixed(0)}% |
                 Preço mínimo: R$ ${formatNumber(data.constraints.min_price)} |
                 Desconto máximo: ${(data.constraints.max_discount * 100).toFixed(0)}%
             </div>
         ` : ''}
-        
+
         <div class="text-end mt-3">
             <button class="btn btn-success" onclick="aplicarPrecoSugerido('${data.item_id || ''}', ${data.optimal_price || 0})">
                 <i class="bi bi-check-circle me-1"></i>Aplicar Preço Ótimo
             </button>
         </div>
     `;
-    
-    container.innerHTML = html;
-}
 
-async function aplicarPrecoSugerido(itemId, preco) {
-    if (!confirm(`Aplicar preço R$ ${formatNumber(preco)} ao item ${itemId}?`)) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/apply/${itemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ new_price: preco })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Preço aplicado com sucesso!', 'success');
-            refreshItems();
-        } else {
-            showAlert(data.error || 'Erro ao aplicar preço', 'danger');
-        }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
+        container.innerHTML = html;
     }
-}
 
-// ========================================
-// PHASE 3: FUNÇÕES AVANÇADAS DE PRECIFICAÇÃO
-// ========================================
+    async function aplicarPrecoSugerido(itemId, preco) {
+        if (!confirm(`Aplicar preço R$ ${formatNumber(preco)} ao item ${itemId}?`)) return;
 
-// --- Motor de Regras ---
-function abrirRulesEngine() {
-    new bootstrap.Modal(document.getElementById('rulesEngineModal')).show();
-    loadRulesList();
-    loadRuleTemplates();
-}
+        try {
+            const response = await fetch(`${API_BASE}/apply/${itemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    new_price: preco
+                })
+            });
 
-async function loadRulesList() {
-    const container = document.getElementById('rulesListContainer');
-    const filterType = document.getElementById('rulesFilterType').value;
-    
-    try {
-        let url = `${API_BASE}/rules-engine/rules`;
-        if (filterType) url += `?type=${filterType}`;
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (!data.rules || data.rules.length === 0) {
-            container.innerHTML = '<div class="alert alert-info">Nenhuma regra criada ainda.</div>';
-            return;
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Preço aplicado com sucesso!', 'success');
+                refreshItems();
+            } else {
+                showAlert(data.error || 'Erro ao aplicar preço', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
         }
-        
-        let html = '<div class="list-group">';
-        data.rules.forEach(rule => {
-            const statusBadge = rule.active ? 
-                '<span class="badge bg-success">Ativa</span>' : 
-                '<span class="badge bg-secondary">Inativa</span>';
-            
-            html += `
+    }
+
+    // ========================================
+    // PHASE 3: FUNÇÕES AVANÇADAS DE PRECIFICAÇÃO
+    // ========================================
+
+    // --- Motor de Regras ---
+    function abrirRulesEngine() {
+        new bootstrap.Modal(document.getElementById('rulesEngineModal')).show();
+        loadRulesList();
+        loadRuleTemplates();
+    }
+
+    async function loadRulesList() {
+        const container = document.getElementById('rulesListContainer');
+        const filterType = document.getElementById('rulesFilterType').value;
+
+        try {
+            let url = `${API_BASE}/rules-engine/rules`;
+            if (filterType) url += `?type=${filterType}`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.rules || data.rules.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">Nenhuma regra criada ainda.</div>';
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            data.rules.forEach(rule => {
+                const statusBadge = rule.active ?
+                    '<span class="badge bg-success">Ativa</span>' :
+                    '<span class="badge bg-secondary">Inativa</span>';
+
+                html += `
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -7197,39 +7400,39 @@ async function loadRulesList() {
                         </div>
                     </div>
                 </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
+        }
     }
-}
 
-function getRuleTypeName(type) {
-    const types = {
-        'match_competitor': 'Igualar Concorrente',
-        'floor_ceiling': 'Piso/Teto',
-        'time_based': 'Por Horário',
-        'margin_based': 'Por Margem',
-        'stock_based': 'Por Estoque',
-        'velocity_based': 'Por Velocidade',
-        'category_position': 'Por Posição'
-    };
-    return types[type] || type;
-}
+    function getRuleTypeName(type) {
+        const types = {
+            'match_competitor': 'Igualar Concorrente',
+            'floor_ceiling': 'Piso/Teto',
+            'time_based': 'Por Horário',
+            'margin_based': 'Por Margem',
+            'stock_based': 'Por Estoque',
+            'velocity_based': 'Por Velocidade',
+            'category_position': 'Por Posição'
+        };
+        return types[type] || type;
+    }
 
-async function loadRuleTemplates() {
-    const container = document.getElementById('rulesTemplatesContainer');
-    
-    try {
-        const response = await fetch(`${API_BASE}/rules-engine/templates`);
-        const data = await response.json();
-        
-        if (!data.templates) return;
-        
-        let html = '';
-        data.templates.forEach(template => {
-            html += `
+    async function loadRuleTemplates() {
+        const container = document.getElementById('rulesTemplatesContainer');
+
+        try {
+            const response = await fetch(`${API_BASE}/rules-engine/templates`);
+            const data = await response.json();
+
+            if (!data.templates) return;
+
+            let html = '';
+            data.templates.forEach(template => {
+                html += `
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100">
                         <div class="card-body">
@@ -7244,19 +7447,19 @@ async function loadRuleTemplates() {
                         </div>
                     </div>
                 </div>`;
-        });
-        container.innerHTML = html;
-    } catch (err) {
-        console.error('Erro ao carregar templates:', err);
+            });
+            container.innerHTML = html;
+        } catch (err) {
+            console.error('Erro ao carregar templates:', err);
+        }
     }
-}
 
-function updateRuleConfigUI() {
-    const type = document.getElementById('ruleType').value;
-    const container = document.getElementById('ruleConfigContainer');
-    
-    const configs = {
-        'match_competitor': `
+    function updateRuleConfigUI() {
+        const type = document.getElementById('ruleType').value;
+        const container = document.getElementById('ruleConfigContainer');
+
+        const configs = {
+            'match_competitor': `
             <label class="form-label">Configuração: Igualar Concorrente</label>
             <div class="row g-2">
                 <div class="col-md-4">
@@ -7274,7 +7477,7 @@ function updateRuleConfigUI() {
                     </div>
                 </div>
             </div>`,
-        'floor_ceiling': `
+            'floor_ceiling': `
             <label class="form-label">Configuração: Piso e Teto</label>
             <div class="row g-2">
                 <div class="col-md-6">
@@ -7292,7 +7495,7 @@ function updateRuleConfigUI() {
                     </div>
                 </div>
             </div>`,
-        'margin_based': `
+            'margin_based': `
             <label class="form-label">Configuração: Por Margem</label>
             <div class="row g-2">
                 <div class="col-md-4">
@@ -7303,183 +7506,195 @@ function updateRuleConfigUI() {
                     </div>
                 </div>
             </div>`
-    };
-    
-    container.innerHTML = configs[type] || '<p class="text-muted small">Selecione o tipo de regra para configurar.</p>';
-}
+        };
 
-document.getElementById('createRuleForm')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const config = {};
-    const type = document.getElementById('ruleType').value;
-    
-    if (type === 'match_competitor') {
-        config.price_difference_percent = parseFloat(document.getElementById('configDifference')?.value || -1);
-        config.min_margin = parseFloat(document.getElementById('configMinMargin')?.value || 10) / 100;
-    } else if (type === 'floor_ceiling') {
-        config.floor = parseFloat(document.getElementById('configFloor')?.value || 0);
-        config.ceiling = parseFloat(document.getElementById('configCeiling')?.value || 0);
-    } else if (type === 'margin_based') {
-        config.target_margin = parseFloat(document.getElementById('configTargetMargin')?.value || 25) / 100;
+        container.innerHTML = configs[type] || '<p class="text-muted small">Selecione o tipo de regra para configurar.</p>';
     }
-    
-    try {
-        const response = await fetch(`${API_BASE}/rules-engine/rules`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: document.getElementById('ruleName').value,
-                rule_type: type,
-                priority: parseInt(document.getElementById('rulePriority').value),
-                description: document.getElementById('ruleDescription').value,
-                config: config
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Regra criada com sucesso!', 'success');
-            loadRulesList();
-            document.getElementById('createRuleForm').reset();
-            document.querySelector('[data-bs-target="#rules-list"]').click();
-        } else {
-            showAlert(data.error || 'Erro ao criar regra', 'danger');
+
+    document.getElementById('createRuleForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const config = {};
+        const type = document.getElementById('ruleType').value;
+
+        if (type === 'match_competitor') {
+            config.price_difference_percent = parseFloat(document.getElementById('configDifference')?.value || -1);
+            config.min_margin = parseFloat(document.getElementById('configMinMargin')?.value || 10) / 100;
+        } else if (type === 'floor_ceiling') {
+            config.floor = parseFloat(document.getElementById('configFloor')?.value || 0);
+            config.ceiling = parseFloat(document.getElementById('configCeiling')?.value || 0);
+        } else if (type === 'margin_based') {
+            config.target_margin = parseFloat(document.getElementById('configTargetMargin')?.value || 25) / 100;
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
-    }
-});
 
-async function toggleEngineRule(ruleId, active) {
-    try {
-        const response = await fetch(`${API_BASE}/rules-engine/rules/${ruleId}/toggle`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ active: active })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            showAlert(`Regra ${active ? 'ativada' : 'desativada'}!`, 'success');
-            loadRulesList();
+        try {
+            const response = await fetch(`${API_BASE}/rules-engine/rules`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: document.getElementById('ruleName').value,
+                    rule_type: type,
+                    priority: parseInt(document.getElementById('rulePriority').value),
+                    description: document.getElementById('ruleDescription').value,
+                    config: config
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Regra criada com sucesso!', 'success');
+                loadRulesList();
+                document.getElementById('createRuleForm').reset();
+                document.querySelector('[data-bs-target="#rules-list"]').click();
+            } else {
+                showAlert(data.error || 'Erro ao criar regra', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
-    }
-}
+    });
 
-async function deleteEngineRule(ruleId) {
-    if (!confirm('Excluir esta regra permanentemente?')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/rules-engine/rules/${ruleId}`, {
-            method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            showAlert('Regra excluída!', 'success');
-            loadRulesList();
+    async function toggleEngineRule(ruleId, active) {
+        try {
+            const response = await fetch(`${API_BASE}/rules-engine/rules/${ruleId}/toggle`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    active: active
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert(`Regra ${active ? 'ativada' : 'desativada'}!`, 'success');
+                loadRulesList();
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
     }
-}
 
-async function executeAllEngineRules() {
-    if (!confirm('Executar todas as regras ativas? Isso pode alterar vários preços.')) return;
-    
-    showAlert('Executando regras...', 'info');
-    
-    try {
-        const response = await fetch(`${API_BASE}/rules-engine/execute-all`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert(`Execução concluída! ${data.applied_count || 0} preços alterados.`, 'success');
-        } else {
-            showAlert(data.error || 'Erro na execução', 'danger');
+    async function deleteEngineRule(ruleId) {
+        if (!confirm('Excluir esta regra permanentemente?')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/rules-engine/rules/${ruleId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert('Regra excluída!', 'success');
+                loadRulesList();
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
     }
-}
 
-async function simulateEngineRules() {
-    const itemIds = document.getElementById('simulateItemIds').value
-        .split(',').map(id => id.trim()).filter(id => id);
-    
-    if (!itemIds.length) {
-        showAlert('Informe pelo menos um ID de item', 'warning');
-        return;
+    async function executeAllEngineRules() {
+        if (!confirm('Executar todas as regras ativas? Isso pode alterar vários preços.')) return;
+
+        showAlert('Executando regras...', 'info');
+
+        try {
+            const response = await fetch(`${API_BASE}/rules-engine/execute-all`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert(`Execução concluída! ${data.applied_count || 0} preços alterados.`, 'success');
+            } else {
+                showAlert(data.error || 'Erro na execução', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
     }
-    
-    const container = document.getElementById('simulationResults');
-    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/rules-engine/simulate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_ids: itemIds })
-        });
-        
-        const data = await response.json();
-        
-        if (!data.results || !data.results.length) {
-            container.innerHTML = '<div class="alert alert-info">Nenhuma regra aplicável encontrada.</div>';
+
+    async function simulateEngineRules() {
+        const itemIds = document.getElementById('simulateItemIds').value
+            .split(',').map(id => id.trim()).filter(id => id);
+
+        if (!itemIds.length) {
+            showAlert('Informe pelo menos um ID de item', 'warning');
             return;
         }
-        
-        let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Item</th><th>Regra</th><th>Preço Atual</th><th>Preço Sugerido</th></tr></thead><tbody>';
-        
-        data.results.forEach(r => {
-            html += `<tr>
+
+        const container = document.getElementById('simulationResults');
+        container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/rules-engine/simulate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_ids: itemIds
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.results || !data.results.length) {
+                container.innerHTML = '<div class="alert alert-info">Nenhuma regra aplicável encontrada.</div>';
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Item</th><th>Regra</th><th>Preço Atual</th><th>Preço Sugerido</th></tr></thead><tbody>';
+
+            data.results.forEach(r => {
+                html += `<tr>
                 <td>${r.item_id}</td>
                 <td>${r.rule_name || 'N/A'}</td>
                 <td>R$ ${formatNumber(r.current_price)}</td>
                 <td>R$ ${formatNumber(r.suggested_price)}</td>
             </tr>`;
-        });
-        
-        html += '</tbody></table></div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
-    }
-}
+            });
 
-// --- Agendamento de Preços ---
-function abrirScheduledPrices() {
-    new bootstrap.Modal(document.getElementById('scheduledPricesModal')).show();
-    loadScheduleCalendar();
-    loadSchedulesList();
-    loadCampaignsList();
-}
-
-async function loadScheduleCalendar() {
-    const container = document.getElementById('scheduleCalendar');
-    
-    try {
-        const response = await fetch(`${API_BASE}/schedules/calendar`);
-        const data = await response.json();
-        
-        if (!data.events || !data.events.length) {
-            container.innerHTML = '<p class="text-muted text-center">Nenhum agendamento no período.</p>';
-            return;
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Erro: ${err.message}</div>`;
         }
-        
-        // Simples visualização de lista (pode ser expandido com FullCalendar)
-        let html = '<div class="list-group">';
-        data.events.forEach(event => {
-            const date = new Date(event.scheduled_at);
-            html += `
+    }
+
+    // --- Agendamento de Preços ---
+    function abrirScheduledPrices() {
+        new bootstrap.Modal(document.getElementById('scheduledPricesModal')).show();
+        loadScheduleCalendar();
+        loadSchedulesList();
+        loadCampaignsList();
+    }
+
+    async function loadScheduleCalendar() {
+        const container = document.getElementById('scheduleCalendar');
+
+        try {
+            const response = await fetch(`${API_BASE}/schedules/calendar`);
+            const data = await response.json();
+
+            if (!data.events || !data.events.length) {
+                container.innerHTML = '<p class="text-muted text-center">Nenhum agendamento no período.</p>';
+                return;
+            }
+
+            // Simples visualização de lista (pode ser expandido com FullCalendar)
+            let html = '<div class="list-group">';
+            data.events.forEach(event => {
+                const date = new Date(event.scheduled_at);
+                html += `
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between">
                         <div>
@@ -7491,37 +7706,37 @@ async function loadScheduleCalendar() {
                         </div>
                     </div>
                 </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-    }
-}
-
-async function loadSchedulesList() {
-    const container = document.getElementById('schedulesListContainer');
-    
-    try {
-        const response = await fetch(`${API_BASE}/schedules/list`);
-        const data = await response.json();
-        
-        if (!data.schedules || !data.schedules.length) {
-            container.innerHTML = '<div class="alert alert-info">Nenhum agendamento ativo.</div>';
-            return;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
         }
-        
-        let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Item</th><th>Novo Preço</th><th>Data/Hora</th><th>Status</th><th></th></tr></thead><tbody>';
-        
-        data.schedules.forEach(s => {
-            const date = new Date(s.scheduled_at);
-            const statusBadge = {
-                'pending': '<span class="badge bg-warning">Pendente</span>',
-                'executed': '<span class="badge bg-success">Executado</span>',
-                'cancelled': '<span class="badge bg-secondary">Cancelado</span>'
-            }[s.status] || s.status;
-            
-            html += `<tr>
+    }
+
+    async function loadSchedulesList() {
+        const container = document.getElementById('schedulesListContainer');
+
+        try {
+            const response = await fetch(`${API_BASE}/schedules/list`);
+            const data = await response.json();
+
+            if (!data.schedules || !data.schedules.length) {
+                container.innerHTML = '<div class="alert alert-info">Nenhum agendamento ativo.</div>';
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Item</th><th>Novo Preço</th><th>Data/Hora</th><th>Status</th><th></th></tr></thead><tbody>';
+
+            data.schedules.forEach(s => {
+                const date = new Date(s.scheduled_at);
+                const statusBadge = {
+                    'pending': '<span class="badge bg-warning">Pendente</span>',
+                    'executed': '<span class="badge bg-success">Executado</span>',
+                    'cancelled': '<span class="badge bg-secondary">Cancelado</span>'
+                } [s.status] || s.status;
+
+                html += `<tr>
                 <td>${s.item_id}</td>
                 <td>R$ ${formatNumber(s.new_price)}</td>
                 <td>${date.toLocaleString('pt-BR')}</td>
@@ -7530,101 +7745,103 @@ async function loadSchedulesList() {
                     ${s.status === 'pending' ? `<button class="btn btn-xs btn-outline-danger" onclick="cancelSchedule(${s.id})"><i class="bi bi-x"></i></button>` : ''}
                 </td>
             </tr>`;
-        });
-        
-        html += '</tbody></table></div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
     }
-}
 
-function toggleScheduleRecurrence() {
-    const type = document.getElementById('scheduleType').value;
-    document.getElementById('recurrenceOptions').classList.toggle('d-none', type !== 'recurrent');
-}
+    function toggleScheduleRecurrence() {
+        const type = document.getElementById('scheduleType').value;
+        document.getElementById('recurrenceOptions').classList.toggle('d-none', type !== 'recurrent');
+    }
 
-document.getElementById('createScheduleForm')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const data = {
-        item_id: document.getElementById('scheduleItemId').value,
-        new_price: parseFloat(document.getElementById('schedulePrice').value),
-        scheduled_at: document.getElementById('scheduleDateTime').value
-    };
-    
-    if (document.getElementById('scheduleType').value === 'recurrent') {
-        data.recurrence = {
-            pattern: document.getElementById('recurrencePattern').value,
-            end_date: document.getElementById('recurrenceEnd').value
+    document.getElementById('createScheduleForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const data = {
+            item_id: document.getElementById('scheduleItemId').value,
+            new_price: parseFloat(document.getElementById('schedulePrice').value),
+            scheduled_at: document.getElementById('scheduleDateTime').value
         };
-    }
-    
-    const rollbackAt = document.getElementById('scheduleRollback').value;
-    if (rollbackAt) {
-        data.rollback_at = rollbackAt;
-        data.rollback_price = parseFloat(document.getElementById('scheduleRollbackPrice').value);
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/schedules/create`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            showAlert('Agendamento criado!', 'success');
-            document.getElementById('createScheduleForm').reset();
-            loadScheduleCalendar();
-            loadSchedulesList();
-        } else {
-            showAlert(result.error || 'Erro ao criar agendamento', 'danger');
-        }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
-    }
-});
 
-async function cancelSchedule(scheduleId) {
-    if (!confirm('Cancelar este agendamento?')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/schedules/${scheduleId}/cancel`, {
-            method: 'POST'
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            showAlert('Agendamento cancelado!', 'success');
-            loadSchedulesList();
-            loadScheduleCalendar();
+        if (document.getElementById('scheduleType').value === 'recurrent') {
+            data.recurrence = {
+                pattern: document.getElementById('recurrencePattern').value,
+                end_date: document.getElementById('recurrenceEnd').value
+            };
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
-    }
-}
 
-async function loadCampaignsList() {
-    const container = document.getElementById('campaignsListContainer');
-    
-    try {
-        const response = await fetch(`${API_BASE}/schedules/campaigns`);
-        const data = await response.json();
-        
-        if (!data.campaigns || !data.campaigns.length) {
-            container.innerHTML = '<div class="alert alert-info">Nenhuma campanha criada.</div>';
-            return;
+        const rollbackAt = document.getElementById('scheduleRollback').value;
+        if (rollbackAt) {
+            data.rollback_at = rollbackAt;
+            data.rollback_price = parseFloat(document.getElementById('scheduleRollbackPrice').value);
         }
-        
-        let html = '<div class="list-group">';
-        data.campaigns.forEach(c => {
-            const start = new Date(c.start_date).toLocaleDateString('pt-BR');
-            const end = new Date(c.end_date).toLocaleDateString('pt-BR');
-            
-            html += `
+
+        try {
+            const response = await fetch(`${API_BASE}/schedules/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showAlert('Agendamento criado!', 'success');
+                document.getElementById('createScheduleForm').reset();
+                loadScheduleCalendar();
+                loadSchedulesList();
+            } else {
+                showAlert(result.error || 'Erro ao criar agendamento', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    });
+
+    async function cancelSchedule(scheduleId) {
+        if (!confirm('Cancelar este agendamento?')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/schedules/${scheduleId}/cancel`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showAlert('Agendamento cancelado!', 'success');
+                loadSchedulesList();
+                loadScheduleCalendar();
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function loadCampaignsList() {
+        const container = document.getElementById('campaignsListContainer');
+
+        try {
+            const response = await fetch(`${API_BASE}/schedules/campaigns`);
+            const data = await response.json();
+
+            if (!data.campaigns || !data.campaigns.length) {
+                container.innerHTML = '<div class="alert alert-info">Nenhuma campanha criada.</div>';
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            data.campaigns.forEach(c => {
+                const start = new Date(c.start_date).toLocaleDateString('pt-BR');
+                const end = new Date(c.end_date).toLocaleDateString('pt-BR');
+
+                html += `
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -7634,32 +7851,32 @@ async function loadCampaignsList() {
                         <span class="badge bg-${c.status === 'active' ? 'success' : 'secondary'}">${c.status}</span>
                     </div>
                 </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
     }
-}
 
-// --- Analytics Avançado ---
-function abrirPriceAnalytics() {
-    new bootstrap.Modal(document.getElementById('priceAnalyticsModal')).show();
-    loadAnalyticsDashboard();
-}
+    // --- Analytics Avançado ---
+    function abrirPriceAnalytics() {
+        new bootstrap.Modal(document.getElementById('priceAnalyticsModal')).show();
+        loadAnalyticsDashboard();
+    }
 
-async function loadAnalyticsDashboard() {
-    const container = document.getElementById('analyticsMetrics');
-    const period = document.getElementById('analyticsPeriod').value;
-    
-    try {
-        const response = await fetch(`${API_BASE}/analytics/dashboard?period=${period}`);
-        const data = await response.json();
-        
-        if (!data.metrics) return;
-        
-        const m = data.metrics;
-        container.innerHTML = `
+    async function loadAnalyticsDashboard() {
+        const container = document.getElementById('analyticsMetrics');
+        const period = document.getElementById('analyticsPeriod').value;
+
+        try {
+            const response = await fetch(`${API_BASE}/analytics/dashboard?period=${period}`);
+            const data = await response.json();
+
+            if (!data.metrics) return;
+
+            const m = data.metrics;
+            container.innerHTML = `
             <div class="col-md-3">
                 <div class="card bg-primary text-white">
                     <div class="card-body text-center">
@@ -7693,75 +7910,75 @@ async function loadAnalyticsDashboard() {
                 </div>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="col-12"><div class="alert alert-danger">${err.message}</div></div>`;
-    }
-}
-
-async function loadPriceTrend() {
-    const itemId = document.getElementById('trendItemId').value;
-    const days = document.getElementById('trendDays').value;
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/analytics/trend/${itemId}?days=${days}`);
-        const data = await response.json();
-        
-        if (data.trend && window.Chart) {
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            
-            if (window.trendChartInstance) {
-                window.trendChartInstance.destroy();
-            }
-            
-            window.trendChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.trend.map(t => t.date),
-                    datasets: [{
-                        label: 'Preço',
-                        data: data.trend.map(t => t.price),
-                        borderColor: '#0d6efd',
-                        fill: false
-                    }]
-                }
-            });
+        } catch (err) {
+            container.innerHTML = `<div class="col-12"><div class="alert alert-danger">${err.message}</div></div>`;
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
     }
-}
 
-async function analyzeElasticity() {
-    const itemId = document.getElementById('elasticityItemId').value;
-    const container = document.getElementById('elasticityResults');
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
-    }
-    
-    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/analytics/elasticity/${itemId}`);
-        const data = await response.json();
-        
-        if (!data.elasticity) {
-            container.innerHTML = '<div class="alert alert-warning">Dados insuficientes para calcular elasticidade.</div>';
+    async function loadPriceTrend() {
+        const itemId = document.getElementById('trendItemId').value;
+        const days = document.getElementById('trendDays').value;
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
             return;
         }
-        
-        const e = data.elasticity;
-        const interpretation = e.coefficient < -1 ? 'Elástica (sensível a preço)' : 
-                             e.coefficient > -1 && e.coefficient < 0 ? 'Inelástica (pouco sensível)' : 
-                             'Neutra';
-        
-        container.innerHTML = `
+
+        try {
+            const response = await fetch(`${API_BASE}/analytics/trend/${itemId}?days=${days}`);
+            const data = await response.json();
+
+            if (data.trend && window.Chart) {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+
+                if (window.trendChartInstance) {
+                    window.trendChartInstance.destroy();
+                }
+
+                window.trendChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.trend.map(t => t.date),
+                        datasets: [{
+                            label: 'Preço',
+                            data: data.trend.map(t => t.price),
+                            borderColor: '#0d6efd',
+                            fill: false
+                        }]
+                    }
+                });
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function analyzeElasticity() {
+        const itemId = document.getElementById('elasticityItemId').value;
+        const container = document.getElementById('elasticityResults');
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
+            return;
+        }
+
+        container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/analytics/elasticity/${itemId}`);
+            const data = await response.json();
+
+            if (!data.elasticity) {
+                container.innerHTML = '<div class="alert alert-warning">Dados insuficientes para calcular elasticidade.</div>';
+                return;
+            }
+
+            const e = data.elasticity;
+            const interpretation = e.coefficient < -1 ? 'Elástica (sensível a preço)' :
+                e.coefficient > -1 && e.coefficient < 0 ? 'Inelástica (pouco sensível)' :
+                'Neutra';
+
+            container.innerHTML = `
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Análise de Elasticidade</h5>
@@ -7778,46 +7995,48 @@ async function analyzeElasticity() {
                 </div>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
     }
-}
 
-async function calculateROI() {
-    const itemId = document.getElementById('roiItemId').value;
-    const oldPrice = document.getElementById('roiOldPrice').value;
-    const newPrice = document.getElementById('roiNewPrice').value;
-    const period = document.getElementById('roiPeriod').value;
-    const container = document.getElementById('roiResults');
-    
-    if (!itemId || !oldPrice || !newPrice) {
-        showAlert('Preencha todos os campos', 'warning');
-        return;
-    }
-    
-    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/analytics/roi`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                item_id: itemId,
-                old_price: parseFloat(oldPrice),
-                new_price: parseFloat(newPrice),
-                period_days: parseInt(period)
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!data.roi) {
-            container.innerHTML = '<div class="alert alert-warning">Não foi possível calcular o ROI.</div>';
+    async function calculateROI() {
+        const itemId = document.getElementById('roiItemId').value;
+        const oldPrice = document.getElementById('roiOldPrice').value;
+        const newPrice = document.getElementById('roiNewPrice').value;
+        const period = document.getElementById('roiPeriod').value;
+        const container = document.getElementById('roiResults');
+
+        if (!itemId || !oldPrice || !newPrice) {
+            showAlert('Preencha todos os campos', 'warning');
             return;
         }
-        
-        const r = data.roi;
-        container.innerHTML = `
+
+        container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/analytics/roi`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    old_price: parseFloat(oldPrice),
+                    new_price: parseFloat(newPrice),
+                    period_days: parseInt(period)
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.roi) {
+                container.innerHTML = '<div class="alert alert-warning">Não foi possível calcular o ROI.</div>';
+                return;
+            }
+
+            const r = data.roi;
+            container.innerHTML = `
             <div class="card">
                 <div class="card-body">
                     <div class="row text-center">
@@ -7839,41 +8058,46 @@ async function calculateROI() {
                 </div>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
     }
-}
 
-async function forecastPrice() {
-    const itemId = document.getElementById('forecastItemId').value;
-    const days = document.getElementById('forecastDays').value;
-    const container = document.getElementById('forecastResults');
-    
-    if (!itemId) {
-        showAlert('Informe o ID do item', 'warning');
-        return;
-    }
-    
-    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
-    
-    try {
-        const response = await fetch(`${API_BASE}/analytics/forecast`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prices: [{ item_id: itemId, days: parseInt(days) }]
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!data.forecasts || !data.forecasts.length) {
-            container.innerHTML = '<div class="alert alert-warning">Dados insuficientes para previsão.</div>';
+    async function forecastPrice() {
+        const itemId = document.getElementById('forecastItemId').value;
+        const days = document.getElementById('forecastDays').value;
+        const container = document.getElementById('forecastResults');
+
+        if (!itemId) {
+            showAlert('Informe o ID do item', 'warning');
             return;
         }
-        
-        const f = data.forecasts[0];
-        container.innerHTML = `
+
+        container.innerHTML = '<div class="text-center py-3"><div class="spinner-border"></div></div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/analytics/forecast`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prices: [{
+                        item_id: itemId,
+                        days: parseInt(days)
+                    }]
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.forecasts || !data.forecasts.length) {
+                container.innerHTML = '<div class="alert alert-warning">Dados insuficientes para previsão.</div>';
+                return;
+            }
+
+            const f = data.forecasts[0];
+            container.innerHTML = `
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Previsão de Preço - ${days} dias</h5>
@@ -7894,148 +8118,152 @@ async function forecastPrice() {
                 </div>
             </div>
         `;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-    }
-}
-
-// --- Editor em Massa ---
-function abrirBulkEditor() {
-    new bootstrap.Modal(document.getElementById('bulkEditorModal')).show();
-    loadBulkBatchesHistory();
-}
-
-function updateBulkValueLabel() {
-    const operation = document.getElementById('bulkOperation').value;
-    const label = document.getElementById('bulkValueLabel');
-    const suffix = document.getElementById('bulkValueSuffix');
-    
-    if (operation.includes('percent') || operation === 'set_margin') {
-        label.textContent = 'Percentual';
-        suffix.textContent = '%';
-    } else if (operation.includes('fixed') || operation === 'set_price') {
-        label.textContent = 'Valor';
-        suffix.textContent = 'R$';
-    } else {
-        label.textContent = 'Valor';
-        suffix.textContent = '';
-    }
-}
-
-async function previewBulkEdit() {
-    const container = document.getElementById('bulkPreviewContainer');
-    const tbody = document.querySelector('#bulkPreviewTable tbody');
-    
-    const operation = document.getElementById('bulkOperation').value;
-    const value = parseFloat(document.getElementById('bulkValue').value || 0);
-    const category = document.getElementById('bulkFilterCategory').value;
-    const ids = document.getElementById('bulkFilterIds').value
-        .split(',').map(id => id.trim()).filter(id => id);
-    
-    try {
-        const response = await fetch(`${API_BASE}/bulk-editor/preview`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operation_type: operation,
-                value: value,
-                filters: {
-                    category_id: category || null,
-                    item_ids: ids.length ? ids : null
-                }
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (!data.preview || !data.preview.length) {
-            showAlert('Nenhum item encontrado com os filtros aplicados', 'warning');
-            return;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
         }
-        
-        let html = '';
-        data.preview.forEach(item => {
-            const change = item.new_price - item.current_price;
-            const changePercent = ((change / item.current_price) * 100).toFixed(1);
-            const changeClass = change >= 0 ? 'text-success' : 'text-danger';
-            
-            html += `<tr>
+    }
+
+    // --- Editor em Massa ---
+    function abrirBulkEditor() {
+        new bootstrap.Modal(document.getElementById('bulkEditorModal')).show();
+        loadBulkBatchesHistory();
+    }
+
+    function updateBulkValueLabel() {
+        const operation = document.getElementById('bulkOperation').value;
+        const label = document.getElementById('bulkValueLabel');
+        const suffix = document.getElementById('bulkValueSuffix');
+
+        if (operation.includes('percent') || operation === 'set_margin') {
+            label.textContent = 'Percentual';
+            suffix.textContent = '%';
+        } else if (operation.includes('fixed') || operation === 'set_price') {
+            label.textContent = 'Valor';
+            suffix.textContent = 'R$';
+        } else {
+            label.textContent = 'Valor';
+            suffix.textContent = '';
+        }
+    }
+
+    async function previewBulkEdit() {
+        const container = document.getElementById('bulkPreviewContainer');
+        const tbody = document.querySelector('#bulkPreviewTable tbody');
+
+        const operation = document.getElementById('bulkOperation').value;
+        const value = parseFloat(document.getElementById('bulkValue').value || 0);
+        const category = document.getElementById('bulkFilterCategory').value;
+        const ids = document.getElementById('bulkFilterIds').value
+            .split(',').map(id => id.trim()).filter(id => id);
+
+        try {
+            const response = await fetch(`${API_BASE}/bulk-editor/preview`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    operation_type: operation,
+                    value: value,
+                    filters: {
+                        category_id: category || null,
+                        item_ids: ids.length ? ids : null
+                    }
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.preview || !data.preview.length) {
+                showAlert('Nenhum item encontrado com os filtros aplicados', 'warning');
+                return;
+            }
+
+            let html = '';
+            data.preview.forEach(item => {
+                const change = item.new_price - item.current_price;
+                const changePercent = ((change / item.current_price) * 100).toFixed(1);
+                const changeClass = change >= 0 ? 'text-success' : 'text-danger';
+
+                html += `<tr>
                 <td>${item.item_id}</td>
                 <td>R$ ${formatNumber(item.current_price)}</td>
                 <td>R$ ${formatNumber(item.new_price)}</td>
                 <td class="${changeClass}">${change >= 0 ? '+' : ''}${changePercent}%</td>
             </tr>`;
-        });
-        
-        tbody.innerHTML = html;
-        container.classList.remove('d-none');
-        document.getElementById('applyBulkBtn').disabled = false;
-        
-        window.bulkPreviewData = data.preview;
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
-    }
-}
+            });
 
-async function applyBulkEdit() {
-    if (!confirm(`Aplicar alterações em ${window.bulkPreviewData?.length || 0} itens? Esta ação pode ser revertida.`)) {
-        return;
-    }
-    
-    const operation = document.getElementById('bulkOperation').value;
-    const value = parseFloat(document.getElementById('bulkValue').value || 0);
-    const category = document.getElementById('bulkFilterCategory').value;
-    const ids = document.getElementById('bulkFilterIds').value
-        .split(',').map(id => id.trim()).filter(id => id);
-    
-    try {
-        const response = await fetch(`${API_BASE}/bulk-editor/apply`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operation_type: operation,
-                value: value,
-                filters: {
-                    category_id: category || null,
-                    item_ids: ids.length ? ids : null
-                }
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert(`Alterações aplicadas! ${data.applied_count || 0} itens atualizados.`, 'success');
-            document.getElementById('bulkPreviewContainer').classList.add('d-none');
-            document.getElementById('applyBulkBtn').disabled = true;
-            loadBulkBatchesHistory();
-            refreshItems();
-        } else {
-            showAlert(data.error || 'Erro ao aplicar alterações', 'danger');
+            tbody.innerHTML = html;
+            container.classList.remove('d-none');
+            document.getElementById('applyBulkBtn').disabled = false;
+
+            window.bulkPreviewData = data.preview;
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
     }
-}
 
-async function loadBulkBatchesHistory() {
-    const container = document.getElementById('bulkBatchesHistory');
-    
-    try {
-        const response = await fetch(`${API_BASE}/bulk-editor/batches?limit=5`);
-        const data = await response.json();
-        
-        if (!data.batches || !data.batches.length) {
-            container.innerHTML = '<p class="text-muted small">Nenhuma operação em massa recente.</p>';
+    async function applyBulkEdit() {
+        if (!confirm(`Aplicar alterações em ${window.bulkPreviewData?.length || 0} itens? Esta ação pode ser revertida.`)) {
             return;
         }
-        
-        let html = '<div class="list-group list-group-flush">';
-        data.batches.forEach(b => {
-            const date = new Date(b.created_at).toLocaleString('pt-BR');
-            const canRollback = b.status === 'completed' && !b.rolled_back;
-            
-            html += `
+
+        const operation = document.getElementById('bulkOperation').value;
+        const value = parseFloat(document.getElementById('bulkValue').value || 0);
+        const category = document.getElementById('bulkFilterCategory').value;
+        const ids = document.getElementById('bulkFilterIds').value
+            .split(',').map(id => id.trim()).filter(id => id);
+
+        try {
+            const response = await fetch(`${API_BASE}/bulk-editor/apply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    operation_type: operation,
+                    value: value,
+                    filters: {
+                        category_id: category || null,
+                        item_ids: ids.length ? ids : null
+                    }
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert(`Alterações aplicadas! ${data.applied_count || 0} itens atualizados.`, 'success');
+                document.getElementById('bulkPreviewContainer').classList.add('d-none');
+                document.getElementById('applyBulkBtn').disabled = true;
+                loadBulkBatchesHistory();
+                refreshItems();
+            } else {
+                showAlert(data.error || 'Erro ao aplicar alterações', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function loadBulkBatchesHistory() {
+        const container = document.getElementById('bulkBatchesHistory');
+
+        try {
+            const response = await fetch(`${API_BASE}/bulk-editor/batches?limit=5`);
+            const data = await response.json();
+
+            if (!data.batches || !data.batches.length) {
+                container.innerHTML = '<p class="text-muted small">Nenhuma operação em massa recente.</p>';
+                return;
+            }
+
+            let html = '<div class="list-group list-group-flush">';
+            data.batches.forEach(b => {
+                const date = new Date(b.created_at).toLocaleString('pt-BR');
+                const canRollback = b.status === 'completed' && !b.rolled_back;
+
+                html += `
                 <div class="list-group-item px-0">
                     <div class="d-flex justify-content-between">
                         <div>
@@ -8050,66 +8278,66 @@ async function loadBulkBatchesHistory() {
                         ` : ''}
                     </div>
                 </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<p class="text-danger small">${err.message}</p>`;
-    }
-}
-
-async function rollbackBulkBatch(batchId) {
-    if (!confirm('Reverter esta operação em massa? Os preços voltarão aos valores anteriores.')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/bulk-editor/batches/${batchId}/rollback`, {
-            method: 'POST'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Operação revertida com sucesso!', 'success');
-            loadBulkBatchesHistory();
-            refreshItems();
-        } else {
-            showAlert(data.error || 'Erro ao reverter', 'danger');
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<p class="text-danger small">${err.message}</p>`;
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
     }
-}
 
-// --- Central de Notificações ---
-function abrirNotifications() {
-    new bootstrap.Modal(document.getElementById('notificationsModal')).show();
-    loadNotificationChannels();
-    loadNotificationHistory();
-    loadAvailableEvents();
-}
+    async function rollbackBulkBatch(batchId) {
+        if (!confirm('Reverter esta operação em massa? Os preços voltarão aos valores anteriores.')) return;
 
-async function loadNotificationChannels() {
-    const container = document.getElementById('channelsListContainer');
-    
-    try {
-        const response = await fetch(`${API_BASE}/notifications/channels`);
-        const data = await response.json();
-        
-        if (!data.channels || !data.channels.length) {
-            container.innerHTML = '<div class="alert alert-info">Nenhum canal configurado.</div>';
-            return;
+        try {
+            const response = await fetch(`${API_BASE}/bulk-editor/batches/${batchId}/rollback`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Operação revertida com sucesso!', 'success');
+                loadBulkBatchesHistory();
+                refreshItems();
+            } else {
+                showAlert(data.error || 'Erro ao reverter', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
         }
-        
-        let html = '<div class="list-group">';
-        data.channels.forEach(ch => {
-            const typeBadge = {
-                'email': '<span class="badge bg-primary">Email</span>',
-                'webhook': '<span class="badge bg-dark">Webhook</span>',
-                'slack': '<span class="badge bg-warning">Slack</span>',
-                'discord': '<span class="badge bg-info">Discord</span>'
-            }[ch.type] || ch.type;
-            
-            html += `
+    }
+
+    // --- Central de Notificações ---
+    function abrirNotifications() {
+        new bootstrap.Modal(document.getElementById('notificationsModal')).show();
+        loadNotificationChannels();
+        loadNotificationHistory();
+        loadAvailableEvents();
+    }
+
+    async function loadNotificationChannels() {
+        const container = document.getElementById('channelsListContainer');
+
+        try {
+            const response = await fetch(`${API_BASE}/notifications/channels`);
+            const data = await response.json();
+
+            if (!data.channels || !data.channels.length) {
+                container.innerHTML = '<div class="alert alert-info">Nenhum canal configurado.</div>';
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            data.channels.forEach(ch => {
+                const typeBadge = {
+                    'email': '<span class="badge bg-primary">Email</span>',
+                    'webhook': '<span class="badge bg-dark">Webhook</span>',
+                    'slack': '<span class="badge bg-warning">Slack</span>',
+                    'discord': '<span class="badge bg-info">Discord</span>'
+                } [ch.type] || ch.type;
+
+                html += `
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -8126,151 +8354,161 @@ async function loadNotificationChannels() {
                         </div>
                     </div>
                 </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-    }
-}
-
-function showCreateChannelForm() {
-    document.getElementById('createChannelForm').classList.remove('d-none');
-}
-
-function hideCreateChannelForm() {
-    document.getElementById('createChannelForm').classList.add('d-none');
-}
-
-function updateChannelConfigForm() {
-    const type = document.getElementById('channelType').value;
-    const container = document.getElementById('channelConfigFields');
-    
-    const configs = {
-        'email': '<label class="form-label">Email</label><input type="email" class="form-control" id="channelConfigValue">',
-        'webhook': '<label class="form-label">URL do Webhook</label><input type="url" class="form-control" id="channelConfigValue">',
-        'slack': '<label class="form-label">Slack Webhook URL</label><input type="url" class="form-control" id="channelConfigValue">',
-        'discord': '<label class="form-label">Discord Webhook URL</label><input type="url" class="form-control" id="channelConfigValue">'
-    };
-    
-    container.innerHTML = configs[type] || '';
-}
-
-async function createNotificationChannel() {
-    const name = document.getElementById('channelName').value;
-    const type = document.getElementById('channelType').value;
-    const configValue = document.getElementById('channelConfigValue')?.value;
-    
-    if (!name || !configValue) {
-        showAlert('Preencha todos os campos', 'warning');
-        return;
-    }
-    
-    const config = type === 'email' ? { email: configValue } : { url: configValue };
-    
-    try {
-        const response = await fetch(`${API_BASE}/notifications/channels`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, type, config })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Canal criado com sucesso!', 'success');
-            hideCreateChannelForm();
-            loadNotificationChannels();
-        } else {
-            showAlert(data.error || 'Erro ao criar canal', 'danger');
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
         }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
     }
-}
 
-async function testNotificationChannel(channelId) {
-    try {
-        const response = await fetch(`${API_BASE}/notifications/channels/${channelId}/test`, {
-            method: 'POST'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Notificação de teste enviada!', 'success');
-        } else {
-            showAlert(data.error || 'Falha no teste', 'danger');
-        }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
+    function showCreateChannelForm() {
+        document.getElementById('createChannelForm').classList.remove('d-none');
     }
-}
 
-async function deleteNotificationChannel(channelId) {
-    if (!confirm('Excluir este canal de notificação?')) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/notifications/channels/${channelId}`, {
-            method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Canal excluído!', 'success');
-            loadNotificationChannels();
-        }
-    } catch (err) {
-        showAlert('Erro: ' + err.message, 'danger');
+    function hideCreateChannelForm() {
+        document.getElementById('createChannelForm').classList.add('d-none');
     }
-}
 
-async function loadNotificationHistory() {
-    const container = document.getElementById('notificationHistoryContainer');
-    
-    try {
-        const response = await fetch(`${API_BASE}/notifications/history?limit=20`);
-        const data = await response.json();
-        
-        if (!data.history || !data.history.length) {
-            container.innerHTML = '<p class="text-muted">Nenhuma notificação enviada.</p>';
+    function updateChannelConfigForm() {
+        const type = document.getElementById('channelType').value;
+        const container = document.getElementById('channelConfigFields');
+
+        const configs = {
+            'email': '<label class="form-label">Email</label><input type="email" class="form-control" id="channelConfigValue">',
+            'webhook': '<label class="form-label">URL do Webhook</label><input type="url" class="form-control" id="channelConfigValue">',
+            'slack': '<label class="form-label">Slack Webhook URL</label><input type="url" class="form-control" id="channelConfigValue">',
+            'discord': '<label class="form-label">Discord Webhook URL</label><input type="url" class="form-control" id="channelConfigValue">'
+        };
+
+        container.innerHTML = configs[type] || '';
+    }
+
+    async function createNotificationChannel() {
+        const name = document.getElementById('channelName').value;
+        const type = document.getElementById('channelType').value;
+        const configValue = document.getElementById('channelConfigValue')?.value;
+
+        if (!name || !configValue) {
+            showAlert('Preencha todos os campos', 'warning');
             return;
         }
-        
-        let html = '<div class="list-group list-group-flush">';
-        data.history.forEach(h => {
-            const date = new Date(h.sent_at).toLocaleString('pt-BR');
-            const statusIcon = h.status === 'sent' ? 
-                '<i class="bi bi-check-circle text-success"></i>' : 
-                '<i class="bi bi-x-circle text-danger"></i>';
-            
-            html += `
+
+        const config = type === 'email' ? {
+            email: configValue
+        } : {
+            url: configValue
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/notifications/channels`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    type,
+                    config
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Canal criado com sucesso!', 'success');
+                hideCreateChannelForm();
+                loadNotificationChannels();
+            } else {
+                showAlert(data.error || 'Erro ao criar canal', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function testNotificationChannel(channelId) {
+        try {
+            const response = await fetch(`${API_BASE}/notifications/channels/${channelId}/test`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Notificação de teste enviada!', 'success');
+            } else {
+                showAlert(data.error || 'Falha no teste', 'danger');
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function deleteNotificationChannel(channelId) {
+        if (!confirm('Excluir este canal de notificação?')) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/notifications/channels/${channelId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Canal excluído!', 'success');
+                loadNotificationChannels();
+            }
+        } catch (err) {
+            showAlert('Erro: ' + err.message, 'danger');
+        }
+    }
+
+    async function loadNotificationHistory() {
+        const container = document.getElementById('notificationHistoryContainer');
+
+        try {
+            const response = await fetch(`${API_BASE}/notifications/history?limit=20`);
+            const data = await response.json();
+
+            if (!data.history || !data.history.length) {
+                container.innerHTML = '<p class="text-muted">Nenhuma notificação enviada.</p>';
+                return;
+            }
+
+            let html = '<div class="list-group list-group-flush">';
+            data.history.forEach(h => {
+                const date = new Date(h.sent_at).toLocaleString('pt-BR');
+                const statusIcon = h.status === 'sent' ?
+                    '<i class="bi bi-check-circle text-success"></i>' :
+                    '<i class="bi bi-x-circle text-danger"></i>';
+
+                html += `
                 <div class="list-group-item px-0">
                     ${statusIcon}
                     <span class="badge bg-secondary ms-2">${h.event_type}</span>
                     <small class="text-muted ms-2">${date}</small>
                 </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = `<p class="text-danger">${err.message}</p>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = `<p class="text-danger">${err.message}</p>`;
+        }
     }
-}
 
-async function loadAvailableEvents() {
-    const container = document.getElementById('availableEventsContainer');
-    
-    try {
-        const response = await fetch(`${API_BASE}/notifications/events`);
-        const data = await response.json();
-        
-        if (!data.events || !data.events.length) return;
-        
-        let html = '<div class="list-group">';
-        data.events.forEach(e => {
-            html += `
+    async function loadAvailableEvents() {
+        const container = document.getElementById('availableEventsContainer');
+
+        try {
+            const response = await fetch(`${API_BASE}/notifications/events`);
+            const data = await response.json();
+
+            if (!data.events || !data.events.length) return;
+
+            let html = '<div class="list-group">';
+            data.events.forEach(e => {
+                html += `
                 <div class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
                         <strong>${e.name}</strong>
@@ -8278,16 +8516,16 @@ async function loadAvailableEvents() {
                     </div>
                     <span class="badge bg-light text-dark">${e.code}</span>
                 </div>`;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-    } catch (err) {
-        console.error('Erro ao carregar eventos:', err);
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            console.error('Erro ao carregar eventos:', err);
+        }
     }
-}
 </script>
 
-<?php 
+<?php
 $content = ob_get_clean();
 include __DIR__ . '/../layouts/app.php';
 ?>

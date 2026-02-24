@@ -692,7 +692,7 @@ class ItemService
     {
         try {
             $stmt = $this->db->prepare("
-                UPDATE items 
+                UPDATE items
                 SET cost_price = :cost, tax_rate = :tax, updated_at = NOW()
                 WHERE ml_item_id = :id
             ");
@@ -1061,7 +1061,7 @@ class ItemService
         $statusCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) AS total,
                 SUM(CASE WHEN catalog_product_id IS NOT NULL THEN 1 ELSE 0 END) AS catalog,
                 SUM(CASE WHEN catalog_product_id IS NULL THEN 1 ELSE 0 END) AS common,
@@ -1113,7 +1113,7 @@ class ItemService
 
     /**
      * Sincroniza todos os anúncios da conta com o banco de dados local
-     * 
+     *
      * @param int $limit Máximo de itens por página
      * @return array Resultado da sincronização
      */

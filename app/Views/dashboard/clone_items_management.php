@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Clone Items Management View
- * 
+ *
  * Dashboard de gerenciamento de itens clonados com filtros,
  * operações em lote e sincronização.
  */
@@ -32,7 +33,7 @@ $pageTitle = 'Gerenciar Clones';
             </a>
         </div>
     </div>
-    
+
     <!-- Stats Cards -->
     <div class="row g-3 mb-4">
         <div class="col-md-2">
@@ -84,7 +85,7 @@ $pageTitle = 'Gerenciar Clones';
             </div>
         </div>
     </div>
-    
+
     <!-- Filters -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
@@ -134,7 +135,7 @@ $pageTitle = 'Gerenciar Clones';
             </form>
         </div>
     </div>
-    
+
     <!-- Batch Actions -->
     <div id="batchActions" class="alert alert-info d-none mb-4">
         <div class="d-flex justify-content-between align-items-center">
@@ -155,7 +156,7 @@ $pageTitle = 'Gerenciar Clones';
             </div>
         </div>
     </div>
-    
+
     <!-- Items Table -->
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
@@ -258,69 +259,76 @@ $pageTitle = 'Gerenciar Clones';
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-let currentPage = 1;
-let selectedItems = [];
-let currentItemId = null;
+    let currentPage = 1;
+    let selectedItems = [];
+    let currentItemId = null;
 
-async function requestJson(url, options = {}) {
-    if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-        return window.ApiClient.json(url, options);
+    async function requestJson(url, options = {}) {
+        if (window.ApiClient && typeof window.ApiClient.json === 'function') {
+            return window.ApiClient.json(url, options);
+        }
+
+        const response = await fetch(url, options);
+        const data = await response.json();
+        return {
+            response,
+            data
+        };
     }
 
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return { response, data };
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    loadStats();
-    loadItems();
-});
-
-async function loadStats() {
-    try {
-        const { data: stats } = await requestJson('/api/clone/items/stats');
-        
-        document.getElementById('statTotal').textContent = formatNumber(stats.total_items || 0);
-        document.getElementById('statActive').textContent = formatNumber(stats.active_items || 0);
-        document.getElementById('statVisits').textContent = formatNumber(stats.total_visits || 0);
-        document.getElementById('statSales').textContent = formatNumber(stats.total_sales || 0);
-        document.getElementById('statRevenue').textContent = formatCurrency(stats.total_revenue || 0);
-        document.getElementById('statConversion').textContent = (stats.avg_conversion || 0).toFixed(2) + '%';
-    } catch (error) {
-        console.error('Erro ao carregar stats:', error);
-    }
-}
-
-async function loadItems(page = 1) {
-    currentPage = page;
-    
-    const params = new URLSearchParams({
-        page: page,
-        limit: 20,
-        search: document.getElementById('search').value || '',
-        status: document.getElementById('filterStatus').value || '',
-        sort: document.getElementById('sortBy').value || 'created_at',
-        order: document.getElementById('sortOrder').value || 'DESC'
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+        loadItems();
     });
-    
-    document.getElementById('itemsTable').innerHTML = `
+
+    async function loadStats() {
+        try {
+            const {
+                data: stats
+            } = await requestJson('/api/clone/items/stats');
+
+            document.getElementById('statTotal').textContent = formatNumber(stats.total_items || 0);
+            document.getElementById('statActive').textContent = formatNumber(stats.active_items || 0);
+            document.getElementById('statVisits').textContent = formatNumber(stats.total_visits || 0);
+            document.getElementById('statSales').textContent = formatNumber(stats.total_sales || 0);
+            document.getElementById('statRevenue').textContent = formatCurrency(stats.total_revenue || 0);
+            document.getElementById('statConversion').textContent = (stats.avg_conversion || 0).toFixed(2) + '%';
+        } catch (error) {
+            console.error('Erro ao carregar stats:', error);
+        }
+    }
+
+    async function loadItems(page = 1) {
+        currentPage = page;
+
+        const params = new URLSearchParams({
+            page: page,
+            limit: 20,
+            search: document.getElementById('search').value || '',
+            status: document.getElementById('filterStatus').value || '',
+            sort: document.getElementById('sortBy').value || 'created_at',
+            order: document.getElementById('sortOrder').value || 'DESC'
+        });
+
+        document.getElementById('itemsTable').innerHTML = `
         <tr>
             <td colspan="9" class="text-center py-5">
                 <div class="spinner-border text-primary"></div>
             </td>
         </tr>
     `;
-    
-    try {
-        const { data } = await requestJson('/api/clone/items?' + params);
-        
-        renderItems(data.items || []);
-        renderPagination(data.pagination || {});
-        
-    } catch (error) {
-        console.error('Erro ao carregar itens:', error);
-        document.getElementById('itemsTable').innerHTML = `
+
+        try {
+            const {
+                data
+            } = await requestJson('/api/clone/items?' + params);
+
+            renderItems(data.items || []);
+            renderPagination(data.pagination || {});
+
+        } catch (error) {
+            console.error('Erro ao carregar itens:', error);
+            document.getElementById('itemsTable').innerHTML = `
             <tr>
                 <td colspan="9" class="text-center py-5 text-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
@@ -328,12 +336,12 @@ async function loadItems(page = 1) {
                 </td>
             </tr>
         `;
+        }
     }
-}
 
-function renderItems(items) {
-    if (!items.length) {
-        document.getElementById('itemsTable').innerHTML = `
+    function renderItems(items) {
+        if (!items.length) {
+            document.getElementById('itemsTable').innerHTML = `
             <tr>
                 <td colspan="9" class="text-center py-5 text-muted">
                     <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
@@ -341,19 +349,19 @@ function renderItems(items) {
                 </td>
             </tr>
         `;
-        return;
-    }
-    
-    let html = '';
-    items.forEach(item => {
-        const statusClass = getStatusClass(item.status);
-        const statusText = getStatusText(item.status);
-        const syncDate = item.last_synced_at ? formatDate(item.last_synced_at) : 'Nunca';
-        
-        html += `
+            return;
+        }
+
+        let html = '';
+        items.forEach(item => {
+            const statusClass = getStatusClass(item.status);
+            const statusText = getStatusText(item.status);
+            const syncDate = item.last_synced_at ? formatDate(item.last_synced_at) : 'Nunca';
+
+            html += `
             <tr>
                 <td>
-                    <input type="checkbox" class="form-check-input item-checkbox" 
+                    <input type="checkbox" class="form-check-input item-checkbox"
                            value="${item.target_item_id}" onchange="updateSelection()">
                 </td>
                 <td>
@@ -390,7 +398,7 @@ function renderItems(items) {
                         <button class="btn btn-outline-info" data-action="syncitem" data-param="${item.target_item_id}" title="Sincronizar">
                             <i class="fas fa-sync-alt"></i>
                         </button>
-                        <a href="${ML.itemUrl(item.target_item_id)}" 
+                        <a href="${ML.itemUrl(item.target_item_id)}"
                            target="_blank" class="btn btn-outline-warning" title="Ver no ML">
                             <i class="fas fa-external-link-alt"></i>
                         </a>
@@ -398,125 +406,133 @@ function renderItems(items) {
                 </td>
             </tr>
         `;
-    });
-    
-    document.getElementById('itemsTable').innerHTML = html;
-}
+        });
 
-function renderPagination(pagination) {
-    const { page = 1, pages = 1, total = 0, limit = 20 } = pagination;
-    const start = ((page - 1) * limit) + 1;
-    const end = Math.min(page * limit, total);
-    
-    document.getElementById('paginationInfo').textContent = 
-        `Mostrando ${start}-${end} de ${total} itens`;
-    
-    let html = '';
-    
-    if (pages > 1) {
-        html += `
+        document.getElementById('itemsTable').innerHTML = html;
+    }
+
+    function renderPagination(pagination) {
+        const {
+            page = 1, pages = 1, total = 0, limit = 20
+        } = pagination;
+        const start = ((page - 1) * limit) + 1;
+        const end = Math.min(page * limit, total);
+
+        document.getElementById('paginationInfo').textContent =
+            `Mostrando ${start}-${end} de ${total} itens`;
+
+        let html = '';
+
+        if (pages > 1) {
+            html += `
             <li class="page-item ${page <= 1 ? 'disabled' : ''}">
                 <a class="page-link" href="#" onclick="loadItems(${page - 1}); return false;">«</a>
             </li>
         `;
-        
-        for (let i = Math.max(1, page - 2); i <= Math.min(pages, page + 2); i++) {
-            html += `
+
+            for (let i = Math.max(1, page - 2); i <= Math.min(pages, page + 2); i++) {
+                html += `
                 <li class="page-item ${i === page ? 'active' : ''}">
                     <a class="page-link" href="#" onclick="loadItems(${i}); return false;">${i}</a>
                 </li>
             `;
-        }
-        
-        html += `
+            }
+
+            html += `
             <li class="page-item ${page >= pages ? 'disabled' : ''}">
                 <a class="page-link" href="#" onclick="loadItems(${page + 1}); return false;">»</a>
             </li>
         `;
+        }
+
+        document.getElementById('pagination').innerHTML = html;
     }
-    
-    document.getElementById('pagination').innerHTML = html;
-}
 
-function toggleSelectAll() {
-    const checked = document.getElementById('selectAll').checked;
-    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = checked);
-    updateSelection();
-}
-
-function updateSelection() {
-    selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-        .map(cb => cb.value);
-    
-    const batchActions = document.getElementById('batchActions');
-    const selectedCount = document.getElementById('selectedCount');
-    
-    if (selectedItems.length > 0) {
-        batchActions.classList.remove('d-none');
-        selectedCount.textContent = selectedItems.length;
-    } else {
-        batchActions.classList.add('d-none');
+    function toggleSelectAll() {
+        const checked = document.getElementById('selectAll').checked;
+        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = checked);
+        updateSelection();
     }
-}
 
-async function batchOperation(operation) {
-    if (!selectedItems.length) return;
-    
-    const confirmMsg = {
-        'activate': 'Deseja ativar os itens selecionados?',
-        'pause': 'Deseja pausar os itens selecionados?',
-        'sync': 'Deseja sincronizar os itens selecionados?',
-        'close': 'Deseja encerrar os itens selecionados? Esta ação é irreversível!'
-    };
-    
-    if (!confirm(confirmMsg[operation])) return;
-    
-    try {
-        const { data: result } = await requestJson('/api/clone/items/batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operation: operation,
-                item_ids: selectedItems
-            })
-        });
+    function updateSelection() {
+        selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+            .map(cb => cb.value);
 
-        
-        alert(`Operação concluída!\nSucesso: ${result.success}\nErros: ${result.errors}`);
-        
-        loadItems(currentPage);
-        loadStats();
-        
-    } catch (error) {
-        alert('Erro ao executar operação: ' + error.message);
+        const batchActions = document.getElementById('batchActions');
+        const selectedCount = document.getElementById('selectedCount');
+
+        if (selectedItems.length > 0) {
+            batchActions.classList.remove('d-none');
+            selectedCount.textContent = selectedItems.length;
+        } else {
+            batchActions.classList.add('d-none');
+        }
     }
-}
 
-async function showItemDetails(itemId) {
-    currentItemId = itemId;
-    const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
-    modal.show();
-    
-    document.getElementById('itemDetailContent').innerHTML = `
+    async function batchOperation(operation) {
+        if (!selectedItems.length) return;
+
+        const confirmMsg = {
+            'activate': 'Deseja ativar os itens selecionados?',
+            'pause': 'Deseja pausar os itens selecionados?',
+            'sync': 'Deseja sincronizar os itens selecionados?',
+            'close': 'Deseja encerrar os itens selecionados? Esta ação é irreversível!'
+        };
+
+        if (!confirm(confirmMsg[operation])) return;
+
+        try {
+            const {
+                data: result
+            } = await requestJson('/api/clone/items/batch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    operation: operation,
+                    item_ids: selectedItems
+                })
+            });
+
+
+            alert(`Operação concluída!\nSucesso: ${result.success}\nErros: ${result.errors}`);
+
+            loadItems(currentPage);
+            loadStats();
+
+        } catch (error) {
+            alert('Erro ao executar operação: ' + error.message);
+        }
+    }
+
+    async function showItemDetails(itemId) {
+        currentItemId = itemId;
+        const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
+        modal.show();
+
+        document.getElementById('itemDetailContent').innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-primary"></div>
         </div>
     `;
-    
-    try {
-        const { data: item } = await requestJson(`/api/clone/items/${itemId}`);
-        
-        document.getElementById('itemDetailContent').innerHTML = renderItemDetails(item);
-        
-    } catch (error) {
-        document.getElementById('itemDetailContent').innerHTML = `
+
+        try {
+            const {
+                data: item
+            } = await requestJson(`/api/clone/items/${itemId}`);
+
+            document.getElementById('itemDetailContent').innerHTML = renderItemDetails(item);
+
+        } catch (error) {
+            document.getElementById('itemDetailContent').innerHTML = `
             <div class="alert alert-danger">Erro ao carregar detalhes</div>
         `;
+        }
     }
-}
 
-function renderItemDetails(item) {
-    return `
+    function renderItemDetails(item) {
+        return `
         <div class="row">
             <div class="col-md-6">
                 <h6 class="fw-bold mb-3">Informações do Clone</h6>
@@ -581,168 +597,187 @@ function renderItemDetails(item) {
         <h6 class="fw-bold mb-3">Título</h6>
         <p class="mb-0">${escapeHtml(item.title || 'Sem título')}</p>
     `;
-}
-
-function showEditPrice(itemId, currentPrice) {
-    document.getElementById('editPriceItemId').value = itemId;
-    document.getElementById('currentPrice').value = formatCurrency(currentPrice);
-    document.getElementById('newPrice').value = currentPrice.toFixed(2);
-    
-    new bootstrap.Modal(document.getElementById('editPriceModal')).show();
-}
-
-async function savePrice() {
-    const itemId = document.getElementById('editPriceItemId').value;
-    const newPrice = parseFloat(document.getElementById('newPrice').value);
-    
-    if (isNaN(newPrice) || newPrice <= 0) {
-        alert('Preço inválido');
-        return;
     }
-    
-    try {
-        const { data: result } = await requestJson(`/api/clone/sync/price/${itemId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ price: newPrice })
-        });
 
-        
-        if (result.success) {
-            bootstrap.Modal.getInstance(document.getElementById('editPriceModal')).hide();
-            loadItems(currentPage);
-            alert('Preço atualizado com sucesso!');
-        } else {
-            alert('Erro: ' + (result.error || 'Falha ao atualizar'));
+    function showEditPrice(itemId, currentPrice) {
+        document.getElementById('editPriceItemId').value = itemId;
+        document.getElementById('currentPrice').value = formatCurrency(currentPrice);
+        document.getElementById('newPrice').value = currentPrice.toFixed(2);
+
+        new bootstrap.Modal(document.getElementById('editPriceModal')).show();
+    }
+
+    async function savePrice() {
+        const itemId = document.getElementById('editPriceItemId').value;
+        const newPrice = parseFloat(document.getElementById('newPrice').value);
+
+        if (isNaN(newPrice) || newPrice <= 0) {
+            alert('Preço inválido');
+            return;
         }
-    } catch (error) {
-        alert('Erro ao salvar: ' + error.message);
-    }
-}
 
-async function syncItem(itemId) {
-    try {
-        const { data: result } = await requestJson(`/api/clone/sync/item/${itemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        try {
+            const {
+                data: result
+            } = await requestJson(`/api/clone/sync/price/${itemId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    price: newPrice
+                })
+            });
 
-        
-        if (result.success) {
-            alert('Item sincronizado com sucesso!');
-            loadItems(currentPage);
-        } else {
-            alert('Erro: ' + (result.error || 'Falha ao sincronizar'));
+
+            if (result.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editPriceModal')).hide();
+                loadItems(currentPage);
+                alert('Preço atualizado com sucesso!');
+            } else {
+                alert('Erro: ' + (result.error || 'Falha ao atualizar'));
+            }
+        } catch (error) {
+            alert('Erro ao salvar: ' + error.message);
         }
-    } catch (error) {
-        alert('Erro ao sincronizar: ' + error.message);
     }
-}
 
-function syncCurrentItem() {
-    if (currentItemId) {
-        syncItem(currentItemId);
-    }
-}
+    async function syncItem(itemId) {
+        try {
+            const {
+                data: result
+            } = await requestJson(`/api/clone/sync/item/${itemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
 
-async function syncAll() {
-    if (!confirm('Deseja sincronizar todos os itens? Isso pode demorar alguns minutos.')) {
-        return;
+
+            if (result.success) {
+                alert('Item sincronizado com sucesso!');
+                loadItems(currentPage);
+            } else {
+                alert('Erro: ' + (result.error || 'Falha ao sincronizar'));
+            }
+        } catch (error) {
+            alert('Erro ao sincronizar: ' + error.message);
+        }
     }
-    
-    try {
-        const { data: result } = await requestJson('/api/clone/sync/all', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ limit: 100 })
+
+    function syncCurrentItem() {
+        if (currentItemId) {
+            syncItem(currentItemId);
+        }
+    }
+
+    async function syncAll() {
+        if (!confirm('Deseja sincronizar todos os itens? Isso pode demorar alguns minutos.')) {
+            return;
+        }
+
+        try {
+            const {
+                data: result
+            } = await requestJson('/api/clone/sync/all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    limit: 100
+                })
+            });
+
+
+            alert(`Sincronização concluída!\nTotal: ${result.total}\nSincronizados: ${result.synced}\nErros: ${result.errors}`);
+
+            loadItems(currentPage);
+            loadStats();
+
+        } catch (error) {
+            alert('Erro ao sincronizar: ' + error.message);
+        }
+    }
+
+    function exportItems() {
+        const params = new URLSearchParams({
+            status: document.getElementById('filterStatus').value || '',
         });
 
-        
-        alert(`Sincronização concluída!\nTotal: ${result.total}\nSincronizados: ${result.synced}\nErros: ${result.errors}`);
-        
-        loadItems(currentPage);
-        loadStats();
-        
-    } catch (error) {
-        alert('Erro ao sincronizar: ' + error.message);
+        window.open('/api/clone/items/export?' + params, '_blank');
     }
-}
 
-function exportItems() {
-    const params = new URLSearchParams({
-        status: document.getElementById('filterStatus').value || '',
+    function clearFilters() {
+        document.getElementById('search').value = '';
+        document.getElementById('filterStatus').value = '';
+        document.getElementById('sortBy').value = 'created_at';
+        document.getElementById('sortOrder').value = 'DESC';
+        loadItems(1);
+    }
+
+    // Utility functions
+    function formatNumber(n) {
+        return new Intl.NumberFormat('pt-BR').format(n || 0);
+    }
+
+    function formatCurrency(n) {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(n || 0);
+    }
+
+    function formatDate(date) {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function getStatusClass(status) {
+        const classes = {
+            'completed': 'bg-success',
+            'active': 'bg-success',
+            'paused': 'bg-warning',
+            'closed': 'bg-secondary',
+            'failed': 'bg-danger',
+            'pending': 'bg-info'
+        };
+        return classes[status] || 'bg-secondary';
+    }
+
+    function getStatusText(status) {
+        const texts = {
+            'completed': 'Ativo',
+            'active': 'Ativo',
+            'paused': 'Pausado',
+            'closed': 'Encerrado',
+            'failed': 'Erro',
+            'pending': 'Pendente'
+        };
+        return texts[status] || status;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    // CSP Event Delegation
+    document.addEventListener('click', e => {
+        const t = e.target.closest('[data-action]');
+        if (!t) return;
+        const action = t.dataset.action;
+        const fn = window[action] || window[action.replace(/-([a-z])/g, (m, c) => c.toUpperCase())];
+        if (fn) {
+            e.preventDefault();
+            fn(t.dataset.param || t.dataset.id);
+        }
     });
-    
-    window.open('/api/clone/items/export?' + params, '_blank');
-}
-
-function clearFilters() {
-    document.getElementById('search').value = '';
-    document.getElementById('filterStatus').value = '';
-    document.getElementById('sortBy').value = 'created_at';
-    document.getElementById('sortOrder').value = 'DESC';
-    loadItems(1);
-}
-
-// Utility functions
-function formatNumber(n) {
-    return new Intl.NumberFormat('pt-BR').format(n || 0);
-}
-
-function formatCurrency(n) {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    }).format(n || 0);
-}
-
-function formatDate(date) {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-function getStatusClass(status) {
-    const classes = {
-        'completed': 'bg-success',
-        'active': 'bg-success',
-        'paused': 'bg-warning',
-        'closed': 'bg-secondary',
-        'failed': 'bg-danger',
-        'pending': 'bg-info'
-    };
-    return classes[status] || 'bg-secondary';
-}
-
-function getStatusText(status) {
-    const texts = {
-        'completed': 'Ativo',
-        'active': 'Ativo',
-        'paused': 'Pausado',
-        'closed': 'Encerrado',
-        'failed': 'Erro',
-        'pending': 'Pendente'
-    };
-    return texts[status] || status;
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-// CSP Event Delegation
-document.addEventListener('click', e => {
-    const t = e.target.closest('[data-action]');
-    if (!t) return;
-    const action = t.dataset.action;
-    const fn = window[action] || window[action.replace(/-([a-z])/g, (m,c) => c.toUpperCase())];
-    if (fn) { e.preventDefault(); fn(t.dataset.param || t.dataset.id); }
-});
 </script>

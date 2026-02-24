@@ -965,11 +965,11 @@
                     <h6>🚚 Informações de Envio</h6>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <strong>Frete Grátis:</strong> 
+                            <strong>Frete Grátis:</strong>
                             ${competitor.free_shipping ? '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Sim</span>' : '<span class="text-danger"><i class="bi bi-x-circle-fill"></i> Não</span>'}
                         </div>
                         <div class="col-6">
-                            <strong>Tipo:</strong> 
+                            <strong>Tipo:</strong>
                             <span class="badge bg-${competitor.shipping_type === 'fulfillment' ? 'success' : 'secondary'}">${competitor.shipping_type === 'fulfillment' ? 'Full' : competitor.shipping_type || 'Padrão'}</span>
                         </div>
                         <div class="col-6"><strong>Localização:</strong> ${competitor.seller_city || 'N/A'}, ${competitor.seller_state || 'N/A'}</div>
@@ -1012,7 +1012,7 @@
                             <i class="bi bi-box-arrow-up-right"></i> Ver no ML
                         </a>
                         <button class="btn btn-outline-success btn-sm" onclick="CompetitorSpy.toggleWatchlist('${competitor.id}')">
-                            <i class="bi bi-bookmark${this.isInWatchlist(competitor.id) ? '-fill' : ''}"></i> 
+                            <i class="bi bi-bookmark${this.isInWatchlist(competitor.id) ? '-fill' : ''}"></i>
                             ${this.isInWatchlist(competitor.id) ? 'Na Watchlist' : 'Adicionar à Watchlist'}
                         </button>
                     </div>
