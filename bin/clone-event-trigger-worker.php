@@ -3,12 +3,12 @@
 
 /**
  * Clone Event Trigger Worker
- * 
+ *
  * Monitora e processa triggers de eventos para clonagem automática
- * 
+ *
  * Uso:
  *   php bin/clone-event-trigger-worker.php [options]
- * 
+ *
  * Opções:
  *   --once           Executa uma vez e encerra
  *   --dry-run        Simula sem executar ações
@@ -144,7 +144,7 @@ do {
         }
 
         $cycleDuration = round(microtime(true) - $cycleStart, 2);
-        
+
         if ($verbose) {
             logMessage("Ciclo completado em {$cycleDuration}s", 'DEBUG');
         }
@@ -152,10 +152,9 @@ do {
         if (!$runOnce) {
             sleep($interval);
         }
-
     } catch (\Exception $e) {
         logMessage("Erro no ciclo: " . $e->getMessage(), 'ERROR');
-        
+
         // Notificar erro crítico
         try {
             notifyError($e->getMessage());
@@ -167,7 +166,6 @@ do {
             sleep($interval * 2); // Esperar mais em caso de erro
         }
     }
-
 } while (!$runOnce);
 
 // Relatório final
@@ -190,7 +188,7 @@ function getTriggers(PDO $db, ?string $specificTrigger): array
 {
     if ($specificTrigger) {
         $stmt = $db->prepare("
-            SELECT * FROM clone_event_triggers 
+            SELECT * FROM clone_event_triggers
             WHERE trigger_id = :trigger_id AND is_active = 1
         ");
         $stmt->execute(['trigger_id' => $specificTrigger]);
@@ -202,20 +200,20 @@ function getTriggers(PDO $db, ?string $specificTrigger): array
         SELECT * FROM clone_event_triggers
         WHERE is_active = 1
         AND (
-            last_check_at IS NULL 
+            last_check_at IS NULL
             OR last_check_at < DATE_SUB(NOW(), INTERVAL check_interval_minutes MINUTE)
         )
         ORDER BY last_check_at ASC
         LIMIT 10
     ");
     $stmt->execute();
-    
+
     $triggers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($triggers as &$trigger) {
         $trigger['conditions'] = json_decode($trigger['conditions'] ?? '[]', true);
         $trigger['actions'] = json_decode($trigger['actions'] ?? '[]', true);
     }
-    
+
     return $triggers;
 }
 
@@ -252,10 +250,10 @@ function notifyError(string $message): void
     // Tentar enviar notificação via Slack/Discord
     try {
         $stmt = Database::getInstance()->query("
-            SELECT id FROM ml_accounts WHERE is_active = 1 LIMIT 1
+            SELECT id FROM ml_accounts WHERE status = 'active' LIMIT 1
         ");
         $accountId = $stmt->fetchColumn();
-        
+
         if ($accountId) {
             $notifier = new CloneSlackDiscordNotificationService((int) $accountId);
             $notifier->sendSlackNotification('worker_error', [
@@ -286,7 +284,7 @@ function logMessage(string $message, string $level = 'INFO'): void
     $color = $colors[$level] ?? $colors['INFO'];
 
     $output = "[{$timestamp}] {$color}[{$level}]{$reset} {$message}";
-    
+
     if (php_sapi_name() === 'cli') {
         echo $output . PHP_EOL;
     }
@@ -297,7 +295,7 @@ function logMessage(string $message, string $level = 'INFO'): void
     if (!is_dir($logDir)) {
         mkdir($logDir, 0755, true);
     }
-    
+
     file_put_contents(
         $logFile,
         "[{$timestamp}] [{$level}] {$message}" . PHP_EOL,

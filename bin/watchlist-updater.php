@@ -7,7 +7,7 @@
  * Atualiza todos os itens da watchlist e gera alertas automáticos
  * 
  * CRON: Executar a cada 6 horas
- * 0 */6 * * * php /path/to/bin/watchlist-updater.php >> /path/to/storage/logs/watchlist.log 2>&1
+ * 0 * / 6 * * * php /path/to/bin/watchlist-updater.php >> /path/to/storage/logs/watchlist.log 2>&1
  * 
  * @author AI Development Team
  * @version 1.0.0

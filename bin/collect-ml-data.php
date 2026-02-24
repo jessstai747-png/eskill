@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -52,7 +53,7 @@ try {
 // Get active accounts
 try {
     $stmt = $db->query("
-        SELECT id, nickname, seller_id, status,
+        SELECT id, nickname, ml_user_id, status,
                access_token IS NOT NULL as has_token,
                token_expires_at
         FROM ml_accounts
@@ -81,7 +82,7 @@ foreach ($accounts as $acc) {
     if ($acc['token_expires_at'] && strtotime($acc['token_expires_at']) < time()) {
         $expired = ' (EXPIRADO)';
     }
-    echo "   [{$acc['id']}] {$acc['nickname']} — seller_id={$acc['seller_id']} {$tokenStatus}{$expired}\n";
+    echo "   [{$acc['id']}] {$acc['nickname']} — ml_user_id={$acc['ml_user_id']} {$tokenStatus}{$expired}\n";
 }
 
 // Test mode: just test 1 API call
@@ -170,16 +171,16 @@ foreach ($accounts as $account) {
         echo "\n── [{$nickname}] Coletando Pedidos (últimos 30 dias) ──\n";
         try {
             $client = new MercadoLivreClient($accountId);
-            $sellerId = $account['seller_id'];
+            $sellerId = $account['ml_user_id'];
 
             if (empty($sellerId)) {
-                echo "   ⚠️  seller_id não encontrado — buscando...\n";
+                echo "   ⚠️  ml_user_id não encontrado — buscando via API...\n";
                 $me = $client->get('/users/me');
                 $sellerId = (string) ($me['id'] ?? '');
                 if (!empty($sellerId)) {
-                    $db->prepare("UPDATE ml_accounts SET seller_id = :sid WHERE id = :id")
+                    $db->prepare("UPDATE ml_accounts SET ml_user_id = :sid WHERE id = :id")
                         ->execute(['sid' => $sellerId, 'id' => $accountId]);
-                    echo "   ✅ seller_id salvo: {$sellerId}\n";
+                    echo "   ✅ ml_user_id salvo: {$sellerId}\n";
                 }
             }
 
@@ -205,18 +206,17 @@ foreach ($accounts as $account) {
                             continue;
                         }
                         $stmt = $db->prepare("
-                            INSERT INTO ml_orders (order_id, account_id, status, total_amount, date_created, buyer_nickname, raw_data)
-                            VALUES (:order_id, :account_id, :status, :total, :created, :buyer, :raw)
-                            ON DUPLICATE KEY UPDATE status = :status2, total_amount = :total2, raw_data = :raw2
+                            INSERT INTO ml_orders (ml_order_id, ml_account_id, order_data, status, total_amount, date_created)
+                            VALUES (:ml_order_id, :ml_account_id, :order_data, :status, :total, :created)
+                            ON DUPLICATE KEY UPDATE status = :status2, total_amount = :total2, order_data = :raw2
                         ");
                         $stmt->execute([
-                            'order_id' => $orderId,
-                            'account_id' => $accountId,
+                            'ml_order_id' => $orderId,
+                            'ml_account_id' => $accountId,
+                            'order_data' => json_encode($order),
                             'status' => $order['status'] ?? 'unknown',
                             'total' => (float) ($order['total_amount'] ?? 0),
                             'created' => $order['date_created'] ?? date('Y-m-d H:i:s'),
-                            'buyer' => $order['buyer']['nickname'] ?? 'N/A',
-                            'raw' => json_encode($order),
                             'status2' => $order['status'] ?? 'unknown',
                             'total2' => (float) ($order['total_amount'] ?? 0),
                             'raw2' => json_encode($order),
@@ -230,7 +230,7 @@ foreach ($accounts as $account) {
                 echo "   ✅ Salvos no DB: {$savedCount}\n";
                 $totalOrdersSynced += $savedCount;
             } else {
-                echo "   ❌ Não foi possível determinar seller_id\n";
+                echo "   ❌ Não foi possível determinar ml_user_id (seller_id)\n";
             }
         } catch (\Exception $e) {
             echo "   ❌ Exception: " . $e->getMessage() . "\n";

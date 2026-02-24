@@ -750,7 +750,8 @@ class OpenClawConnectorService
             array_map(
                 static fn(array $item): ?string => isset($item['id']) && is_string($item['id']) ? $item['id'] : null,
                 $items
-            )
+            ),
+            static fn(?string $id): bool => $id !== null
         ));
         $aggregate['page'] = $page;
         $aggregate['pages'] = $pages;

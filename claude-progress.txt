@@ -6,6 +6,45 @@
 
 ---
 
+## Sessão: 2026-02-25b — Auditoria de schema SQL em workers de produção
+
+### Contexto
+Continuação da sessão 2026-02-25a. Auditoria profunda de todos os workers bin/ que serão rodados via crontab em produção, verificando compatibilidade dos SQL queries com o schema real das migrations.
+
+### Bugs Críticos Encontrados e Corrigidos
+
+1. **`bin/collect-ml-data.php`** — 2 bugs:
+   - INSERT INTO ml_orders usava colunas erradas: `order_id, account_id, buyer_nickname, raw_data` → corrigido para `ml_order_id, ml_account_id, order_data`
+   - SELECT usava `seller_id` em ml_accounts (coluna inexistente) → corrigido para `ml_user_id`
+
+2. **`bin/ab-test-worker.php`** — 1 bug:
+   - SELECT usava `name` em ml_accounts (coluna inexistente) → corrigido para `nickname`
+   - `$account['name']` → `$account['nickname']`
+
+3. **`bin/auto-pricing-optimizer.php`** — 1 bug:
+   - Mesmo bug que ab-test-worker: `name` → `nickname` no SELECT e no acesso ao array
+
+4. **`bin/clone-event-trigger-worker.php`** — 1 bug:
+   - WHERE usava `is_active = 1` em ml_accounts (coluna não existe, é status ENUM) → corrigido para `status = 'active'`
+
+5. **`bin/auto-token-refresh-worker.php`** — 3 bugs:
+   - SELECT usava `mp_access_token` em ml_accounts (coluna inexistente) → removido do query
+   - `syncMercadoPagoData()` esperava mp_access_token do array de conta → refatorado para buscar de `ean_settings` (via `getMercadoPagoToken()`)
+   - INSERT INTO items usava `item_id, sold_quantity` (colunas inexistentes) → corrigido para `ml_item_id, category_id, data` seguindo o padrão do ItemService
+
+### Validação
+- `php -l` em todos os 9 arquivos modificados: sem erros de sintaxe
+- `php vendor/bin/phpunit --testsuite=Unit`: 2896 testes, 6727 assertions, 0 falhas, 34 skipped
+- Schema verificado contra: `008_create_items_table.sql`, `004_create_ml_orders_table.sql`, `000_install_all.sql`
+
+### Arquivos Também Modificados (por linter/formatter externo)
+- `bin/monitor-auth-failures.php` — Removidos imports não usados (PDO, PDOException)
+- `bin/record-metrics.php` — Formatação de comentário cron
+- `bin/watchlist-updater.php` — Formatação de comentário cron
+- `app/Services/OpenClawConnectorService.php` — Adicionado filtro null no array_filter
+
+---
+
 ## Sessão: 2026-02-25a — Tooling de deploy para produção com dados reais do ML
 
 ### Contexto

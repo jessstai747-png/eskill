@@ -5,7 +5,7 @@
  *
  * This script should be run periodically (e.g., every 5 minutes) via cron.
  * Example cron entry:
- *  */5 * * * * /usr/bin/php /path/to/your/project/bin/record-metrics.php >> /path/to/your/project/storage/logs/cron.log 2>&1
+ * (every 5 minutes) * / 5 * * * * /usr/bin/php /path/to/your/project/bin/record-metrics.php >> /path/to/your/project/storage/logs/cron.log 2>&1
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';

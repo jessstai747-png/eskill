@@ -3,12 +3,12 @@
 
 /**
  * Auto Token Refresh & Data Sync Worker
- * 
+ *
  * Worker automático que:
  * 1. Renova tokens do ML/MP automaticamente
  * 2. Sincroniza dados reais das APIs
  * 3. Atualiza cache local
- * 
+ *
  * Executar via cron:
  * 0,30 * * * * /usr/bin/php /path/to/auto-token-refresh-worker.php >> /var/log/token-sync.log 2>&1
  */
@@ -56,30 +56,29 @@ class AutoTokenRefreshWorker
     public function run(): void
     {
         $this->log("🚀 Auto Token Refresh Worker - Iniciando", 'info');
-        
+
         try {
             // Fase 1: Refresh Tokens
             $this->log("📝 Fase 1: Renovando tokens...", 'info');
             $this->refreshTokens();
-            
+
             // Fase 2: Sincronizar Dados ML
             $this->log("🔄 Fase 2: Sincronizando dados Mercado Livre...", 'info');
             $this->syncMercadoLivreData();
-            
+
             // Fase 3: Sincronizar Dados MP (se configurado)
             if ($this->isMercadoPagoEnabled()) {
                 $this->log("💳 Fase 3: Sincronizando Mercado Pago...", 'info');
                 $this->syncMercadoPagoData();
             }
-            
+
             // Fase 4: Estatísticas
             $this->printSummary();
-            
         } catch (\Exception $e) {
             $this->log("❌ Erro fatal: " . $e->getMessage(), 'error');
             $this->stats['errors'][] = $e->getMessage();
         }
-        
+
         $this->log("✅ Worker finalizado", 'info');
     }
 
@@ -90,10 +89,10 @@ class AutoTokenRefreshWorker
     {
         // Renovar tokens que expiram nas próximas 2 horas
         $result = $this->tokenService->refreshExpiring(120);
-        
+
         $this->stats['tokens_refreshed'] = $result['refreshed'] ?? 0;
         $this->stats['tokens_failed'] = $result['failed'] ?? 0;
-        
+
         $this->log(sprintf(
             "   ✅ Tokens: %d renovados, %d falhas",
             $this->stats['tokens_refreshed'],
@@ -108,23 +107,23 @@ class AutoTokenRefreshWorker
     {
         // Buscar contas ativas com tokens válidos
         $accounts = $this->getActiveAccounts();
-        
+
         foreach ($accounts as $account) {
             $this->log("   → Conta: {$account['user_id']} ({$account['nickname']})", 'info');
-            
+
             try {
                 // Sincronizar itens
                 $this->syncItems($account['id']);
-                
+
                 // Sincronizar pedidos recentes
                 $this->syncOrders($account['id']);
-                
+
                 // Sincronizar perguntas não respondidas
                 $this->syncQuestions($account['id']);
-                
+
                 // Delay entre contas para evitar rate limit
                 usleep(500000); // 0.5 segundos
-                
+
             } catch (\Exception $e) {
                 $this->log("   ❌ Erro na conta {$account['user_id']}: " . $e->getMessage(), 'error');
                 $this->stats['errors'][] = "Conta {$account['user_id']}: {$e->getMessage()}";
@@ -144,17 +143,17 @@ class AutoTokenRefreshWorker
                 $this->log("      ✗ Seller ID não encontrado para sincronizar itens", 'warning');
                 return;
             }
-            
+
             // Buscar itens ativos (primeira página apenas para economizar API calls)
             $response = $this->unwrapMlResponse($client->get("/users/{$sellerId}/items/search", [
                 'status' => 'active',
                 'limit' => 50
             ]));
-            
+
             if (!isset($response['results']) || !is_array($response['results'])) {
                 return;
             }
-            
+
             $synced = 0;
             foreach ($response['results'] as $itemId) {
                 try {
@@ -163,22 +162,21 @@ class AutoTokenRefreshWorker
                     if (isset($item['error'])) {
                         continue;
                     }
-                    
+
                     // Atualizar no banco
                     $this->updateItemInDatabase($accountId, $item);
                     $synced++;
-                    
+
                     usleep(100000); // 0.1s entre itens
-                    
+
                 } catch (\Exception $e) {
                     // Ignorar erros em itens individuais
                     continue;
                 }
             }
-            
+
             $this->stats['items_synced'] += $synced;
             $this->log("      ✓ {$synced} itens sincronizados", 'info');
-            
         } catch (\Exception $e) {
             $this->log("      ✗ Erro ao sincronizar itens: " . $e->getMessage(), 'error');
         }
@@ -196,20 +194,20 @@ class AutoTokenRefreshWorker
                 $this->log("      ✗ Seller ID não encontrado para sincronizar pedidos", 'warning');
                 return;
             }
-            
+
             // Últimos 7 dias de pedidos
             $dateFrom = date('Y-m-d\T00:00:00.000-00:00', strtotime('-7 days'));
-            
+
             $response = $this->unwrapMlResponse($client->get('/orders/search', [
                 'seller' => $sellerId,
                 'order.date_created.from' => $dateFrom,
                 'limit' => 50
             ]));
-            
+
             if (!isset($response['results']) || !is_array($response['results'])) {
                 return;
             }
-            
+
             $synced = 0;
             foreach ($response['results'] as $order) {
                 if (!is_array($order)) {
@@ -218,10 +216,9 @@ class AutoTokenRefreshWorker
                 $this->updateOrderInDatabase($accountId, $order);
                 $synced++;
             }
-            
+
             $this->stats['orders_synced'] += $synced;
             $this->log("      ✓ {$synced} pedidos sincronizados", 'info');
-            
         } catch (\Exception $e) {
             $this->log("      ✗ Erro ao sincronizar pedidos: " . $e->getMessage(), 'error');
         }
@@ -239,17 +236,17 @@ class AutoTokenRefreshWorker
                 $this->log("      ✗ Seller ID não encontrado para sincronizar perguntas", 'warning');
                 return;
             }
-            
+
             $response = $this->unwrapMlResponse($client->get('/questions/search', [
                 'seller_id' => $sellerId,
                 'status' => 'UNANSWERED',
                 'limit' => 50
             ]));
-            
+
             if (!isset($response['questions']) || !is_array($response['questions'])) {
                 return;
             }
-            
+
             $synced = 0;
             foreach ($response['questions'] as $question) {
                 if (!is_array($question)) {
@@ -258,13 +255,12 @@ class AutoTokenRefreshWorker
                 $this->updateQuestionInDatabase($accountId, $question, $sellerId);
                 $synced++;
             }
-            
+
             $this->stats['questions_synced'] += $synced;
-            
+
             if ($synced > 0) {
                 $this->log("      ✓ {$synced} perguntas sincronizadas", 'info');
             }
-            
         } catch (\Exception $e) {
             $this->log("      ✗ Erro ao sincronizar perguntas: " . $e->getMessage(), 'error');
         }
@@ -275,19 +271,39 @@ class AutoTokenRefreshWorker
      */
     private function syncMercadoPagoData(): void
     {
+        // MP access token is a global credential stored in ean_settings, not per-account
+        $mpToken = $this->getMercadoPagoToken();
+        if (empty($mpToken)) {
+            $this->log("   ⏭️  Mercado Pago não configurado (mp_access_token ausente)", 'info');
+            return;
+        }
+
         $accounts = $this->getActiveAccounts();
-        
+
         foreach ($accounts as $account) {
-            if (empty($account['mp_access_token'])) {
-                continue; // Pular se não tem MP configurado
-            }
-            
             try {
-                $this->syncMercadoPagoPayments($account['id'], $account['mp_access_token']);
+                $this->syncMercadoPagoPayments($account['id'], $mpToken);
                 usleep(500000);
             } catch (\Exception $e) {
                 $this->log("   ❌ Erro MP conta {$account['user_id']}: " . $e->getMessage(), 'error');
             }
+        }
+    }
+
+    /**
+     * Obtém o token do Mercado Pago de ean_settings
+     */
+    private function getMercadoPagoToken(): ?string
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT setting_value FROM ean_settings WHERE setting_key = 'mp_access_token'"
+            );
+            $stmt->execute();
+            $value = $stmt->fetchColumn();
+            return $value ? (string) $value : null;
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 
@@ -299,7 +315,7 @@ class AutoTokenRefreshWorker
         try {
             // API do Mercado Pago
             $dateFrom = date('Y-m-d\T00:00:00.000-00:00', strtotime('-7 days'));
-            
+
             $ch = curl_init();
             curl_setopt_array($ch, [
                 CURLOPT_URL => "https://api.mercadopago.com/v1/payments/search?begin_date={$dateFrom}&limit=50",
@@ -309,30 +325,29 @@ class AutoTokenRefreshWorker
                     "Content-Type: application/json"
                 ]
             ]);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            
+
             if ($httpCode !== 200) {
                 return;
             }
-            
+
             $data = json_decode($response, true);
-            
+
             if (!isset($data['results'])) {
                 return;
             }
-            
+
             $synced = 0;
             foreach ($data['results'] as $payment) {
                 $this->updatePaymentInDatabase($accountId, $payment);
                 $synced++;
             }
-            
+
             $this->stats['payments_synced'] += $synced;
             $this->log("      ✓ {$synced} pagamentos MP sincronizados", 'info');
-            
         } catch (\Exception $e) {
             $this->log("      ✗ Erro ao sincronizar MP: " . $e->getMessage(), 'error');
         }
@@ -344,9 +359,9 @@ class AutoTokenRefreshWorker
     private function getActiveAccounts(): array
     {
         $stmt = $this->db->prepare("
-            SELECT id, user_id, nickname, mp_access_token
-            FROM ml_accounts 
-            WHERE status = 'active' 
+            SELECT id, user_id, nickname
+            FROM ml_accounts
+            WHERE status = 'active'
             AND token_expires_at > NOW()
             ORDER BY id
         ");
@@ -358,29 +373,31 @@ class AutoTokenRefreshWorker
     {
         $stmt = $this->db->prepare("
             INSERT INTO items (
-                account_id, item_id, title, price, status, 
-                available_quantity, sold_quantity, updated_at
+                account_id, ml_item_id, title, price, status,
+                available_quantity, category_id, data, updated_at
             ) VALUES (
-                :account_id, :item_id, :title, :price, :status,
-                :available_quantity, :sold_quantity, NOW()
+                :account_id, :ml_item_id, :title, :price, :status,
+                :available_quantity, :category_id, :data, NOW()
             )
             ON DUPLICATE KEY UPDATE
                 title = VALUES(title),
                 price = VALUES(price),
                 status = VALUES(status),
                 available_quantity = VALUES(available_quantity),
-                sold_quantity = VALUES(sold_quantity),
+                category_id = VALUES(category_id),
+                data = VALUES(data),
                 updated_at = NOW()
         ");
-        
+
         $stmt->execute([
             'account_id' => $accountId,
-            'item_id' => $item['id'],
-            'title' => $item['title'],
-            'price' => $item['price'],
-            'status' => $item['status'],
+            'ml_item_id' => $item['id'],
+            'title' => $item['title'] ?? '',
+            'price' => $item['price'] ?? 0,
+            'status' => $item['status'] ?? 'unknown',
             'available_quantity' => $item['available_quantity'] ?? 0,
-            'sold_quantity' => $item['sold_quantity'] ?? 0
+            'category_id' => $item['category_id'] ?? null,
+            'data' => json_encode($item),
         ]);
     }
 
@@ -406,7 +423,7 @@ class AutoTokenRefreshWorker
         ");
 
         $orderJson = json_encode($order) ?: '{}';
-        
+
         $stmt->execute([
             'ml_order_id' => $order['id'],
             'ml_account_id' => $accountId,
@@ -444,7 +461,7 @@ class AutoTokenRefreshWorker
         if (!is_numeric($fromUserId)) {
             $fromUserId = 0;
         }
-        
+
         $stmt->execute([
             'account_id' => $accountId,
             'question_id' => $question['id'],
@@ -473,7 +490,7 @@ class AutoTokenRefreshWorker
                 status = VALUES(status),
                 synced_at = NOW()
         ");
-        
+
         $stmt->execute([
             'account_id' => $accountId,
             'payment_id' => $payment['id'],
@@ -508,7 +525,7 @@ class AutoTokenRefreshWorker
     {
         $timestamp = date('Y-m-d H:i:s');
         echo "[{$timestamp}] [{$level}] {$message}\n";
-        
+
         // Log para arquivo também
         $logFile = __DIR__ . '/../storage/logs/auto-token-refresh.log';
         @file_put_contents($logFile, "[{$timestamp}] {$message}\n", FILE_APPEND);
@@ -520,7 +537,7 @@ class AutoTokenRefreshWorker
     private function printSummary(): void
     {
         $duration = round(microtime(true) - $this->startTime, 2);
-        
+
         echo "\n" . str_repeat('=', 60) . "\n";
         echo "📊 RESUMO DA EXECUÇÃO\n";
         echo str_repeat('=', 60) . "\n";
@@ -531,14 +548,14 @@ class AutoTokenRefreshWorker
         echo "🛒 Pedidos sincronizados: {$this->stats['orders_synced']}\n";
         echo "❓ Perguntas sincronizadas: {$this->stats['questions_synced']}\n";
         echo "💳 Pagamentos MP sincronizados: {$this->stats['payments_synced']}\n";
-        
+
         if (!empty($this->stats['errors'])) {
             echo "\n⚠️  ERROS:\n";
             foreach ($this->stats['errors'] as $error) {
                 echo "   • {$error}\n";
             }
         }
-        
+
         echo str_repeat('=', 60) . "\n";
     }
 }
