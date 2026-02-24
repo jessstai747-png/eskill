@@ -7,7 +7,7 @@ use Exception;
 
 /**
  * ClonePostActionsService
- * 
+ *
  * Executa ações pós-clone como Tech Sheet, SEO, Pricing
  */
 class ClonePostActionsService
@@ -66,7 +66,7 @@ class ClonePostActionsService
 
         foreach ($actions as $action) {
             $stmt = $this->db->prepare("
-                INSERT INTO clone_post_actions_log 
+                INSERT INTO clone_post_actions_log
                 (clone_job_id, cloned_item_id, target_item_id, action_type, status)
                 VALUES (:job_id, :cloned_id, :item_id, :action, 'pending')
             ");
@@ -157,7 +157,6 @@ class ClonePostActionsService
                 'status' => $status,
                 'result' => $result,
             ];
-
         } catch (Exception $e) {
             $this->updateActionStatus($actionId, 'failed', null, $e->getMessage());
 
@@ -177,7 +176,7 @@ class ClonePostActionsService
     private function updateActionStatus(int $actionId, string $status, ?array $result = null, ?string $error = null): void
     {
         $stmt = $this->db->prepare("
-            UPDATE clone_post_actions_log 
+            UPDATE clone_post_actions_log
             SET status = :status, result = :result, error_message = :error, processed_at = NOW()
             WHERE id = :id
         ");
@@ -228,7 +227,6 @@ class ClonePostActionsService
                 'message' => 'Sugestões de Tech Sheet geradas',
                 'created' => (int)($result['created'] ?? 0),
             ];
-
         } catch (Exception $e) {
             return [
                 'status' => 'failed',
@@ -293,7 +291,6 @@ class ClonePostActionsService
                 'score' => $analysis['score'] ?? null,
                 'grade' => $analysis['grade'] ?? null,
             ];
-
         } catch (Exception $e) {
             return [
                 'status' => 'failed',
@@ -374,7 +371,6 @@ class ClonePostActionsService
                 'message' => 'Preço já está competitivo',
                 'current_price' => $item['price'],
             ];
-
         } catch (Exception $e) {
             return [
                 'status' => 'failed',
@@ -414,7 +410,6 @@ class ClonePostActionsService
                 'status' => 'success',
                 'message' => 'Anúncio ativado com sucesso',
             ];
-
         } catch (Exception $e) {
             return [
                 'status' => 'failed',
@@ -455,7 +450,7 @@ class ClonePostActionsService
         // Tentar na tabela catalog_clone_job_items
         try {
             $stmt = $this->db->prepare("
-                SELECT ccj.target_account_id 
+                SELECT ccj.target_account_id
                 FROM catalog_clone_job_items ccji
                 JOIN catalog_clone_jobs ccj ON ccji.job_id = ccj.job_id
                 WHERE ccji.target_item_id = :item_id
@@ -479,7 +474,7 @@ class ClonePostActionsService
     public function getActionStats(?string $jobId = null, ?int $days = 7): array
     {
         $sql = "
-            SELECT 
+            SELECT
                 action_type,
                 status,
                 COUNT(*) as count

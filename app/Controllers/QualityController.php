@@ -8,7 +8,7 @@ use App\Services\Quality\ValidationService;
 
 /**
  * Quality Controller - Gerencia APIs de qualidade de anúncios
- * 
+ *
  * Endpoints:
  * - GET  /api/quality/health/{itemId} - Health check de anúncio
  * - GET  /api/quality/score/{itemId} - Quality score de anúncio
@@ -234,14 +234,14 @@ class QualityController extends BaseController
     {
         try {
             $db = \App\Database::getInstance();
-            
+
             // Buscar itens do account
             $stmt = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_items,
                     SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_items,
                     SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) as paused_items
-                FROM items 
+                FROM items
                 WHERE account_id = :account_id
             ");
             $stmt->execute(['account_id' => $this->accountId]);
@@ -250,14 +250,14 @@ class QualityController extends BaseController
             // Calcular scores médios de qualidade
             $healthService = new HealthCheckService($this->accountId);
             $scoreService = new QualityScoreService($this->accountId);
-            
+
             // Buscar últimos 50 itens para análise rápida
             $stmt = $db->prepare("
-                SELECT item_id 
-                FROM items 
-                WHERE account_id = :account_id 
+                SELECT item_id
+                FROM items
+                WHERE account_id = :account_id
                 AND status = 'active'
-                ORDER BY updated_at DESC 
+                ORDER BY updated_at DESC
                 LIMIT 50
             ");
             $stmt->execute(['account_id' => $this->accountId]);
@@ -274,7 +274,7 @@ class QualityController extends BaseController
                 try {
                     $score = $scoreService->calculateQualityScore($itemId);
                     $scoreValue = $score['quality_score']['total'] ?? 0;
-                    
+
                     if ($scoreValue > 80) $qualityScores['excellent']++;
                     elseif ($scoreValue > 60) $qualityScores['good']++;
                     elseif ($scoreValue > 40) $qualityScores['fair']++;
@@ -291,7 +291,6 @@ class QualityController extends BaseController
                 'analyzed_items' => count($items),
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage());
         }
@@ -318,8 +317,8 @@ class QualityController extends BaseController
             // Buscar itens
             $stmt = $db->prepare("
                 SELECT ml_item_id AS item_id, title, price, status, available_quantity, sold_quantity
-                FROM items 
-                WHERE account_id = :account_id 
+                FROM items
+                WHERE account_id = :account_id
                 AND status = :status
                 ORDER BY sold_quantity DESC, updated_at DESC
                 LIMIT {$perPage} OFFSET {$offset}
@@ -356,8 +355,8 @@ class QualityController extends BaseController
 
             // Total para paginação
             $stmt = $db->prepare("
-                SELECT COUNT(*) 
-                FROM items 
+                SELECT COUNT(*)
+                FROM items
                 WHERE account_id = :account_id AND status = :status
             ");
             $stmt->execute([
@@ -375,7 +374,6 @@ class QualityController extends BaseController
                     'total_pages' => ceil($totalItems / $perPage)
                 ]
             ]);
-
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage());
         }

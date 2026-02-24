@@ -8,12 +8,12 @@ use PDO;
 class StatisticsService
 {
     private \PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Obtém estatísticas gerais do sistema
      */
@@ -26,10 +26,10 @@ class StatisticsService
             'revenue' => $this->getRevenueStats(),
             'performance' => $this->getPerformanceStats(),
         ];
-        
+
         return $stats;
     }
-    
+
     /**
      * Estatísticas de contas
      */
@@ -37,20 +37,20 @@ class StatisticsService
     {
         try {
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
                     SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
                     SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired
                 FROM ml_accounts
             ");
-            
+
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Estatísticas de pedidos
      */
@@ -58,7 +58,7 @@ class StatisticsService
     {
         try {
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     COUNT(*) as total,
                     SUM(total_amount) as total_revenue,
                     AVG(total_amount) as avg_order_value,
@@ -67,13 +67,13 @@ class StatisticsService
                     SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
                 FROM ml_orders
             ");
-            
+
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Estatísticas de anúncios
      */
@@ -81,7 +81,7 @@ class StatisticsService
     {
         try {
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
                     SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) as paused,
@@ -91,13 +91,13 @@ class StatisticsService
                     SUM(available_quantity) as total_stock
                 FROM items
             ");
-            
+
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
             return ['error' => 'Tabela items não encontrada'];
         }
     }
-    
+
     /**
      * Estatísticas de receita
      */
@@ -106,7 +106,7 @@ class StatisticsService
         try {
             // Receita dos últimos 30 dias
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     DATE(date_created) as date,
                     COUNT(*) as orders_count,
                     SUM(total_amount) as daily_revenue
@@ -116,12 +116,12 @@ class StatisticsService
                 GROUP BY DATE(date_created)
                 ORDER BY date DESC
             ");
-            
+
             $dailyRevenue = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Receita total por mês
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     DATE_FORMAT(date_created, '%Y-%m') as month,
                     COUNT(*) as orders_count,
                     SUM(total_amount) as monthly_revenue
@@ -131,9 +131,9 @@ class StatisticsService
                 GROUP BY DATE_FORMAT(date_created, '%Y-%m')
                 ORDER BY month DESC
             ");
-            
+
             $monthlyRevenue = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             return [
                 'daily' => $dailyRevenue,
                 'monthly' => $monthlyRevenue,
@@ -144,7 +144,7 @@ class StatisticsService
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Estatísticas de performance
      */
@@ -154,9 +154,9 @@ class StatisticsService
             // Taxa de conversão (pedidos / anúncios ativos)
             $ordersCount = $this->db->query("SELECT COUNT(*) FROM ml_orders")->fetchColumn();
             $itemsCount = $this->db->query("SELECT COUNT(*) FROM items WHERE status = 'active'")->fetchColumn();
-            
+
             $conversionRate = $itemsCount > 0 ? ($ordersCount / $itemsCount) * 100 : 0;
-            
+
             // Calcular tempo médio de resposta e chamadas da API a partir de logs
             $avgResponseTime = 0.0;
             $totalApiCallsToday = 0;
@@ -184,7 +184,7 @@ class StatisticsService
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Obtém estatísticas por período
      */
@@ -192,7 +192,7 @@ class StatisticsService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as orders_count,
                     SUM(total_amount) as total_revenue,
                     AVG(total_amount) as avg_order_value,
@@ -201,18 +201,18 @@ class StatisticsService
                 FROM ml_orders
                 WHERE DATE(date_created) BETWEEN :start_date AND :end_date
             ");
-            
+
             $stmt->execute([
                 ':start_date' => $startDate,
                 ':end_date' => $endDate,
             ]);
-            
+
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Obtém top produtos por vendas
      */
@@ -222,7 +222,7 @@ class StatisticsService
             $limitSql = max(1, min((int)$limit, 200));
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     oi.item_id,
                     i.title,
                     i.price,
@@ -248,7 +248,7 @@ class StatisticsService
                            sold_quantity as total_quantity,
                            (price * sold_quantity) as total_revenue,
                            sold_quantity as order_count
-                    FROM items 
+                    FROM items
                     WHERE status = 'active' AND sold_quantity > 0
                     ORDER BY sold_quantity DESC
                     LIMIT {$limitSql}
@@ -266,7 +266,7 @@ class StatisticsService
             return ['error' => $e->getMessage(), 'products' => []];
         }
     }
-    
+
     /**
      * Obtém estatísticas por categoria
      */
@@ -274,7 +274,7 @@ class StatisticsService
     {
         try {
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     category_id,
                     COUNT(*) as items_count,
                     AVG(price) as avg_price,
@@ -285,7 +285,7 @@ class StatisticsService
                 GROUP BY category_id
                 ORDER BY items_count DESC
             ");
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             return ['error' => 'Tabela items não encontrada'];

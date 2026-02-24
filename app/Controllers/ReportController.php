@@ -99,7 +99,7 @@ class ReportController extends BaseController
             $accountId = (int) $accountId;
 
             $stmtOrders = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_orders,
                     SUM(total_amount) as total_revenue,
                     AVG(total_amount) as avg_ticket,
@@ -113,7 +113,7 @@ class ReportController extends BaseController
             $orderStats = $stmtOrders->fetch(\PDO::FETCH_ASSOC) ?: [];
 
             $stmtItems = $db->prepare("
-                SELECT 
+                SELECT
                     status,
                     COUNT(*) as count
                 FROM items
@@ -124,7 +124,7 @@ class ReportController extends BaseController
             $itemsByStatus = $stmtItems->fetchAll(\PDO::FETCH_ASSOC);
 
             $stmtQuestions = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'UNANSWERED' THEN 1 ELSE 0 END) as unanswered
                 FROM ml_questions
@@ -171,7 +171,7 @@ class ReportController extends BaseController
             $categoryId = trim($categoryId);
 
             $stmtItems = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_items,
                     SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
                     SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) as paused,
@@ -186,7 +186,7 @@ class ReportController extends BaseController
             $summary = $stmtItems->fetch(\PDO::FETCH_ASSOC) ?: [];
 
             $stmtTop = $db->prepare("
-                SELECT 
+                SELECT
                     item_id, title, price, available_quantity, status
                 FROM items
                 WHERE category_id = :cat_id
@@ -230,7 +230,7 @@ class ReportController extends BaseController
             $brand = trim(urldecode($brand));
 
             $stmtItems = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_items,
                     SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
                     AVG(price) as avg_price,
@@ -247,7 +247,7 @@ class ReportController extends BaseController
             $summary = $stmtItems->fetch(\PDO::FETCH_ASSOC) ?: [];
 
             $stmtItems2 = $db->prepare("
-                SELECT 
+                SELECT
                     item_id, title, price, status, available_quantity, category_id
                 FROM items
                 WHERE JSON_UNQUOTE(JSON_EXTRACT(data, '$.attributes[0].value_name')) LIKE :brand
@@ -294,7 +294,7 @@ class ReportController extends BaseController
             $cutoff = date('Y-m-d', strtotime("-{$days} days"));
 
             $stmtRevenue = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_orders,
                     SUM(total_amount) as total_revenue,
                     AVG(total_amount) as avg_ticket,
@@ -306,7 +306,7 @@ class ReportController extends BaseController
             $revenue = $stmtRevenue->fetch(\PDO::FETCH_ASSOC) ?: [];
 
             $stmtItems = $db->query("
-                SELECT 
+                SELECT
                     status,
                     COUNT(*) as count,
                     SUM(price * available_quantity) as inventory_value
@@ -316,12 +316,12 @@ class ReportController extends BaseController
             $itemsByStatus = $stmtItems->fetchAll(\PDO::FETCH_ASSOC);
 
             $stmtTopCat = $db->prepare("
-                SELECT 
+                SELECT
                     COALESCE(oi.category_id, i.category_id, 'unknown') as category_id,
                     COUNT(DISTINCT oi.item_id) as items,
                     COALESCE(SUM(oi.quantity * oi.unit_price), 0) as revenue
                 FROM ml_orders o
-                INNER JOIN order_items oi 
+                INNER JOIN order_items oi
                     ON (oi.order_id = o.id OR oi.order_id = o.ml_order_id)
                 LEFT JOIN items i ON i.ml_item_id = oi.item_id
                 WHERE DATE(o.date_created) >= :cutoff
@@ -334,7 +334,7 @@ class ReportController extends BaseController
             $topCategories = $stmtTopCat->fetchAll(\PDO::FETCH_ASSOC);
 
             $stmtQuestions = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'ANSWERED' THEN 1 ELSE 0 END) as answered,
                     SUM(CASE WHEN status = 'UNANSWERED' THEN 1 ELSE 0 END) as unanswered

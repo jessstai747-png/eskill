@@ -24,7 +24,7 @@ class CreateMLAdvancedTables
             $this->createCompetitorIntelligenceTables();
             $this->createMLAnalyticsTables();
             $this->createMLUnifiedTables();
-            
+
             echo "ML Advanced tables created successfully!\n";
         } catch (\Exception $e) {
             echo "Error creating ML Advanced tables: " . $e->getMessage() . "\n";

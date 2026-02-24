@@ -7,14 +7,14 @@ use PDO;
 
 /**
  * Dynamic Pricing Service
- * 
+ *
  * Ajuste automático de preços baseado em:
  * - Preços da concorrência
  * - Elasticidade de demanda
  * - Níveis de estoque
  * - Sazonalidade
  * - Margem de lucro mínima
- * 
+ *
  * Algoritmos:
  * 1. Competition-Based: Ajusta baseado em competidores
  * 2. Demand-Based: Ajusta baseado em demanda histórica
@@ -24,21 +24,21 @@ use PDO;
 class DynamicPricingService extends MercadoLivreClient
 {
     private PDO $db;
-    
+
     public function __construct(int $accountId)
     {
         parent::__construct($accountId);
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Calcula preço ótimo usando estratégia competition-based
-     * 
+     *
      * Lógica:
      * - Se temos menor preço: não mexer ou aumentar levemente (5%)
      * - Se estamos no meio: ficar 2-3% abaixo do segundo menor
      * - Se temos maior preço: igualar ao segundo menor ou descer mais
-     * 
+     *
      * @param string $itemId
      * @param array $options [
      *   'min_margin' => 0.15, // Margem mínima 15%
@@ -53,24 +53,24 @@ class DynamicPricingService extends MercadoLivreClient
             $minMargin = $options['min_margin'] ?? 0.15;
             $maxDiscount = $options['max_discount'] ?? 0.30;
             $aggressive = $options['aggressive'] ?? false;
-            
+
             // Buscar item
             $item = $this->client->get("/items/{$itemId}");
-            
+
             if (!$item) {
                 return ['success' => false, 'error' => 'Item not found'];
             }
-            
+
             $currentPrice = $item['price'];
             $categoryId = $item['category_id'];
-            
+
             // Buscar custo do produto
             $cost = $this->getItemCost($itemId);
             $minPrice = $cost * (1 + $minMargin);
-            
+
             // Buscar concorrentes
             $competitors = $this->searchCompetitors($item['title'], $categoryId);
-            
+
             if (empty($competitors)) {
                 return [
                     'success' => true,
@@ -81,19 +81,19 @@ class DynamicPricingService extends MercadoLivreClient
                     'reason' => 'No competitors found'
                 ];
             }
-            
+
             // Ordenar por preço
             usort($competitors, fn($a, $b) => $a['price'] <=> $b['price']);
-            
+
             $lowestPrice = $competitors[0]['price'];
             $secondLowest = $competitors[1]['price'] ?? $lowestPrice;
             $avgPrice = array_sum(array_column($competitors, 'price')) / count($competitors);
-            
+
             // Calcular preço ótimo
             $optimalPrice = $currentPrice;
             $strategy = 'maintain';
             $reason = 'Price is competitive';
-            
+
             if ($currentPrice <= $lowestPrice) {
                 // Já somos o mais barato
                 if (!$aggressive) {
@@ -112,17 +112,17 @@ class DynamicPricingService extends MercadoLivreClient
                 $strategy = 'decrease';
                 $reason = 'Price too high, decrease to compete';
             }
-            
+
             // Aplicar restrições
             $optimalPrice = max($optimalPrice, $minPrice);
             $maxAllowedDiscount = $currentPrice * (1 - $maxDiscount);
             $optimalPrice = max($optimalPrice, $maxAllowedDiscount);
-            
+
             // Arredondar para .99
             $optimalPrice = floor($optimalPrice) + 0.99;
-            
+
             $change = (($optimalPrice - $currentPrice) / $currentPrice) * 100;
-            
+
             return [
                 'success' => true,
                 'strategy' => $strategy,
@@ -143,19 +143,18 @@ class DynamicPricingService extends MercadoLivreClient
                     'max_discount' => $maxDiscount
                 ]
             ];
-            
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Estratégia baseada em demanda
-     * 
+     *
      * Elasticidade = (ΔQ / Q) / (ΔP / P)
      * Se elasticidade > 1: demanda elástica (sensível a preço)
      * Se elasticidade < 1: demanda inelástica (pode aumentar preço)
-     * 
+     *
      * @param string $itemId
      * @param int $days Dias para análise histórica
      * @return array
@@ -173,20 +172,20 @@ class DynamicPricingService extends MercadoLivreClient
             ");
             $stmt->execute(['item_id' => $itemId, 'days' => $days]);
             $history = $stmt->fetchAll();
-            
+
             if (count($history) < 10) {
                 return [
                     'success' => false,
                     'error' => 'Insufficient data for demand analysis'
                 ];
             }
-            
+
             // Calcular elasticidade
             $elasticity = $this->calculatePriceElasticity($history);
-            
+
             $item = $this->client->get("/items/{$itemId}");
             $currentPrice = $item['price'];
-            
+
             // Estratégia baseada em elasticidade
             if ($elasticity > 1.5) {
                 // Demanda muito elástica - reduzir preço
@@ -204,9 +203,9 @@ class DynamicPricingService extends MercadoLivreClient
                 $strategy = 'maintain';
                 $reason = 'Normal elasticity, maintain price';
             }
-            
+
             $optimalPrice = floor($optimalPrice) + 0.99;
-            
+
             return [
                 'success' => true,
                 'strategy' => $strategy,
@@ -219,15 +218,14 @@ class DynamicPricingService extends MercadoLivreClient
                 'analysis_days' => $days,
                 'data_points' => count($history)
             ];
-            
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Estratégia para liquidar estoque parado
-     * 
+     *
      * @param string $sku
      * @param array $options [
      *   'days_in_stock' => 90, // Dias parado
@@ -242,7 +240,7 @@ class DynamicPricingService extends MercadoLivreClient
             $daysInStock = $options['days_in_stock'] ?? 90;
             $targetDays = $options['target_days'] ?? 30;
             $minMargin = $options['min_margin'] ?? 0.05;
-            
+
             // Buscar itens com o SKU
             $stmt = $this->db->prepare("
                 SELECT item_id, price, available_quantity
@@ -251,27 +249,27 @@ class DynamicPricingService extends MercadoLivreClient
             ");
             $stmt->execute(['sku' => $sku, 'account_id' => $this->accountId]);
             $items = $stmt->fetchAll();
-            
+
             if (empty($items)) {
                 return ['success' => false, 'error' => 'No items found with this SKU'];
             }
-            
+
             $cost = $this->getItemCost($items[0]['item_id']);
             $minPrice = $cost * (1 + $minMargin);
-            
+
             // Calcular desconto necessário
             $urgencyFactor = min($daysInStock / 180, 1); // 0 a 1
             $targetFactor = 1 - ($targetDays / 90); // Quanto menor o prazo, maior o desconto
-            
+
             $discountPercent = 0.10 + (0.40 * $urgencyFactor * $targetFactor); // 10% a 50%
-            
+
             $results = [];
             foreach ($items as $item) {
                 $currentPrice = $item['price'];
                 $optimalPrice = $currentPrice * (1 - $discountPercent);
                 $optimalPrice = max($optimalPrice, $minPrice);
                 $optimalPrice = floor($optimalPrice) + 0.99;
-                
+
                 $results[] = [
                     'item_id' => $item['item_id'],
                     'current_price' => $currentPrice,
@@ -281,7 +279,7 @@ class DynamicPricingService extends MercadoLivreClient
                     'available_quantity' => $item['available_quantity']
                 ];
             }
-            
+
             return [
                 'success' => true,
                 'strategy' => 'inventory_liquidation',
@@ -293,15 +291,14 @@ class DynamicPricingService extends MercadoLivreClient
                 'total_items' => count($results),
                 'total_inventory' => array_sum(array_column($results, 'available_quantity'))
             ];
-            
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Aplica ajuste de preço automaticamente
-     * 
+     *
      * @param string $itemId
      * @param float $newPrice
      * @param string $strategy
@@ -313,18 +310,18 @@ class DynamicPricingService extends MercadoLivreClient
             $result = $this->client->put("/items/{$itemId}", [
                 'price' => $newPrice
             ]);
-            
+
             if (!$result) {
                 return ['success' => false, 'error' => 'Failed to update price'];
             }
-            
+
             // Registrar histórico
             $stmt = $this->db->prepare("
-                INSERT INTO price_adjustments 
+                INSERT INTO price_adjustments
                 (account_id, item_id, old_price, new_price, strategy, applied_at)
                 VALUES (:account_id, :item_id, :old_price, :new_price, :strategy, NOW())
             ");
-            
+
             $stmt->execute([
                 'account_id' => $this->accountId,
                 'item_id' => $itemId,
@@ -332,7 +329,7 @@ class DynamicPricingService extends MercadoLivreClient
                 'new_price' => $newPrice,
                 'strategy' => $strategy
             ]);
-            
+
             return [
                 'success' => true,
                 'item_id' => $itemId,
@@ -340,15 +337,14 @@ class DynamicPricingService extends MercadoLivreClient
                 'strategy' => $strategy,
                 'applied_at' => date('Y-m-d H:i:s')
             ];
-            
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Análise batch de múltiplos itens
-     * 
+     *
      * @param array $itemIds
      * @param string $strategy 'competition'|'demand'|'inventory'
      * @param array $options
@@ -365,10 +361,10 @@ class DynamicPricingService extends MercadoLivreClient
             'maintain' => 0,
             'total_potential_revenue' => 0
         ];
-        
+
         foreach ($itemIds as $itemId) {
             $result = null;
-            
+
             switch ($strategy) {
                 case 'demand':
                     $result = $this->demandBasedPricing($itemId, $options['days'] ?? 30);
@@ -381,11 +377,11 @@ class DynamicPricingService extends MercadoLivreClient
                     $result = $this->calculateOptimalPrice($itemId, $options);
                     break;
             }
-            
+
             if ($result['success']) {
                 $results[] = $result;
                 $summary['analyzed']++;
-                
+
                 if ($result['optimal_price'] > $result['current_price']) {
                     $summary['should_increase']++;
                 } elseif ($result['optimal_price'] < $result['current_price']) {
@@ -393,13 +389,13 @@ class DynamicPricingService extends MercadoLivreClient
                 } else {
                     $summary['maintain']++;
                 }
-                
+
                 // Calcular impacto potencial (assumindo 10 vendas/mês)
                 $priceDiff = $result['optimal_price'] - $result['current_price'];
                 $summary['total_potential_revenue'] += $priceDiff * 10;
             }
         }
-        
+
         return [
             'success' => true,
             'strategy' => $strategy,
@@ -407,9 +403,9 @@ class DynamicPricingService extends MercadoLivreClient
             'items' => $results
         ];
     }
-    
+
     // ==================== PRIVATE HELPERS ====================
-    
+
     /**
      * Busca custo do produto
      */
@@ -420,10 +416,10 @@ class DynamicPricingService extends MercadoLivreClient
         ");
         $stmt->execute(['item_id' => $itemId, 'account_id' => $this->accountId]);
         $result = $stmt->fetch();
-        
+
         return $result ? (float)$result['cost'] : 0.0;
     }
-    
+
     /**
      * Busca concorrentes
      */
@@ -432,13 +428,13 @@ class DynamicPricingService extends MercadoLivreClient
         // Extrair palavras-chave principais do título
         $keywords = $this->extractKeywords($title);
         $query = implode(' ', array_slice($keywords, 0, 3));
-        
+
         $results = $this->client->get('/sites/MLB/search', [
             'q' => $query,
             'category' => $categoryId,
             'limit' => $limit
         ]);
-        
+
         $competitors = [];
         foreach ($results['results'] ?? [] as $item) {
             $competitors[] = [
@@ -448,10 +444,10 @@ class DynamicPricingService extends MercadoLivreClient
                 'sold_quantity' => $item['sold_quantity'] ?? 0
             ];
         }
-        
+
         return $competitors;
     }
-    
+
     /**
      * Extrai keywords do título
      */
@@ -459,15 +455,15 @@ class DynamicPricingService extends MercadoLivreClient
     {
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'sem', 'em', 'a', 'o', 'e', 'ou'];
         $words = preg_split('/\s+/', strtolower($title));
-        
-        return array_filter($words, function($word) use ($stopWords) {
+
+        return array_filter($words, function ($word) use ($stopWords) {
             return strlen($word) > 2 && !in_array($word, $stopWords);
         });
     }
-    
+
     /**
      * Calcula elasticidade-preço da demanda
-     * 
+     *
      * Elasticidade = (ΔQ / Q_avg) / (ΔP / P_avg)
      */
     private function calculatePriceElasticity(array $history): float
@@ -475,24 +471,24 @@ class DynamicPricingService extends MercadoLivreClient
         if (count($history) < 2) {
             return 1.0;
         }
-        
+
         $changes = [];
         for ($i = 1; $i < count($history); $i++) {
             $prev = $history[$i - 1];
             $curr = $history[$i];
-            
+
             $deltaQ = $curr['sold_quantity'] - $prev['sold_quantity'];
             $deltaP = $curr['price'] - $prev['price'];
-            
+
             if ($deltaP != 0 && $prev['sold_quantity'] > 0) {
                 $percentQ = $deltaQ / $prev['sold_quantity'];
                 $percentP = $deltaP / $prev['price'];
-                
+
                 $elasticity = $percentQ / $percentP;
                 $changes[] = abs($elasticity);
             }
         }
-        
+
         return empty($changes) ? 1.0 : array_sum($changes) / count($changes);
     }
 }

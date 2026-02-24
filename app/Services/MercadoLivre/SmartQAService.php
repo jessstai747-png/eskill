@@ -10,7 +10,7 @@ use App\Services\StructuredLogService;
 
 /**
  * Smart Q&A Automation Service
- * 
+ *
  * Features:
  * - Intelligent auto-response system
  * - Sentiment-based prioritization
@@ -471,7 +471,7 @@ class SmartQAService
             SELECT q.*, i.title as item_title, i.category_id
             FROM ml_questions q
             JOIN ml_items i ON q.item_id = i.id
-            WHERE q.account_id = :account_id 
+            WHERE q.account_id = :account_id
             AND q.status = 'UNANSWERED'
             AND q.answer IS NULL
             ORDER BY q.date_created ASC

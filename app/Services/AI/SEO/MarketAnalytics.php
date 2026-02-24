@@ -8,13 +8,13 @@ use PDO;
 
 /**
  * 📈 Advanced Market Analytics
- * 
+ *
  * Análise preditiva e tendências de mercado:
  * - Previsão de demanda
  * - Detecção de sazonalidade
  * - Análise de sentimento
  * - Recomendações baseadas em IA
- * 
+ *
  * @version 1.0.0
  */
 class MarketAnalytics
@@ -22,19 +22,19 @@ class MarketAnalytics
     private PDO $db;
     private int $accountId;
     private ?MercadoLivreClient $mlClient = null;
-    
+
     public function __construct(int $accountId)
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
         $this->mlClient = new MercadoLivreClient($accountId);
     }
-    
+
     /**
      * Prevê demanda para os próximos 30 dias
-     * 
+     *
      * Usa média móvel e tendência linear
-     * 
+     *
      * @param string $categoryId Categoria ML
      * @return array Previsões diárias
      */
@@ -42,7 +42,7 @@ class MarketAnalytics
     {
         // Buscar histórico de vendas dos últimos 90 dias
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(pm.date) as date,
                 SUM(pm.sales_change) as sales
             FROM seo_performance_metrics pm
@@ -58,7 +58,7 @@ class MarketAnalytics
             'category_id' => $categoryId,
         ]);
         $historicalData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (empty($historicalData)) {
             return [
                 'predictions' => [],
@@ -66,36 +66,36 @@ class MarketAnalytics
                 'error' => 'Dados insuficientes para previsão',
             ];
         }
-        
+
         // Calcular média móvel (7 dias)
         $movingAverage = $this->calculateMovingAverage($historicalData, 7);
-        
+
         // Calcular tendência linear
         $trend = $this->calculateLinearTrend($historicalData);
-        
+
         // Gerar previsões para próximos 30 dias
         $predictions = [];
         $lastValue = end($historicalData)['sales'];
         $baseDate = new \DateTime();
-        
+
         for ($i = 1; $i <= 30; $i++) {
             $futureDate = clone $baseDate;
             $futureDate->modify("+{$i} days");
-            
+
             // Previsão = última média móvel + (tendência * dias)
             $predicted = $movingAverage + ($trend * $i);
-            
+
             // Adicionar fator de sazonalidade (se detectado)
             $seasonalityFactor = $this->getSeasonalityFactor($futureDate, $historicalData);
             $predicted *= $seasonalityFactor;
-            
+
             $predictions[] = [
                 'date' => $futureDate->format('Y-m-d'),
                 'predicted_sales' => max(0, round($predicted, 2)),
                 'confidence' => $this->calculateConfidence($i, count($historicalData)),
             ];
         }
-        
+
         return [
             'predictions' => $predictions,
             'trend' => $trend > 0 ? 'growing' : ($trend < 0 ? 'declining' : 'stable'),
@@ -104,10 +104,10 @@ class MarketAnalytics
             'historical_data' => $historicalData,
         ];
     }
-    
+
     /**
      * Detecta padrões de sazonalidade
-     * 
+     *
      * @param string $categoryId
      * @return array Análise de sazonalidade
      */
@@ -115,7 +115,7 @@ class MarketAnalytics
     {
         // Buscar dados de 12 meses para análise sazonal
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 MONTH(pm.date) as month,
                 YEAR(pm.date) as year,
                 AVG(pm.sales_change) as avg_sales
@@ -132,17 +132,17 @@ class MarketAnalytics
             'category_id' => $categoryId,
         ]);
         $monthlyData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (count($monthlyData) < 6) {
             return [
                 'has_seasonality' => false,
                 'reason' => 'Dados insuficientes (mínimo 6 meses)',
             ];
         }
-        
+
         // Calcular média geral
         $overallAvg = array_sum(array_column($monthlyData, 'avg_sales')) / count($monthlyData);
-        
+
         // Calcular índice sazonal por mês
         $seasonalIndices = [];
         foreach ($monthlyData as $data) {
@@ -152,15 +152,24 @@ class MarketAnalytics
             }
             $seasonalIndices[$month][] = $data['avg_sales'] / $overallAvg;
         }
-        
+
         // Calcular índice médio por mês
         $avgSeasonalIndices = [];
         $monthNames = [
-            1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
-            5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
-            9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro'
+            1 => 'Janeiro',
+            2 => 'Fevereiro',
+            3 => 'Março',
+            4 => 'Abril',
+            5 => 'Maio',
+            6 => 'Junho',
+            7 => 'Julho',
+            8 => 'Agosto',
+            9 => 'Setembro',
+            10 => 'Outubro',
+            11 => 'Novembro',
+            12 => 'Dezembro'
         ];
-        
+
         foreach ($seasonalIndices as $month => $indices) {
             $avgIndex = array_sum($indices) / count($indices);
             $avgSeasonalIndices[] = [
@@ -170,15 +179,15 @@ class MarketAnalytics
                 'variation' => round(($avgIndex - 1) * 100, 1) . '%',
             ];
         }
-        
+
         // Detectar se há sazonalidade significativa (variação > 15%)
         $maxIndex = max(array_column($avgSeasonalIndices, 'index'));
         $minIndex = min(array_column($avgSeasonalIndices, 'index'));
         $hasSignificantSeasonality = (($maxIndex - $minIndex) / $minIndex) > 0.15;
-        
+
         // Identificar meses de pico e baixa
         usort($avgSeasonalIndices, fn($a, $b) => $b['index'] <=> $a['index']);
-        
+
         return [
             'has_seasonality' => $hasSignificantSeasonality,
             'peak_months' => array_slice($avgSeasonalIndices, 0, 3),
@@ -187,19 +196,19 @@ class MarketAnalytics
             'variation_range' => round((($maxIndex - $minIndex) / $minIndex) * 100, 1) . '%',
         ];
     }
-    
+
     /**
      * Analisa oportunidades de mercado emergentes
-     * 
+     *
      * @return array Lista de oportunidades detectadas
      */
     public function detectEmergingOpportunities(): array
     {
         $opportunities = [];
-        
+
         // 1. Categorias com crescimento acelerado (>20% últimos 30 dias)
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 i.category_id,
                 COUNT(DISTINCT i.id) as products_count,
                 SUM(pm.sales_change) as sales_growth,
@@ -215,7 +224,7 @@ class MarketAnalytics
         ");
         $stmt->execute(['account_id' => $this->accountId]);
         $growingCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($growingCategories as $cat) {
             if ($cat['sales_growth'] > 10) { // Crescimento significativo
                 $opportunities[] = [
@@ -229,10 +238,10 @@ class MarketAnalytics
                 ];
             }
         }
-        
+
         // 2. Gaps de preço (concorrentes muito mais caros)
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 i.category_id,
                 i.price as my_price,
                 AVG(CAST(cw.current_price AS DECIMAL(10,2))) as competitor_avg_price,
@@ -248,7 +257,7 @@ class MarketAnalytics
         ");
         $stmt->execute(['account_id' => $this->accountId]);
         $priceGaps = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($priceGaps as $gap) {
             $priceDiff = $gap['competitor_avg_price'] - $gap['my_price'];
             $opportunities[] = [
@@ -261,7 +270,7 @@ class MarketAnalytics
                 'potential_revenue' => $priceDiff * 10, // Estimativa
             ];
         }
-        
+
         // 3. Keywords inexploradas - buscar via ML Trends API e análise de competidores
         $keywordOpportunities = $this->discoverKeywordOpportunities();
         if (!empty($keywordOpportunities)) {
@@ -274,15 +283,15 @@ class MarketAnalytics
                 'keywords' => $keywordOpportunities,
             ];
         }
-        
+
         return $opportunities;
     }
-    
+
     /**
      * Análise de sentimento do mercado
-     * 
+     *
      * Baseado em mudanças de preço e atividade dos concorrentes
-     * 
+     *
      * @param string $categoryId
      * @return array Sentimento do mercado
      */
@@ -291,10 +300,10 @@ class MarketAnalytics
         $whereClause = $categoryId ? "AND cw.category_id = :category_id" : "";
         $params = ['account_id' => $this->accountId];
         if ($categoryId) $params['category_id'] = $categoryId;
-        
+
         // Analisar mudanças de preço nos últimos 7 dias
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(CASE WHEN CAST(h.new_value AS DECIMAL(10,2)) < CAST(h.old_value AS DECIMAL(10,2)) THEN 1 END) as price_decreases,
                 COUNT(CASE WHEN CAST(h.new_value AS DECIMAL(10,2)) > CAST(h.old_value AS DECIMAL(10,2)) THEN 1 END) as price_increases,
                 COUNT(*) as total_changes
@@ -307,14 +316,14 @@ class MarketAnalytics
         ");
         $stmt->execute($params);
         $priceChanges = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Determinar sentimento
         $sentiment = 'neutral';
         $confidenceScore = 50;
-        
+
         if ($priceChanges['total_changes'] > 5) {
             $decreaseRatio = $priceChanges['price_decreases'] / $priceChanges['total_changes'];
-            
+
             if ($decreaseRatio > 0.6) {
                 $sentiment = 'bearish'; // Mercado em queda (guerra de preços)
                 $confidenceScore = round($decreaseRatio * 100);
@@ -323,7 +332,7 @@ class MarketAnalytics
                 $confidenceScore = round((1 - $decreaseRatio) * 100);
             }
         }
-        
+
         return [
             'sentiment' => $sentiment,
             'confidence' => $confidenceScore,
@@ -336,26 +345,26 @@ class MarketAnalytics
             ],
         ];
     }
-    
+
     // Helper Methods
-    
+
     private function calculateMovingAverage(array $data, int $window): float
     {
         $recentData = array_slice($data, -$window);
         $sum = array_sum(array_column($recentData, 'sales'));
         return $sum / count($recentData);
     }
-    
+
     private function calculateLinearTrend(array $data): float
     {
         $n = count($data);
         if ($n < 2) return 0;
-        
+
         $sumX = 0;
         $sumY = 0;
         $sumXY = 0;
         $sumX2 = 0;
-        
+
         foreach ($data as $i => $point) {
             $x = $i;
             $y = $point['sales'];
@@ -364,13 +373,13 @@ class MarketAnalytics
             $sumXY += $x * $y;
             $sumX2 += $x * $x;
         }
-        
+
         // Coeficiente angular (slope)
         $slope = ($n * $sumXY - $sumX * $sumY) / ($n * $sumX2 - $sumX * $sumX);
-        
+
         return $slope;
     }
-    
+
     private function getSeasonalityFactor(\DateTime $date, array $historicalData): float
     {
         $month = (int)$date->format('n');
@@ -447,38 +456,38 @@ class MarketAnalytics
 
         return round($factor, 2);
     }
-    
+
     private function calculateConfidence(int $daysAhead, int $historicalDays): float
     {
         // Confiança diminui quanto mais distante a previsão
         $baseConfidence = min(100, ($historicalDays / 90) * 100);
         $decayFactor = 1 - ($daysAhead / 60); // Decay até 60 dias
-        
+
         return max(10, round($baseConfidence * $decayFactor, 1));
     }
-    
+
     private function calculateOverallConfidence(array $data): float
     {
         // Confiança baseada na quantidade e qualidade dos dados
         $dataPoints = count($data);
-        
+
         if ($dataPoints < 30) return 50;
         if ($dataPoints < 60) return 70;
         return 90;
     }
-    
+
     private function getSentimentDescription(string $sentiment): string
     {
-        return match($sentiment) {
+        return match ($sentiment) {
             'bullish' => 'Mercado em alta - Concorrentes aumentando preços',
             'bearish' => 'Mercado em queda - Guerra de preços ativa',
             default => 'Mercado estável - Sem movimentações significativas',
         };
     }
-    
+
     private function getSentimentRecommendation(string $sentiment): string
     {
-        return match($sentiment) {
+        return match ($sentiment) {
             'bullish' => 'Considere aumentar preços gradualmente para maximizar margem',
             'bearish' => 'Mantenha preços competitivos e foque em diferenciais (frete, atendimento)',
             default => 'Continue monitorando e mantenha estratégia atual',
@@ -495,8 +504,8 @@ class MarketAnalytics
         try {
             // 1. Buscar categorias ativas do vendedor
             $stmt = $this->db->prepare("
-                SELECT DISTINCT category_id 
-                FROM items 
+                SELECT DISTINCT category_id
+                FROM items
                 WHERE account_id = :account_id AND status = 'active'
                 LIMIT 5
             ");
