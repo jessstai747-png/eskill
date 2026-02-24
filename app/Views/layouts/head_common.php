@@ -11,6 +11,9 @@
 <!-- CSRF Helper - Adiciona automaticamente tokens em todas as requisições AJAX -->
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/js/csrf-helper.js"></script>
 
+<!-- Mercado Livre Integration Preflight Helper -->
+<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/js/ml-integration-preflight.js" defer></script>
+
 <!-- Real-Time Notifications with Audio -->
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/js/realtime-notifications.js" defer></script>
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">

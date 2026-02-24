@@ -6,6 +6,47 @@
 
 ---
 
+## Sessão: 2026-02-24e — integração ML complementar em Quality Dashboard e Real-time Notifications
+
+### Contexto
+Solicitação do usuário: complementar a integração com API do Mercado Livre em módulos JS adicionais (preflight ML), seguindo o mesmo padrão robusto aplicado no Catalog Clone.
+
+### Implementado
+- **Novo helper compartilhado:** `public/js/ml-integration-preflight.js`
+   - Preflight com endpoints reais:
+      - `GET /api/health/ml`
+      - `GET /api/tokens/accounts?status=active&sort=expires_at&order=asc`
+   - Estado padronizado (`checked`, `ready`, `message`, `activeAccounts`, `healthyAccounts`).
+   - Fallback automático para `fetch` quando `requestJson` não estiver disponível.
+
+- **`public/js/quality-dashboard.js`**
+   - Adicionada validação de integração ML antes de:
+      - carregar estatísticas
+      - carregar lista de itens
+      - analisar item
+   - Troca de `fetch` cru em listagem para helper unificado (`apiRequest`) com fallback `requestJson/fetch`.
+   - Modo degradado visual quando ML indisponível (alerta + bloqueio de interações + mensagem na tabela).
+
+- **`public/js/realtime-notifications.js`**
+   - Polling agora só inicia após preflight ML bem-sucedido.
+   - Em indisponibilidade: badge zerado, aviso controlado e tentativa automática de reconexão (a cada 60s).
+   - Chamadas API internas migradas para helper `apiRequest` com fallback seguro.
+
+- **Carregamento global do helper ML**
+   - `app/Views/layouts/head_common.php`
+   - `app/Views/layouts/app.php`
+   - `app/Views/layouts/modern/app.php`
+   - `app/Views/dashboard/quality.php` (standalone)
+
+### Status de Feature
+- **`project-status.json`**:
+   - `DASH-001.last_tested` atualizado para `2026-02-24`
+   - `NOTIF-002.last_tested` atualizado para `2026-02-24`
+
+### Validação
+- `php -l` (views/layouts alterados): sem erros
+- PHPUnit Unit: **2896 testes, 6727 assertions, 0 falhas** (34 skipped esperados)
+
 ## Sessão: 2026-02-24d — integração ML no fluxo de Catalog Clone
 
 ### Contexto

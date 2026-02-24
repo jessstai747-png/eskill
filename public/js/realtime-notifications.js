@@ -1,7 +1,7 @@
 /**
  * Real-Time Notification System with Audio
  * Sistema de notificações em tempo real com som
- * 
+ *
  * @version 1.0.0
  * @author Mercado Livre Manager
  */
@@ -29,6 +29,14 @@ class RealTimeNotifications {
         this.sounds = {};
         this.notificationQueue = [];
         this.isProcessingQueue = false;
+        this.mlIntegration = {
+            checked: false,
+            ready: false,
+            message: 'Validação da integração ML pendente...'
+        };
+        this.mlIntegrationCheckPromise = null;
+        this.mlReconnectTimer = null;
+        this.lastMlWarningAt = 0;
 
         // Sons disponíveis
         this.soundFiles = {
@@ -83,10 +91,33 @@ class RealTimeNotifications {
         // Ouvir mudanças de visibilidade
         document.addEventListener('visibilitychange', this.handleVisibilityChange);
 
-        // Iniciar polling
-        this.startPolling();
+        const isReady = await this.initMercadoLivreIntegration();
+
+        if (isReady) {
+            await this.startPolling();
+        } else {
+            this.applyMlIntegrationState();
+            this.scheduleMlReconnect();
+        }
 
         console.log('[Notifications] System initialized');
+    }
+
+    async apiRequest(url, options = {}) {
+        if (typeof requestJson === 'function') {
+            return requestJson(url, options);
+        }
+
+        const response = await fetch(url, {
+            credentials: 'include',
+            ...options
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return response.json();
     }
 
     /**
@@ -94,7 +125,7 @@ class RealTimeNotifications {
      */
     async loadSettings() {
         try {
-            const data = await requestJson('/api/notifications/realtime/settings');
+            const data = await this.apiRequest('/api/notifications/realtime/settings');
 
             if (data.success && data.settings) {
                 this.config.soundEnabled = data.settings.sound_enabled;
@@ -108,6 +139,127 @@ class RealTimeNotifications {
         } catch (error) {
             console.warn('[Notifications] Could not load settings:', error);
         }
+    }
+
+    async initMercadoLivreIntegration(force = false) {
+        if (this.mlIntegrationCheckPromise && !force) {
+            return this.mlIntegrationCheckPromise;
+        }
+
+        this.mlIntegrationCheckPromise = (async () => {
+            try {
+                if (window.MercadoLivreIntegration && typeof window.MercadoLivreIntegration.check === 'function') {
+                    this.mlIntegration = await window.MercadoLivreIntegration.check(force);
+                } else {
+                    const [health, accountsPayload] = await Promise.all([
+                        this.apiRequest('/api/health/ml'),
+                        this.apiRequest('/api/tokens/accounts?status=active&sort=expires_at&order=asc')
+                    ]);
+
+                    const credentialsOk = health?.result?.credentials === 'ok';
+                    const accounts = Array.isArray(accountsPayload?.data) ? accountsPayload.data : [];
+                    const healthyAccounts = accounts.filter((account) => {
+                        const apiValidationStatus = account?.api_validation_status ?? 'ok';
+                        return account?.status === 'active' && apiValidationStatus === 'ok';
+                    });
+
+                    if (!credentialsOk) {
+                        this.mlIntegration = {
+                            checked: true,
+                            ready: false,
+                            message: 'Credenciais do Mercado Livre não configuradas no servidor.'
+                        };
+                    } else if (healthyAccounts.length === 0) {
+                        this.mlIntegration = {
+                            checked: true,
+                            ready: false,
+                            message: 'Nenhuma conta ativa com token válido encontrada para notificações.'
+                        };
+                    } else {
+                        this.mlIntegration = {
+                            checked: true,
+                            ready: true,
+                            message: `Integração ML ativa (${healthyAccounts.length} conta(s) válida(s)).`
+                        };
+                    }
+                }
+            } catch (_) {
+                this.mlIntegration = {
+                    checked: true,
+                    ready: false,
+                    message: 'Não foi possível validar a integração com a API do Mercado Livre.'
+                };
+            }
+
+            this.applyMlIntegrationState();
+            return this.mlIntegration.ready;
+        })();
+
+        try {
+            return await this.mlIntegrationCheckPromise;
+        } finally {
+            this.mlIntegrationCheckPromise = null;
+        }
+    }
+
+    applyMlIntegrationState() {
+        if (this.mlIntegration.ready) {
+            return;
+        }
+
+        this.updateBadge(0);
+
+        const now = Date.now();
+        if (now - this.lastMlWarningAt < 60000) {
+            return;
+        }
+
+        this.lastMlWarningAt = now;
+        console.warn('[Notifications] ML integration unavailable:', this.mlIntegration.message);
+
+        if (this.callbacks.onError) {
+            this.callbacks.onError(new Error(this.mlIntegration.message));
+        }
+    }
+
+    async ensureMercadoLivreReady(actionLabel = 'executar esta ação', silent = false) {
+        if (!this.mlIntegration.checked || this.mlIntegrationCheckPromise) {
+            await this.initMercadoLivreIntegration();
+        }
+
+        if (this.mlIntegration.ready) {
+            return true;
+        }
+
+        if (!silent) {
+            this.applyMlIntegrationState();
+            if (window.Toast && typeof window.Toast.error === 'function') {
+                window.Toast.error(`Não foi possível ${actionLabel}: ${this.mlIntegration.message}`);
+            }
+        }
+
+        return false;
+    }
+
+    scheduleMlReconnect() {
+        if (this.mlReconnectTimer) {
+            return;
+        }
+
+        this.mlReconnectTimer = setInterval(async () => {
+            if (this.isPolling) {
+                clearInterval(this.mlReconnectTimer);
+                this.mlReconnectTimer = null;
+                return;
+            }
+
+            const isReady = await this.initMercadoLivreIntegration(true);
+            if (isReady) {
+                clearInterval(this.mlReconnectTimer);
+                this.mlReconnectTimer = null;
+                await this.startPolling();
+            }
+        }, 60000);
     }
 
     /**
@@ -146,7 +298,7 @@ class RealTimeNotifications {
             const audio = new Audio(url);
             audio.preload = 'auto';
             audio.volume = this.config.soundVolume;
-            
+
             // Aguardar carregamento
             await new Promise((resolve, reject) => {
                 audio.oncanplaythrough = resolve;
@@ -235,9 +387,9 @@ class RealTimeNotifications {
             };
 
             const freqs = frequencies[type] || frequencies.notification;
-            
+
             gainNode.gain.setValueAtTime(this.config.soundVolume * 0.3, this.audioContext.currentTime);
-            
+
             let time = this.audioContext.currentTime;
             for (const freq of freqs) {
                 oscillator.frequency.setValueAtTime(freq, time);
@@ -332,14 +484,20 @@ class RealTimeNotifications {
     /**
      * Inicia o polling
      */
-    startPolling() {
+    async startPolling() {
         if (this.isPolling) return;
+
+        const isReady = await this.ensureMercadoLivreReady('iniciar notificações em tempo real');
+        if (!isReady) {
+            this.scheduleMlReconnect();
+            return;
+        }
 
         this.isPolling = true;
         this.poll();
-        
+
         this.pollingTimer = setInterval(this.poll, this.config.pollingInterval);
-        
+
         console.log(`[Notifications] Polling started (interval: ${this.config.pollingInterval}ms)`);
     }
 
@@ -348,12 +506,17 @@ class RealTimeNotifications {
      */
     stopPolling() {
         this.isPolling = false;
-        
+
         if (this.pollingTimer) {
             clearInterval(this.pollingTimer);
             this.pollingTimer = null;
         }
-        
+
+        if (this.mlReconnectTimer) {
+            clearInterval(this.mlReconnectTimer);
+            this.mlReconnectTimer = null;
+        }
+
         console.log('[Notifications] Polling stopped');
     }
 
@@ -363,9 +526,13 @@ class RealTimeNotifications {
     async poll() {
         if (document.hidden) return; // Não verificar se a aba não está visível
 
+        if (!(await this.ensureMercadoLivreReady('consultar notificações', true))) {
+            this.applyMlIntegrationState();
+            return;
+        }
+
         try {
-            const response = await fetch(this.config.apiEndpoint);
-            const data = await response.json();
+            const data = await this.apiRequest(this.config.apiEndpoint);
 
             if (!data.success) {
                 throw new Error(data.error || 'Unknown error');
@@ -530,7 +697,7 @@ class RealTimeNotifications {
     updateBadge(count) {
         const badge = document.getElementById('notification-badge');
         const countEl = document.getElementById('notification-count');
-        
+
         if (badge) {
             if (count > 0) {
                 badge.textContent = count > 99 ? '99+' : count;
@@ -557,7 +724,7 @@ class RealTimeNotifications {
      */
     async markAsRead(id) {
         try {
-            await requestJson(`/api/notifications/realtime/${id}/read`, {
+            await this.apiRequest(`/api/notifications/realtime/${id}/read`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -573,7 +740,7 @@ class RealTimeNotifications {
      */
     async markAllAsRead(type = null) {
         try {
-            await requestJson('/api/notifications/realtime/read-all', {
+            await this.apiRequest('/api/notifications/realtime/read-all', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -668,7 +835,7 @@ class RealTimeNotifications {
     destroy() {
         this.stopPolling();
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-        
+
         // Limpar sons
         for (const audio of Object.values(this.sounds)) {
             if (audio) {
@@ -721,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
             margin-bottom: 10px;
             animation: slideInRight 0.3s ease;
         }
-        
+
         @keyframes slideInRight {
             from {
                 transform: translateX(100%);
@@ -732,11 +899,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 opacity: 1;
             }
         }
-        
+
         #notification-toast-container .toast.hiding {
             animation: slideOutRight 0.3s ease;
         }
-        
+
         @keyframes slideOutRight {
             from {
                 transform: translateX(0);

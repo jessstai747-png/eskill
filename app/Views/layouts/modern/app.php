@@ -27,6 +27,7 @@
     <!-- API Client (loaded early so view scripts can use requestJson) -->
     <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
     <script nonce="<?= $cspNonce ?>" src="/js/api-client.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/api-client.js') ?: time() ?>"></script>
+    <script nonce="<?= $cspNonce ?>" src="/js/ml-integration-preflight.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ml-integration-preflight.js') ?: time() ?>"></script>
     <script nonce="<?= $cspNonce ?>">
         async function requestJson(url, options = {}) {
             if (window.ApiClient) return window.ApiClient.request(url, options);
