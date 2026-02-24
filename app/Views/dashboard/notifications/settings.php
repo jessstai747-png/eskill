@@ -126,16 +126,6 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-    async function requestJson(url, options = {}) {
-        if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-            return window.ApiClient.json(url, options);
-        }
-
-        const response = await fetch(url, options);
-        const data = await response.json();
-        return { response, data };
-    }
-
     const settingsManager = {
         init: function() {
             this.loadSettings();
@@ -144,7 +134,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 
         loadSettings: async function() {
             try {
-                const { data } = await requestJson('/api/notifications/settings');
+                const data = await requestJson('/api/notifications/settings');
                 
                 if (data.success) {
                     const s = data.settings;
@@ -173,7 +163,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             });
 
             try {
-                const { data: result } = await requestJson('/api/notifications/settings', {
+                const result = await requestJson('/api/notifications/settings', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)

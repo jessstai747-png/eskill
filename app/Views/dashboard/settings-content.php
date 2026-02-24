@@ -329,9 +329,9 @@ function saveNotifications() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
-    }).then(({ data }) => {
+    }).then(data => {
         alert(data.success ? 'Preferências salvas!' : 'Erro ao salvar');
-    });
+    }).catch(() => alert('Erro ao salvar'));
 }
 
 function saveTelegram() {
@@ -342,9 +342,9 @@ function saveTelegram() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, chatId })
-    }).then(({ data }) => {
+    }).then(data => {
         alert(data.success ? 'Configuração salva!' : 'Erro ao salvar');
-    });
+    }).catch(() => alert('Erro ao salvar'));
 }
 
 function saveSyncSettings() {
@@ -355,16 +355,16 @@ function saveSyncSettings() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ autoSync, interval })
-    }).then(({ data }) => {
+    }).then(data => {
         alert(data.success ? 'Configurações salvas!' : 'Erro');
-    });
+    }).catch(() => alert('Erro'));
 }
 
 function syncNow() {
     if (!confirm('Sincronizar agora?')) return;
     requestJson('/api/polling/all', { method: 'POST' })
-        .then(({ data }) => data)
-        .then(() => alert('Sincronização iniciada!'));
+        .then(() => alert('Sincronização iniciada!'))
+        .catch(() => alert('Erro ao sincronizar'));
 }
 
 function exportData() {
@@ -374,18 +374,8 @@ function exportData() {
 function clearCache() {
     if (!confirm('Limpar o cache?')) return;
     requestJson('/api/cache/clear', { method: 'POST' })
-        .then(({ data }) => data)
-        .then(() => alert('Cache limpo!'));
-}
-
-async function requestJson(url, options = {}) {
-    if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-        return window.ApiClient.json(url, options);
-    }
-
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return { response, data };
+        .then(() => alert('Cache limpo!'))
+        .catch(() => alert('Erro ao limpar cache'));
 }
 
 function changeTheme(theme) {
@@ -401,7 +391,7 @@ function changeTheme(theme) {
 // Carregar configurações de notificação em tempo real
 async function loadRTNotificationSettings() {
     try {
-        const { data } = await requestJson('/api/notifications/realtime/settings');
+        const data = await requestJson('/api/notifications/realtime/settings');
         
         if (data.success && data.settings) {
             const s = data.settings;
@@ -437,7 +427,7 @@ async function saveRTNotificationSettings() {
     };
     
     try {
-        const { data } = await requestJson('/api/notifications/realtime/settings', {
+        const data = await requestJson('/api/notifications/realtime/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings)
@@ -543,7 +533,7 @@ async function loadMLAccounts() {
     const emptyEl = document.getElementById('ml-accounts-empty');
 
     try {
-        const { data } = await requestJson('/api/auth/accounts');
+        const data = await requestJson('/api/auth/accounts');
         
         // API retorna { accounts: [...], total: N }
         const accounts = Array.isArray(data) ? data : (data.accounts || []);
@@ -618,7 +608,7 @@ async function refreshMLToken(accountId) {
     btn.disabled = true;
 
     try {
-        const { data } = await requestJson('/api/settings/ml-refresh', {
+        const data = await requestJson('/api/settings/ml-refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ account_id: accountId })
@@ -647,7 +637,7 @@ async function refreshMLToken(accountId) {
 
 async function diagnoseMLAccount(accountId) {
     try {
-        const { data } = await requestJson(`/api/settings/ml-diagnostico?account_id=${accountId}`);
+        const data = await requestJson(`/api/settings/ml-diagnostico?account_id=${accountId}`);
 
         let message = `Diagnóstico da Conta #${accountId}\n\n`;
 
@@ -683,7 +673,7 @@ async function disconnectMLAccount(accountId, nickname) {
     }
 
     try {
-        const { data } = await requestJson(`/auth/disconnect/${accountId}`, {
+        const data = await requestJson(`/auth/disconnect/${accountId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });

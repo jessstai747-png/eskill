@@ -439,7 +439,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-warning" role="status"></div><p class="mt-2">Otimizando título...</p></div>';
 
         try {
-            const { data } = await requestJson('/api/seo/title/optimize', {
+            const data = await requestJson('/api/seo/title/optimize', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -588,7 +588,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         }
 
         try {
-            const { data } = await requestJson('/api/seo/listing/description', {
+            const data = await requestJson('/api/seo/listing/description', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -631,7 +631,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         resultDiv.innerHTML = '<div class="text-center mt-3"><div class="spinner-border text-info" role="status"></div><p class="mt-2">Criando anúncio...</p></div>';
 
         try {
-            const { data: result } = await requestJson('/api/seo/listing/build', {
+            const result = await requestJson('/api/seo/listing/build', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -665,7 +665,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     // Funções do Widget de EAN
     async function loadEanWidget() {
         try {
-            const { data } = await requestJson('/api/ean/widget');
+            const data = await requestJson('/api/ean/widget');
             
             if (data.success) {
                 const widget = data.widget;
@@ -705,7 +705,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         status.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split"></i> Buscando EAN...</span>';
         
         try {
-            const { data } = await requestJson('/api/ean/preview');
+            const data = await requestJson('/api/ean/preview');
             
             if (data.success) {
                 eanInput.value = data.preview.ean;
@@ -785,7 +785,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-danger" role="status"></div><p class="mt-2">Analisando preços...</p></div>';
 
         try {
-            const { data } = await requestJson(`/api/seo/pricing/${categoryId}`);
+            const data = await requestJson(`/api/seo/pricing/${categoryId}`);
 
             if (data.error) {
                 resultDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
@@ -881,7 +881,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         resultDiv.innerHTML = `<div class="text-center"><div class="spinner-border text-secondary" role="status"></div><p class="mt-2">Analisando ${itemIds.length} anúncios...</p></div>`;
 
         try {
-            const { data } = await requestJson('/api/seo/analyze/batch', {
+            const data = await requestJson('/api/seo/analyze/batch', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -952,7 +952,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Analisando...</p></div>';
 
         try {
-            const { data } = await requestJson(`/api/seo/analyze/${itemId}`);
+            const data = await requestJson(`/api/seo/analyze/${itemId}`);
 
             if (data.error) {
                 resultDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
@@ -1026,7 +1026,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                 `/api/seo/keywords/${categoryId}?keyword=${encodeURIComponent(baseKeyword)}` :
                 `/api/seo/keywords/${categoryId}`;
 
-            const { data } = await requestJson(url);
+            const data = await requestJson(url);
 
             if (data.error) {
                 resultDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
@@ -1082,16 +1082,6 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     // Utilidades
     function getCsrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    }
-
-    async function requestJson(url, options = {}) {
-        if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-            return window.ApiClient.json(url, options);
-        }
-
-        const response = await fetch(url, options);
-        const data = await response.json();
-        return { response, data };
     }
 
     function copyToClipboard(text) {

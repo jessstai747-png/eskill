@@ -263,19 +263,6 @@ $pageTitle = 'Gerenciar Clones';
     let selectedItems = [];
     let currentItemId = null;
 
-    async function requestJson(url, options = {}) {
-        if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-            return window.ApiClient.json(url, options);
-        }
-
-        const response = await fetch(url, options);
-        const data = await response.json();
-        return {
-            response,
-            data
-        };
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
         loadStats();
         loadItems();
@@ -283,9 +270,7 @@ $pageTitle = 'Gerenciar Clones';
 
     async function loadStats() {
         try {
-            const {
-                data: stats
-            } = await requestJson('/api/clone/items/stats');
+            const stats = await requestJson('/api/clone/items/stats');
 
             document.getElementById('statTotal').textContent = formatNumber(stats.total_items || 0);
             document.getElementById('statActive').textContent = formatNumber(stats.active_items || 0);
@@ -319,9 +304,7 @@ $pageTitle = 'Gerenciar Clones';
     `;
 
         try {
-            const {
-                data
-            } = await requestJson('/api/clone/items?' + params);
+            const data = await requestJson('/api/clone/items?' + params);
 
             renderItems(data.items || []);
             renderPagination(data.pagination || {});
@@ -482,9 +465,7 @@ $pageTitle = 'Gerenciar Clones';
         if (!confirm(confirmMsg[operation])) return;
 
         try {
-            const {
-                data: result
-            } = await requestJson('/api/clone/items/batch', {
+            const result = await requestJson('/api/clone/items/batch', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -518,9 +499,7 @@ $pageTitle = 'Gerenciar Clones';
     `;
 
         try {
-            const {
-                data: item
-            } = await requestJson(`/api/clone/items/${itemId}`);
+            const item = await requestJson(`/api/clone/items/${itemId}`);
 
             document.getElementById('itemDetailContent').innerHTML = renderItemDetails(item);
 
@@ -617,9 +596,7 @@ $pageTitle = 'Gerenciar Clones';
         }
 
         try {
-            const {
-                data: result
-            } = await requestJson(`/api/clone/sync/price/${itemId}`, {
+            const result = await requestJson(`/api/clone/sync/price/${itemId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -644,9 +621,7 @@ $pageTitle = 'Gerenciar Clones';
 
     async function syncItem(itemId) {
         try {
-            const {
-                data: result
-            } = await requestJson(`/api/clone/sync/item/${itemId}`, {
+            const result = await requestJson(`/api/clone/sync/item/${itemId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -677,9 +652,7 @@ $pageTitle = 'Gerenciar Clones';
         }
 
         try {
-            const {
-                data: result
-            } = await requestJson('/api/clone/sync/all', {
+            const result = await requestJson('/api/clone/sync/all', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

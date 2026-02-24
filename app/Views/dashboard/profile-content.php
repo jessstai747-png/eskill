@@ -144,23 +144,13 @@
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-        return window.ApiClient.json(url, options);
-    }
-
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return { response, data };
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     loadAccounts();
 });
 
 async function loadAccounts() {
     try {
-        const { data } = await requestJson('/api/auth/accounts');
+        const data = await requestJson('/api/auth/accounts');
         
         // API retorna { accounts: [...], total: N }
         const accounts = Array.isArray(data) ? data : (data.accounts || []);
@@ -201,7 +191,7 @@ document.getElementById('profileForm').addEventListener('submit', async function
     e.preventDefault();
     
     try {
-        const { data } = await requestJson('/api/user/profile', {
+        const data = await requestJson('/api/user/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -229,7 +219,7 @@ document.getElementById('passwordForm').addEventListener('submit', async functio
     }
     
     try {
-        const { data } = await requestJson('/api/user/password', {
+        const data = await requestJson('/api/user/password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -274,7 +264,7 @@ async function disconnectAccount(accountId) {
     if (!confirm('Desconectar esta conta? (O histórico será mantido)')) return;
     
     try {
-        const { data: result } = await requestJson(`/auth/disconnect/${accountId}`, { method: 'POST' });
+        const result = await requestJson(`/auth/disconnect/${accountId}`, { method: 'POST' });
         
         if (result.success) {
             alert('Conta desconectada com sucesso!');
@@ -298,7 +288,7 @@ async function deleteAccount(accountId) {
     }
     
     try {
-        const { data: result } = await requestJson(`/auth/account/${accountId}`, { method: 'DELETE' });
+        const result = await requestJson(`/auth/account/${accountId}`, { method: 'DELETE' });
         
         if (result.success) {
             alert('Conta excluída permanentemente!');

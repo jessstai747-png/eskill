@@ -90,19 +90,9 @@
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-        return window.ApiClient.json(url, options);
-    }
-
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return { response, data };
-}
-
 async function loadCompetitors() {
     try {
-        const { data } = await requestJson('/api/competitors');
+        const data = await requestJson('/api/competitors');
         
         document.getElementById('totalCompetitors').textContent = data.total || 0;
         document.getElementById('totalProducts').textContent = data.total_products || 0;
@@ -156,19 +146,15 @@ async function addCompetitor() {
     if (!input) return alert('Digite o ID ou link do vendedor');
     
     try {
-        const { response } = await requestJson('/api/competitors', {
+        await requestJson('/api/competitors', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ input })
         });
         
-        if (response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('addCompetitorModal')).hide();
-            document.getElementById('competitorInput').value = '';
-            loadCompetitors();
-        } else {
-            alert('Erro ao adicionar concorrente');
-        }
+        bootstrap.Modal.getInstance(document.getElementById('addCompetitorModal')).hide();
+        document.getElementById('competitorInput').value = '';
+        loadCompetitors();
     } catch (e) {
         alert('Erro ao adicionar concorrente');
     }

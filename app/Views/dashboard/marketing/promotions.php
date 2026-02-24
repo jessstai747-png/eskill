@@ -67,16 +67,6 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-    async function requestJson(url, options = {}) {
-        if (window.ApiClient && typeof window.ApiClient.json === 'function') {
-            return window.ApiClient.json(url, options);
-        }
-
-        const response = await fetch(url, options);
-        const data = await response.json();
-        return { response, data };
-    }
-
     const promoManager = {
         currentPromoId: null,
         
@@ -86,7 +76,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 
         loadPromotions: async function() {
             try {
-                const { data } = await requestJson('/api/marketing/promotions');
+                const data = await requestJson('/api/marketing/promotions');
                 
                 if (data.success) {
                     this.render(data.promotions);
@@ -143,7 +133,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             new bootstrap.Modal(document.getElementById('itemsModal')).show();
             
             try {
-                const { data } = await requestJson('/api/marketing/promotions/items?id=' + promoId);
+                const data = await requestJson('/api/marketing/promotions/items?id=' + promoId);
                 
                 if (data.success) {
                     this.renderItems(data.items);
@@ -191,7 +181,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
              if (!confirm('Confirmar participação com o preço sugerido?')) return;
              
              try {
-                 const { data: result } = await requestJson('/api/marketing/promotions/join', {
+                 const result = await requestJson('/api/marketing/promotions/join', {
                      method: 'POST',
                      headers: {'Content-Type': 'application/json'},
                      body: JSON.stringify({
