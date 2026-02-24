@@ -959,10 +959,13 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
          api('/api/catalog/clone/jobs/' + encodeURIComponent(state.jobId) + '/status')
             .then(function(data) {
                var res = data.data || data;
-               var done = parseInt(res.processed_items || res.done || 0, 10);
-               var errors = parseInt(res.error_count || res.errors || 0, 10);
-               var total = parseInt(res.total_items || res.total || 0, 10);
-               var status = String(res.status || 'pending');
+               // API retorna {status:"success", job:{...}, items:[...]}
+               // Os dados reais do job estão aninhados em res.job
+               var job = res.job || res;
+               var done = parseInt(job.processed_items || job.done || 0, 10);
+               var errors = parseInt(job.failed_items || job.error_count || job.errors || 0, 10);
+               var total = parseInt(job.total_items || job.total || 0, 10);
+               var status = String(job.status || 'pending');
                var pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
                qs('jobProgressBar').style.width = pct + '%';
