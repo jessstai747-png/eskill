@@ -17,7 +17,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle me-2"></i> Selecione os pedidos "Prontos para Envio" abaixo para gerar a lista de separação.
                 </div>
-                
+
                 <!-- Filter Controls -->
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
@@ -62,7 +62,9 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                         </thead>
                         <tbody id="shipping-orders-list">
                             <!-- Populated via JS -->
-                            <tr><td colspan="5" class="text-center py-4">Carregando...</td></tr>
+                            <tr>
+                                <td colspan="5" class="text-center py-4">Carregando...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -72,12 +74,6 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-    async function requestJson(url, options = {}) {
-        if (window.ApiClient) return window.ApiClient.request(url, options);
-        const resp = await fetch(url, { credentials: 'include', ...options });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return resp.json();
-    }
 
     const shippingManager = {
         orders: [],
@@ -85,7 +81,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             this.loadOrders();
             this.setupListeners();
         },
-        
+
         setupListeners: function() {
             document.getElementById('select-all').addEventListener('change', (e) => {
                 const checkboxes = document.querySelectorAll('.order-checkbox');
@@ -97,19 +93,19 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         loadOrders: async function() {
             const status = document.getElementById('shipping-filter-status').value;
             const container = document.getElementById('shipping-orders-list');
-            
+
             container.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
 
             try {
                 // Reusing standard Orders API but filtering client-side or assume endpoint supports filter
                 // Actually, let's use the existing orders API and filter client-side for "Phase 2 MVP"
                 const data = await requestJson('/api/orders/all?status=' + status); // assuming API supports status param or we filter
-                
+
                 this.orders = data.results || [];
-                
+
                 // Client-side filter if API ignores param (defensive coding)
                 const filtered = this.orders.filter(o => o.status === status);
-                
+
                 this.renderOrders(filtered);
             } catch (error) {
                 console.error(error);
@@ -142,7 +138,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                 }
 
                 const itemsCount = orderItems.length;
-                
+
                 html += `
                     <tr>
                         <td><input type="checkbox" class="form-check-input order-checkbox" value="${order.id}" onchange="shippingManager.updateSelection()"></td>
@@ -163,7 +159,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         updateSelection: function() {
             const selected = document.querySelectorAll('.order-checkbox:checked').length;
             document.getElementById('selected-count').textContent = selected;
-            
+
             const actionContainer = document.getElementById('shipping-actions');
             if (selected > 0) {
                 actionContainer.classList.remove('d-none');
@@ -182,8 +178,12 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                 const apiFetch = window.ApiClient ? window.ApiClient.fetch : (u, o) => fetch(u, o);
                 const response = await apiFetch('/api/shipping/picking-list', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ order_ids: selected })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order_ids: selected
+                    })
                 });
 
                 if (response.ok) {
@@ -195,7 +195,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                    
+
                     Toast.success('Picking List gerada com sucesso!');
                 } else {
                     Toast.error('Erro ao gerar Picking List');

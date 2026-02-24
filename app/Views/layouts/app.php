@@ -80,6 +80,18 @@ $activePage = $activePage ?? '';
     <!-- Chart.js -->
     <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+    <!-- API Client (loaded early so view scripts can use requestJson) -->
+    <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
+    <script nonce="<?= $cspNonce ?>" src="/js/api-client.js?v=<?= @filemtime(__DIR__ . '/../../../public/js/api-client.js') ?: time() ?>"></script>
+    <script nonce="<?= $cspNonce ?>">
+        async function requestJson(url, options = {}) {
+            if (window.ApiClient) return window.ApiClient.request(url, options);
+            const resp = await fetch(url, { credentials: 'include', ...options });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return resp.json();
+        }
+    </script>
+
     <style>
         :root {
             --sidebar-width: 260px;
@@ -909,22 +921,10 @@ $activePage = $activePage ?? '';
     <!-- Bootstrap JS -->
     <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- CSRF Helper (must be loaded before app.js) -->
-    <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
-
     <!-- App JS -->
     <script nonce="<?= $cspNonce ?>" src="/js/app.js"></script>
 
     <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-        async function requestJson(url, options = {}) {
-            if (window.ApiClient) return window.ApiClient.request(url, options);
-            const resp = await fetch(url, {
-                credentials: 'include',
-                ...options
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return resp.json();
-        }
         // CSRF Token
         const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
 

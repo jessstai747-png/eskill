@@ -208,12 +208,6 @@
 <div id="notification-toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
 // Funções de configuração de notificações
 async function loadNotificationSettings() {
     try {

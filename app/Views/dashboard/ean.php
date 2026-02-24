@@ -584,12 +584,6 @@ include __DIR__ . '/../components/account-selector.php';
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
 
     // Helper para mudar tabs
     function switchToPackagesTab() {

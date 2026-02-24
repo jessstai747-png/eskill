@@ -196,9 +196,9 @@ $currentPage = $currentPage ?? 'account-governance';
             </div>
             <div class="d-flex align-items-center gap-3">
                 <div class="form-check form-switch">
-                    <input 
-                        class="form-check-input" 
-                        type="checkbox" 
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
                         id="useRealDataToggle"
                         x-model="useRealData"
                         style="cursor: pointer;">
@@ -421,7 +421,7 @@ $currentPage = $currentPage ?? 'account-governance';
 
                 try {
                     let response;
-                    
+
                     if (this.useRealData) {
                         // Call real ML API endpoint
                         response = await apiFetch('/api/account-governance/diagnostic-ml', {
@@ -429,7 +429,9 @@ $currentPage = $currentPage ?? 'account-governance';
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({ max_items: 200 }),
+                            body: JSON.stringify({
+                                max_items: 200
+                            }),
                         });
                     } else {
                         // Use sample data endpoint

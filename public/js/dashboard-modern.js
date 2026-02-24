@@ -32,11 +32,15 @@ window.ML = {
     }
 };
 
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
+// requestJson is now defined globally in <head> via the layout
+// Kept as a no-op guard for any non-layout usage
+if (typeof requestJson === 'undefined') {
+    window.requestJson = async function(url, options = {}) {
+        if (window.ApiClient) return window.ApiClient.request(url, options);
+        const resp = await fetch(url, { credentials: 'include', ...options });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.json();
+    };
 }
 
 console.log('=== dashboard-modern.js carregado ===');

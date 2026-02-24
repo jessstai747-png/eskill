@@ -19,7 +19,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                 <p>Anúncios Totais</p>
             </div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon success">
                 <i class="bi bi-check-circle"></i>
@@ -31,7 +31,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                 <p>Otimizados</p>
             </div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon warning">
                 <i class="bi bi-graph-up-arrow"></i>
@@ -40,10 +40,10 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                 <h3 id="optimization-rate">
                     <span class="spinner-border spinner-border-sm" role="status"></span>
                 </h3>
-                <p>Taxa de  Otimização</p>
+                <p>Taxa de Otimização</p>
             </div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon info">
                 <i class="bi bi-star"></i>
@@ -197,130 +197,123 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
 
-let performanceChart = null;
+    let performanceChart = null;
 
-// Load dashboard data
-async function loadDashboardData() {
-    try {
-        const data = await requestJson('/api/ai/analytics/dashboard?days=30');
-        
-        // Update stats cards
-        document.getElementById('total-items').textContent = data.optimizations?.total || 0;
-        document.getElementById('optimized-items').textContent = data.optimizations?.applied || 0;
-        document.getElementById('optimization-rate').textContent = 
-            (data.optimizations?.success_rate || 0).toFixed(1) + '%';
-        document.getElementById('avg-score').textContent = data.performance?.avg_score_after || 0;
-        
-        // Update pending counts
-        if (data.pending) {
-            document.getElementById('critical-count').textContent = data.pending.critical || 0;
-            document.getElementById('medium-count').textContent = data.pending.medium || 0;
-            document.getElementById('low-count').textContent = data.pending.low || 0;
-            document.getElementById('good-count').textContent = data.pending.good || 0;
+    // Load dashboard data
+    async function loadDashboardData() {
+        try {
+            const data = await requestJson('/api/ai/analytics/dashboard?days=30');
+
+            // Update stats cards
+            document.getElementById('total-items').textContent = data.optimizations?.total || 0;
+            document.getElementById('optimized-items').textContent = data.optimizations?.applied || 0;
+            document.getElementById('optimization-rate').textContent =
+                (data.optimizations?.success_rate || 0).toFixed(1) + '%';
+            document.getElementById('avg-score').textContent = data.performance?.avg_score_after || 0;
+
+            // Update pending counts
+            if (data.pending) {
+                document.getElementById('critical-count').textContent = data.pending.critical || 0;
+                document.getElementById('medium-count').textContent = data.pending.medium || 0;
+                document.getElementById('low-count').textContent = data.pending.low || 0;
+                document.getElementById('good-count').textContent = data.pending.good || 0;
+            }
+
+            // Load performance chart
+            loadPerformanceChart(data.performance);
+
+            // Load top performers
+            loadTopPerformers();
+
+            // Load insights
+            loadInsights(data);
+
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+            showError('Erro ao carregar dados do dashboard');
         }
-        
-        // Load performance chart
-        loadPerformanceChart(data.performance);
-        
-        // Load top performers
-        loadTopPerformers();
-        
-        // Load insights
-        loadInsights(data);
-        
-    } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        showError('Erro ao carregar dados do dashboard');
     }
-}
 
-// Load performance chart
-function loadPerformanceChart(performance) {
-    const ctx = document.getElementById('performance-chart');
-    if (!ctx) return;
-    
-    if (performanceChart) {
-        performanceChart.destroy();
-    }
-    
-    performanceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: performance?.dates || [],
-            datasets: [
-                {
-                    label: 'Views',
-                    data: performance?.views || [],
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    tension: 0.4
-                },
-                {
-                    label: 'Visitas',
-                    data: performance?.visits || [],
-                    borderColor: '#198754',
-                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                    tension: 0.4
-                },
-                {
-                    label: 'Vendas',
-                    data: performance?.sales || [],
-                    borderColor: '#ffc107',
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
-                }
+    // Load performance chart
+    function loadPerformanceChart(performance) {
+        const ctx = document.getElementById('performance-chart');
+        if (!ctx) return;
+
+        if (performanceChart) {
+            performanceChart.destroy();
+        }
+
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: performance?.dates || [],
+                datasets: [{
+                        label: 'Views',
+                        data: performance?.views || [],
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Visitas',
+                        data: performance?.visits || [],
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Vendas',
+                        data: performance?.sales || [],
+                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        tension: 0.4
+                    }
+                ]
             },
-            scales: {
-                y: {
-                    beginAtZero: true
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
-        }
-    });
-}
+        });
+    }
 
-// Load top performers
-// Load top performers
-async function loadTopPerformers() {
-    try {
-        const data = await requestJson('/api/seo-killer/performance/top?limit=5');
-        
-        // Handle Controller's json wrapper if present
-        const items = data.results || data; 
-        
-        if (!Array.isArray(items) || items.length === 0) {
-           document.getElementById('top-performers-list').innerHTML = 
-               '<div class="text-muted text-center py-3">Nenhum dado de performance ainda</div>';
-           return;
-        }
-        
-        const html = items.map((item, index) => {
-            const scoreImp = parseInt(item.score_improvement) || 0;
-            const improvementText = scoreImp > 0 ? `+${scoreImp} pts` : 'stable';
-            const improvementClass = scoreImp > 0 ? 'text-success' : 'text-muted';
-            
-            return `
+    // Load top performers
+    // Load top performers
+    async function loadTopPerformers() {
+        try {
+            const data = await requestJson('/api/seo-killer/performance/top?limit=5');
+
+            // Handle Controller's json wrapper if present
+            const items = data.results || data;
+
+            if (!Array.isArray(items) || items.length === 0) {
+                document.getElementById('top-performers-list').innerHTML =
+                    '<div class="text-muted text-center py-3">Nenhum dado de performance ainda</div>';
+                return;
+            }
+
+            const html = items.map((item, index) => {
+                const scoreImp = parseInt(item.score_improvement) || 0;
+                const improvementText = scoreImp > 0 ? `+${scoreImp} pts` : 'stable';
+                const improvementClass = scoreImp > 0 ? 'text-success' : 'text-muted';
+
+                return `
             <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                 <div style="max-width: 60%;">
                     <span class="badge bg-success me-2">${index + 1}</span>
@@ -334,98 +327,98 @@ async function loadTopPerformers() {
                 </div>
             </div>
             `;
-        }).join('');
-        
-        document.getElementById('top-performers-list').innerHTML = html;
-        
-    } catch (error) {
-        console.error('Error loading top performers:', error);
-        document.getElementById('top-performers-list').innerHTML = 
-            '<div class="text-danger text-center py-3">Erro ao carregar dados</div>';
-    }
-}
+            }).join('');
 
-// Load insights
-function loadInsights(data) {
-    const insights = [];
-    
-    if (data.pending?.critical > 0) {
-        insights.push({
-            type: 'danger',
-            icon: 'exclamation-triangle',
-            text: `${data.pending.critical} anúncios com score crítico - Otimize agora!`
-        });
+            document.getElementById('top-performers-list').innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading top performers:', error);
+            document.getElementById('top-performers-list').innerHTML =
+                '<div class="text-danger text-center py-3">Erro ao carregar dados</div>';
+        }
     }
-    
-    if (data.pending?.medium > 0) {
+
+    // Load insights
+    function loadInsights(data) {
+        const insights = [];
+
+        if (data.pending?.critical > 0) {
+            insights.push({
+                type: 'danger',
+                icon: 'exclamation-triangle',
+                text: `${data.pending.critical} anúncios com score crítico - Otimize agora!`
+            });
+        }
+
+        if (data.pending?.medium > 0) {
+            insights.push({
+                type: 'warning',
+                icon: 'info-circle',
+                text: `${data.pending.medium} anúncios podem melhorar com IA`
+            });
+        }
+
+        if (data.roi?.roi_percentage > 1000) {
+            insights.push({
+                type: 'success',
+                icon: 'graph-up-arrow',
+                text: `ROI excelente de ${data.roi.roi_percentage.toFixed(0)}%!`
+            });
+        }
+
         insights.push({
-            type: 'warning',
-            icon: 'info-circle',
-            text: `${data.pending.medium} anúncios podem melhorar com IA`
+            type: 'info',
+            icon: 'lightbulb',
+            text: 'Títulos otimizados têm +89% CTR em média'
         });
-    }
-    
-    if (data.roi?.roi_percentage > 1000) {
+
         insights.push({
-            type: 'success',
-            icon: 'graph-up-arrow',
-            text: `ROI excelente de ${data.roi.roi_percentage.toFixed(0)}%!`
+            type: 'info',
+            icon: 'lightbulb',
+            text: 'Descrições com IA aumentam conversão em 67%'
         });
-    }
-    
-    insights.push({
-        type: 'info',
-        icon: 'lightbulb',
-        text: 'Títulos otimizados têm +89% CTR em média'
-    });
-    
-    insights.push({
-        type: 'info',
-        icon: 'lightbulb',
-        text: 'Descrições com IA aumentam conversão em 67%'
-    });
-    
-    const html = insights.map(insight => `
+
+        const html = insights.map(insight => `
         <div class="alert alert-${insight.type} d-flex align-items-center mb-2">
             <i class="bi bi-${insight.icon} me-2"></i>
             <span>${insight.text}</span>
         </div>
     `).join('');
-    
-    document.getElementById('insights-list').innerHTML = html;
-}
 
-// Optimize actions
-function optimizeCritical() {
-    window.location.href = '/dashboard/ai-optimization/batch?priority=critical';
-}
+        document.getElementById('insights-list').innerHTML = html;
+    }
 
-function optimizeMedium() {
-    window.location.href = '/dashboard/ai-optimization/batch?priority=medium';
-}
+    // Optimize actions
+    function optimizeCritical() {
+        window.location.href = '/dashboard/ai-optimization/batch?priority=critical';
+    }
 
-function optimizeLow() {
-    window.location.href = '/dashboard/ai-optimization/batch?priority=low';
-}
+    function optimizeMedium() {
+        window.location.href = '/dashboard/ai-optimization/batch?priority=medium';
+    }
 
-function showError(message) {
-    const alertHtml = `
+    function optimizeLow() {
+        window.location.href = '/dashboard/ai-optimization/batch?priority=low';
+    }
+
+    function showError(message) {
+        const alertHtml = `
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="bi bi-exclamation-triangle me-2"></i>
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
-    document.getElementById('ai-optimization-dashboard').insertAdjacentHTML('afterbegin', alertHtml);
-}
+        document.getElementById('ai-optimization-dashboard').insertAdjacentHTML('afterbegin', alertHtml);
+    }
 
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', function() {
-    loadDashboardData();
-    
-    // Refresh every 30 seconds
-    setInterval(loadDashboardData, 30000);
-});
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboardData();
+
+        // Refresh every 30 seconds
+        setInterval(loadDashboardData, 30000);
+    });
 </script>
 
 <?php include __DIR__ . '/../../layouts/modern/partials/page-footer.php'; ?>

@@ -24,6 +24,18 @@
     <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
         onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js';s.nonce='<?= $cspNonce ?>';document.head.appendChild(s);"></script>
 
+    <!-- API Client (loaded early so view scripts can use requestJson) -->
+    <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
+    <script nonce="<?= $cspNonce ?>" src="/js/api-client.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/api-client.js') ?: time() ?>"></script>
+    <script nonce="<?= $cspNonce ?>">
+        async function requestJson(url, options = {}) {
+            if (window.ApiClient) return window.ApiClient.request(url, options);
+            const resp = await fetch(url, { credentials: 'include', ...options });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return resp.json();
+        }
+    </script>
+
     <!-- Global Styles -->
     <style>
         :root {
@@ -922,8 +934,6 @@
     </div>
 
     <!-- Scripts -->
-    <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
-    <script nonce="<?= $cspNonce ?>" src="/js/api-client.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/api-client.js') ?: time() ?>"></script>
     <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script nonce="<?= $cspNonce ?>" src="/js/dashboard-modern.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/dashboard-modern.js') ?: time() ?>"></script>
 

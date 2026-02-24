@@ -193,12 +193,6 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 
 <script src="/js/catalog-clone.js"></script>
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
 
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';

@@ -234,12 +234,6 @@ if (!$itemId) {
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function requestJson(url, options = {}) {
-    if (window.ApiClient) return window.ApiClient.request(url, options);
-    const resp = await fetch(url, { credentials: 'include', ...options });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
-}
 
 const itemId = document.getElementById('ai-item-editor').dataset.itemId;
 let optimizationData = {

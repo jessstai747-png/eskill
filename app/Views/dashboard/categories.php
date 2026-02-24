@@ -108,12 +108,6 @@ include __DIR__ . '/../components/account-selector.php';
 </style>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-    async function requestJson(url, options = {}) {
-        if (window.ApiClient) return window.ApiClient.request(url, options);
-        const resp = await fetch(url, { credentials: 'include', ...options });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return resp.json();
-    }
 
     (() => {
         const treeContainer = document.getElementById('category-tree');
@@ -139,11 +133,11 @@ include __DIR__ . '/../components/account-selector.php';
         const setTreeError = (message = 'Erro ao carregar categorias', details = null) => {
             let errorHtml = `<div class="alert alert-danger mb-0">
                 <i class="fas fa-exclamation-triangle me-2"></i>${message}`;
-            
+
             if (details) {
                 errorHtml += `<br><small class="text-muted mt-2 d-block">${details}</small>`;
             }
-            
+
             errorHtml += `</div>`;
             treeContainer.innerHTML = errorHtml;
         };
@@ -354,30 +348,30 @@ include __DIR__ . '/../components/account-selector.php';
 
         // ApiClient adiciona retry em 429/503 e tratamento de 401
         (window.ApiClient ? window.ApiClient.fetch('/api/categories/tree') : fetch('/api/categories/tree'))
-            .then(async response => {
+        .then(async response => {
                 // Always try to parse JSON, even on error
                 const data = await response.json().catch(() => null);
-                
+
                 if (!response.ok) {
                     // Handle HTTP errors with parsed data
                     if (data && data.error) {
                         let errorMsg = 'Erro ao carregar categorias';
                         let errorDetails = '';
-                        
+
                         if (data.error === 'no_valid_token') {
                             errorMsg = 'Nenhuma conta do Mercado Livre está ativa';
                             errorDetails = 'Por favor, ative uma conta na página de Contas para visualizar as categorias.';
                         } else {
                             errorDetails = data.message || data.error;
                         }
-                        
+
                         setTreeError(errorMsg, errorDetails);
                         return null; // Signal to skip further processing
                     }
-                    
+
                     throw new Error('Falha na resposta da API (HTTP ' + response.status + ')');
                 }
-                
+
                 return data;
             })
             .then(data => {
@@ -385,30 +379,30 @@ include __DIR__ . '/../components/account-selector.php';
                 if (data === null) {
                     return;
                 }
-                
+
                 // Validate response is an array
                 if (!Array.isArray(data)) {
                     console.error('Resposta inválida da API:', data);
-                    
+
                     // Check for specific errors (shouldn't happen here but keep as fallback)
                     if (data && data.error) {
                         let errorMsg = 'Erro ao carregar categorias';
                         let errorDetails = '';
-                        
+
                         if (data.error === 'no_valid_token') {
                             errorMsg = 'Nenhuma conta do Mercado Livre está ativa';
                             errorDetails = 'Por favor, ative uma conta na página de Contas para visualizar as categorias.';
                         } else {
                             errorDetails = data.message || data.error;
                         }
-                        
+
                         setTreeError(errorMsg, errorDetails);
                         return;
                     }
-                    
+
                     throw new Error(data?.error || 'Resposta não é um array de categorias');
                 }
-                
+
                 allCategories = data;
                 buildParentMap(allCategories);
                 renderCategoryTree(allCategories);
