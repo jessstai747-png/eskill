@@ -352,7 +352,8 @@ include __DIR__ . '/../components/account-selector.php';
 
         setTreeLoading();
 
-        fetch('/api/categories/tree')
+        // ApiClient adiciona retry em 429/503 e tratamento de 401
+        (window.ApiClient ? window.ApiClient.fetch('/api/categories/tree') : fetch('/api/categories/tree'))
             .then(async response => {
                 // Always try to parse JSON, even on error
                 const data = await response.json().catch(() => null);

@@ -2023,7 +2023,9 @@ async function loadDiagnostic(showLoading = true) {
     try {
         if (showLoading) setLoadingProgress(30);
         updateLoadingStep('stepSeo');
-        const response = await fetch('/api/account-health/diagnostic');
+        // ApiClient adiciona retry em 429/503 e tratamento de 401
+        const apiFetch = window.ApiClient ? window.ApiClient.fetch : (u, o) => fetch(u, o);
+        const response = await apiFetch('/api/account-health/diagnostic');
         if (showLoading) setLoadingProgress(60);
         updateLoadingStep('stepComp');
 

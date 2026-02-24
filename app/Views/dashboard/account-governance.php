@@ -416,13 +416,15 @@ $currentPage = $currentPage ?? 'account-governance';
             async runDiagnostic() {
                 this.loading = true;
                 this.error = null;
+                // Usar ApiClient para CSRF automático, retry em 429/503 e tratamento de 401
+                const apiFetch = window.ApiClient ? window.ApiClient.fetch : (u, o) => fetch(u, o);
 
                 try {
                     let response;
                     
                     if (this.useRealData) {
                         // Call real ML API endpoint
-                        response = await fetch('/api/account-governance/diagnostic-ml', {
+                        response = await apiFetch('/api/account-governance/diagnostic-ml', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -432,7 +434,7 @@ $currentPage = $currentPage ?? 'account-governance';
                     } else {
                         // Use sample data endpoint
                         const sampleData = this.getSampleData();
-                        response = await fetch('/api/account-governance/diagnostic', {
+                        response = await apiFetch('/api/account-governance/diagnostic', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

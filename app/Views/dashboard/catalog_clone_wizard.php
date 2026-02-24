@@ -607,14 +607,13 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
       function api(url, opts) {
          opts = opts || {};
          opts.headers = Object.assign({
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': (typeof window.getCsrfToken === 'function')
-               ? window.getCsrfToken()
-               : (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+            'Content-Type': 'application/json'
          }, opts.headers || {});
-         return fetch(url, opts).then(function(r) {
-            // Rejeitar HTTP errors (4xx/5xx) — attach body para callers que precisam de detalhes
-            return r.json().catch(function() { return null; }).then(function(body) {
+         // Delegar para ApiClient global — ganha retry (429/503), CSRF automático, e tratamento de 401
+         return ApiClient.fetch(url, opts).then(function(r) {
+            return r.json().catch(function() {
+               return null;
+            }).then(function(body) {
                if (!r.ok) {
                   var err = new Error(body && body.error ? body.error : 'HTTP ' + r.status);
                   err.status = r.status;

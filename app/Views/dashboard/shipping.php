@@ -178,7 +178,9 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 
             // Trigger download via POST
             try {
-                const response = await fetch('/api/shipping/picking-list', {
+                // ApiClient adiciona CSRF token automaticamente + retry em 429/503
+                const apiFetch = window.ApiClient ? window.ApiClient.fetch : (u, o) => fetch(u, o);
+                const response = await apiFetch('/api/shipping/picking-list', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ order_ids: selected })

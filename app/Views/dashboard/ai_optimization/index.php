@@ -209,10 +209,7 @@ let performanceChart = null;
 // Load dashboard data
 async function loadDashboardData() {
     try {
-        const response = await fetch('/api/ai/analytics/dashboard?days=30');
-        if (!response.ok) throw new Error('Failed to load dashboard data');
-        
-        const data = await response.json();
+        const data = await requestJson('/api/ai/analytics/dashboard?days=30');
         
         // Update stats cards
         document.getElementById('total-items').textContent = data.optimizations?.total || 0;
