@@ -66,6 +66,7 @@ use App\Controllers\RenderController;
 use App\Controllers\BrevoIntegrationController;
 use App\Controllers\ClawdbotWebhookController;
 use App\Controllers\AssistantConnectorController;
+use App\Controllers\OpenClawConnectorController;
 use App\Controllers\UserController;
 use App\Controllers\OnboardingController;
 use App\Controllers\MarketDataController;
@@ -164,6 +165,27 @@ $router->get('api/assistant/sellers', AssistantConnectorController::class, 'sell
 $router->post('api/assistant/events', AssistantConnectorController::class, 'ingestEvent');
 $router->post('api/assistant/actions', AssistantConnectorController::class, 'createAction');
 $router->get('api/assistant/actions/{id}', AssistantConnectorController::class, 'getAction');
+
+
+// ========================================
+// 🐾 OpenClaw Connector (API tokens + multi-conta)
+// ========================================
+// Observação: rotas /api/openclaw/* são protegidas pelo auth global de /api/* (ver public/index.php)
+$router->get('api/openclaw/health', OpenClawConnectorController::class, 'health');
+$router->get('api/openclaw/sellers', OpenClawConnectorController::class, 'sellers');
+$router->get('api/openclaw/sellers/{id}', OpenClawConnectorController::class, 'getSeller');
+$router->get('api/openclaw/sellers/{id}/items', OpenClawConnectorController::class, 'listItems');
+$router->get('api/openclaw/sellers/{id}/items/stats', OpenClawConnectorController::class, 'itemsStats');
+$router->get('api/openclaw/sellers/{id}/items/{itemId}', OpenClawConnectorController::class, 'getItem');
+$router->get('api/openclaw/sellers/{id}/orders', OpenClawConnectorController::class, 'listOrders');
+$router->get('api/openclaw/sellers/{id}/orders/{orderId}', OpenClawConnectorController::class, 'getOrder');
+$router->post('api/openclaw/actions', OpenClawConnectorController::class, 'createAction');
+$router->get('api/openclaw/actions/{id}', OpenClawConnectorController::class, 'getAction');
+$router->get('api/openclaw/webhooks', OpenClawConnectorController::class, 'listWebhooks');
+$router->post('api/openclaw/webhooks', OpenClawConnectorController::class, 'createWebhook');
+$router->delete('api/openclaw/webhooks/{id}', OpenClawConnectorController::class, 'deleteWebhook');
+$router->post('api/openclaw/webhooks/{id}/test', OpenClawConnectorController::class, 'testWebhook');
+$router->get('api/openclaw/webhook-events', OpenClawConnectorController::class, 'webhookEvents');
 
 
 // ========================================

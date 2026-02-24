@@ -17,6 +17,10 @@
   ],
   "tags": [
     {
+      "name": "OpenClaw",
+      "description": "OpenClaw Connector — API de integração para o sistema OpenClaw acessar sellers, items, orders, actions e webhooks"
+    },
+    {
       "name": "Analytics",
       "description": "Advanced analytics and forecasting"
     },
@@ -38,6 +42,611 @@
     }
   ],
   "paths": {
+    "/openclaw/health": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Health check do conector",
+        "description": "Retorna status do serviço, disponibilidade do banco, e capabilities suportadas",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Serviço operacional",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "service": {"type": "string", "example": "openclaw-connector"},
+                    "version": {"type": "string", "example": "1.0.0"},
+                    "time": {"type": "string", "format": "date-time"},
+                    "db": {"type": "string", "enum": ["ok", "unavailable"]},
+                    "auth": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {"type": "integer"},
+                        "token_id": {"type": "integer", "nullable": true}
+                      }
+                    },
+                    "capabilities": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "example": ["sellers", "items", "orders", "actions", "webhooks"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/openclaw/sellers": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Listar contas Mercado Livre",
+        "description": "Retorna todas as contas ML vinculadas ao usuário autenticado",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lista de sellers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "sellers": {
+                      "type": "array",
+                      "items": {"$ref": "#/components/schemas/Seller"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "503": {"description": "Banco de dados indisponível"}
+        }
+      }
+    },
+    "/openclaw/sellers/{sellerId}": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Detalhe de uma conta ML",
+        "description": "Retorna informações detalhadas de uma conta Mercado Livre específica",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/SellerId"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados do seller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "seller": {"$ref": "#/components/schemas/Seller"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "ID inválido"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"description": "Conta não encontrada"}
+        }
+      }
+    },
+    "/openclaw/sellers/{sellerId}/items": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Listar itens (anúncios) de uma conta",
+        "description": "Lista anúncios do Mercado Livre com filtros de status, categoria e busca textual",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/SellerId"},
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {"type": "string", "enum": ["active", "paused", "closed", "under_review"]},
+            "description": "Filtrar por status do anúncio"
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "schema": {"type": "string"},
+            "description": "Filtrar por categoria ML"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {"type": "string"},
+            "description": "Busca textual no título"
+          },
+          {"$ref": "#/components/parameters/Page"},
+          {"$ref": "#/components/parameters/PerPage"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de itens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "items": {
+                      "type": "array",
+                      "items": {"$ref": "#/components/schemas/Item"}
+                    },
+                    "pagination": {"$ref": "#/components/schemas/Pagination"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "ID de conta inválido ou conta não autorizada"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/openclaw/sellers/{sellerId}/items/stats": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Estatísticas de itens de uma conta",
+        "description": "Retorna contadores e métricas agregadas dos anúncios",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/SellerId"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Estatísticas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "stats": {
+                      "type": "object",
+                      "description": "Contadores por status, categoria, etc."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Conta inválida ou não autorizada"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/openclaw/sellers/{sellerId}/items/{itemId}": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Detalhe de um item (anúncio)",
+        "description": "Retorna dados completos de um anúncio do Mercado Livre",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/SellerId"},
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "ID do item ML (ex: MLB1234567890)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados do item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "item": {"$ref": "#/components/schemas/Item"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "ID de conta inválido"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"description": "Item não encontrado"}
+        }
+      }
+    },
+    "/openclaw/sellers/{sellerId}/orders": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Listar pedidos de uma conta",
+        "description": "Lista pedidos de uma conta ML com filtros de status e paginação",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/SellerId"},
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {"type": "string"},
+            "description": "Filtrar por status do pedido"
+          },
+          {"$ref": "#/components/parameters/Page"},
+          {"$ref": "#/components/parameters/PerPage"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de pedidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "orders": {
+                      "type": "array",
+                      "items": {"$ref": "#/components/schemas/Order"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Conta inválida ou não autorizada"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/openclaw/sellers/{sellerId}/orders/{orderId}": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Detalhe de um pedido",
+        "description": "Retorna dados completos de um pedido do Mercado Livre",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/SellerId"},
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"},
+            "description": "ID do pedido ML"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados do pedido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "order": {"$ref": "#/components/schemas/Order"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Conta inválida"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"description": "Pedido não encontrado"}
+        }
+      }
+    },
+    "/openclaw/actions": {
+      "post": {
+        "tags": ["OpenClaw"],
+        "summary": "Criar ação assíncrona",
+        "description": "Enfileira uma ação para execução assíncrona (update_price, update_stock, pause_item, etc.). Suporta idempotency via header ou corpo.",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {"type": "string"},
+            "description": "Chave de idempotência para evitar duplicação"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "answer_question", "update_stock", "update_price",
+                      "reconcile_order", "refresh_account_token",
+                      "sync_item", "pause_item", "activate_item"
+                    ],
+                    "description": "Tipo da ação a executar"
+                  },
+                  "account_id": {
+                    "type": "integer",
+                    "description": "ID da conta ML (alternativa a seller_id)"
+                  },
+                  "seller_id": {
+                    "type": "string",
+                    "description": "ML user ID do seller (alternativa a account_id)"
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Parâmetros específicos da ação"
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "description": "Chave de idempotência (alternativa ao header)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ação duplicada (idempotência) — retorna o action_run existente",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ActionRunResponse"}
+              }
+            }
+          },
+          "202": {
+            "description": "Ação criada e enfileirada para execução",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ActionRunResponse"}
+              }
+            }
+          },
+          "400": {"description": "Ação inválida ou parâmetros incompletos"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/openclaw/actions/{actionId}": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Status de uma ação assíncrona",
+        "description": "Consulta o status e resultado de uma ação previamente criada",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {
+            "name": "actionId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"},
+            "description": "ID do action_run"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados da ação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "action_run": {"$ref": "#/components/schemas/ActionRun"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "ID inválido"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"description": "Ação não encontrada"}
+        }
+      }
+    },
+    "/openclaw/webhooks": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Listar webhooks registrados",
+        "description": "Retorna todos os webhooks outbound configurados pelo usuário",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lista de webhooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "webhooks": {
+                      "type": "array",
+                      "items": {"$ref": "#/components/schemas/Webhook"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "503": {"description": "DB indisponível"}
+        }
+      },
+      "post": {
+        "tags": ["OpenClaw"],
+        "summary": "Registrar webhook outbound",
+        "description": "Cria um novo webhook para receber notificações de eventos (orders, items, stock, etc.)",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "url", "events"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nome identificador do webhook",
+                    "example": "OpenClaw Production"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL de destino para entrega dos eventos",
+                    "example": "https://openclaw.example.com/webhook"
+                  },
+                  "events": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Tipos de evento a assinar",
+                    "example": ["order.created", "item.updated", "stock.changed"]
+                  },
+                  "secret": {
+                    "type": "string",
+                    "description": "Secret HMAC para verificação de assinatura (gerado automaticamente se omitido)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "webhook": {"$ref": "#/components/schemas/Webhook"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Validação falhou (campos obrigatórios, URL inválida, eventos inválidos)"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"}
+        }
+      }
+    },
+    "/openclaw/webhooks/{webhookId}": {
+      "delete": {
+        "tags": ["OpenClaw"],
+        "summary": "Remover webhook",
+        "description": "Remove um webhook outbound registrado",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {
+            "name": "webhookId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"},
+            "description": "ID do webhook"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook removido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "ID inválido"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"description": "Webhook não encontrado"}
+        }
+      }
+    },
+    "/openclaw/webhooks/{webhookId}/test": {
+      "post": {
+        "tags": ["OpenClaw"],
+        "summary": "Testar webhook",
+        "description": "Envia um payload de teste para o webhook e retorna o status HTTP da resposta",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "parameters": [
+          {
+            "name": "webhookId",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"},
+            "description": "ID do webhook"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook testado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "status_code": {"type": "integer", "description": "HTTP status retornado pelo destino"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "ID inválido"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "502": {"description": "Destino do webhook retornou erro"}
+        }
+      }
+    },
+    "/openclaw/webhook-events": {
+      "get": {
+        "tags": ["OpenClaw"],
+        "summary": "Listar eventos disponíveis para webhook",
+        "description": "Retorna todos os tipos de evento que podem ser assinados por webhooks",
+        "security": [{"bearerAuth": []}, {"sessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lista de eventos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "events": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "example": [
+                        "order.created", "order.updated", "order.shipped",
+                        "item.updated", "item.paused", "item.activated",
+                        "stock.changed", "price.changed",
+                        "question.received", "question.answered",
+                        "message.received", "account.token_refreshed",
+                        "webhook.test"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
     "/analytics/dashboard": {
       "get": {
         "tags": ["Analytics"],
@@ -223,6 +832,148 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "PHPSESSID"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API Token com scopes openclaw:read, openclaw:write ou openclaw:admin. Gere em /api/tokens."
+      }
+    },
+    "parameters": {
+      "SellerId": {
+        "name": "sellerId",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "integer"},
+        "description": "ID da conta ML (tabela ml_accounts)"
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {"type": "integer", "minimum": 1, "default": 1},
+        "description": "Número da página"
+      },
+      "PerPage": {
+        "name": "per_page",
+        "in": "query",
+        "schema": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+        "description": "Itens por página (máx 200)"
+      }
+    },
+    "schemas": {
+      "Seller": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "ml_user_id": {"type": "string", "description": "ID do vendedor no Mercado Livre"},
+          "nickname": {"type": "string"},
+          "email": {"type": "string"},
+          "site_id": {"type": "string", "example": "MLB"},
+          "status": {"type": "string"},
+          "last_synced_at": {"type": "string", "format": "date-time", "nullable": true},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "description": "ID ML do item (ex: MLB1234567890)"},
+          "title": {"type": "string"},
+          "price": {"type": "number", "format": "float"},
+          "available_quantity": {"type": "integer"},
+          "status": {"type": "string", "enum": ["active", "paused", "closed", "under_review"]},
+          "category_id": {"type": "string"},
+          "permalink": {"type": "string", "format": "uri"},
+          "thumbnail": {"type": "string", "format": "uri"}
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "status": {"type": "string"},
+          "date_created": {"type": "string", "format": "date-time"},
+          "total_amount": {"type": "number", "format": "float"},
+          "buyer": {"type": "object"},
+          "order_items": {"type": "array", "items": {"type": "object"}}
+        }
+      },
+      "ActionRun": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "action": {"type": "string"},
+          "status": {"type": "string", "enum": ["pending", "running", "completed", "failed"]},
+          "payload": {"type": "object"},
+          "result": {"type": "object", "nullable": true},
+          "error": {"type": "string", "nullable": true},
+          "created_at": {"type": "string", "format": "date-time"},
+          "completed_at": {"type": "string", "format": "date-time", "nullable": true}
+        }
+      },
+      "ActionRunResponse": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "action_run": {"$ref": "#/components/schemas/ActionRun"},
+          "action_run_id": {"type": "integer"},
+          "job_id": {"type": "integer", "nullable": true, "description": "ID do job enfileirado (se disponível)"},
+          "created": {"type": "boolean", "description": "true se criou novo, false se retornou existente (idempotência)"}
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "name": {"type": "string"},
+          "url": {"type": "string", "format": "uri"},
+          "secret": {"type": "string", "description": "HMAC secret (só retornado na criação)"},
+          "events": {"type": "array", "items": {"type": "string"}},
+          "is_active": {"type": "boolean"},
+          "last_triggered_at": {"type": "string", "format": "date-time", "nullable": true},
+          "failure_count": {"type": "integer"},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": {"type": "integer"},
+          "per_page": {"type": "integer"},
+          "total": {"type": "integer"},
+          "total_pages": {"type": "integer"}
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Autenticação necessária — forneça um Bearer token válido ou sessão ativa",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean", "example": false},
+                "error": {"type": "string", "example": "Autenticação necessária"}
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Permissão insuficiente — o token não possui os scopes openclaw:* necessários",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean", "example": false},
+                "error": {"type": "string"},
+                "required_scopes": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          }
+        }
       }
     }
   },

@@ -176,6 +176,23 @@ $path = '/' . ltrim($path, '/');
 $isApi = strpos($path, '/api/') === 0;
 $isWebhook = strpos($path, '/webhook/') === 0;
 
+// CORS for external API integrations (OpenClaw, etc.)
+$isOpenClawApi = strpos($path, '/api/openclaw/') === 0 || $path === '/api/openclaw';
+if ($isOpenClawApi) {
+    $allowedOrigin = $_ENV['OPENCLAW_CORS_ORIGIN'] ?? '*';
+    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Authorization, Content-Type, Idempotency-Key, X-ML-Account-Id');
+    header('Access-Control-Max-Age: 86400');
+    header('Access-Control-Expose-Headers: X-RateLimit-Limit, X-RateLimit-Remaining');
+
+    // Preflight request — respond immediately
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+}
+
 // Rate Limiting (webhooks com limite mais alto)
 if ($isWebhook) {
     // Webhooks get a higher limit but are still rate-limited to prevent abuse
