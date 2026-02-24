@@ -38,43 +38,43 @@ use App\Services\UserService;
 
 /**
  * 🔥 SEO Killer Controller
- * 
+ *
  * API para o Sistema SEO Matador do Mercado Livre
  */
 class SEOKillerController extends BaseController
 {
     private ?int $accountId;
     private UserService $userService;
-    
+
     public function __construct()
     {
         parent::__construct();
         $this->userService = new UserService();
-        
+
         // Strict API Authentication
         if (!$this->userService->isAuthenticated()) {
-             header('Content-Type: application/json');
-             http_response_code(401);
-             echo json_encode(['error' => 'Unauthorized']);
-             exit;
+            header('Content-Type: application/json');
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
         }
 
         $this->accountId = SessionHelper::getActiveAccountId()
             ?? $this->getActiveAccountId()
             ?? $this->getAccountId();
     }
-    
+
     /**
      * 🔍 Diagnóstico completo da conta
      * GET /api/seo-killer/diagnose
      */
     public function diagnose(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $engine = new SEOKillerEngine($this->accountId);
             $diagnosis = $engine->diagnoseAccount();
 
@@ -101,22 +101,22 @@ class SEOKillerController extends BaseController
             ];
         });
     }
-    
+
     /**
      * 🚀 Gerar título matador
      * POST /api/seo-killer/title
      */
     public function generateTitle(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['title']) && empty($data['item_id'])) {
                 return ['error' => 'Informe title ou item_id'];
             }
-            
+
             $killer = new TitleKiller($this->accountId);
-            
+
             // Get product data from item_id if provided
             if (!empty($data['item_id'])) {
                 $client = new \App\Services\MercadoLivreClient($this->accountId);
@@ -129,76 +129,76 @@ class SEOKillerController extends BaseController
                     'category_id' => $item['category_id'] ?? '',
                 ]);
             }
-            
+
             return $killer->generateKillerTitle($data);
         });
     }
-    
+
     /**
      * 🔧 Analisar e preencher atributos
      * POST /api/seo-killer/attributes
      */
     public function fillAttributes(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id'])) {
                 return ['error' => 'Informe item_id'];
             }
-            
+
             $killer = new AttributeKiller($this->accountId);
-            
+
             // Get category if not provided
             if (empty($data['category_id'])) {
                 $client = new \App\Services\MercadoLivreClient($this->accountId);
                 $item = $client->get("/items/{$data['item_id']}");
                 $data['category_id'] = $item['category_id'] ?? '';
             }
-            
+
             if (isset($data['analyze_only']) && $data['analyze_only']) {
                 return $killer->analyzeGaps($data['item_id'], $data['category_id']);
             }
-            
+
             return $killer->fillMissingAttributes($data['item_id'], $data['category_id']);
         });
     }
-    
+
     /**
      * 👁️ Obter atributos ocultos de categoria
      * GET /api/seo-killer/hidden-attributes/{categoryId}
      */
     public function getHiddenAttributes(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $killer = new AttributeKiller($this->accountId);
             return $killer->getHiddenAttributes($categoryId);
         });
     }
-    
+
     /**
      * 📝 Gerar descrição matadora
      * POST /api/seo-killer/description
      */
     public function generateDescription(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['title']) && empty($data['item_id'])) {
                 return ['error' => 'Informe title ou item_id'];
             }
-            
+
             $killer = new DescriptionKiller($this->accountId);
-            
+
             // Get product data from item_id if provided
             if (!empty($data['item_id'])) {
                 $client = new \App\Services\MercadoLivreClient($this->accountId);
@@ -210,68 +210,68 @@ class SEOKillerController extends BaseController
                     'attributes' => $item['attributes'] ?? [],
                 ]);
             }
-            
+
             return $killer->generateKillerDescription($data);
         });
     }
-    
+
     /**
      * 📊 Analisar descrição existente
      * POST /api/seo-killer/description/analyze
      */
     public function analyzeDescription(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             $description = $data['description'] ?? '';
-            
+
             // Get from item_id if provided
             if (empty($description) && !empty($data['item_id'])) {
                 $client = new \App\Services\MercadoLivreClient($this->accountId);
                 $desc = $client->get("/items/{$data['item_id']}/description");
                 $description = $desc['plain_text'] ?? $desc['text'] ?? '';
             }
-            
+
             if (empty($description)) {
                 return ['error' => 'Informe description ou item_id'];
             }
-            
+
             $killer = new DescriptionKiller($this->accountId);
             return $killer->analyzeDescription($description);
         });
     }
-    
+
     /**
      * 🎯 Otimizar item completo (one-click)
      * POST /api/seo-killer/optimize
      */
     public function optimizeItem(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id'])) {
                 return ['error' => 'Informe item_id'];
             }
-            
+
             $itemId = $data['item_id'];
             $results = [
                 'item_id' => $itemId,
                 'optimizations' => [],
                 'success' => false,
             ];
-            
+
             // Get item data
             $client = new \App\Services\MercadoLivreClient($this->accountId);
             $item = $client->get("/items/{$itemId}");
-            
+
             if (!$item || isset($item['error'])) {
-                 return ['success' => false, 'error' => $item['error'] ?? 'Erro ao buscar item no ML'];
+                return ['success' => false, 'error' => $item['error'] ?? 'Erro ao buscar item no ML'];
             }
 
             $productData = [
@@ -284,13 +284,13 @@ class SEOKillerController extends BaseController
                 'category_id' => $item['category_id'] ?? '',
                 'pictures' => $item['pictures'] ?? [],
             ];
-            
+
             // 1. Optimize Title
             if ($data['optimize_title'] ?? true) {
                 $titleKiller = new TitleKiller($this->accountId);
                 $titleResult = $titleKiller->optimize($itemId);
                 $results['optimizations']['title'] = $titleResult;
-                
+
                 if ($titleResult['success'] && !empty($data['apply'])) {
                     $newTitle = $titleResult['killer_title'] ?? $titleResult['primary'] ?? $titleResult['title'] ?? null;
                     if ($newTitle) {
@@ -299,31 +299,31 @@ class SEOKillerController extends BaseController
                     }
                 }
             }
-            
+
             // 2. Optimize Description
             if ($data['optimize_description'] ?? true) {
                 $descKiller = new DescriptionKiller($this->accountId);
                 $descResult = $descKiller->optimize($itemId);
                 $results['optimizations']['description'] = $descResult;
-                
+
                 if ($descResult['success'] && !empty($data['apply'])) {
                     $newDesc = $descResult['killer_description'] ?? $descResult['description'] ?? null;
                     if ($newDesc) {
-                         $client->put("/items/{$itemId}/description", [
+                        $client->put("/items/{$itemId}/description", [
                             'plain_text' => $newDesc
-                         ]);
-                         $results['optimizations']['description']['applied'] = true;
+                        ]);
+                        $results['optimizations']['description']['applied'] = true;
                     }
                 }
             }
-            
+
             // 3. Fill Attributes
             if ($data['fill_attributes'] ?? true) {
                 $attrKiller = new AttributeKiller($this->accountId);
                 $attrResult = $attrKiller->optimize($itemId);
                 $results['optimizations']['attributes'] = $attrResult;
             }
-            
+
             // 4. Optimize Keywords
             if ($data['optimize_keywords'] ?? true) {
                 $keywordKiller = new KeywordKiller($this->accountId);
@@ -339,7 +339,7 @@ class SEOKillerController extends BaseController
             }
 
             $results['success'] = true;
-            
+
             return $results;
         });
     }
@@ -350,32 +350,32 @@ class SEOKillerController extends BaseController
      */
     public function sync(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
 
             $data = $this->getJsonInput();
             $limit = $data['limit'] ?? 100;
-            
+
             $itemService = new \App\Services\ItemService($this->accountId);
             $result = $itemService->syncItems($limit);
-            
+
             return array_merge(['success' => true], $result);
         });
     }
-    
+
     /**
      * 📊 Relatório de completude da conta
      * GET /api/seo-killer/report
      */
     public function completenessReport(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $itemService = new \App\Services\ItemService($this->accountId);
             $items = $itemService->listItems(['limit' => 50]);
 
@@ -400,29 +400,29 @@ class SEOKillerController extends BaseController
                     }
                 }
             }
-            
+
             if (empty($itemIds)) {
                 return ['error' => 'Nenhum anúncio encontrado'];
             }
-            
+
             $killer = new AttributeKiller($this->accountId);
             return $killer->generateCompletenessReport($itemIds);
         });
     }
-    
+
     /**
      * 🔎 Pesquisa de Keywords
      * POST /api/seo-killer/keywords
      */
     public function researchKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['title']) && empty($data['item_id'])) {
                 return ['error' => 'Informe title ou item_id'];
             }
-            
+
             // Get product data from item_id if provided
             if (!empty($data['item_id'])) {
                 $client = new \App\Services\MercadoLivreClient($this->accountId);
@@ -434,35 +434,35 @@ class SEOKillerController extends BaseController
                     'attributes' => $item['attributes'] ?? [],
                 ]);
             }
-            
+
             $killer = new KeywordKiller($this->accountId);
             return $killer->researchKeywords($data);
         });
     }
-    
+
     /**
      * 🕵️ Espionar concorrentes
      * POST /api/seo-killer/spy
      */
     public function spyCompetitors(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['search_term']) && empty($data['item_id'])) {
                 return ['error' => 'Informe search_term ou item_id'];
             }
-            
+
             $spy = new CompetitorSpy($this->accountId);
-            
+
             if (!empty($data['item_id'])) {
                 return $spy->compareWithCompetitors($data['item_id']);
             }
-            
+
             return $spy->spyProduct($data['search_term'], $data['limit'] ?? 20);
         });
     }
@@ -473,13 +473,13 @@ class SEOKillerController extends BaseController
      */
     public function analyzeCompetitors(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
 
             $engine = new SEOStrategiesEngine($this->accountId);
-            
+
             // Trigger engine with competitor analysis enabled
             return $engine->analyzeItemData([
                 'id' => $itemId,
@@ -487,20 +487,20 @@ class SEOKillerController extends BaseController
             ]);
         });
     }
-    
+
     /**
      * 🚀 Otimização em massa - selecionar itens
      * GET /api/seo-killer/bulk/select
      */
     public function bulkSelect(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $limit = $this->request->getInt('limit', 50);
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             $payload = $optimizer->selectPriorityItems($limit);
 
@@ -511,140 +511,140 @@ class SEOKillerController extends BaseController
             return array_merge(['success' => true], is_array($payload) ? $payload : []);
         });
     }
-    
+
     /**
      * 🚀 Otimização em massa - iniciar
      * POST /api/seo-killer/bulk/start
      */
     public function bulkStart(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_ids'])) {
                 return ['error' => 'Informe item_ids'];
             }
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             return $optimizer->startBulkOptimization($data['item_ids'], $data['options'] ?? []);
         });
     }
-    
+
     /**
      * 🚀 Otimização em massa - processar job
      * POST /api/seo-killer/bulk/process/{jobId}
      */
     public function bulkProcess(int $jobId): void
     {
-        $this->json(function() use ($jobId) {
+        $this->json(function () use ($jobId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             return $optimizer->processJob($jobId);
         });
     }
-    
+
     /**
      * 📊 Otimização em massa - status
      * GET /api/seo-killer/bulk/status/{jobId}
      */
     public function bulkStatus(int $jobId): void
     {
-        $this->json(function() use ($jobId) {
+        $this->json(function () use ($jobId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             return $optimizer->getJobStatus($jobId);
         });
     }
-    
+
     /**
      * 📋 Otimização em massa - listar jobs
      * GET /api/seo-killer/bulk/jobs
      */
     public function bulkJobs(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             return $optimizer->listJobs();
         });
     }
-    
+
     /**
      * 📊 Monitor de jobs - Dashboard completo
      * GET /api/seo-killer/bulk/monitor
      */
     public function bulkMonitor(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             return $optimizer->getMonitorDashboard();
         });
     }
-    
+
     /**
      * ❌ Cancelar job
      * POST /api/seo-killer/bulk/cancel/{jobId}
      */
     public function bulkCancel(int $jobId): void
     {
-        $this->json(function() use ($jobId) {
+        $this->json(function () use ($jobId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             return $optimizer->cancelJob($jobId);
         });
     }
-    
+
     /**
      * 🔄 Reprocessar job falhado
      * POST /api/seo-killer/bulk/retry/{jobId}
      */
     public function bulkRetry(int $jobId): void
     {
-        $this->json(function() use ($jobId) {
+        $this->json(function () use ($jobId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $optimizer = new BulkOptimizer($this->accountId);
             return $optimizer->retryJob($jobId);
         });
     }
-    
+
     // ========================================
     // 🤖 AUTO-PILOT METHODS
     // ========================================
-    
+
     /**
      * 🔧 Obter configuração do auto-pilot
      * GET /api/seo-killer/autopilot/config
      */
     public function getAutopilotConfig(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $autopilot = new AutoPilot($this->accountId);
             return [
                 'success' => true,
@@ -652,67 +652,67 @@ class SEOKillerController extends BaseController
             ];
         });
     }
-    
+
     /**
      * 💾 Salvar configuração do auto-pilot
      * POST /api/seo-killer/autopilot/config
      */
     public function saveAutopilotConfig(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $autopilot = new AutoPilot($this->accountId);
             return $autopilot->saveConfig($data);
         });
     }
-    
+
     /**
      * ▶️ Ativar auto-pilot
      * POST /api/seo-killer/autopilot/enable
      */
     public function enableAutopilot(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $autopilot = new AutoPilot($this->accountId);
             return $autopilot->enable();
         });
     }
-    
+
     /**
      * ⏸️ Desativar auto-pilot
      * POST /api/seo-killer/autopilot/disable
      */
     public function disableAutopilot(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $autopilot = new AutoPilot($this->accountId);
             return $autopilot->disable();
         });
     }
-    
+
     /**
      * 🚀 Executar auto-pilot manualmente
      * POST /api/seo-killer/autopilot/run
      */
     public function runAutopilot(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $autopilot = new AutoPilot($this->accountId);
             return $autopilot->run();
         });
@@ -724,7 +724,7 @@ class SEOKillerController extends BaseController
      */
     public function autopilotHistory(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
@@ -751,61 +751,61 @@ class SEOKillerController extends BaseController
      */
     public function autopilotRunDetails(string $runId): void
     {
-        $this->json(function() use ($runId) {
+        $this->json(function () use ($runId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $autopilot = new AutoPilot($this->accountId);
             return $autopilot->getRunDetails((int)$runId);
         });
     }
-    
+
     /**
      * 📈 Estatísticas do AutoPilot
      * GET /api/seo-killer/autopilot/stats
      */
     public function autopilotStats(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $autopilot = new AutoPilot($this->accountId);
             return $autopilot->getStats();
         });
     }
-    
+
     /**
      * 📈 Evolução de scores
      * GET /api/seo-killer/autopilot/scores
      */
     public function getScoreEvolution(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $days = $this->request->getInt('days', 30);
             $autopilot = new AutoPilot($this->accountId);
             return $autopilot->getScoreEvolution($days);
         });
     }
-    
+
     /**
      * 📜 Log de auditoria global
      * GET /api/seo-killer/audit/log
      */
     public function getAuditLog(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
             $limit = $this->request->getInt('limit', 50);
-            
+
             $audit = new \App\Services\AI\Core\AuditLogService();
             if (!method_exists($audit, 'getRecentLog')) {
                 // Return empty if service method missing (safety)
@@ -821,7 +821,7 @@ class SEOKillerController extends BaseController
      */
     public function getSettings(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
@@ -869,7 +869,7 @@ class SEOKillerController extends BaseController
      */
     public function saveSettings(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
@@ -909,122 +909,122 @@ class SEOKillerController extends BaseController
     // ========================================
     // 📈 PERFORMANCE TRACKER METHODS
     // ========================================
-    
+
     /**
      * 📊 Dashboard de performance
      * GET /api/seo-killer/performance/dashboard
      */
     public function getPerformanceDashboard(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $tracker = new PerformanceTracker($this->accountId);
             return $tracker->getDashboard();
         });
     }
-    
+
     /**
      * 📈 Performance de um item
      * GET /api/seo-killer/performance/item/{itemId}
      */
     public function getItemPerformance(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $days = $this->request->getInt('days', 30);
             $tracker = new PerformanceTracker($this->accountId);
             return $tracker->getItemPerformance($itemId, $days);
         });
     }
-    
+
     /**
      * 📊 Comparar antes/depois
      * GET /api/seo-killer/performance/compare/{itemId}
      */
     public function compareBeforeAfter(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $tracker = new PerformanceTracker($this->accountId);
             return $tracker->compareBeforeAfter($itemId);
         });
     }
-    
+
     /**
      * 🏆 Top performers
      * GET /api/seo-killer/performance/top
      */
     public function getTopPerformers(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $limit = $this->request->getInt('limit', 10);
             $tracker = new PerformanceTracker($this->accountId);
             return $tracker->getTopPerformers($limit);
         });
     }
-    
+
     /**
      * 📊 Métricas consolidadas
      * GET /api/seo-killer/performance/consolidated
      */
     public function getConsolidatedMetrics(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $tracker = new PerformanceTracker($this->accountId);
             return $tracker->getConsolidatedMetrics();
         });
     }
-    
+
     /**
      * 📈 Evolução temporal de métricas
      * GET /api/seo-killer/performance/evolution
      */
     public function getMetricsEvolution(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $days = $this->request->getInt('days', 30);
             $tracker = new PerformanceTracker($this->accountId);
             return $tracker->getMetricsEvolution($days);
         });
     }
-    
+
     /**
      * 🏆 Performance por categoria
      * GET /api/seo-killer/performance/categories
      */
     public function getCategoryPerformance(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $tracker = new PerformanceTracker($this->accountId);
             return $tracker->getCategoryPerformance();
         });
     }
-    
+
     /**
      * 📄 Exportar relatório
      * GET /api/seo-killer/performance/export
@@ -1036,11 +1036,11 @@ class SEOKillerController extends BaseController
             echo json_encode(['error' => 'Nenhuma conta conectada']);
             return;
         }
-        
+
         $format = $this->request->get('format', 'json');
         $tracker = new PerformanceTracker($this->accountId);
         $data = $tracker->exportPerformanceReport($format);
-        
+
         if ($format === 'csv') {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="seo-killer-report-' . date('Y-m-d') . '.csv"');
@@ -1050,135 +1050,171 @@ class SEOKillerController extends BaseController
             echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         }
     }
-    
+
+    // ========================================
+    // 📊 SEO METRICS COLLECTION (ML API)
+    // ========================================
+
+    /**
+     * 🔄 Coletar metricas de performance da API do Mercado Livre
+     * POST /api/seo-killer/performance/collect
+     *
+     * Busca visitas e vendas via ML API e salva em seo_performance_metrics.
+     * Params: days (1-30), max_items (1-500)
+     */
+    public function collectPerformanceMetrics(): void
+    {
+        $this->json(function () {
+            if (!$this->accountId) {
+                return ['error' => 'Nenhuma conta conectada'];
+            }
+
+            $days = $this->request->getInt('days', 1);
+            $maxItems = $this->request->getInt('max_items', 200);
+
+            $collector = new \App\Services\MercadoLivre\SEOMetricsCollectorService($this->accountId);
+            $collector->setMaxItemsPerRun(min(max(1, $maxItems), 500));
+
+            $stats = $collector->collect(min(max(1, $days), 30), false);
+
+            return [
+                'success' => $stats['errors'] === 0,
+                'message' => $stats['metrics_saved'] > 0
+                    ? "Coletadas {$stats['metrics_saved']} metricas de {$stats['items_processed']} itens"
+                    : 'Nenhuma metrica coletada — verifique se ha itens ativos',
+                'stats' => $stats,
+            ];
+        });
+    }
+
     // ========================================
     // 📊 SEO SCORE METHODS
     // ========================================
-    
+
     /**
      * 📊 Calculate SEO score for an item
      * GET /api/seo-killer/score/{itemId}
      */
     public function calculateScore(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $calculator = new SEOScoreCalculator($this->accountId);
             return $calculator->calculateScore($itemId);
         });
     }
-    
+
     /**
      * 📈 Get score history for an item
      * GET /api/seo-killer/score/history/{itemId}
      */
     public function getScoreHistory(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $days = $this->request->getInt('days', 30);
             $calculator = new SEOScoreCalculator($this->accountId);
             return $calculator->getHistoricalScores($itemId, $days);
         });
     }
-    
+
     /**
      * 🤖 Get detailed AutoPilot status
      * GET /api/seo-killer/autopilot/status
      */
     public function getAutopilotStatus(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $statusManager = new AutoPilotStatusManager($this->accountId);
             return $statusManager->getDetailedStatus();
         });
     }
-    
+
     /**
      * 🔔 Get SEO score alerts
      * GET /api/seo-killer/alerts/score
      */
     public function getScoreAlerts(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $limit = $this->request->getInt('limit', 10);
             $calculator = new SEOScoreCalculator($this->accountId);
             return $calculator->getUnreadAlerts($limit);
         });
     }
-    
+
     /**
      * 📊 Get SEO benchmarks
      * GET /api/seo-killer/benchmarks
      */
     public function getBenchmarks(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $categoryId = $this->request->get('category_id');
             $calculator = new SEOScoreCalculator($this->accountId);
             return $calculator->getBenchmarks($categoryId);
         });
     }
-    
+
     /**
      * 🆚 Compare item score with category average
      * GET /api/seo-killer/compare/{itemId}/{categoryId}
      */
     public function compareWithCategory(string $itemId, string $categoryId): void
     {
-        $this->json(function() use ($itemId, $categoryId) {
+        $this->json(function () use ($itemId, $categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $calculator = new SEOScoreCalculator($this->accountId);
             return $calculator->compareWithCategoryAverage($itemId, $categoryId);
         });
     }
-    
+
     /**
      * 🏆 Get top performing items (for dashboard)
      * GET /api/seo-killer/top-performers
      */
     public function getTopPerformingItems(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $limit = $this->request->getInt('limit', 10);
             $period = $this->request->get('period', '30d');
-            
+
             // Get items and calculate scores
             $itemService = new \App\Services\ItemService($this->accountId);
             $items = $itemService->listItems(['limit' => 50]);
-            
+
             $calculator = new SEOScoreCalculator($this->accountId);
             $scoredItems = [];
-            
+
             foreach ($items['items'] ?? [] as $item) {
                 $score = $calculator->calculateScore($item['id'], $item);
                 if (isset($score['error'])) continue; // Skip items with errors
-                
+
                 $scoredItems[] = [
                     'item_id' => $item['id'],
                     'title' => $item['title'] ?? '',
@@ -1189,10 +1225,10 @@ class SEOKillerController extends BaseController
                     'thumbnail' => $item['thumbnail'] ?? '',
                 ];
             }
-            
+
             // Sort by score DESC
             usort($scoredItems, fn($a, $b) => $b['score'] <=> $a['score']);
-            
+
             return [
                 'success' => true,
                 'items' => array_slice($scoredItems, 0, $limit),
@@ -1200,23 +1236,23 @@ class SEOKillerController extends BaseController
             ];
         });
     }
-    
+
     /**
      * 📊 Get real AutoPilot status from database
      * GET /api/seo-killer/autopilot/status
      */
     public function getAutopilotRealStatus(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $statusManager = new AutoPilotStatusManager($this->accountId);
             return $statusManager->getRealStatus();
         });
     }
-    
+
     /**
      * 📋 Get default settings
      */
@@ -1262,52 +1298,52 @@ class SEOKillerController extends BaseController
             ]
         ];
     }
-    
+
     // ========================================
     // 📸 IMAGE KILLER METHODS
     // ========================================
-    
+
     /**
      * 📸 Analisar imagens
      * GET /api/seo-killer/images/analyze/{itemId}
      */
     public function analyzeImages(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $killer = new ImageKiller($this->accountId);
             return $killer->analyzeImages($itemId);
         });
     }
-    
+
     // ========================================
     // 🧪 A/B TESTER METHODS
     // ========================================
-    
+
     /**
      * 🆕 Criar Teste A/B
      * POST /api/seo-killer/ab-test
      */
     public function createABTest(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id']) || empty($data['type']) || empty($data['variant_b'])) {
                 return ['error' => 'Informe item_id, type e variant_b'];
             }
-            
+
             $tester = new ABTester($this->accountId);
             return $tester->createTest(
-                $data['item_id'], 
-                $data['type'], 
+                $data['item_id'],
+                $data['type'],
                 $data['variant_b'],
                 (int)($data['duration'] ?? 14)
             );
@@ -1320,7 +1356,7 @@ class SEOKillerController extends BaseController
      */
     public function createTitleABTest(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
@@ -1328,11 +1364,11 @@ class SEOKillerController extends BaseController
             // 1. Get item data
             $client = new \App\Services\MercadoLivreClient($this->accountId);
             $item = $client->get("/items/{$itemId}");
-            
+
             if (!$item || !isset($item['title'])) {
                 return ['error' => 'Item não encontrado'];
             }
-            
+
             // 2. Generate optimized title using TitleKiller
             $killer = new TitleKiller($this->accountId);
             $result = $killer->generateKillerTitle([
@@ -1342,20 +1378,20 @@ class SEOKillerController extends BaseController
                 'attributes' => $item['attributes'] ?? [],
                 'category_id' => $item['category_id'] ?? '',
             ]);
-            
+
             if (isset($result['error'])) {
                 return ['error' => 'Falha ao gerar título: ' . $result['error']];
             }
-            
+
             $newTitle = $result['killer_title'] ?? $result['title'] ?? null;
             if (!$newTitle || $newTitle === $item['title']) {
                 return ['error' => 'Não foi possível gerar um título diferente'];
             }
-            
+
             // 3. Create A/B Test
             $tester = new ABTester($this->accountId);
             $testResult = $tester->createTest($itemId, 'title', $newTitle, 14);
-            
+
             return array_merge($testResult, [
                 'original_title' => $item['title'],
                 'new_title' => $newTitle,
@@ -1363,55 +1399,55 @@ class SEOKillerController extends BaseController
             ]);
         });
     }
-    
+
     /**
      * 📊 Listar Testes A/B
      * GET /api/seo-killer/ab-test
      */
     public function listABTests(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $tester = new ABTester($this->accountId);
             return $tester->listTests();
         });
     }
-    
+
     /**
      * ✋ Parar Teste A/B
      * POST /api/seo-killer/ab-test/stop/{id}
      */
     public function stopABTest(int $id): void
     {
-        $this->json(function() use ($id) {
+        $this->json(function () use ($id) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $tester = new ABTester($this->accountId);
             return $tester->stopTest($id);
         });
     }
-    
+
     /**
      * 📊 Análise Estatística de Teste A/B
      * GET /api/seo-killer/ab-test/analysis/{id}
      */
     public function getABTestAnalysis(int $id): void
     {
-        $this->json(function() use ($id) {
+        $this->json(function () use ($id) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $tester = new ABTester($this->accountId);
             return $tester->getTestAnalysis($id);
         });
     }
-    
+
     /**
      * 🔍 Obter detalhes de um Teste A/B
      * GET /api/seo-killer/ab-test/{testId}
@@ -1481,40 +1517,40 @@ class SEOKillerController extends BaseController
     // ==========================================
     // 🔖 WATCHLIST ENDPOINTS
     // ==========================================
-    
+
     /**
      * 📌 Adicionar concorrente à watchlist
      * POST /api/seo-killer/watchlist
      */
     public function addToWatchlist(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['competitor_item_id'])) {
                 return ['error' => 'Informe competitor_item_id'];
             }
-            
+
             $spy = new CompetitorSpy($this->accountId);
             return $spy->addToWatchlist($data['competitor_item_id'], $data);
         });
     }
-    
+
     /**
      * 📋 Listar watchlist
      * GET /api/seo-killer/watchlist
      */
     public function getWatchlist(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $filters = [
                 'status' => $this->request->get('status'),
                 'category_id' => $this->request->get('category_id'),
@@ -1522,133 +1558,133 @@ class SEOKillerController extends BaseController
                 'order_by' => $this->request->get('order_by', 'created_at DESC'),
                 'limit' => $this->request->getInt('limit', 50),
             ];
-            
+
             $spy = new CompetitorSpy($this->accountId);
             return ['success' => true, 'watchlist' => $spy->getWatchlist($filters)];
         });
     }
-    
+
     /**
      * 🔄 Atualizar item da watchlist
      * POST /api/seo-killer/watchlist/{id}/update
      */
     public function updateWatchlistItem(int $id): void
     {
-        $this->json(function() use ($id) {
+        $this->json(function () use ($id) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $spy = new CompetitorSpy($this->accountId);
             return $spy->updateWatchlistItem($id);
         });
     }
-    
+
     /**
      * 🗑️ Remover da watchlist
      * DELETE /api/seo-killer/watchlist/{id}
      */
     public function removeFromWatchlist(int $id): void
     {
-        $this->json(function() use ($id) {
+        $this->json(function () use ($id) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $spy = new CompetitorSpy($this->accountId);
             $success = $spy->removeFromWatchlist($id);
-            
+
             return [
                 'success' => $success,
                 'message' => $success ? 'Removido da watchlist' : 'Erro ao remover',
             ];
         });
     }
-    
+
     /**
      * 📜 Histórico de mudanças de um concorrente
      * GET /api/seo-killer/watchlist/{id}/history
      */
     public function getWatchlistHistory(int $id): void
     {
-        $this->json(function() use ($id) {
+        $this->json(function () use ($id) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $days = $this->request->getInt('days', 30);
             $spy = new CompetitorSpy($this->accountId);
-            
+
             return [
                 'success' => true,
                 'history' => $spy->getHistory($id, $days),
             ];
         });
     }
-    
+
     /**
      * 🔔 Listar alertas
      * GET /api/seo-killer/alerts
      */
     public function getAlerts(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $filters = [
                 'status' => $this->request->get('status'),
                 'priority' => $this->request->get('priority'),
                 'limit' => $this->request->getInt('limit', 50),
             ];
-            
+
             $spy = new CompetitorSpy($this->accountId);
             return ['success' => true, 'alerts' => $spy->getAlerts($filters)];
         });
     }
-    
+
     /**
      * ✅ Marcar alerta como lido
      * POST /api/seo-killer/alerts/{id}/read
      */
     public function markAlertAsRead(int $id): void
     {
-        $this->json(function() use ($id) {
+        $this->json(function () use ($id) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $spy = new CompetitorSpy($this->accountId);
             $success = $spy->markAlertAsRead($id);
-            
+
             return [
                 'success' => $success,
                 'message' => $success ? 'Alerta marcado como lido' : 'Erro',
             ];
         });
     }
-    
+
     /**
      * 📄 Exportar análise de concorrentes em PDF
      * POST /api/seo-killer/export/competitor
      */
     public function exportCompetitorPdf(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $itemId = $data['item_id'] ?? null;
             $competitors = $data['competitors'] ?? [];
             $options = $data['options'] ?? [];
-            
+
             if (!$itemId || empty($competitors)) {
                 return ['error' => 'item_id e competitors são obrigatórios'];
             }
-            
+
             $exporter = new \App\Services\AI\SEO\PdfExporter($this->accountId);
             return $exporter->exportCompetitorAnalysis($itemId, $competitors, $options);
         });
@@ -1660,25 +1696,25 @@ class SEOKillerController extends BaseController
      */
     public function uploadImage(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $itemId = $this->request->post('item_id');
             if (!$itemId) {
                 return ['error' => 'Item ID é obrigatório'];
             }
-            
+
             if (empty($_FILES['images'])) {
-                 return ['error' => 'Nenhum arquivo enviado'];
+                return ['error' => 'Nenhum arquivo enviado'];
             }
-            
+
             $uploaded = [];
             $errors = [];
-            
+
             $analyzer = new \App\Services\AI\SEO\ImageKiller($this->accountId);
-            
+
             if (isset($_FILES['images']['name']) && is_array($_FILES['images']['name'])) {
                 foreach ($_FILES['images']['name'] as $key => $name) {
                     $file = [
@@ -1688,7 +1724,7 @@ class SEOKillerController extends BaseController
                         'error' => $_FILES['images']['error'][$key],
                         'size' => $_FILES['images']['size'][$key],
                     ];
-                    
+
                     try {
                         $uploaded[] = $analyzer->uploadImage($itemId, $file);
                     } catch (\Exception $e) {
@@ -1696,13 +1732,13 @@ class SEOKillerController extends BaseController
                     }
                 }
             } else {
-                 return ['error' => 'Formato de upload inválido. Use images[]'];
+                return ['error' => 'Formato de upload inválido. Use images[]'];
             }
-            
+
             if (empty($uploaded) && !empty($errors)) {
                 return ['error' => implode(', ', $errors)];
             }
-            
+
             return [
                 'success' => true,
                 'uploaded' => $uploaded,
@@ -1717,153 +1753,153 @@ class SEOKillerController extends BaseController
      */
     public function updateImages(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
             $data = $this->getJsonInput();
-            
+
             if (empty($data['changes'])) {
                 return ['error' => 'Nenhuma mudança enviada'];
             }
-            
+
             $analyzer = new \App\Services\AI\SEO\ImageKiller($this->accountId);
             $response = $analyzer->updateImages($itemId, $data['changes']);
-            
+
             return [
                 'success' => true,
                 'ml_response' => $response
             ];
         });
     }
-    
+
     /**
      * 📄 Exportar histórico de watchlist em PDF
      * GET /api/seo-killer/export/watchlist/{id}
      */
     public function exportWatchlistPdf(int $id): void
     {
-        $this->json(function() use ($id) {
+        $this->json(function () use ($id) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $days = $this->request->getInt('days', 30);
             $exporter = new \App\Services\AI\SEO\PdfExporter($this->accountId);
             return $exporter->exportWatchlistHistory($id, $days);
         });
     }
-    
+
     /**
      * 📊 Dashboard de Inteligência Competitiva
      * GET /api/seo-killer/intelligence/dashboard
      */
     public function getIntelligenceDashboard(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $categoryId = $this->request->get('category_id');
             $intel = new \App\Services\AI\SEO\CompetitiveIntelligence($this->accountId);
             return $intel->getDashboard($categoryId);
         });
     }
-    
+
     /**
      * 🎯 Análise SWOT
      * POST /api/seo-killer/intelligence/swot
      */
     public function getSwotAnalysis(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->request->json();
             $itemId = $data['item_id'] ?? null;
             $competitorIds = $data['competitor_ids'] ?? [];
-            
+
             if (!$itemId || empty($competitorIds)) {
                 return ['error' => 'item_id e competitor_ids são obrigatórios'];
             }
-            
+
             $intel = new \App\Services\AI\SEO\CompetitiveIntelligence($this->accountId);
             return $intel->swotAnalysis($itemId, $competitorIds);
         });
     }
-    
+
     /**
      * 📈 Previsão de Demanda
      * GET /api/seo-killer/analytics/demand-forecast
      */
     public function getDemandForecast(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $categoryId = $this->request->get('category_id');
             if (!$categoryId) {
                 return ['error' => 'category_id é obrigatório'];
             }
-            
+
             $analytics = new \App\Services\AI\SEO\MarketAnalytics($this->accountId);
             return $analytics->predictDemand($categoryId);
         });
     }
-    
+
     /**
      * 🌿 Detecção de Sazonalidade
      * GET /api/seo-killer/analytics/seasonality
      */
     public function getSeasonalityAnalysis(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $categoryId = $this->request->get('category_id');
             if (!$categoryId) {
                 return ['error' => 'category_id é obrigatório'];
             }
-            
+
             $analytics = new \App\Services\AI\SEO\MarketAnalytics($this->accountId);
             return $analytics->detectSeasonality($categoryId);
         });
     }
-    
+
     /**
      * 🔥 Oportunidades Emergentes
      * GET /api/seo-killer/analytics/opportunities
      */
     public function getEmergingOpportunities(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $analytics = new \App\Services\AI\SEO\MarketAnalytics($this->accountId);
             return $analytics->detectEmergingOpportunities();
         });
     }
-    
+
     /**
      * 📊 Sentimento de Mercado
      * GET /api/seo-killer/analytics/market-sentiment
      */
     public function getMarketSentiment(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $categoryId = $this->request->get('category_id');
             $analytics = new \App\Services\AI\SEO\MarketAnalytics($this->accountId);
             return $analytics->analyzeMarketSentiment($categoryId);
@@ -1871,19 +1907,19 @@ class SEOKillerController extends BaseController
     }
     public function copyCompetitorStrategy(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $competitorId = $data['competitor_id'] ?? null;
             $myItemId = $data['my_item_id'] ?? null;
-            
+
             if (!$competitorId || !$myItemId) {
                 return ['error' => 'competitor_id e my_item_id são obrigatórios'];
             }
-            
+
             $spy = new \App\Services\AI\SEO\CompetitorSpy($this->accountId);
             return $spy->generateOptimizationFromCompetitor($competitorId, $myItemId);
         });
@@ -1894,7 +1930,7 @@ class SEOKillerController extends BaseController
      */
     public function gscAuthUrl()
     {
-        $this->json(function() {
+        $this->json(function () {
             $accountId = $this->accountId ?? $this->getAccountId();
 
             if (!$accountId) {
@@ -1914,7 +1950,7 @@ class SEOKillerController extends BaseController
     public function gscCallback()
     {
         $code = $this->request->get('code', '');
-        
+
         if (empty($code)) {
             // Should redirect to error page or dashboard with error
             header('Location: /dashboard/seo-killer?error=gsc_auth_failed');
@@ -1931,7 +1967,7 @@ class SEOKillerController extends BaseController
 
             $service = new GoogleSearchConsoleService((int) $accountId);
             $service->handleCallback($code);
-            
+
             header('Location: /dashboard/seo-killer?success=gsc_connected');
         } catch (\Exception $e) {
             log_error('Erro no callback GSC', [
@@ -1947,7 +1983,7 @@ class SEOKillerController extends BaseController
      */
     public function gscStatus()
     {
-        $this->json(function() {
+        $this->json(function () {
             $accountId = $this->accountId ?? $this->getAccountId();
 
             if (!$accountId) {
@@ -1967,7 +2003,7 @@ class SEOKillerController extends BaseController
      */
     public function gscData(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $accountId = $this->accountId ?? $this->getAccountId();
 
             if (!$accountId) {
@@ -2007,28 +2043,28 @@ class SEOKillerController extends BaseController
      */
     public function updateItem(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $itemId = $data['item_id'] ?? null;
-            
+
             if (!$itemId) {
                 return ['error' => 'item_id é obrigatório'];
             }
-            
+
             $mlClient = new \App\Services\MercadoLivreClient($this->accountId);
             $updateData = [];
-            
+
             if (isset($data['title'])) $updateData['title'] = $data['title'];
             if (isset($data['price'])) $updateData['price'] = $data['price'];
-            
+
             if (empty($updateData)) {
                 return ['error' => 'Nenhum dado para atualizar'];
             }
-            
+
             return $mlClient->put("/items/{$itemId}", $updateData);
         });
     }
@@ -2046,7 +2082,7 @@ class SEOKillerController extends BaseController
      */
     public function generateSchema($itemId)
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             $service = new SchemaGenerator($this->accountId);
             return $service->generateProductSchema($itemId);
         });
@@ -2058,18 +2094,18 @@ class SEOKillerController extends BaseController
      */
     public function analyzeBacklinks()
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $itemId = $data['item_id'] ?? null;
-            
+
             if (!$itemId) {
                 return ['error' => 'item_id é obrigatório'];
             }
-            
+
             $analyzer = new BacklinkAnalyzer($this->accountId);
             return $analyzer->analyzeOpportunities($itemId);
         });
@@ -2081,7 +2117,7 @@ class SEOKillerController extends BaseController
      */
     public function listApiKeys()
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) return ['error' => 'Login requerido'];
             $service = new ApiKeyService($this->accountId);
             return ['success' => true, 'keys' => $service->listKeys()];
@@ -2094,11 +2130,11 @@ class SEOKillerController extends BaseController
      */
     public function createApiKey()
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) return ['error' => 'Login requerido'];
             $data = $this->getJsonInput();
             $name = $data['name'] ?? 'Nova Chave';
-            
+
             $service = new ApiKeyService($this->accountId);
             return ['success' => true, 'key' => $service->createKey($name)];
         });
@@ -2110,7 +2146,7 @@ class SEOKillerController extends BaseController
      */
     public function revokeApiKey($clientId)
     {
-        $this->json(function() use ($clientId) {
+        $this->json(function () use ($clientId) {
             if (!$this->accountId) return ['error' => 'Login requerido'];
             $service = new ApiKeyService($this->accountId);
             $service->revokeKey($clientId);
@@ -2124,13 +2160,13 @@ class SEOKillerController extends BaseController
      */
     public function exportPdf($type, $itemId)
     {
-        $this->json(function() use ($type, $itemId) {
+        $this->json(function () use ($type, $itemId) {
             if (!$this->accountId) return ['error' => 'Login requerido'];
             $exporter = new PdfExporter($this->accountId);
-            
+
             // For file download, we might bypass json wrapper or return base64/url
             // Here we assume the service returns an array with file path or url
-            
+
             switch ($type) {
                 case 'competitor':
                     // Need competitor ID, might need query param for it if itemId is not enough
@@ -2153,7 +2189,7 @@ class SEOKillerController extends BaseController
     /**
      * 📖 Expandir sinônimos com hierarquia de 4 níveis
      * POST /api/seo-killer/strategies/synonyms/expand
-     * 
+     *
      * @body {
      *   "keyword": "bauleto",
      *   "category_id": "MLB3530",
@@ -2162,22 +2198,22 @@ class SEOKillerController extends BaseController
      */
     public function expandSynonyms(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keyword'])) {
                 return ['error' => 'Informe keyword'];
             }
-            
+
             $service = new SynonymExpansionService($this->accountId);
-            
+
             $options = $data['options'] ?? [];
             $categoryId = $data['category_id'] ?? null;
-            
+
             return $service->expand($data['keyword'], $categoryId, $options);
         });
     }
@@ -2188,11 +2224,11 @@ class SEOKillerController extends BaseController
      */
     public function getSynonymHierarchy(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $service = new SynonymExpansionService($this->accountId);
             return $service->getHierarchy($categoryId);
         });
@@ -2201,7 +2237,7 @@ class SEOKillerController extends BaseController
     /**
      * 🏗️ Gerar hierarquia de sinônimos para nova categoria
      * POST /api/seo-killer/strategies/synonyms/generate
-     * 
+     *
      * @body {
      *   "category_id": "MLB1234",
      *   "seed_keywords": ["palavra1", "palavra2"],
@@ -2210,24 +2246,24 @@ class SEOKillerController extends BaseController
      */
     public function generateSynonymHierarchy(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['category_id'])) {
                 return ['error' => 'Informe category_id'];
             }
-            
+
             $service = new SynonymExpansionService($this->accountId);
-            
+
             $seedKeywords = $data['seed_keywords'] ?? [];
             $forceRegenerate = $data['force_regenerate'] ?? false;
-            
+
             return $service->generateHierarchyForCategory(
-                $data['category_id'], 
+                $data['category_id'],
                 $seedKeywords,
                 $forceRegenerate
             );
@@ -2237,7 +2273,7 @@ class SEOKillerController extends BaseController
     /**
      * 🎯 Selecionar sinônimos para campo específico
      * POST /api/seo-killer/strategies/synonyms/select
-     * 
+     *
      * @body {
      *   "keyword": "bauleto",
      *   "category_id": "MLB3530",
@@ -2247,24 +2283,24 @@ class SEOKillerController extends BaseController
      */
     public function selectSynonymsForField(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keyword']) || empty($data['field'])) {
                 return ['error' => 'Informe keyword e field'];
             }
-            
+
             $validFields = ['title', 'model', 'description', 'keywords'];
             if (!in_array($data['field'], $validFields)) {
                 return ['error' => 'Field inválido. Use: ' . implode(', ', $validFields)];
             }
-            
+
             $service = new SynonymExpansionService($this->accountId);
-            
+
             return $service->selectForField(
                 $data['keyword'],
                 $data['category_id'] ?? null,
@@ -2277,7 +2313,7 @@ class SEOKillerController extends BaseController
     /**
      * ⚡ Gerar modelo otimizado com sinônimos
      * POST /api/seo-killer/strategies/synonyms/model
-     * 
+     *
      * @body {
      *   "keywords": ["bauleto", "moto"],
      *   "category_id": "MLB3530",
@@ -2286,19 +2322,19 @@ class SEOKillerController extends BaseController
      */
     public function generateOptimizedModel(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keywords']) || !is_array($data['keywords'])) {
                 return ['error' => 'Informe array de keywords'];
             }
-            
+
             $service = new SynonymExpansionService($this->accountId);
-            
+
             $title = is_array($data['keywords']) ? implode(' ', $data['keywords']) : $data['keywords'];
             return $service->generateOptimizedModel(
                 $title,
@@ -2310,7 +2346,7 @@ class SEOKillerController extends BaseController
     /**
      * 📈 Calcular score semântico de keywords
      * POST /api/seo-killer/strategies/score/calculate
-     * 
+     *
      * @body {
      *   "keywords": ["bauleto", "moto", "delivery"],
      *   "category_id": "MLB3530",
@@ -2319,20 +2355,20 @@ class SEOKillerController extends BaseController
      */
     public function calculateSemanticScore(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keywords'])) {
                 return ['error' => 'Informe keywords'];
             }
-            
+
             $keywords = is_array($data['keywords']) ? $data['keywords'] : [$data['keywords']];
             $service = new SemanticScoreService($this->accountId);
-            
+
             return $service->scoreWords(
                 $keywords,
                 $data['category_id'] ?? null,
@@ -2344,7 +2380,7 @@ class SEOKillerController extends BaseController
     /**
      * 🏆 Rankear keywords por score semântico
      * POST /api/seo-killer/strategies/score/rank
-     * 
+     *
      * @body {
      *   "keywords": ["bauleto", "moto", "delivery", "caixa"],
      *   "category_id": "MLB3530",
@@ -2353,19 +2389,19 @@ class SEOKillerController extends BaseController
      */
     public function rankBySemanticScore(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keywords']) || !is_array($data['keywords'])) {
                 return ['error' => 'Informe array de keywords'];
             }
-            
+
             $service = new SemanticScoreService($this->accountId);
-            
+
             return $service->rankByScore(
                 $data['keywords'],
                 $data['category_id'] ?? null,
@@ -2377,7 +2413,7 @@ class SEOKillerController extends BaseController
     /**
      * 🔍 Filtrar keywords por score mínimo
      * POST /api/seo-killer/strategies/score/filter
-     * 
+     *
      * @body {
      *   "keywords": ["bauleto", "caixa", "maleta"],
      *   "category_id": "MLB3530",
@@ -2386,19 +2422,19 @@ class SEOKillerController extends BaseController
      */
     public function filterBySemanticScore(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keywords']) || !is_array($data['keywords'])) {
                 return ['error' => 'Informe array de keywords'];
             }
-            
+
             $service = new SemanticScoreService($this->accountId);
-            
+
             return $service->filterByMinScore(
                 $data['keywords'],
                 $data['category_id'] ?? null,
@@ -2410,7 +2446,7 @@ class SEOKillerController extends BaseController
     /**
      * 🔑 Obter keywords via arquitetura híbrida
      * POST /api/seo-killer/strategies/keywords/fetch
-     * 
+     *
      * @body {
      *   "base_keyword": "bauleto moto",
      *   "category_id": "MLB3530",
@@ -2419,19 +2455,19 @@ class SEOKillerController extends BaseController
      */
     public function fetchKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['base_keyword'])) {
                 return ['error' => 'Informe base_keyword'];
             }
-            
+
             $service = new KeywordSourceService($this->accountId);
-            
+
             return $service->getKeywords(
                 $data['base_keyword'],
                 $data['category_id'] ?? null,
@@ -2446,13 +2482,13 @@ class SEOKillerController extends BaseController
      */
     public function getTrendingKeywords(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $limit = $this->request->getInt('limit', 20);
-            
+
             $service = new KeywordSourceService($this->accountId);
             return $service->getTrendingKeywords($categoryId, $limit);
         });
@@ -2461,23 +2497,23 @@ class SEOKillerController extends BaseController
     /**
      * 🔮 Obter sugestões de autocomplete
      * GET /api/seo-killer/strategies/keywords/autocomplete
-     * 
+     *
      * @query q=bauleto&limit=10
      */
     public function getAutocompleteKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $query = $this->request->get('q', '');
             if (empty($query)) {
                 return ['error' => 'Informe parâmetro q'];
             }
-            
+
             $categoryId = $this->request->get('category_id');
-            
+
             $service = new KeywordSourceService($this->accountId);
             return $service->getAutocompleteKeywords($query, $categoryId);
         });
@@ -2486,7 +2522,7 @@ class SEOKillerController extends BaseController
     /**
      * 🕵️ Obter keywords dos concorrentes
      * POST /api/seo-killer/strategies/keywords/competitor
-     * 
+     *
      * @body {
      *   "category_id": "MLB3530",
      *   "search_query": "bauleto moto",
@@ -2495,19 +2531,19 @@ class SEOKillerController extends BaseController
      */
     public function getCompetitorKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['category_id'])) {
                 return ['error' => 'Informe category_id'];
             }
-            
+
             $service = new KeywordSourceService($this->accountId);
-            
+
             return $service->getCompetitorKeywords(
                 $data['category_id'],
                 $data['search_query'] ?? null,
@@ -2522,14 +2558,14 @@ class SEOKillerController extends BaseController
      */
     public function invalidateKeywordCache(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $service = new KeywordSourceService($this->accountId);
             $service->invalidateCache($categoryId);
-            
+
             return [
                 'success' => true,
                 'message' => "Cache de keywords para {$categoryId} invalidado"
@@ -2543,11 +2579,11 @@ class SEOKillerController extends BaseController
      */
     public function getUseContexts(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\UseContextService($this->accountId);
             return $service->getContextsForCategory($categoryId);
         });
@@ -2559,26 +2595,26 @@ class SEOKillerController extends BaseController
      */
     public function getStrategyConfig(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $db = \App\Database::getInstance();
-            
+
             $stmt = $db->prepare("
-                SELECT config_key, config_value 
-                FROM seo_category_config 
+                SELECT config_key, config_value
+                FROM seo_category_config
                 WHERE category_id = :category_id
             ");
             $stmt->execute(['category_id' => $categoryId]);
             $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            
+
             $config = [];
             foreach ($rows as $row) {
                 $config[$row['config_key']] = json_decode($row['config_value'], true);
             }
-            
+
             return [
                 'category_id' => $categoryId,
                 'config' => $config,
@@ -2590,7 +2626,7 @@ class SEOKillerController extends BaseController
     /**
      * 💾 Salvar configuração de estratégia para categoria
      * POST /api/seo-killer/strategies/config/{categoryId}
-     * 
+     *
      * @body {
      *   "title_max_length": 60,
      *   "density_min": 0.5,
@@ -2600,22 +2636,22 @@ class SEOKillerController extends BaseController
      */
     public function saveStrategyConfig(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $db = \App\Database::getInstance();
-            
+
             $stmt = $db->prepare("
                 INSERT INTO seo_category_config (category_id, config_key, config_value)
                 VALUES (:category_id, :config_key, :config_value)
-                ON DUPLICATE KEY UPDATE 
+                ON DUPLICATE KEY UPDATE
                     config_value = VALUES(config_value),
                     updated_at = NOW()
             ");
-            
+
             $saved = 0;
             foreach ($data as $key => $value) {
                 $stmt->execute([
@@ -2625,7 +2661,7 @@ class SEOKillerController extends BaseController
                 ]);
                 $saved++;
             }
-            
+
             return [
                 'success' => true,
                 'category_id' => $categoryId,
@@ -2644,11 +2680,11 @@ class SEOKillerController extends BaseController
      */
     public function analyzeHiddenFields(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $service = new HiddenFieldsService($this->accountId);
             return $service->analyzeItem($itemId);
         });
@@ -2657,7 +2693,7 @@ class SEOKillerController extends BaseController
     /**
      * 💡 Gerar sugestões para campos ocultos
      * POST /api/seo-killer/strategies/hidden-fields/suggest
-     * 
+     *
      * @body {
      *   "title": "Bauleto Moto 45L",
      *   "brand": "Givi",
@@ -2667,17 +2703,17 @@ class SEOKillerController extends BaseController
      */
     public function suggestHiddenFields(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['title'])) {
                 return ['error' => 'Informe title'];
             }
-            
+
             $service = new HiddenFieldsService($this->accountId);
             return $service->generateSuggestions($data, $data['category_id'] ?? null);
         });
@@ -2686,7 +2722,7 @@ class SEOKillerController extends BaseController
     /**
      * ✅ Aplicar campos ocultos a um item
      * POST /api/seo-killer/strategies/hidden-fields/apply/{itemId}
-     * 
+     *
      * @body {
      *   "KEYWORDS": "sinonimo1 sinonimo2",
      *   "MPN": "GIVI-E45N",
@@ -2695,19 +2731,19 @@ class SEOKillerController extends BaseController
      */
     public function applyHiddenFields(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $dryRun = $data['dry_run'] ?? false;
             unset($data['dry_run']);
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe pelo menos um campo para aplicar'];
             }
-            
+
             $service = new HiddenFieldsService($this->accountId);
             return $service->applyToItem($itemId, $data, $dryRun);
         });
@@ -2719,11 +2755,11 @@ class SEOKillerController extends BaseController
      */
     public function getAvailableHiddenFields(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $service = new HiddenFieldsService($this->accountId);
             return $service->getAvailableFields($categoryId);
         });
@@ -2736,7 +2772,7 @@ class SEOKillerController extends BaseController
     /**
      * 💉 Injetar keywords em título
      * POST /api/seo-killer/strategies/inject/title
-     * 
+     *
      * @body {
      *   "title": "Bauleto Moto Universal",
      *   "keywords": ["delivery", "motoboy", "45 litros"],
@@ -2745,17 +2781,17 @@ class SEOKillerController extends BaseController
      */
     public function injectKeywordsTitle(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['title']) || empty($data['keywords'])) {
                 return ['error' => 'Informe title e keywords'];
             }
-            
+
             $service = new KeywordInjectorService($this->accountId);
             return $service->injectInTitle(
                 $data['title'],
@@ -2768,7 +2804,7 @@ class SEOKillerController extends BaseController
     /**
      * 💉 Injetar keywords em descrição
      * POST /api/seo-killer/strategies/inject/description
-     * 
+     *
      * @body {
      *   "description": "Descrição do produto...",
      *   "keywords": ["bauleto", "moto", "delivery"],
@@ -2778,17 +2814,17 @@ class SEOKillerController extends BaseController
      */
     public function injectKeywordsDescription(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['description']) || empty($data['keywords'])) {
                 return ['error' => 'Informe description e keywords'];
             }
-            
+
             $service = new KeywordInjectorService($this->accountId);
             return $service->injectInDescription(
                 $data['description'],
@@ -2805,7 +2841,7 @@ class SEOKillerController extends BaseController
     /**
      * 📊 Analisar densidade de keywords
      * POST /api/seo-killer/strategies/inject/density
-     * 
+     *
      * @body {
      *   "text": "Texto para analisar...",
      *   "keywords": ["bauleto", "moto"]
@@ -2813,17 +2849,17 @@ class SEOKillerController extends BaseController
      */
     public function analyzeKeywordDensity(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['text']) || empty($data['keywords'])) {
                 return ['error' => 'Informe text e keywords'];
             }
-            
+
             $service = new KeywordInjectorService($this->accountId);
             return $service->analyzeDensity($data['text'], $data['keywords']);
         });
@@ -2835,17 +2871,17 @@ class SEOKillerController extends BaseController
      */
     public function suggestInjectionPoints(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['text']) || empty($data['keywords'])) {
                 return ['error' => 'Informe text e keywords'];
             }
-            
+
             $service = new KeywordInjectorService($this->accountId);
             return $service->suggestInjectionPoints($data['text'], $data['keywords']);
         });
@@ -2858,7 +2894,7 @@ class SEOKillerController extends BaseController
     /**
      * 📊 Analisar cobertura de tipos de busca
      * POST /api/seo-killer/strategies/coverage/analyze
-     * 
+     *
      * @body {
      *   "title": "Bauleto Moto 45L Givi",
      *   "description": "...",
@@ -2869,17 +2905,17 @@ class SEOKillerController extends BaseController
      */
     public function analyzeCoverage(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['title'])) {
                 return ['error' => 'Informe pelo menos title'];
             }
-            
+
             $service = new SearchTypeCoverageService($this->accountId);
             return $service->analyzeCoverage($data);
         });
@@ -2888,7 +2924,7 @@ class SEOKillerController extends BaseController
     /**
      * 🔑 Gerar keywords para cobertura completa
      * POST /api/seo-killer/strategies/coverage/keywords
-     * 
+     *
      * @body {
      *   "base_keyword": "bauleto",
      *   "brand": "Givi",
@@ -2899,17 +2935,17 @@ class SEOKillerController extends BaseController
      */
     public function generateCoverageKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['base_keyword'])) {
                 return ['error' => 'Informe base_keyword'];
             }
-            
+
             $service = new SearchTypeCoverageService($this->accountId);
             return $service->generateCoverageKeywords(
                 $data['base_keyword'],
@@ -2930,17 +2966,17 @@ class SEOKillerController extends BaseController
      */
     public function optimizeForCoverage(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_data']) || empty($data['keywords'])) {
                 return ['error' => 'Informe item_data e keywords'];
             }
-            
+
             $service = new SearchTypeCoverageService($this->accountId);
             return $service->optimizeForCoverage($data['item_data'], $data['keywords']);
         });
@@ -2949,21 +2985,21 @@ class SEOKillerController extends BaseController
     /**
      * 🏷️ Classificar query de busca
      * GET /api/seo-killer/strategies/coverage/classify
-     * 
+     *
      * @query q=bauleto moto 45 litros givi
      */
     public function classifySearchQuery(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $query = $this->request->get('q', '');
             if (empty($query)) {
                 return ['error' => 'Informe parâmetro q'];
             }
-            
+
             $service = new SearchTypeCoverageService($this->accountId);
             return $service->classifySearchQuery($query);
         });
@@ -2975,21 +3011,21 @@ class SEOKillerController extends BaseController
      */
     public function suggestMissingKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['base_keyword'])) {
                 return ['error' => 'Informe base_keyword'];
             }
-            
+
             // Primeiro analisar cobertura atual
             $service = new SearchTypeCoverageService($this->accountId);
             $currentCoverage = $service->analyzeCoverage($data['item_data'] ?? []);
-            
+
             return $service->suggestMissingKeywords(
                 $currentCoverage,
                 $data['base_keyword'],
@@ -3005,7 +3041,7 @@ class SEOKillerController extends BaseController
     /**
      * 📊 Distribuir keywords por peso dos campos
      * POST /api/seo-killer/strategies/weight/distribute
-     * 
+     *
      * @body {
      *   "keywords": ["bauleto", "moto", "delivery", "45 litros"],
      *   "category_id": "MLB3530",
@@ -3017,17 +3053,17 @@ class SEOKillerController extends BaseController
      */
     public function distributeByWeight(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keywords']) || !is_array($data['keywords'])) {
                 return ['error' => 'Informe array de keywords'];
             }
-            
+
             $service = new FieldWeightService($this->accountId);
             return $service->distributeKeywords(
                 $data['keywords'],
@@ -3043,17 +3079,17 @@ class SEOKillerController extends BaseController
      */
     public function analyzeDistribution(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['title'])) {
                 return ['error' => 'Informe pelo menos title'];
             }
-            
+
             $service = new FieldWeightService($this->accountId);
             return $service->analyzeCurrentDistribution($data);
         });
@@ -3065,17 +3101,17 @@ class SEOKillerController extends BaseController
      */
     public function optimizeDistribution(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_data'])) {
                 return ['error' => 'Informe item_data'];
             }
-            
+
             $service = new FieldWeightService($this->accountId);
             return $service->optimizeDistribution(
                 $data['item_data'],
@@ -3091,17 +3127,17 @@ class SEOKillerController extends BaseController
      */
     public function suggestReallocation(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_data'])) {
                 return ['error' => 'Informe item_data'];
             }
-            
+
             $service = new FieldWeightService($this->accountId);
             return $service->suggestReallocation(
                 $data['item_data'],
@@ -3116,17 +3152,17 @@ class SEOKillerController extends BaseController
      */
     public function calculateIndexingEfficiency(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe dados do item'];
             }
-            
+
             $service = new FieldWeightService($this->accountId);
             return $service->calculateIndexingEfficiency($data);
         });
@@ -3138,7 +3174,7 @@ class SEOKillerController extends BaseController
      */
     public function getFieldWeights(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $service = new FieldWeightService($this->accountId);
             return [
                 'field_weights' => $service->getFieldWeights(),
@@ -3153,17 +3189,17 @@ class SEOKillerController extends BaseController
      */
     public function getWeightMaximizationStrategy(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe dados do item'];
             }
-            
+
             $service = new FieldWeightService($this->accountId);
             return $service->getWeightMaximizationStrategy($data);
         });
@@ -3179,7 +3215,7 @@ class SEOKillerController extends BaseController
      */
     public function getAvailableContexts(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $service = new \App\Services\AI\SEO\Strategies\UseContextService($this->accountId);
             return $service->getAvailableContexts();
         });
@@ -3191,7 +3227,7 @@ class SEOKillerController extends BaseController
      */
     public function getContextsForCategory(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             $service = new \App\Services\AI\SEO\Strategies\UseContextService($this->accountId);
             return $service->getContextsForCategory($categoryId);
         });
@@ -3203,13 +3239,13 @@ class SEOKillerController extends BaseController
      */
     public function detectContexts(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['text'])) {
                 return ['error' => 'Informe text'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\UseContextService($this->accountId);
             return $service->detectContexts($data['text']);
         });
@@ -3221,13 +3257,13 @@ class SEOKillerController extends BaseController
      */
     public function generateContextKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['contexts'])) {
                 return ['error' => 'Informe contexts (array)'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\UseContextService($this->accountId);
             return $service->generateContextKeywords(
                 $data['contexts'],
@@ -3243,13 +3279,13 @@ class SEOKillerController extends BaseController
      */
     public function suggestContexts(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe dados do produto'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\UseContextService($this->accountId);
             return $service->suggestContexts($data);
         });
@@ -3261,13 +3297,13 @@ class SEOKillerController extends BaseController
      */
     public function enrichWithContexts(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_data']) || empty($data['contexts'])) {
                 return ['error' => 'Informe item_data e contexts'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\UseContextService($this->accountId);
             return $service->enrichWithContexts(
                 $data['item_data'],
@@ -3287,13 +3323,13 @@ class SEOKillerController extends BaseController
      */
     public function generateLongTails(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['base_keyword'])) {
                 return ['error' => 'Informe base_keyword'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\LongTailGeneratorService($this->accountId);
             return $service->generate($data['base_keyword'], $data);
         });
@@ -3305,11 +3341,11 @@ class SEOKillerController extends BaseController
      */
     public function generateLongTailsFromAutocomplete(string $keyword): void
     {
-        $this->json(function() use ($keyword) {
+        $this->json(function () use ($keyword) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\LongTailGeneratorService($this->accountId);
             return $service->generateFromAutocomplete(urldecode($keyword));
         });
@@ -3321,17 +3357,17 @@ class SEOKillerController extends BaseController
      */
     public function generateLongTailsFromCompetitors(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['category_id']) || empty($data['search_query'])) {
                 return ['error' => 'Informe category_id e search_query'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\LongTailGeneratorService($this->accountId);
             return $service->generateFromCompetitors(
                 $data['category_id'],
@@ -3347,13 +3383,13 @@ class SEOKillerController extends BaseController
      */
     public function generateLongTailsWithAI(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['base_keyword'])) {
                 return ['error' => 'Informe base_keyword'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\LongTailGeneratorService($this->accountId);
             return $service->generateWithAI(
                 $data['base_keyword'],
@@ -3369,13 +3405,13 @@ class SEOKillerController extends BaseController
      */
     public function analyzeLongTail(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['keyword'])) {
                 return ['error' => 'Informe keyword'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\LongTailGeneratorService($this->accountId);
             return $service->analyzeLongTail($data['keyword']);
         });
@@ -3387,13 +3423,13 @@ class SEOKillerController extends BaseController
      */
     public function suggestMissingLongTails(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe dados do item'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\LongTailGeneratorService($this->accountId);
             return $service->suggestMissing($data);
         });
@@ -3409,11 +3445,11 @@ class SEOKillerController extends BaseController
      */
     public function analyzeCompatibility(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\CompatibilityService($this->accountId);
             return $service->analyzeCompatibility($itemId);
         });
@@ -3425,13 +3461,13 @@ class SEOKillerController extends BaseController
      */
     public function expandCompatibility(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['models'])) {
                 return ['error' => 'Informe models (array)'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\CompatibilityService($this->accountId);
             return $service->expandCompatibility($data['models']);
         });
@@ -3443,17 +3479,17 @@ class SEOKillerController extends BaseController
      */
     public function fetchCompatibilityFromML(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['category_id']) || empty($data['search_query'])) {
                 return ['error' => 'Informe category_id e search_query'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\CompatibilityService($this->accountId);
             return $service->fetchFromMLApi($data['category_id'], $data['search_query']);
         });
@@ -3465,13 +3501,13 @@ class SEOKillerController extends BaseController
      */
     public function generateCompatibleModelsAttribute(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['models'])) {
                 return ['error' => 'Informe models (array)'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\CompatibilityService($this->accountId);
             return $service->generateCompatibleModelsAttribute($data['models']);
         });
@@ -3483,13 +3519,13 @@ class SEOKillerController extends BaseController
      */
     public function suggestCompatibilityBySpecs(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['specs'])) {
                 return ['error' => 'Informe specs'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\CompatibilityService($this->accountId);
             return $service->suggestBySpecs($data['specs']);
         });
@@ -3501,13 +3537,13 @@ class SEOKillerController extends BaseController
      */
     public function validateCompatibility(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['models'])) {
                 return ['error' => 'Informe models (array)'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\CompatibilityService($this->accountId);
             return $service->validateCompatibility(
                 $data['models'],
@@ -3523,7 +3559,7 @@ class SEOKillerController extends BaseController
      */
     public function getAllModels(?string $brand = null): void
     {
-        $this->json(function() use ($brand) {
+        $this->json(function () use ($brand) {
             $service = new \App\Services\AI\SEO\Strategies\CompatibilityService($this->accountId);
             return $service->getAllModels($brand);
         });
@@ -3539,13 +3575,13 @@ class SEOKillerController extends BaseController
      */
     public function generateFAQs(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe dados do produto'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return $service->generateFAQs($data, $data['count'] ?? 5);
         });
@@ -3557,28 +3593,28 @@ class SEOKillerController extends BaseController
      */
     public function mineKeywordsFromQuestions(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
 
             $client = new \App\Services\MercadoLivreClient($this->accountId);
-            
+
             // Fetch questions for this item
             $response = $client->get("/questions/search", ['item' => $itemId, 'limit' => 50]);
             $questions = $response['questions'] ?? [];
-            
+
             if (empty($questions)) {
                 return ['keywords' => [], 'faqs' => [], 'message' => 'Nenhuma pergunta encontrada'];
             }
-            
+
             // Extract keywords from questions
             $allWords = [];
             $questionTexts = [];
             foreach ($questions as $q) {
                 $text = $q['text'] ?? '';
                 $questionTexts[] = $text;
-                
+
                 // Simple keyword extraction
                 $words = preg_split('/[\s\-\/:,;.!?]+/', mb_strtolower($text));
                 foreach ($words as $word) {
@@ -3588,31 +3624,31 @@ class SEOKillerController extends BaseController
                     }
                 }
             }
-            
+
             // Sort by frequency
             arsort($allWords);
             $topKeywords = array_slice($allWords, 0, 20, true);
-            
+
             // Generate FAQ suggestions from top questions
             $faqService = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             $faqs = [];
-            
+
             // Use most frequent question patterns
             $seen = [];
             foreach (array_slice($questions, 0, 10) as $q) {
                 $text = $q['text'] ?? '';
                 $normalized = mb_strtolower(preg_replace('/[?!.]+/', '', $text));
-                
+
                 if (mb_strlen($normalized) < 10 || isset($seen[$normalized])) continue;
                 $seen[$normalized] = true;
-                
+
                 $faqs[] = [
                     'question' => ucfirst(trim($text)) . '?',
                     'answer' => $q['answer']['text'] ?? 'Resposta pendente',
                     'source' => 'customer_question'
                 ];
             }
-            
+
             return [
                 'keywords' => $topKeywords,
                 'faqs' => $faqs,
@@ -3628,13 +3664,13 @@ class SEOKillerController extends BaseController
      */
     public function generateFAQsWithAI(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe dados do produto'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return $service->generateWithAI($data, $data['count'] ?? 5);
         });
@@ -3646,13 +3682,13 @@ class SEOKillerController extends BaseController
      */
     public function optimizeFAQs(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['faqs']) || empty($data['keywords'])) {
                 return ['error' => 'Informe faqs e keywords'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return $service->optimizeFAQs($data['faqs'], $data['keywords']);
         });
@@ -3664,13 +3700,13 @@ class SEOKillerController extends BaseController
      */
     public function generateFAQSchema(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['faqs'])) {
                 return ['error' => 'Informe faqs'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return $service->generateSchema($data['faqs']);
         });
@@ -3682,13 +3718,13 @@ class SEOKillerController extends BaseController
      */
     public function generateFAQHTML(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['faqs'])) {
                 return ['error' => 'Informe faqs'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return [
                 'html' => $service->generateHTML($data['faqs'], $data['style'] ?? 'accordion')
@@ -3702,13 +3738,13 @@ class SEOKillerController extends BaseController
      */
     public function generateFAQDescriptionText(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['faqs'])) {
                 return ['error' => 'Informe faqs'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return [
                 'text' => $service->generateDescriptionText($data['faqs'])
@@ -3722,13 +3758,13 @@ class SEOKillerController extends BaseController
      */
     public function validateFAQs(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['faqs'])) {
                 return ['error' => 'Informe faqs'];
             }
-            
+
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return $service->validateFAQs($data['faqs']);
         });
@@ -3740,7 +3776,7 @@ class SEOKillerController extends BaseController
      */
     public function suggestFAQsForCategory(string $categoryId): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             $service = new \App\Services\AI\SEO\Strategies\FAQOptimizerService($this->accountId);
             return $service->suggestForCategory($categoryId);
         });
@@ -3756,11 +3792,11 @@ class SEOKillerController extends BaseController
      */
     public function engineAnalyzeItem(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\Strategies\SEOStrategiesEngine($this->accountId);
             return $engine->analyzeItem($itemId);
         });
@@ -3772,13 +3808,13 @@ class SEOKillerController extends BaseController
      */
     public function engineAnalyzeData(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data)) {
                 return ['error' => 'Informe dados do item'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\Strategies\SEOStrategiesEngine($this->accountId);
             return $engine->analyzeItemData($data);
         });
@@ -3790,13 +3826,13 @@ class SEOKillerController extends BaseController
      */
     public function engineOptimizeItem(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             $engine = new \App\Services\AI\SEO\Strategies\SEOStrategiesEngine($this->accountId);
             return $engine->optimizeItem($itemId, $data);
         });
@@ -3809,7 +3845,7 @@ class SEOKillerController extends BaseController
      */
     public function engineDashboard(?string $categoryId = null): void
     {
-        $this->json(function() use ($categoryId) {
+        $this->json(function () use ($categoryId) {
             $engine = new \App\Services\AI\SEO\Strategies\SEOStrategiesEngine($this->accountId);
             return $engine->getDashboard($categoryId);
         });
@@ -3821,11 +3857,11 @@ class SEOKillerController extends BaseController
      */
     public function engineOptimizationReport(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\Strategies\SEOStrategiesEngine($this->accountId);
             return $engine->getOptimizationReport($itemId);
         });
@@ -3837,17 +3873,17 @@ class SEOKillerController extends BaseController
      */
     public function engineCompareItems(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id_1']) || empty($data['item_id_2'])) {
                 return ['error' => 'Informe item_id_1 e item_id_2'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\Strategies\SEOStrategiesEngine($this->accountId);
             return $engine->compareItems($data['item_id_1'], $data['item_id_2']);
         });
@@ -3859,13 +3895,13 @@ class SEOKillerController extends BaseController
      */
     public function engineMonitorKeywords(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             $data = $this->getJsonInput();
-            
+
             if (empty($data['category_id']) || empty($data['keywords'])) {
                 return ['error' => 'Informe category_id e keywords'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\Strategies\SEOStrategiesEngine($this->accountId);
             return $engine->monitorKeywords($data['category_id'], $data['keywords']);
         });
@@ -3881,11 +3917,11 @@ class SEOKillerController extends BaseController
      */
     public function runStrategiesAnalysis(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\SEOKillerEngine($this->accountId);
             return [
                 'success' => true,
@@ -3900,11 +3936,11 @@ class SEOKillerController extends BaseController
      */
     public function getStrategiesScore(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\SEOKillerEngine($this->accountId);
             return [
                 'success' => true,
@@ -3919,11 +3955,11 @@ class SEOKillerController extends BaseController
      */
     public function optimizeWithStrategies(string $itemId): void
     {
-        $this->json(function() use ($itemId) {
+        $this->json(function () use ($itemId) {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\SEOKillerEngine($this->accountId);
             return [
                 'success' => true,
@@ -3938,19 +3974,19 @@ class SEOKillerController extends BaseController
      */
     public function batchStrategiesAnalysis(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $itemIds = $data['item_ids'] ?? [];
             $limit = $data['limit'] ?? 10;
-            
+
             if (empty($itemIds)) {
                 return ['success' => false, 'error' => 'Informe item_ids'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\SEOKillerEngine($this->accountId);
             return [
                 'success' => true,
@@ -3965,11 +4001,11 @@ class SEOKillerController extends BaseController
      */
     public function getStrategiesDashboard(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $engine = new \App\Services\AI\SEO\SEOKillerEngine($this->accountId);
             return [
                 'success' => true,
@@ -3984,11 +4020,11 @@ class SEOKillerController extends BaseController
      */
     public function getStrategiesCacheStats(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $cache = new \App\Services\AI\SEO\Strategies\SEOAnalysisCacheService($this->accountId);
             return [
                 'success' => true,
@@ -4004,21 +4040,21 @@ class SEOKillerController extends BaseController
      */
     public function clearStrategiesCache(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['success' => false, 'error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
             $itemId = $data['item_id'] ?? null;
-            
+
             $cache = new \App\Services\AI\SEO\Strategies\SEOAnalysisCacheService($this->accountId);
-            
+
             if ($itemId) {
                 $cache->invalidate($itemId);
                 return ['success' => true, 'message' => "Cache invalidado para {$itemId}"];
             }
-            
+
             $deleted = $cache->invalidateAll();
             return ['success' => true, 'message' => "Cache limpo", 'deleted' => $deleted];
         });
@@ -4068,104 +4104,104 @@ class SEOKillerController extends BaseController
      */
     public function advancedMaximizeSEO(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id'])) {
                 return ['error' => 'Informe item_id'];
             }
-            
+
             $maximizer = new AdvancedSEOMaximizer($this->accountId);
             $result = $maximizer->maximizeItemSEO($data['item_id']);
-            
+
             return $result;
         });
     }
-    
+
     /**
      * 🔮 Predict Performance
      * POST /api/seo-killer/predict-performance
      */
     public function predictPerformance(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id'])) {
                 return ['error' => 'Informe item_id'];
             }
-            
+
             // Get item data
             $client = new \App\Services\MercadoLivreClient($this->accountId);
             $item = $client->get("/items/{$data['item_id']}");
-            
+
             if (!$item || isset($item['error'])) {
                 return ['error' => $item['error'] ?? 'Erro ao buscar item'];
             }
-            
+
             $predictor = new SEOPerformancePredictor($this->accountId);
             $prediction = $predictor->predictPerformance($item);
-            
+
             return $prediction;
         });
     }
-    
+
     /**
      * 🤖 Intelligent Auto-Optimize
      * POST /api/seo-killer/intelligent-auto-optimize
      */
     public function intelligentAutoOptimize(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             $optimizer = new IntelligentAutoOptimizer($this->accountId);
             $result = $optimizer->intelligentAutoOptimize($data);
-            
+
             return $result;
         });
     }
-    
+
     /**
      * 📊 Advanced Keywords Analysis
      * POST /api/seo-killer/advanced-keywords
      */
     public function advancedKeywordsAnalysis(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id'])) {
                 return ['error' => 'Informe item_id'];
             }
-            
+
             // Get item data
             $client = new \App\Services\MercadoLivreClient($this->accountId);
             $item = $client->get("/items/{$data['item_id']}");
-            
+
             if (!$item || isset($item['error'])) {
                 return ['error' => $item['error'] ?? 'Erro ao buscar item'];
             }
-            
+
             $maximizer = new AdvancedSEOMaximizer($this->accountId);
             $keywords = $maximizer->generateAdvancedKeywords($item);
-            
+
             return [
                 'success' => true,
                 'item_id' => $data['item_id'],
@@ -4174,35 +4210,35 @@ class SEOKillerController extends BaseController
             ];
         });
     }
-    
+
     /**
      * 🕵️ Advanced Competitor Analysis
      * POST /api/seo-killer/advanced-competitor-analysis
      */
     public function advancedCompetitorAnalysis(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $data = $this->getJsonInput();
-            
+
             if (empty($data['item_id'])) {
                 return ['error' => 'Informe item_id'];
             }
-            
+
             // Get item data
             $client = new \App\Services\MercadoLivreClient($this->accountId);
             $item = $client->get("/items/{$data['item_id']}");
-            
+
             if (!$item || isset($item['error'])) {
                 return ['error' => $item['error'] ?? 'Erro ao buscar item'];
             }
-            
+
             $maximizer = new AdvancedSEOMaximizer($this->accountId);
             $analysis = $maximizer->advancedCompetitorAnalysis($data['item_id'], $item);
-            
+
             return [
                 'success' => true,
                 'item_id' => $data['item_id'],
@@ -4210,31 +4246,31 @@ class SEOKillerController extends BaseController
             ];
         });
     }
-    
+
     /**
      * 📈 Optimization Statistics
      * GET /api/seo-killer/optimization-stats
      */
     public function getOptimizationStats(): void
     {
-        $this->json(function() {
+        $this->json(function () {
             if (!$this->accountId) {
                 return ['error' => 'Nenhuma conta conectada'];
             }
-            
+
             $optimizer = new IntelligentAutoOptimizer($this->accountId);
             $stats = $optimizer->getOptimizationStats([
                 'date_from' => $this->request->get('date_from'),
                 'date_to' => $this->request->get('date_to'),
             ]);
-            
+
             return [
                 'success' => true,
                 'stats' => $stats
             ];
         });
     }
-    
+
     /**
      * Extract attribute value from ML item
      */
@@ -4251,4 +4287,3 @@ class SEOKillerController extends BaseController
         return null;
     }
 }
-

@@ -345,6 +345,7 @@ $router->get('api/seo-killer/performance/consolidated', SEOKillerController::cla
 $router->get('api/seo-killer/performance/evolution', SEOKillerController::class, 'getMetricsEvolution');
 $router->get('api/seo-killer/performance/categories', SEOKillerController::class, 'getCategoryPerformance');
 $router->get('api/seo-killer/performance/export', SEOKillerController::class, 'exportPerformanceReport');
+$router->post('api/seo-killer/performance/collect', SEOKillerController::class, 'collectPerformanceMetrics');
 // Image Killer
 $router->get('api/seo-killer/images/analyze/{itemId}', SEOKillerController::class, 'analyzeImages');
 // A/B Testing

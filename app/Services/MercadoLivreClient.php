@@ -1006,10 +1006,10 @@ class MercadoLivreClient
 
     /**
      * Get my items (seller's items)
-     * 
+     *
      * Usa o endpoint correto /users/{user_id}/items/search
      * O endpoint /users/me/items/search NÃO existe na API do ML
-     * 
+     *
      * @param array $params Filtros: status, limit, offset, search_type, etc
      * @return array Lista de itens ou erro
      */
@@ -1457,10 +1457,168 @@ class MercadoLivreClient
     }
 
     /**
+     * Obtém visitas de um item individual.
+     *
+     * ML API: GET /visits/items?ids={id}&date_from=...&date_to=...
+     *
+     * @param string $itemId ML item ID (e.g. MLB1234567890)
+     * @param int $days Número de dias para consultar (máx 30)
+     * @return array{total: int, visits: int, daily: array}
+     */
+    public function getItemVisits(string $itemId, int $days = 30): array
+    {
+        return $this->getMultiItemVisits([$itemId], $days)[$itemId] ?? [
+            'total' => 0,
+            'visits' => 0,
+            'daily' => [],
+        ];
+    }
+
+    /**
+     * Obtém visitas de múltiplos itens em uma única chamada.
+     *
+     * ML API: GET /visits/items?ids={id1,id2,...}&date_from=...&date_to=...
+     * Máximo 50 IDs por chamada.
+     *
+     * @param array<string> $itemIds Lista de IDs (máx 50)
+     * @param int $days Período em dias (máx 30)
+     * @return array<string, array{total: int, visits: int, daily: array}>
+     */
+    public function getMultiItemVisits(array $itemIds, int $days = 30): array
+    {
+        $results = [];
+        $empty = ['total' => 0, 'visits' => 0, 'daily' => []];
+
+        if (empty($itemIds)) {
+            return $results;
+        }
+
+        $days = min(max(1, $days), 30);
+        $dateTo = date('Y-m-d');
+        $dateFrom = date('Y-m-d', strtotime("-{$days} days"));
+
+        // ML limita 50 IDs por chamada
+        $chunks = array_chunk($itemIds, 50);
+
+        foreach ($chunks as $chunk) {
+            try {
+                $data = $this->get('/visits/items', [
+                    'ids' => implode(',', $chunk),
+                    'date_from' => $dateFrom,
+                    'date_to' => $dateTo,
+                ]);
+
+                if (isset($data['error'])) {
+                    log_warning('ML Visits API retornou erro', [
+                        'error' => $data['error'],
+                        'message' => $data['message'] ?? '',
+                        'ids_count' => count($chunk),
+                    ]);
+                    foreach ($chunk as $id) {
+                        $results[$id] = $empty;
+                    }
+                    continue;
+                }
+
+                // A resposta é um array indexado por item_id
+                foreach ($chunk as $id) {
+                    if (isset($data[$id])) {
+                        $itemData = $data[$id];
+                        $daily = [];
+                        $totalVisits = 0;
+
+                        if (is_array($itemData)) {
+                            foreach ($itemData as $entry) {
+                                $date = $entry['date'] ?? null;
+                                $count = (int)($entry['total'] ?? $entry['quantity'] ?? 0);
+                                if ($date !== null) {
+                                    $daily[$date] = $count;
+                                    $totalVisits += $count;
+                                }
+                            }
+                        }
+
+                        $results[$id] = [
+                            'total' => $totalVisits,
+                            'visits' => $totalVisits,
+                            'daily' => $daily,
+                        ];
+                    } else {
+                        $results[$id] = $empty;
+                    }
+                }
+            } catch (\Exception $e) {
+                log_error('Falha ao obter visitas ML', [
+                    'ids_count' => count($chunk),
+                    'error' => $e->getMessage(),
+                ]);
+                foreach ($chunk as $id) {
+                    $results[$id] = $empty;
+                }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Obtém detalhes de múltiplos itens em uma única chamada (multi-get).
+     *
+     * ML API: GET /items?ids={id1,id2,...}&attributes=id,title,price,sold_quantity,status,category_id
+     * Máximo 20 IDs por chamada.
+     *
+     * @param array<string> $itemIds Lista de IDs (máx 20 por chamada, paginado automaticamente)
+     * @param array<string> $attributes Campos desejados (vazio = todos)
+     * @return array<string, array> Indexado por item_id
+     */
+    public function getMultiItemDetails(array $itemIds, array $attributes = []): array
+    {
+        $results = [];
+
+        if (empty($itemIds)) {
+            return $results;
+        }
+
+        $defaultAttributes = ['id', 'title', 'price', 'sold_quantity', 'status', 'category_id', 'available_quantity', 'thumbnail'];
+        $attrs = !empty($attributes) ? $attributes : $defaultAttributes;
+
+        $chunks = array_chunk($itemIds, 20);
+
+        foreach ($chunks as $chunk) {
+            try {
+                $params = ['ids' => implode(',', $chunk)];
+                if (!empty($attrs)) {
+                    $params['attributes'] = implode(',', $attrs);
+                }
+
+                $data = $this->get('/items', $params, 120, true);
+
+                if (is_array($data)) {
+                    foreach ($data as $entry) {
+                        $body = $entry['body'] ?? $entry;
+                        $code = $entry['code'] ?? 200;
+
+                        if ($code === 200 && isset($body['id'])) {
+                            $results[$body['id']] = $body;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                log_error('Falha no multi-get de itens ML', [
+                    'ids_count' => count($chunk),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $results;
+    }
+
+    /**
      * Diagnose connection status
-     * 
+     *
      * Verifica se a conexão com a API está funcionando corretamente
-     * 
+     *
      * @return array Diagnóstico completo
      */
     public function diagnose(): array

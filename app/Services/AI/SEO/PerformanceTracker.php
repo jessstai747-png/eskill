@@ -8,13 +8,13 @@ use PDO;
 
 /**
  * 📈 PERFORMANCE TRACKER - Monitoramento de Performance
- * 
+ *
  * Rastreia a performance dos anúncios após otimização:
  * - Views, clicks, vendas
  * - Comparação antes/depois
  * - ROI das otimizações
  * - Trends e insights
- * 
+ *
  * @author AI Development Team
  * @version 1.0.0
  */
@@ -23,16 +23,16 @@ class PerformanceTracker
     private PDO $db;
     private int $accountId;
     private ?MercadoLivreClient $mlClient = null;
-    
+
     public function __construct(int $accountId)
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
         $this->mlClient = new MercadoLivreClient($accountId);
-        
+
         $this->ensureTableExists();
     }
-    
+
     /**
      * Ensure tracking table exists
      */
@@ -60,7 +60,7 @@ class PerformanceTracker
                     INDEX idx_date (metric_date)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
-            
+
             $this->db->exec("
                 CREATE TABLE IF NOT EXISTS seo_optimization_events (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -84,7 +84,7 @@ class PerformanceTracker
             ]);
         }
     }
-    
+
     /**
      * 📊 Coletar métricas de um item
      */
@@ -93,10 +93,10 @@ class PerformanceTracker
         try {
             // Get item data from ML
             $item = $this->mlClient->get("/items/{$itemId}");
-            
+
             // Get visits (would need ML metrics API)
             $visits = $this->getItemVisits($itemId);
-            
+
             $metrics = [
                 'item_id' => $itemId,
                 'date' => date('Y-m-d'),
@@ -106,16 +106,16 @@ class PerformanceTracker
                 'price' => $item['price'] ?? 0,
                 'revenue' => ($item['sold_quantity'] ?? 0) * ($item['price'] ?? 0),
             ];
-            
+
             // Save metrics
             $this->saveMetrics($itemId, $metrics);
-            
+
             return $metrics;
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * 📈 Obter performance de um item
      */
@@ -128,9 +128,9 @@ class PerformanceTracker
             ORDER BY metric_date ASC
         ");
         $stmt->execute([$itemId, $days]);
-        
+
         $metrics = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Get optimization events
         $stmt = $this->db->prepare("
             SELECT * FROM seo_optimization_events
@@ -139,10 +139,10 @@ class PerformanceTracker
         ");
         $stmt->execute([$itemId]);
         $optimizations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Calculate trends
         $trend = $this->calculateTrend($metrics);
-        
+
         return [
             'item_id' => $itemId,
             'period' => "{$days} dias",
@@ -152,7 +152,7 @@ class PerformanceTracker
             'summary' => $this->summarizePerformance($metrics, $optimizations),
         ];
     }
-    
+
     /**
      * 📊 Comparar performance antes/depois da otimização
      */
@@ -167,7 +167,7 @@ class PerformanceTracker
         ");
         $stmt->execute([$itemId]);
         $lastOpt = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$lastOpt) {
             return [
                 'item_id' => $itemId,
@@ -175,12 +175,12 @@ class PerformanceTracker
                 'message' => 'Item ainda não foi otimizado'
             ];
         }
-        
+
         $optimizationDate = $lastOpt['optimized_at'];
-        
+
         // Get metrics before
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 AVG(views) as avg_views,
                 AVG(visits) as avg_visits,
                 SUM(sold_quantity) as total_sales,
@@ -193,10 +193,10 @@ class PerformanceTracker
         ");
         $stmt->execute([$itemId, $optimizationDate, $optimizationDate]);
         $before = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Get metrics after
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 AVG(views) as avg_views,
                 AVG(visits) as avg_visits,
                 SUM(sold_quantity) as total_sales,
@@ -208,7 +208,7 @@ class PerformanceTracker
         ");
         $stmt->execute([$itemId, $optimizationDate]);
         $after = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Calculate improvements
         $comparison = [
             'item_id' => $itemId,
@@ -228,7 +228,7 @@ class PerformanceTracker
                 'total_revenue' => round($after['total_revenue'] ?? 0, 2),
             ],
         ];
-        
+
         // Calculate percentage changes
         $comparison['improvements'] = [
             'views' => $this->calculatePercentChange($before['avg_views'], $after['avg_views']),
@@ -236,12 +236,12 @@ class PerformanceTracker
             'sales' => $this->calculatePercentChange($before['total_sales'], $after['total_sales']),
             'revenue' => $this->calculatePercentChange($before['total_revenue'], $after['total_revenue']),
         ];
-        
+
         $comparison['roi_analysis'] = $this->calculateROI($comparison);
-        
+
         return $comparison;
     }
-    
+
     /**
      * 🏆 Ranking de items por performance pós-otimização
      */
@@ -249,7 +249,7 @@ class PerformanceTracker
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 pm.item_id,
                 i.title,
                 MAX(oe.optimized_at) as last_optimized,
@@ -268,10 +268,10 @@ class PerformanceTracker
             LIMIT {$limitSql}
         ");
         $stmt->execute([$this->accountId]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * 📊 Dashboard de performance geral
      */
@@ -279,7 +279,7 @@ class PerformanceTracker
     {
         // Overall stats
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(DISTINCT item_id) as total_items,
                 SUM(views) as total_views,
                 SUM(sold_quantity) as total_sales,
@@ -290,10 +290,10 @@ class PerformanceTracker
         ");
         $stmt->execute([$this->accountId]);
         $overall = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Optimized vs non-optimized
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 was_optimized,
                 COUNT(DISTINCT item_id) as items,
                 AVG(views) as avg_views,
@@ -305,14 +305,14 @@ class PerformanceTracker
         ");
         $stmt->execute([$this->accountId]);
         $comparison = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Top performers
         $topPerformers = $this->getTopPerformers(5);
-        
+
         // Score evolution
         $autoPilot = new AutoPilot($this->accountId);
         $scoreEvolution = $autoPilot->getScoreEvolution(30);
-        
+
         return [
             'period' => 'últimos 30 dias',
             'overall' => $overall,
@@ -321,24 +321,24 @@ class PerformanceTracker
             'score_evolution' => $scoreEvolution,
         ];
     }
-    
+
     /**
      * 📝 Registrar evento de otimização
      */
     public function recordOptimization(
-        string $itemId, 
-        string $type, 
-        ?string $oldValue, 
+        string $itemId,
+        string $type,
+        ?string $oldValue,
         ?string $newValue,
         int $scoreBefore,
         int $scoreAfter
     ): void {
         $stmt = $this->db->prepare("
-            INSERT INTO seo_optimization_events 
+            INSERT INTO seo_optimization_events
             (account_id, item_id, optimization_type, old_value, new_value, score_before, score_after)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
-        
+
         $stmt->execute([
             $this->accountId,
             $itemId,
@@ -348,35 +348,31 @@ class PerformanceTracker
             $scoreBefore,
             $scoreAfter
         ]);
-        
+
         // Mark item as optimized in metrics
         $stmt = $this->db->prepare("
-            UPDATE seo_performance_metrics 
+            UPDATE seo_performance_metrics
             SET was_optimized = 1, optimization_date = CURDATE()
             WHERE item_id = ?
         ");
         $stmt->execute([$itemId]);
     }
-    
+
     // Private helpers
-    
+
     private function getItemVisits(string $itemId): array
     {
         try {
-            // ML Visits API (if available)
-            return $this->mlClient->get("/items/{$itemId}/visits/time_window", [
-                'last' => 30,
-                'unit' => 'day'
-            ]);
+            return $this->mlClient->getItemVisits($itemId, 30);
         } catch (\Exception $e) {
-            return ['total' => 0, 'visits' => 0];
+            return ['total' => 0, 'visits' => 0, 'daily' => []];
         }
     }
-    
+
     private function saveMetrics(string $itemId, array $metrics): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO seo_performance_metrics 
+            INSERT INTO seo_performance_metrics
             (account_id, item_id, metric_date, views, visits, sold_quantity, revenue)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
@@ -385,7 +381,7 @@ class PerformanceTracker
             sold_quantity = VALUES(sold_quantity),
             revenue = VALUES(revenue)
         ");
-        
+
         $stmt->execute([
             $this->accountId,
             $itemId,
@@ -396,33 +392,33 @@ class PerformanceTracker
             $metrics['revenue'],
         ]);
     }
-    
+
     private function calculateTrend(array $metrics): array
     {
         if (count($metrics) < 2) {
             return ['direction' => 'stable', 'change' => 0];
         }
-        
+
         $firstHalf = array_slice($metrics, 0, floor(count($metrics) / 2));
         $secondHalf = array_slice($metrics, floor(count($metrics) / 2));
-        
+
         $avgFirst = count($firstHalf) ? array_sum(array_column($firstHalf, 'views')) / count($firstHalf) : 0;
         $avgSecond = count($secondHalf) ? array_sum(array_column($secondHalf, 'views')) / count($secondHalf) : 0;
-        
+
         $change = $avgFirst > 0 ? (($avgSecond - $avgFirst) / $avgFirst) * 100 : 0;
-        
+
         return [
             'direction' => $change > 5 ? 'up' : ($change < -5 ? 'down' : 'stable'),
             'change' => round($change, 1),
         ];
     }
-    
+
     private function summarizePerformance(array $metrics, array $optimizations): array
     {
         $totalViews = array_sum(array_column($metrics, 'views'));
         $totalSales = array_sum(array_column($metrics, 'sold_quantity'));
         $totalRevenue = array_sum(array_column($metrics, 'revenue'));
-        
+
         return [
             'total_views' => $totalViews,
             'total_sales' => $totalSales,
@@ -431,30 +427,30 @@ class PerformanceTracker
             'conversion_rate' => $totalViews > 0 ? round(($totalSales / $totalViews) * 100, 2) : 0,
         ];
     }
-    
+
     private function calculatePercentChange($before, $after): string
     {
         if (!$before || $before == 0) {
             return $after > 0 ? '+100%' : '0%';
         }
-        
+
         $change = (($after - $before) / $before) * 100;
         $sign = $change >= 0 ? '+' : '';
-        
+
         return $sign . round($change, 1) . '%';
     }
-    
+
     private function calculateROI(array $comparison): array
     {
         $revenueBefore = $comparison['before']['total_revenue'] ?? 0;
         $revenueAfter = $comparison['after']['total_revenue'] ?? 0;
         $revenueIncrease = $revenueAfter - $revenueBefore;
-        
+
         // Estimate optimization cost (time/AI calls)
         $estimatedCost = 10; // R$ 10 per optimization (AI API costs)
-        
+
         $roi = $estimatedCost > 0 ? (($revenueIncrease - $estimatedCost) / $estimatedCost) * 100 : 0;
-        
+
         return [
             'revenue_increase' => round($revenueIncrease, 2),
             'estimated_cost' => $estimatedCost,
@@ -463,10 +459,10 @@ class PerformanceTracker
             'verdict' => $roi > 0 ? 'Positivo' : 'Negativo',
         ];
     }
-    
+
     /**
      * 📊 Métricas consolidadas de todos os itens otimizados
-     * 
+     *
      * @return array Estatísticas consolidadas
      */
     public function getConsolidatedMetrics(): array
@@ -480,7 +476,7 @@ class PerformanceTracker
         ");
         $stmt->execute([$this->accountId]);
         $optimizations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (empty($optimizations)) {
             return [
                 'total_items_optimized' => 0,
@@ -490,46 +486,46 @@ class PerformanceTracker
                 'items' => [],
             ];
         }
-        
+
         $totalRevenue = 0;
         $totalROI = 0;
         $totalScoreImprovement = 0;
         $itemsWithData = 0;
-        
+
         foreach ($optimizations as $opt) {
             $comparison = $this->compareBeforeAfter($opt['item_id']);
-            
+
             if (isset($comparison['roi'])) {
                 $totalRevenue += $comparison['roi']['revenue_increase'];
                 $totalROI += $comparison['roi']['roi_percentage'];
                 $itemsWithData++;
             }
-            
+
             $scoreImp = ($opt['score_after'] ?? 0) - ($opt['score_before'] ?? 0);
             $totalScoreImprovement += $scoreImp;
         }
-        
+
         return [
             'total_items_optimized' => count($optimizations),
-            'avg_score_improvement' => count($optimizations) > 0 
-                ? round($totalScoreImprovement / count($optimizations), 1) 
+            'avg_score_improvement' => count($optimizations) > 0
+                ? round($totalScoreImprovement / count($optimizations), 1)
                 : 0,
             'total_revenue_impact' => round($totalRevenue, 2),
             'avg_roi' => $itemsWithData > 0 ? round($totalROI / $itemsWithData, 1) : 0,
             'items_with_positive_impact' => $itemsWithData,
         ];
     }
-    
+
     /**
      * 📈 Evolução temporal das métricas
-     * 
+     *
      * @param int $days Período em dias
      * @return array Dados para gráfico
      */
     public function getMetricsEvolution(int $days = 30): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 metric_date,
                 SUM(views) as total_views,
                 SUM(sold_quantity) as total_sales,
@@ -544,7 +540,7 @@ class PerformanceTracker
         ");
         $stmt->execute([$this->accountId, $days]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Preparar dados para Chart.js
         $labels = [];
         $datasets = [
@@ -553,7 +549,7 @@ class PerformanceTracker
             'revenue' => [],
             'conversion' => [],
         ];
-        
+
         foreach ($data as $row) {
             $labels[] = date('d/m', strtotime($row['metric_date']));
             $datasets['views'][] = (int)$row['total_views'];
@@ -561,26 +557,26 @@ class PerformanceTracker
             $datasets['revenue'][] = round((float)$row['total_revenue'], 2);
             $datasets['conversion'][] = round((float)$row['avg_conversion'], 2);
         }
-        
+
         return [
             'labels' => $labels,
             'datasets' => $datasets,
             'summary' => [
                 'total_days' => count($data),
-                'avg_daily_views' => count($data) > 0 
-                    ? round(array_sum($datasets['views']) / count($data), 0) 
+                'avg_daily_views' => count($data) > 0
+                    ? round(array_sum($datasets['views']) / count($data), 0)
                     : 0,
-                'avg_daily_sales' => count($data) > 0 
-                    ? round(array_sum($datasets['sales']) / count($data), 1) 
+                'avg_daily_sales' => count($data) > 0
+                    ? round(array_sum($datasets['sales']) / count($data), 1)
                     : 0,
                 'total_revenue' => round(array_sum($datasets['revenue']), 2),
             ],
         ];
     }
-    
+
     /**
      * 🏆 Ranking de performance por categoria
-     * 
+     *
      * @return array Rankings
      */
     public function getCategoryPerformance(): array
@@ -594,15 +590,15 @@ class PerformanceTracker
         ");
         $stmt->execute([$this->accountId]);
         $items = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
+
         $categories = [];
         $categoryNames = [];
-        
+
         foreach ($items as $itemId) {
             try {
                 $item = $this->mlClient->get("/items/{$itemId}");
                 $catId = $item['category_id'] ?? 'unknown';
-                
+
                 if (!isset($categories[$catId])) {
                     if ($catId !== 'unknown' && !isset($categoryNames[$catId])) {
                         try {
@@ -620,27 +616,26 @@ class PerformanceTracker
                         'total_revenue' => 0,
                     ];
                 }
-                
+
                 $categories[$catId]['items_count']++;
                 $categories[$catId]['total_sales'] += $item['sold_quantity'] ?? 0;
                 $categories[$catId]['total_revenue'] += ($item['sold_quantity'] ?? 0) * ($item['price'] ?? 0);
-                
             } catch (\Exception $e) {
                 continue;
             }
         }
-        
+
         // Ordenar por receita
-        usort($categories, function($a, $b) {
+        usort($categories, function ($a, $b) {
             return $b['total_revenue'] <=> $a['total_revenue'];
         });
-        
+
         return array_slice($categories, 0, 10);
     }
-    
+
     /**
      * 📊 Export de dados para relatório
-     * 
+     *
      * @param string $format 'csv' ou 'json'
      * @return array|string Dados formatados
      */
@@ -650,7 +645,7 @@ class PerformanceTracker
         $consolidated = $this->getConsolidatedMetrics();
         $evolution = $this->getMetricsEvolution(30);
         $topPerformers = $this->getTopPerformers(20);
-        
+
         $report = [
             'generated_at' => date('Y-m-d H:i:s'),
             'account_id' => $this->accountId,
@@ -664,14 +659,14 @@ class PerformanceTracker
             'evolution_30_days' => $evolution,
             'top_performers' => $topPerformers,
         ];
-        
+
         if ($format === 'csv') {
             return $this->convertToCSV($report);
         }
-        
+
         return $report;
     }
-    
+
     /**
      * Convert report data to CSV format
      */
@@ -679,17 +674,17 @@ class PerformanceTracker
     {
         $csv = "SEO KILLER - Performance Report\n";
         $csv .= "Generated at: {$report['generated_at']}\n\n";
-        
+
         $csv .= "SUMMARY\n";
         $csv .= "Total Optimizations," . $report['summary']['total_optimizations'] . "\n";
         $csv .= "Items Optimized," . $report['summary']['total_items_optimized'] . "\n";
         $csv .= "Avg Score Improvement," . $report['summary']['avg_score_improvement'] . "\n";
         $csv .= "Total Revenue Impact,R$ " . $report['summary']['total_revenue_impact'] . "\n";
         $csv .= "Avg ROI," . $report['summary']['avg_roi'] . "%\n\n";
-        
+
         $csv .= "TOP PERFORMERS\n";
         $csv .= "Item ID,Title,Score Before,Score After,Improvement,Revenue Increase\n";
-        
+
         foreach ($report['top_performers'] as $item) {
             $csv .= sprintf(
                 "%s,%s,%d,%d,%d,R$ %.2f\n",
@@ -701,7 +696,7 @@ class PerformanceTracker
                 $item['revenue_increase'] ?? 0
             );
         }
-        
+
         return $csv;
     }
 }

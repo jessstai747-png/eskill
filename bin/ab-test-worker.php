@@ -136,7 +136,7 @@ try {
                         $mlClient = new MercadoLivreClient($accId);
 
                         // Obter visitas do item
-                        $visits = $mlClient->getItemVisits($itemId, date('Y-m-d', strtotime('-1 day')), date('Y-m-d'));
+                        $visits = $mlClient->getItemVisits($itemId, 1);
 
                         // Obter vendas do item
                         $orders = $mlClient->getOrders([

@@ -6,6 +6,55 @@
 
 ---
 
+## Sessão: 2026-02-25g — Integração SEO Metrics com API do Mercado Livre
+
+### Contexto
+Após sessões a-f corrigirem ~60+ conflitos de schema/SQL, as tabelas de analytics estavam prontas mas sem pipeline automatizado para popular `seo_performance_metrics` com dados reais da API do ML. Os services de analytics (MarketAnalytics, PredictiveAnalyticsService, AutomatedReporting, PdfExporter) liam da tabela vazia.
+
+### Implementado
+1. **MercadoLivreClient.php** — 3 novos métodos batch:
+   - `getItemVisits(string $itemId, int $days)` — visitas de item único via `/visits/items`
+   - `getMultiItemVisits(array $itemIds, int $days)` — visitas em batch (até 50 IDs/chamada)
+   - `getMultiItemDetails(array $itemIds, array $attributes)` — detalhes em batch (até 20 IDs/chamada)
+
+2. **SEOMetricsCollectorService.php** (NOVO ~380 linhas) — Pipeline completo:
+   - `collect(int $days, bool $verbose)` — orquestra toda a coleta
+   - `getActiveItemIds()` — busca IDs em `items` → `ml_items` → API fallback
+   - `fetchVisitsBatch()` / `fetchDetailsBatch()` — chamadas em batch com rate limiting
+   - `saveMetricsBatch()` — UPSERT em `seo_performance_metrics`
+   - `static collectAllAccounts()` — itera todas as contas ativas
+
+3. **bin/seo-metrics-worker.php** (NOVO ~155 linhas) — Worker cron:
+   - Opções: `--account=ID`, `--days=N`, `--max-items=N`, `--verbose`
+   - Crontab: `0 6 * * * php bin/seo-metrics-worker.php`
+
+4. **SEOKillerController** — Novo endpoint `collectPerformanceMetrics()`
+5. **api.php** — Rota `POST /api/seo-killer/performance/collect`
+6. **PerformanceTracker** — Corrigido `getItemVisits()` para usar endpoint correto
+
+### Conflito de Assinatura Resolvido
+- `ItemMetricsService extends MercadoLivreClient` tinha `getItemVisits(string, string)` incompatível com novo `getItemVisits(string, int)` do parent
+- **Solução:** Renomeado para `getItemVisitsByPeriod()` + atualizado 5 callers em 4 arquivos
+- `bin/ab-test-worker.php` — corrigido call que passava date strings (era broken antes também)
+
+### Validação
+- ✅ `php -l` — 9 arquivos, todos limpos
+- ✅ PHPUnit — 2896 tests, 6728 assertions, 34 skipped — TODOS PASSANDO
+- ✅ Nenhum teste referencia método renomeado
+
+### Arquivos Modificados (9)
+1. `app/Services/MercadoLivreClient.php` — +3 métodos batch
+2. `app/Services/MercadoLivre/SEOMetricsCollectorService.php` — NOVO
+3. `bin/seo-metrics-worker.php` — NOVO
+4. `app/Controllers/SEOKillerController.php` — +collectPerformanceMetrics()
+5. `app/Routes/api.php` — +rota POST
+6. `app/Services/AI/SEO/PerformanceTracker.php` — fix getItemVisits()
+7. `app/Services/ItemMetricsService.php` — rename getItemVisits→getItemVisitsByPeriod
+8. `app/Services/MercadoLivre/AccountGovernanceIntegrationService.php` — fix caller
+9. `bin/ab-test-worker.php` — fix caller
+
+---
+
 ## Sessão: 2026-02-25f — Reconciliação pricing_rules e seo_performance_metrics
 
 ### Contexto
@@ -39,7 +88,7 @@ Continuação da sessão 2026-02-25e. Auditoria profunda de tabelas com múltipl
    - dashboard stats: `SUM(CASE WHEN ativo = 1...)`
 
 2. **MarketAnalytics.php** — 3 queries corrigidas:
-   - predictDemand(): pm.date→pm.metric_date, pm.sales_change→pm.sold_quantity  
+   - predictDemand(): pm.date→pm.metric_date, pm.sales_change→pm.sold_quantity
    - detectSeasonality(): pm.date→pm.metric_date, pm.sales_change→pm.sold_quantity
    - detectEmergingOpportunities(): pm.sales_change→pm.sold_quantity, pm.views_change→pm.views
 

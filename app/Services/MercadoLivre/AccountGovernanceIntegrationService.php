@@ -405,7 +405,7 @@ class AccountGovernanceIntegrationService
 
             foreach ($visitIds as $itemId) {
                 try {
-                    $visitsData = $this->metricsService->getItemVisits($itemId, 'month');
+                    $visitsData = $this->metricsService->getItemVisitsByPeriod($itemId, 'month');
                     if (isset($itemMap[$itemId])) {
                         $itemMap[$itemId]['visits_30d'] = (int) ($visitsData['total_visits'] ?? 0);
                         $itemMap[$itemId]['conversion_30d'] = (float) ($visitsData['conversion_rate'] ?? 0);

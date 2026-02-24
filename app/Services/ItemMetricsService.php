@@ -7,10 +7,10 @@ use PDO;
 
 /**
  * ItemMetricsService - Métricas Detalhadas de Anúncios
- * 
+ *
  * Integração com Mercado Livre Metrics API
  * Endpoints: /items/{item_id}/visits, /items/{item_id}/health, /users/{user_id}/listings_quality
- * 
+ *
  * @link https://developers.mercadolivre.com.br/pt_br/metricas
  */
 class ItemMetricsService extends MercadoLivreClient
@@ -25,12 +25,12 @@ class ItemMetricsService extends MercadoLivreClient
 
     /**
      * Obtém visitas de um anúncio
-     * 
+     *
      * @param string $itemId ID do anúncio
      * @param string $period Período: today, yesterday, week, month
      * @return array Dados de visitas
      */
-    public function getItemVisits(string $itemId, string $period = 'week'): array
+    public function getItemVisitsByPeriod(string $itemId, string $period = 'week'): array
     {
         try {
             $endpoint = "/items/{$itemId}/visits";
@@ -62,7 +62,7 @@ class ItemMetricsService extends MercadoLivreClient
 
     /**
      * Obtém saúde (health) de um anúncio
-     * 
+     *
      * @param string $itemId ID do anúncio
      * @return array Dados de saúde do anúncio
      */
@@ -96,7 +96,7 @@ class ItemMetricsService extends MercadoLivreClient
 
     /**
      * Obtém qualidade geral dos anúncios do vendedor
-     * 
+     *
      * @return array Qualidade das publicações
      */
     public function getListingsQuality(): array
@@ -133,13 +133,13 @@ class ItemMetricsService extends MercadoLivreClient
 
     /**
      * Análise completa de métricas de um anúncio
-     * 
+     *
      * @param string $itemId ID do anúncio
      * @return array Análise completa
      */
     public function analyzeItemPerformance(string $itemId): array
     {
-        $visits = $this->getItemVisits($itemId, 'month');
+        $visits = $this->getItemVisitsByPeriod($itemId, 'month');
         $health = $this->getItemHealth($itemId);
         $item = $this->get("/items/{$itemId}");
 
@@ -186,7 +186,7 @@ class ItemMetricsService extends MercadoLivreClient
 
     /**
      * Obtém métricas agregadas de múltiplos anúncios
-     * 
+     *
      * @param array $itemIds IDs dos anúncios
      * @param string $period Período de análise
      * @return array Métricas agregadas
@@ -203,7 +203,7 @@ class ItemMetricsService extends MercadoLivreClient
 
         foreach ($itemIds as $itemId) {
             try {
-                $visits = $this->getItemVisits($itemId, $period);
+                $visits = $this->getItemVisitsByPeriod($itemId, $period);
                 $item = $this->get("/items/{$itemId}");
 
                 $itemMetric = [
@@ -235,14 +235,14 @@ class ItemMetricsService extends MercadoLivreClient
 
     /**
      * Salva snapshot de métricas no banco
-     * 
+     *
      * @param string $itemId ID do anúncio
      * @return bool Sucesso
      */
     public function saveMetricsSnapshot(string $itemId): bool
     {
         try {
-            $visits = $this->getItemVisits($itemId, 'today');
+            $visits = $this->getItemVisitsByPeriod($itemId, 'today');
             $health = $this->getItemHealth($itemId);
             $item = $this->get("/items/{$itemId}");
 
@@ -292,7 +292,7 @@ class ItemMetricsService extends MercadoLivreClient
 
     /**
      * Obtém histórico de métricas
-     * 
+     *
      * @param string $itemId ID do anúncio
      * @param int $days Dias de histórico
      * @return array Histórico
@@ -303,7 +303,7 @@ class ItemMetricsService extends MercadoLivreClient
             $dateFrom = date('Y-m-d', strtotime("-{$days} days"));
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     date, visits, sold_quantity, conversion_rate,
                     health_score, price
                 FROM item_metrics_history
@@ -567,7 +567,7 @@ class ItemMetricsService extends MercadoLivreClient
     }
     /**
      * Get distribution of health scores
-     * 
+     *
      * @return array
      */
     public function getScoreDistribution(): array
@@ -575,22 +575,22 @@ class ItemMetricsService extends MercadoLivreClient
         try {
             // Get latest health score for each item
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     SUM(CASE WHEN health_score < 50 THEN 1 ELSE 0 END) as critical,
                     SUM(CASE WHEN health_score BETWEEN 50 AND 70 THEN 1 ELSE 0 END) as medium,
                     SUM(CASE WHEN health_score > 70 THEN 1 ELSE 0 END) as low,
                     AVG(health_score) as avg_score,
                     COUNT(*) as total_scored
                 FROM (
-                    SELECT health_score 
-                    FROM item_metrics_history 
+                    SELECT health_score
+                    FROM item_metrics_history
                     WHERE date = CURDATE()
                     GROUP BY item_id
                 ) as latest_scores
             ");
-            
+
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             return [
                 'critical' => (int)($result['critical'] ?? 0),
                 'medium' => (int)($result['medium'] ?? 0),
@@ -604,15 +604,18 @@ class ItemMetricsService extends MercadoLivreClient
                 'error' => $e->getMessage(),
             ]);
             return [
-                'critical' => 0, 'medium' => 0, 'low' => 0, 
-                'avg_score' => 0, 'total_scored' => 0
+                'critical' => 0,
+                'medium' => 0,
+                'low' => 0,
+                'avg_score' => 0,
+                'total_scored' => 0
             ];
         }
     }
 
     /**
      * Get items within a specific score range
-     * 
+     *
      * @param int $minScore
      * @param int $maxScore
      * @param int $limit
@@ -623,16 +626,15 @@ class ItemMetricsService extends MercadoLivreClient
         try {
             $limitSql = max(1, min(500, (int)$limit));
             $stmt = $this->db->prepare("
-                SELECT item_id 
-                FROM item_metrics_history 
-                WHERE date = CURDATE() 
+                SELECT item_id
+                FROM item_metrics_history
+                WHERE date = CURDATE()
                 AND health_score BETWEEN ? AND ?
                 LIMIT {$limitSql}
             ");
-            
+
             $stmt->execute([$minScore, $maxScore]);
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
         } catch (\Exception $e) {
             log_warning('Falha ao buscar items por score', [
                 'service' => 'ItemMetricsService',
