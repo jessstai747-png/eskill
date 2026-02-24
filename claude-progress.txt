@@ -6,6 +6,46 @@
 
 ---
 
+## Sessão: 2026-02-24c — cleanup: remove remaining duplicate requestJson from JS files
+
+### Contexto
+Tarefas de baixa prioridade: remover definições duplicadas de `requestJson` em arquivos JS standalone que são carregados dentro de views PHP (onde o global do layout já está disponível), e remover guards mortos.
+
+### Implementado
+- **dashboard-modern.js** — Removido guard morto `if (typeof requestJson === 'undefined')` (global sempre existe do layout)
+- **realtime-notifications.js** — Removida definição duplicada (carregado via `head_common.php`)
+- **catalog-clone.js** — Removida definição duplicada (view PHP)
+- **quality-dashboard.js** — Removida definição duplicada (view PHP)
+- **ai-center.js** — Removida definição duplicada (view PHP)
+- **seo-killer-utils.js** — Removida definição nunca chamada (dead code)
+- **seo-dashboard.js** — Método de classe simplificado para delegar ao global; removido dead `ApiClient.json()` check
+
+### Mantidos (6 arquivos standalone sem layout context)
+- `tours.js`, `onboarding.js` (IIFEs com escopo local)
+- `seo-dashboard.js`, `ean-widget.js`, `pwa.js`, `theme-switcher.js` (não carregados de views PHP)
+
+### `ApiClient.json()` — chamadas diretas mantidas intencionalmente
+- `items.php` (8 call sites) — usa `{ response, data }` para inspecionar `response.ok`
+- `questions.php` (4 call sites) — usa `{ data }` pattern
+- `index.php` (1 call site) — `loadOrders()` precisa inspecionar response
+
+### Validação
+- PHPUnit: 2896 testes, 6727 assertions, 0 falhas
+- Zero definições duplicadas em arquivos carregados via layout
+
+### Commits
+- `f25ca57` — style: auto-format 6 dashboard views
+- `d5dd1df` — refactor(js): remove 6 duplicate requestJson definitions from JS files
+
+### Status
+✅ **Consolidação ApiClient completa.**
+- Todas as views PHP usam `requestJson` global do layout
+- JS files em contexto de layout usam o global
+- JS files standalone mantêm definição própria
+- `ApiClient.json()` usado diretamente apenas onde necessário (`{ response, data }` para inspeção)
+
+---
+
 ## Sessão: 2026-02-24b — refactor: migrate last 7 ApiClient.json views to global requestJson
 
 ### Contexto
