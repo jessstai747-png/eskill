@@ -6,6 +6,36 @@
 
 ---
 
+## Sessão: 2026-02-24d — integração ML no fluxo de Catalog Clone
+
+### Contexto
+Solicitação do usuário: integrar a implementação recente com a API do Mercado Livre. Foquei em **uma feature** (`catalog_clone`) e adicionei validação de integração ML no frontend antes de operações críticas.
+
+### Implementado
+- **`public/js/catalog-clone.js`**
+   - Adicionado preflight de integração ML com endpoints reais já existentes:
+      - `GET /api/health/ml` (credenciais/ping)
+      - `GET /api/tokens/accounts?status=active&sort=expires_at&order=asc` (contas/tokens válidos)
+   - Estado interno de integração (`checked`, `ready`, `message`, `activeAccounts`).
+   - Bloqueio seguro de ações quando ML está indisponível:
+      - preview item
+      - simulação
+      - submissão de clone
+      - busca de itens
+      - agendamento/cancelamento
+   - Mensagem visual no `resultArea` com CTA para revisar contas/tokens.
+   - `handleSubmit()` migrado de `fetch()` para `requestJson()` (fluxo unificado com `ApiClient.request`, CSRF/retry/erro consistente).
+   - Refresh periódico de métricas condicionado ao estado da integração ML.
+
+### Status de Feature
+- **`project-status.json`**: `CLONE-001.last_tested` atualizado para `2026-02-24`.
+
+### Validação
+- PHPUnit (Unit): 2896 testes, 6727 assertions, 0 falhas.
+
+### Observações
+- Existem alterações locais não relacionadas já presentes no workspace (`app/Routes/api.php`, `app/Services/ApiTokenService.php`, `public/index.php`, etc.); não foram alteradas por esta sessão.
+
 ## Sessão: 2026-02-24c — cleanup: remove remaining duplicate requestJson from JS files
 
 ### Contexto

@@ -10,12 +10,29 @@ class CatalogClone {
     constructor() {
         this.searchMode = 'single';
         this.selectedTargets = new Set();
+        this.mlIntegration = {
+            checked: false,
+            ready: false,
+            message: 'Validação da integração ML pendente...',
+            details: null,
+            activeAccounts: 0,
+        };
+        this.mlIntegrationCheckPromise = null;
         this.initElements();
         this.initEvents();
         this.initAccountCards();
         this.initDragDrop();
-        this.initMetrics();
-        this.initSchedules();
+
+        this.initMercadoLivreIntegration()
+            .then((isReady) => {
+                if (isReady) {
+                    this.initMetrics();
+                    this.initSchedules();
+                }
+            })
+            .catch(() => {
+                this.applyMlIntegrationState();
+            });
     }
 
     initElements() {
@@ -56,13 +73,13 @@ class CatalogClone {
 
         // Simulation
         this.btnSimulate = document.getElementById('btnSimulate');
-        this.simulationModal = document.getElementById('simulationModal') 
+        this.simulationModal = document.getElementById('simulationModal')
             ? new bootstrap.Modal(document.getElementById('simulationModal')) : null;
         this.simulationBody = document.getElementById('simulationBody');
         this.btnConfirmCloneFromSim = document.getElementById('btnConfirmCloneFromSim');
 
         // Search Modal Elements
-        this.itemSearchModal = document.getElementById('itemSearchModal') 
+        this.itemSearchModal = document.getElementById('itemSearchModal')
             ? new bootstrap.Modal(document.getElementById('itemSearchModal')) : null;
         this.btnSearchSingle = document.getElementById('btnSearchSingle');
         this.btnSearchBatch = document.getElementById('btnSearchBatch');
@@ -76,6 +93,135 @@ class CatalogClone {
         // Schedule Elements
         this.btnScheduleClone = document.getElementById('btnScheduleClone');
         this.btnClearBatch = document.getElementById('btnClearBatch');
+    }
+
+    async initMercadoLivreIntegration(force = false) {
+        if (this.mlIntegrationCheckPromise && !force) {
+            return this.mlIntegrationCheckPromise;
+        }
+
+        this.mlIntegrationCheckPromise = (async () => {
+            try {
+                const [health, accountsPayload] = await Promise.all([
+                    requestJson('/api/health/ml'),
+                    requestJson('/api/tokens/accounts?status=active&sort=expires_at&order=asc')
+                ]);
+
+                const credentialsOk = health?.result?.credentials === 'ok';
+                const pingStatus = health?.result?.ping ?? 'skipped';
+                const pingOk = pingStatus === 'ok' || pingStatus === 'skipped';
+
+                const accounts = Array.isArray(accountsPayload?.data) ? accountsPayload.data : [];
+                const healthyAccounts = accounts.filter((account) => {
+                    const apiValidationStatus = account?.api_validation_status ?? 'ok';
+                    return account?.status === 'active' && apiValidationStatus === 'ok';
+                });
+
+                this.mlIntegration.checked = true;
+                this.mlIntegration.activeAccounts = accounts.length;
+                this.mlIntegration.details = {
+                    health,
+                    accounts,
+                    healthyAccounts,
+                };
+
+                if (!credentialsOk) {
+                    this.mlIntegration.ready = false;
+                    this.mlIntegration.message = 'Credenciais do Mercado Livre não configuradas no servidor.';
+                } else if (accounts.length === 0) {
+                    this.mlIntegration.ready = false;
+                    this.mlIntegration.message = 'Nenhuma conta ativa do Mercado Livre encontrada para clonagem.';
+                } else if (healthyAccounts.length === 0) {
+                    this.mlIntegration.ready = false;
+                    this.mlIntegration.message = 'Contas ativas encontradas, mas sem validação de token na API do Mercado Livre.';
+                } else {
+                    this.mlIntegration.ready = true;
+                    this.mlIntegration.message = pingOk
+                        ? `Integração ML ativa (${healthyAccounts.length} conta(s) válida(s)).`
+                        : `Integração ML ativa, mas o ping de saúde está instável (${healthyAccounts.length} conta(s) válida(s)).`;
+                }
+            } catch (error) {
+                this.mlIntegration.checked = true;
+                this.mlIntegration.ready = false;
+                this.mlIntegration.details = null;
+                this.mlIntegration.message = 'Não foi possível validar a integração com a API do Mercado Livre.';
+            }
+
+            this.applyMlIntegrationState();
+            return this.mlIntegration.ready;
+        })();
+
+        try {
+            return await this.mlIntegrationCheckPromise;
+        } finally {
+            this.mlIntegrationCheckPromise = null;
+        }
+    }
+
+    applyMlIntegrationState() {
+        const shouldDisableActions = !this.mlIntegration.ready;
+        const guardedButtons = [
+            this.btnClone,
+            this.btnSimulate,
+            this.btnPreviewItem,
+            this.btnScheduleClone,
+            this.btnSearchSingle,
+            this.btnSearchBatch,
+        ];
+
+        guardedButtons.forEach((button) => {
+            if (button) {
+                button.disabled = shouldDisableActions;
+                if (shouldDisableActions) {
+                    button.setAttribute('title', this.mlIntegration.message);
+                } else {
+                    button.removeAttribute('title');
+                }
+            }
+        });
+
+        if (!this.resultArea) {
+            return;
+        }
+
+        const existingWarning = this.resultArea.querySelector('[data-ml-integration-warning="1"]');
+
+        if (shouldDisableActions) {
+            this.resultArea.innerHTML = `
+                <div class="alert alert-warning mb-0" data-ml-integration-warning="1">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                        <div>
+                            <strong>Integração Mercado Livre indisponível</strong>
+                            <div class="small mt-1">${this.mlIntegration.message}</div>
+                            <a href="/settings" class="btn btn-sm btn-outline-warning mt-2">
+                                <i class="bi bi-gear me-1"></i> Revisar contas/tokens
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        if (existingWarning) {
+            this.resultArea.innerHTML = '';
+        }
+
+        this.validateAccounts();
+    }
+
+    async ensureMercadoLivreReady(actionLabel = 'executar esta ação') {
+        if (!this.mlIntegration.checked || this.mlIntegrationCheckPromise) {
+            await this.initMercadoLivreIntegration();
+        }
+
+        if (this.mlIntegration.ready) {
+            return true;
+        }
+
+        Toast.error(`Não foi possível ${actionLabel}: ${this.mlIntegration.message}`);
+        return false;
     }
 
     initEvents() {
@@ -138,8 +284,8 @@ class CatalogClone {
             this.btnDoSearch.addEventListener('click', () => this.performSearch());
         }
         if (this.searchQuery) {
-            this.searchQuery.addEventListener('keypress', (e) => { 
-                if (e.key === 'Enter' && this.btnDoSearch) this.btnDoSearch.click(); 
+            this.searchQuery.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && this.btnDoSearch) this.btnDoSearch.click();
             });
         }
         if (this.checkAllItems) {
@@ -182,10 +328,10 @@ class CatalogClone {
             card.addEventListener('click', (e) => {
                 // Don't trigger if clicking the checkbox itself
                 if (e.target.type === 'checkbox') return;
-                
+
                 const checkbox = card.querySelector('.target-checkbox');
                 if (!checkbox || card.classList.contains('disabled')) return;
-                
+
                 checkbox.checked = !checkbox.checked;
                 card.classList.toggle('selected', checkbox.checked);
                 this.updateSelectedTargets();
@@ -225,7 +371,7 @@ class CatalogClone {
         document.querySelectorAll('.account-card').forEach(card => {
             const accountId = card.dataset.accountId;
             const checkbox = card.querySelector('.target-checkbox');
-            
+
             if (accountId === sourceId) {
                 card.classList.add('disabled');
                 if (checkbox) {
@@ -291,7 +437,7 @@ class CatalogClone {
             const ids = content.split(/[\n,;\s]+/)
                 .map(id => id.trim())
                 .filter(id => id.match(/^MLB\d+$/i));
-            
+
             if (ids.length > 0 && this.batchItems) {
                 const current = this.batchItems.value.trim();
                 this.batchItems.value = current ? current + '\n' + ids.join('\n') : ids.join('\n');
@@ -314,6 +460,10 @@ class CatalogClone {
 
     // Item Preview
     async previewItem() {
+        if (!(await this.ensureMercadoLivreReady('consultar item no Mercado Livre'))) {
+            return;
+        }
+
         const itemId = document.getElementById('source_item_id')?.value?.trim();
         const accountId = this.sourceSelect?.value;
 
@@ -372,6 +522,12 @@ class CatalogClone {
     }
 
     validateAccounts() {
+        if (!this.mlIntegration.ready) {
+            if (this.btnClone) this.btnClone.disabled = true;
+            if (this.btnSimulate) this.btnSimulate.disabled = true;
+            return;
+        }
+
         const isBatch = this.batchTab && this.batchTab.classList.contains('active');
         const activeSource = isBatch ? this.batchSourceSelect : this.sourceSelect;
         const sourceValue = activeSource?.value;
@@ -396,6 +552,10 @@ class CatalogClone {
     }
 
     async simulate() {
+        if (!(await this.ensureMercadoLivreReady('simular clonagem no Mercado Livre'))) {
+            return;
+        }
+
         const isBatch = this.batchTab && this.batchTab.classList.contains('active');
         const activeSource = isBatch ? this.batchSourceSelect : this.sourceSelect;
         const sourceItemId = document.getElementById('source_item_id')?.value;
@@ -480,6 +640,10 @@ class CatalogClone {
     async handleSubmit(e) {
         e.preventDefault();
 
+        if (!(await this.ensureMercadoLivreReady('executar clonagem via API do Mercado Livre'))) {
+            return;
+        }
+
         const isBatch = this.batchTab && this.batchTab.classList.contains('active');
         const activeSource = isBatch ? this.batchSourceSelect : this.sourceSelect;
         const targetIds = this.getSelectedTargetIds();
@@ -534,7 +698,7 @@ class CatalogClone {
         this.setCloneButtonLoading(true);
 
         try {
-            const response = await fetch(endpoint, {
+            const result = await requestJson(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -543,9 +707,7 @@ class CatalogClone {
                 body: JSON.stringify(data)
             });
 
-            const result = await response.json();
-
-            if (response.ok || response.status === 201 || response.status === 202) {
+            if (result?.status === 'success' || result?.status === 'accepted' || result?.target_item_id || result?.job_ids || result?.results) {
                 if (isBatch) {
                     // Start Polling for Batch
                     if (result.job_ids && result.job_ids.length > 0) {
@@ -572,7 +734,18 @@ class CatalogClone {
 
         } catch (error) {
             console.error('Error:', error);
-            this.showError('Erro de sistema ao processar requisição.');
+
+            let apiMessage = 'Erro de sistema ao processar requisição.';
+            if (error?.response) {
+                try {
+                    const errorBody = await error.response.json();
+                    apiMessage = errorBody?.message || errorBody?.error || apiMessage;
+                } catch (_) {
+                    apiMessage = error?.message || apiMessage;
+                }
+            }
+
+            this.showError(apiMessage);
             this.showProgress(false);
             this.setCloneButtonLoading(false);
         }
@@ -648,12 +821,12 @@ class CatalogClone {
             let successCount = 0;
             let errorCount = 0;
             let details = '';
-            
+
             for (const [tid, res] of Object.entries(result.results)) {
                 const isSuccess = res.status === 'success';
                 if (isSuccess) successCount++;
                 else errorCount++;
-                
+
                 const icon = isSuccess ? '<i class="bi bi-check-circle-fill text-success"></i>' : '<i class="bi bi-x-circle-fill text-danger"></i>';
                 details += `
                     <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
@@ -677,7 +850,7 @@ class CatalogClone {
         } else {
             const itemId = result.target_item_id || '';
             const mlLink = itemId ? `https://produto.mercadolivre.com.br/MLB-${itemId.replace('MLB', '')}` : '#';
-            
+
             this.resultArea.innerHTML = `
                 <div class="text-center">
                     <div class="text-success mb-3">
@@ -734,6 +907,10 @@ class CatalogClone {
     }
 
     async performSearch() {
+        if (!(await this.ensureMercadoLivreReady('buscar anúncios de origem'))) {
+            return;
+        }
+
         const activeSource = this.searchMode === 'single' ? this.sourceSelect : this.batchSourceSelect;
         const query = this.searchQuery?.value?.trim();
 
@@ -855,14 +1032,14 @@ class CatalogClone {
 
     updatePollUI(percent, completed, failed, pending) {
         if (!this.resultArea) return;
-        
+
         this.resultArea.innerHTML = `
             <div class="text-center">
                 <div class="position-relative d-inline-block mb-3">
                     <svg width="80" height="80" viewBox="0 0 80 80">
                         <circle cx="40" cy="40" r="35" fill="none" stroke="#e9ecef" stroke-width="6"/>
                         <circle cx="40" cy="40" r="35" fill="none" stroke="#667eea" stroke-width="6"
-                            stroke-dasharray="${2 * Math.PI * 35}" 
+                            stroke-dasharray="${2 * Math.PI * 35}"
                             stroke-dashoffset="${2 * Math.PI * 35 * (1 - percent / 100)}"
                             transform="rotate(-90 40 40)"
                             style="transition: stroke-dashoffset 0.5s ease"/>
@@ -882,7 +1059,8 @@ class CatalogClone {
     // --- Metrics & Schedules ---
     initMetrics() {
         if (!document.getElementById('todayClones')) return;
-        
+        if (!this.mlIntegration.ready) return;
+
         requestJson('/api/catalog/clone/metrics')
             .then(data => {
                 const el = (id, val) => {
@@ -902,6 +1080,7 @@ class CatalogClone {
     initSchedules() {
         const container = document.getElementById('activeSchedules');
         if (!container) return;
+        if (!this.mlIntegration.ready) return;
 
         requestJson('/api/catalog/clone/schedules')
             .then(data => {
@@ -930,6 +1109,10 @@ class CatalogClone {
     }
 
     async createSchedule() {
+        if (!(await this.ensureMercadoLivreReady('criar agendamento de clone'))) {
+            return;
+        }
+
         const sourceAccount = document.getElementById('schedule_source_account')?.value;
         const targetAccount = document.getElementById('schedule_target_account')?.value;
         const date = document.getElementById('schedule_date')?.value;
@@ -953,7 +1136,7 @@ class CatalogClone {
                     frequency: frequency
                 })
             });
-            
+
             if (result.status === 'success') {
                 Toast.success('Agendamento criado!');
                 this.initSchedules();
@@ -967,7 +1150,11 @@ class CatalogClone {
 
     cancelSchedule(id) {
         if (!confirm('Cancelar este agendamento?')) return;
-        
+        if (!this.mlIntegration.ready) {
+            Toast.error(`Integração ML indisponível: ${this.mlIntegration.message}`);
+            return;
+        }
+
         requestJson(`/api/catalog/clone/schedules/${id}`, { method: 'DELETE' })
             .then(d => {
                 if (d.status === 'success') {
@@ -993,5 +1180,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.catalogClone = new CatalogClone();
 
     // Periodic refresh
-    setInterval(() => window.catalogClone.initMetrics(), 30000);
+    setInterval(() => {
+        window.catalogClone.initMercadoLivreIntegration()
+            .then((isReady) => {
+                if (isReady) {
+                    window.catalogClone.initMetrics();
+                }
+            })
+            .catch(() => {
+                // silêncio intencional: estado já refletido no painel
+            });
+    }, 30000);
 });

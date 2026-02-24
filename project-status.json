@@ -171,7 +171,7 @@
                 "bin/catalog-clone-worker.php"
             ],
             "passes": true,
-            "last_tested": "2025-07-25"
+            "last_tested": "2026-02-24"
         },
         {
             "id": "CLONE-002",
