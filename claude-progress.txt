@@ -6,6 +6,59 @@
 
 ---
 
+## Sessão: 2026-02-24 — feat(clone-wizard): validação pré-execução + select all + resultados detalhados + fix pricing type mapping
+
+### Contexto
+Complemento à integração ML anterior. Diagnóstico revelou 4 gaps restantes:
+1. `normalizeCloneOptions()` enviava `"markup"` ao `calculatePrice()` que espera `"markup_percent"` — pricing silenciosamente fallback para "copy"
+2. Sem validação antes de executar o job (token expirado, conta inválida)
+3. Sem "Selecionar Todos" cross-page para vendedores com 100+ itens
+4. Sem detalhes dos resultados por item após conclusão do job
+
+### Implementado
+
+#### A. Fix pricing type mapping em `normalizeCloneOptions()`
+- Adicionado mapa de tipos: `markup` → `markup_percent`, `markdown` → `markdown_percent`
+- Aplicado tanto para input string quanto para input array
+- Tipos não mapeados (`copy`, `fixed`, `competitive`) passam inalterados
+
+#### B. `validatePreExecution()` — validação pré-execução
+- Valida token da conta destino via `/users/me`
+- Verifica restrições de listagem na conta ML
+- Amostragem de 3 itens para checar acessibilidade na API
+- Warnings para guardrails (descrição/fotos)
+- Endpoint: `POST /api/catalog/clone/validate`
+
+#### C. "Selecionar Todos do Vendedor" no wizard
+- Novo botão "Todos do vendedor" no step 2
+- Paginação automática via API (50 itens/página com rate limiting de 300ms)
+- Feedback visual de progresso (X/Y itens carregados)
+- Confirmação antes de iniciar para vendedores com muitos itens
+
+#### D. Resultados detalhados por item pós-job
+- Tabela com status (badge colorido), item origem, item destino (link ML), mensagem de erro
+- Botão toggle "Ver Detalhes" / "Ocultar Detalhes"
+- Itens do job carregados automaticamente ao completar/falhar
+
+#### E. Validação visual no step 4
+- Erros bloqueiam botão "Iniciar Clonagem" (vermelho)
+- Warnings informativos (amarelo)
+- Fallback gracioso se endpoint de validação falhar
+
+### Testes
+- 5 novos testes: 3 type mapping (markdown, array markup, preserved types) + 1 estrutural (validatePreExecution) + 1 provider
+- 1 teste atualizado: markup expectation `markup` → `markup_percent`
+- Total: 104 testes no CatalogCloneServiceTest, 2885 na suite completa, 0 falhas
+
+### Arquivos modificados
+- `app/Services/CatalogCloneService.php` — fix type mapping + validatePreExecution()
+- `app/Controllers/CatalogCloneController.php` — novo método validatePreExecution()
+- `app/Routes/api.php` — nova rota /validate
+- `app/Views/dashboard/catalog_clone_wizard.php` — select all, pre-validation, result details
+- `tests/Unit/Services/CatalogCloneServiceTest.php` — +5 testes, 1 atualizado
+
+---
+
 ## Sessão: 2026-02-24 — feat(clone-wizard): integrar busca de vendedor com API ML + corrigir normalização de opções
 
 ### Contexto

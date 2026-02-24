@@ -349,6 +349,9 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
       <span><i class="bi bi-check2-square"></i> <span id="selectedCount">0</span> anúncios selecionados</span>
       <div class="d-flex gap-2">
          <button class="btn btn-sm btn-light" id="btnSelectAll">Todos desta página</button>
+         <button class="btn btn-sm btn-info text-white" id="btnSelectAllSeller" title="Selecionar TODOS os anúncios do vendedor (sem navegar páginas)">
+            <i class="bi bi-check2-all"></i> Todos do vendedor
+         </button>
          <button class="btn btn-sm btn-outline-light" id="btnClearAll">Limpar</button>
          <button class="btn btn-sm btn-warning text-dark" id="btnConfigureClone" disabled>
             Configurar Clone <i class="bi bi-arrow-right"></i>
@@ -511,6 +514,12 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                   <i class="bi bi-play-circle"></i> Iniciar Clonagem
                </button>
             </div>
+
+            <!-- Validation results (shown before executing) -->
+            <div id="validationResult" class="mt-3 d-none">
+               <div id="validationErrors" class="d-none"></div>
+               <div id="validationWarnings" class="d-none"></div>
+            </div>
          </div>
       </div>
    </div>
@@ -531,12 +540,34 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
          </div>
          <div id="jobStatusMsg" class="alert alert-info small">Aguardando início…</div>
          <div id="jobDoneActions" class="d-none mt-3">
-            <a href="/dashboard/catalog/clone-monitoring" class="btn btn-outline-primary">
-               <i class="bi bi-graph-up"></i> Ver Monitoramento
-            </a>
-            <button class="btn btn-outline-secondary ms-2" id="btnNewWizard">
-               <i class="bi bi-plus-circle"></i> Novo Wizard
-            </button>
+            <div class="d-flex gap-2 mb-3">
+               <a href="/dashboard/catalog/clone-monitoring" class="btn btn-outline-primary">
+                  <i class="bi bi-graph-up"></i> Ver Monitoramento
+               </a>
+               <button class="btn btn-outline-info" id="btnShowResults">
+                  <i class="bi bi-list-ul"></i> Ver Detalhes
+               </button>
+               <button class="btn btn-outline-secondary" id="btnNewWizard">
+                  <i class="bi bi-plus-circle"></i> Novo Wizard
+               </button>
+            </div>
+            <!-- Item results table (toggled by btnShowResults) -->
+            <div id="jobResultsPanel" class="d-none">
+               <h6 class="mb-2"><i class="bi bi-list-check"></i> Resultado por Item</h6>
+               <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                  <table class="table table-sm table-hover mb-0" id="jobResultsTable">
+                     <thead class="table-light sticky-top">
+                        <tr>
+                           <th style="width: 100px;">Status</th>
+                           <th>Item Origem</th>
+                           <th>Item Destino</th>
+                           <th>Detalhes</th>
+                        </tr>
+                     </thead>
+                     <tbody></tbody>
+                  </table>
+               </div>
+            </div>
          </div>
       </div>
    </div>
@@ -706,7 +737,8 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                            populateSellerCard(summary);
                         }
                      })
-                     .catch(function() { /* summary falhou — card básico já exibido */ });
+                     .catch(function() {
+                        /* summary falhou — card básico já exibido */ });
                }
             })
             .catch(function(err) {
@@ -883,6 +915,72 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
          renderItems();
          updateSelectionBar();
       });
+
+      // ── Select ALL seller items (across all pages) ─────────────
+      qs('btnSelectAllSeller').addEventListener('click', function() {
+         var self = this;
+         if (!state.sellerId) return;
+
+         var proceed = confirm(
+            'Selecionar TODOS os ' + state.sellerTotalItems.toLocaleString('pt-BR') +
+            ' anúncios do vendedor?\n\nIsso pode levar alguns segundos para vendedores com muitos itens.'
+         );
+         if (!proceed) return;
+
+         self.disabled = true;
+         self.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Carregando…';
+         show('itemsSpinner');
+
+         var collected = [];
+         var offset = 0;
+         var pageLimit = 50;
+
+         function fetchPage() {
+            var url = '/api/catalog/clone/source/seller/' + encodeURIComponent(state.sellerId) + '/items';
+            var params = new URLSearchParams({ offset: String(offset), limit: String(pageLimit) });
+            if (state.activeBrand) params.set('brand', state.activeBrand);
+            if (state.activeCat) params.set('category', state.activeCat);
+
+            api(url + '?' + params.toString())
+               .then(function(data) {
+                  var res = data.data || data;
+                  var items = res.items || [];
+                  collected = collected.concat(items);
+                  offset += items.length;
+
+                  // Update progress
+                  self.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ' +
+                     collected.length + '/' + (res.total || '?');
+
+                  if (items.length < pageLimit || collected.length >= (res.total || Infinity)) {
+                     // Done — add all to selection
+                     collected.forEach(function(item) {
+                        state.selectedItems.set(String(item.id), {
+                           title: item.title,
+                           price: item.price
+                        });
+                     });
+                     renderItems();
+                     updateSelectionBar();
+                     self.disabled = false;
+                     self.innerHTML = '<i class="bi bi-check2-all"></i> Todos do vendedor';
+                     hide('itemsSpinner');
+                  } else {
+                     // Rate-limit: wait 300ms before next page
+                     setTimeout(fetchPage, 300);
+                  }
+               })
+               .catch(function(err) {
+                  console.error('[Wizard] selectAll error', err);
+                  alert('Erro ao carregar todos os itens: ' + (err.message || 'Tente novamente'));
+                  self.disabled = false;
+                  self.innerHTML = '<i class="bi bi-check2-all"></i> Todos do vendedor';
+                  hide('itemsSpinner');
+               });
+         }
+
+         fetchPage();
+      });
       qs('btnClearAll').addEventListener('click', function() {
          state.selectedItems.clear();
          renderItems();
@@ -934,7 +1032,81 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
          }
          populateSummary();
          goStep(4);
+         runPreValidation();
       });
+
+      /**
+       * Roda validação pré-execução ao entrar no step 4.
+       * Mostra erros (bloqueantes) e warnings (informativos).
+       */
+      function runPreValidation() {
+         var errorsEl = qs('validationErrors');
+         var warningsEl = qs('validationWarnings');
+         var resultEl = qs('validationResult');
+         var execBtn = qs('btnExecuteClone');
+
+         errorsEl.className = 'd-none';
+         warningsEl.className = 'd-none';
+         resultEl.className = 'mt-3';
+
+         execBtn.disabled = true;
+         execBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Validando…';
+
+         var itemIds = Array.from(state.selectedItems.keys());
+         var payload = {
+            target_account_id: parseInt(qs('targetAccountSelect').value, 10),
+            source_seller_id: state.sellerId,
+            item_ids: itemIds,
+            options: {
+               include_description: qs('includeDescription').checked,
+               include_pictures: qs('includePictures').checked,
+            }
+         };
+
+         api('/api/catalog/clone/validate', {
+               method: 'POST',
+               body: JSON.stringify(payload)
+            })
+            .then(function(data) {
+               var errors = data.errors || [];
+               var warnings = data.warnings || [];
+
+               if (errors.length > 0) {
+                  errorsEl.className = 'alert alert-danger small';
+                  errorsEl.innerHTML = '<strong><i class="bi bi-x-circle"></i> Erros (impeditivos):</strong><ul class="mb-0 mt-1">' +
+                     errors.map(function(e) { return '<li>' + escHtml(e) + '</li>'; }).join('') +
+                     '</ul>';
+                  execBtn.disabled = true;
+                  execBtn.innerHTML = '<i class="bi bi-x-circle"></i> Corrija os erros acima';
+               } else {
+                  execBtn.disabled = false;
+                  execBtn.innerHTML = '<i class="bi bi-play-circle"></i> Iniciar Clonagem';
+               }
+
+               if (warnings.length > 0) {
+                  warningsEl.className = 'alert alert-warning small';
+                  warningsEl.innerHTML = '<strong><i class="bi bi-exclamation-triangle"></i> Avisos:</strong><ul class="mb-0 mt-1">' +
+                     warnings.map(function(w) { return '<li>' + escHtml(w) + '</li>'; }).join('') +
+                     '</ul>';
+               }
+
+               // Show account info if available
+               if (data.account && data.account.nickname) {
+                  qs('summAccount').textContent += ' (' + data.account.nickname + ')';
+               }
+
+               show('validationResult');
+            })
+            .catch(function(err) {
+               // Validation endpoint failed — allow execution anyway
+               console.warn('[Wizard] validation failed, allowing execution:', err);
+               execBtn.disabled = false;
+               execBtn.innerHTML = '<i class="bi bi-play-circle"></i> Iniciar Clonagem';
+               warningsEl.className = 'alert alert-warning small';
+               warningsEl.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Não foi possível validar pré-condições. Prossiga com cautela.';
+               show('validationResult');
+            });
+      }
 
       function populateSummary() {
          var sel = qs('targetAccountSelect');
@@ -1052,12 +1224,62 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                   clearInterval(state.pollTimer);
                   show('jobDoneActions');
                   qs('jobProgressBar').classList.remove('progress-bar-animated');
+
+                  // Carregar detalhes dos itens processados
+                  populateJobResults(res.items || []);
                }
             })
             .catch(function(err) {
                console.error('[Wizard] poll error', err);
             });
       }
+
+      /**
+       * Popula a tabela de resultados por item quando o job finaliza.
+       */
+      function populateJobResults(items) {
+         var tbody = qs('jobResultsTable').querySelector('tbody');
+         if (!items || items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sem detalhes disponíveis</td></tr>';
+            return;
+         }
+
+         var statusBadge = {
+            completed: '<span class="badge bg-success">OK</span>',
+            failed: '<span class="badge bg-danger">Erro</span>',
+            skipped: '<span class="badge bg-secondary">Pulado</span>',
+            pending: '<span class="badge bg-warning text-dark">Pendente</span>',
+            processing: '<span class="badge bg-info text-white">Processando</span>'
+         };
+
+         tbody.innerHTML = items.map(function(item) {
+            var st = String(item.status || 'pending');
+            var badge = statusBadge[st] || '<span class="badge bg-light text-dark">' + escHtml(st) + '</span>';
+            var sourceId = escHtml(String(item.source_item_id || ''));
+            var targetId = item.target_item_id
+               ? '<a href="https://www.mercadolivre.com.br/p/' + escHtml(item.target_item_id) + '" target="_blank" rel="noopener">'
+                 + escHtml(item.target_item_id) + ' <i class="bi bi-box-arrow-up-right"></i></a>'
+               : '—';
+            var detail = escHtml(String(item.error_message || ''));
+
+            return '<tr>' +
+               '<td>' + badge + '</td>' +
+               '<td><code>' + sourceId + '</code></td>' +
+               '<td>' + targetId + '</td>' +
+               '<td class="small text-muted">' + (detail || '—') + '</td>' +
+               '</tr>';
+         }).join('');
+      }
+
+      // Toggle job results panel
+      qs('btnShowResults').addEventListener('click', function() {
+         var panel = qs('jobResultsPanel');
+         var visible = !panel.classList.contains('d-none');
+         panel.classList.toggle('d-none', visible);
+         this.innerHTML = visible
+            ? '<i class="bi bi-list-ul"></i> Ver Detalhes'
+            : '<i class="bi bi-eye-slash"></i> Ocultar Detalhes';
+      });
 
       qs('btnNewWizard').addEventListener('click', function() {
          if (state.pollTimer) clearInterval(state.pollTimer);
@@ -1074,6 +1296,8 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
          hide('progressView');
          show('summaryView');
          qs('jobDoneActions').classList.add('d-none');
+         hide('jobResultsPanel');
+         hide('validationResult');
          goStep(1);
       });
 

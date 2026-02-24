@@ -74,6 +74,7 @@ class CatalogCloneServiceTest extends TestCase
             ['pricePreviewBatch'],
             ['checkLocalDuplicate'],
             ['searchSeller'],
+            ['validatePreExecution'],
         ];
     }
 
@@ -737,7 +738,8 @@ class CatalogCloneServiceTest extends TestCase
             'include_pictures' => false,
         ]);
 
-        $this->assertSame(['type' => 'markup', 'value' => 15.0], $result['pricing_strategy']);
+        // 'markup' is mapped to 'markup_percent' for calculatePrice() compatibility
+        $this->assertSame(['type' => 'markup_percent', 'value' => 15.0], $result['pricing_strategy']);
         $this->assertSame(['type' => 'copy'], $result['stock_strategy']);
         $this->assertTrue($result['options']['include_description']);
         $this->assertFalse($result['options']['include_pictures']);
@@ -815,5 +817,62 @@ class CatalogCloneServiceTest extends TestCase
     {
         $this->assertTrue($this->reflection->hasMethod('resolveSellerByNickname'));
         $this->assertTrue($this->reflection->getMethod('resolveSellerByNickname')->isPrivate());
+    }
+
+    // =========================================================================
+    // Behavioral: normalizeCloneOptions type mapping
+    // =========================================================================
+
+    public function testNormalizeCloneOptionsMapsMarkdownToMarkdownPercent(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'pricing_strategy' => 'markdown',
+            'price_value' => 10,
+        ]);
+
+        $this->assertSame('markdown_percent', $result['pricing_strategy']['type']);
+        $this->assertSame(10.0, $result['pricing_strategy']['value']);
+    }
+
+    public function testNormalizeCloneOptionsMapsArrayMarkupType(): void
+    {
+        $result = CatalogCloneService::normalizeCloneOptions([
+            'pricing_strategy' => ['type' => 'markup', 'value' => 20],
+        ]);
+
+        // Array pricing also gets type remapped
+        $this->assertSame('markup_percent', $result['pricing_strategy']['type']);
+        $this->assertSame(20, $result['pricing_strategy']['value']);
+    }
+
+    public function testNormalizeCloneOptionsPreservesNonMappedTypes(): void
+    {
+        // Types that are NOT in the mapping table should pass through unchanged
+        $copyResult = CatalogCloneService::normalizeCloneOptions([
+            'pricing_strategy' => 'copy',
+        ]);
+        $this->assertSame('copy', $copyResult['pricing_strategy']['type']);
+
+        $fixedResult = CatalogCloneService::normalizeCloneOptions([
+            'pricing_strategy' => 'fixed',
+            'price_value' => 99.90,
+        ]);
+        $this->assertSame('fixed', $fixedResult['pricing_strategy']['type']);
+        $this->assertSame(99.90, $fixedResult['pricing_strategy']['value']);
+
+        $compResult = CatalogCloneService::normalizeCloneOptions([
+            'pricing_strategy' => 'competitive',
+        ]);
+        $this->assertSame('competitive', $compResult['pricing_strategy']['type']);
+    }
+
+    // =========================================================================
+    // Structure: validatePreExecution method exists
+    // =========================================================================
+
+    public function testValidatePreExecutionMethodExists(): void
+    {
+        $this->assertTrue($this->reflection->hasMethod('validatePreExecution'));
+        $this->assertTrue($this->reflection->getMethod('validatePreExecution')->isPublic());
     }
 }

@@ -452,6 +452,31 @@ class CatalogCloneController extends BaseController
     }
 
     /**
+     * Valida pré-condições antes de executar um job de clonagem
+     * POST /api/catalog/clone/validate
+     */
+    public function validatePreExecution(): void
+    {
+        header('Content-Type: application/json');
+
+        $input = $this->request->json();
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid JSON']);
+            return;
+        }
+
+        try {
+            $result = $this->service->validatePreExecution($input);
+            http_response_code(200);
+            echo json_encode($result);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro na validação', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Lista anúncios de um seller público
      * GET /api/catalog/clone/source/seller/{sellerId}/items
      */

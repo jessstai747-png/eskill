@@ -796,6 +796,7 @@ $router->get('api/catalog/clone/source/seller/search', CatalogCloneController::c
 $router->get('api/catalog/clone/source/seller/{sellerId}/items', CatalogCloneController::class, 'listSellerItems');
 $router->get('api/catalog/clone/source/seller/{sellerId}/summary', CatalogCloneController::class, 'getSellerSummary');
 $router->post('api/catalog/clone/source/items', CatalogCloneController::class, 'resolveItemIds');
+$router->post('api/catalog/clone/validate', CatalogCloneController::class, 'validatePreExecution');
 $router->post('api/catalog/clone/dry-run', CatalogCloneController::class, 'dryRun');
 $router->post('api/catalog/clone/item', CatalogCloneController::class, 'cloneItemNew');
 $router->get('api/catalog/clone/jobs', CatalogCloneController::class, 'listJobs');

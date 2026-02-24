@@ -258,7 +258,7 @@
         {
             "id": "CLONE-009",
             "category": "catalog_clone",
-            "description": "Wizard de Clonagem por Concorrente — fluxo 4 passos: busca vendedor ML (por ID, nickname ou URL), browser de anúncios com facets, configuração com guardrails e normalização de opções, execução com polling de progresso",
+            "description": "Wizard de Clonagem por Concorrente — fluxo 4 passos: busca vendedor ML (por ID, nickname ou URL), browser de anúncios com facets e select-all, configuração com guardrails e normalização de opções, validação pré-execução + execução com polling de progresso e resultados detalhados",
             "files": [
                 "app/Controllers/CatalogCloneController.php",
                 "app/Controllers/DashboardController.php",

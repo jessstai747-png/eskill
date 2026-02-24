@@ -202,16 +202,27 @@ class CatalogCloneService
      */
     public static function normalizeCloneOptions(array $rawOptions): array
     {
+        // Mapa de tipos do wizard → tipos internos do calculatePrice()
+        // O wizard envia nomes simplificados; o backend espera sufixos específicos
+        $typeMap = [
+            'markup'   => 'markup_percent',
+            'markdown' => 'markdown_percent',
+        ];
+
         // Pricing strategy: string → array com type e value
         $pricingRaw = $rawOptions['pricing_strategy'] ?? 'copy';
         if (is_string($pricingRaw)) {
-            $pricingStrategy = ['type' => $pricingRaw];
+            $normalizedType = $typeMap[$pricingRaw] ?? $pricingRaw;
+            $pricingStrategy = ['type' => $normalizedType];
             $priceValue = $rawOptions['price_value'] ?? null;
             if ($priceValue !== null && $priceValue !== '') {
                 $pricingStrategy['value'] = (float)$priceValue;
             }
         } elseif (is_array($pricingRaw)) {
             $pricingStrategy = $pricingRaw;
+            if (isset($pricingStrategy['type']) && isset($typeMap[$pricingStrategy['type']])) {
+                $pricingStrategy['type'] = $typeMap[$pricingStrategy['type']];
+            }
         } else {
             $pricingStrategy = ['type' => 'copy'];
         }
@@ -241,6 +252,118 @@ class CatalogCloneService
             'pricing_strategy' => $pricingStrategy,
             'stock_strategy' => $stockStrategy,
             'options' => $options,
+        ];
+    }
+
+    /**
+     * Valida pré-condições antes de executar um job de clonagem.
+     *
+     * Verifica se a conta destino tem tokens válidos, se os itens são acessíveis
+     * na API do ML, e retorna warnings úteis para o usuário.
+     *
+     * @param array $params Parâmetros do job: target_account_id, item_ids, source_seller_id, options
+     * @return array{valid: bool, errors: list<string>, warnings: list<string>, account: array}
+     */
+    public function validatePreExecution(array $params): array
+    {
+        $errors = [];
+        $warnings = [];
+        $accountInfo = [];
+
+        $targetAccountId = (int)($params['target_account_id'] ?? 0);
+        $itemIds = $params['item_ids'] ?? [];
+        $sourceSellerId = (string)($params['source_seller_id'] ?? '');
+        $options = $params['options'] ?? [];
+
+        // 1. Validar conta destino existe e tem tokens
+        if ($targetAccountId <= 0) {
+            $errors[] = 'Conta destino não informada.';
+        } else {
+            try {
+                $targetClient = new MercadoLivreClient($targetAccountId);
+
+                // API check: chamar /users/me para validar que o token funciona
+                $me = $targetClient->get('/users/me');
+                if (isset($me['error'])) {
+                    $errors[] = 'Token da conta destino expirado ou inválido: ' . ($me['message'] ?? $me['error']);
+                } else {
+                    $accountInfo = [
+                        'id' => $targetAccountId,
+                        'ml_user_id' => $me['id'] ?? null,
+                        'nickname' => $me['nickname'] ?? null,
+                        'status' => $me['status'] ?? null,
+                    ];
+
+                    // Verificar se a conta está ativa no ML
+                    $siteStatus = $me['status'] ?? [];
+                    if (is_array($siteStatus)) {
+                        $listAllowed = $siteStatus['list'] ?? [];
+                        if (isset($listAllowed['allow']) && $listAllowed['allow'] === false) {
+                            $warnings[] = 'A conta destino pode ter restrições para criar anúncios.';
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $errors[] = 'Erro ao validar conta destino: ' . $e->getMessage();
+            }
+        }
+
+        // 2. Validar itens selecionados
+        if (empty($itemIds) && empty($sourceSellerId)) {
+            $errors[] = 'Nenhum item selecionado e nenhum vendedor especificado.';
+        }
+
+        $maxItemsPerJob = max(1, (int)($_ENV['CLONE_JOB_MAX_ITEMS'] ?? 1000));
+        if (count($itemIds) > $maxItemsPerJob) {
+            $errors[] = "Excede o limite de {$maxItemsPerJob} itens por job. Reduza a seleção.";
+        }
+
+        // 3. Verificar amostra de itens (até 3) para detecção de problemas
+        if (!empty($itemIds) && empty($errors)) {
+            $sampleIds = array_slice($itemIds, 0, 3);
+            $sourceClient = new MercadoLivreClient();
+            $inaccessible = 0;
+
+            foreach ($sampleIds as $sampleId) {
+                try {
+                    $item = $sourceClient->get('/items/' . urlencode($sampleId));
+                    if (isset($item['error'])) {
+                        $inaccessible++;
+                    }
+                } catch (\Throwable $e) {
+                    $inaccessible++;
+                }
+            }
+
+            if ($inaccessible > 0 && $inaccessible === count($sampleIds)) {
+                $warnings[] = 'Nenhum dos itens amostrados está acessível na API do ML. O job pode falhar.';
+            } elseif ($inaccessible > 0) {
+                $warnings[] = "{$inaccessible} de " . count($sampleIds) . " itens amostrados não estão acessíveis.";
+            }
+        }
+
+        // 4. Warnings sobre opções
+        $includeDesc = (bool)($options['include_description'] ?? false);
+        $includePics = (bool)($options['include_pictures'] ?? false);
+        if ($includeDesc) {
+            $warnings[] = 'Copiar descrição pode violar políticas do ML e resultar em suspensão.';
+        }
+        if ($includePics) {
+            $warnings[] = 'Copiar fotos pode violar políticas do ML e resultar em suspensão.';
+        }
+
+        // 5. Warning sobre items sem seleção explícita (lazy resolve)
+        if (empty($itemIds) && !empty($sourceSellerId)) {
+            $warnings[] = 'Nenhum item pré-selecionado. O worker resolverá automaticamente os itens do vendedor.';
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings,
+            'account' => $accountInfo,
+            'item_count' => count($itemIds),
+            'max_items_per_job' => $maxItemsPerJob,
         ];
     }
 
@@ -1797,7 +1920,7 @@ class CatalogCloneService
 
         throw new Exception(
             "Vendedor com nickname \"{$nickname}\" não encontrado no Mercado Livre. " .
-            "Verifique se o nome está correto ou informe o ID numérico do vendedor."
+                "Verifique se o nome está correto ou informe o ID numérico do vendedor."
         );
     }
 
