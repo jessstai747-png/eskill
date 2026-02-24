@@ -2,7 +2,7 @@
 
 /**
  * Layout Principal da Aplicação
- * 
+ *
  * Template profissional com sidebar, navbar superior e footer
  * Variáveis esperadas:
  * - $pageTitle: título da página
@@ -86,7 +86,10 @@ $activePage = $activePage ?? '';
     <script nonce="<?= $cspNonce ?>">
         async function requestJson(url, options = {}) {
             if (window.ApiClient) return window.ApiClient.request(url, options);
-            const resp = await fetch(url, { credentials: 'include', ...options });
+            const resp = await fetch(url, {
+                credentials: 'include',
+                ...options
+            });
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             return resp.json();
         }

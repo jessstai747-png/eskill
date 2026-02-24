@@ -1,7 +1,8 @@
 <?php
+
 /**
  * Layout Principal
- * 
+ *
  * Template base que inclui navbar, head comum e estrutura HTML
  * Variáveis esperadas:
  * - $pageTitle: título da página
@@ -21,12 +22,13 @@ $currentUser = $userService->getCurrentUser();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?? '' ?>">
     <title><?= htmlspecialchars($pageTitle ?? 'Mercado Livre Manager') ?> - ML Manager</title>
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -35,7 +37,7 @@ $currentUser = $userService->getCurrentUser();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Theme CSS -->
     <link rel="stylesheet" href="/css/theme.css">
-    
+
     <?php require_once __DIR__ . '/head_common.php'; ?>
 
     <!-- API Client (loaded early so view scripts can use requestJson) -->
@@ -44,12 +46,16 @@ $currentUser = $userService->getCurrentUser();
     <script nonce="<?= $cspNonce ?>">
         async function requestJson(url, options = {}) {
             if (window.ApiClient) return window.ApiClient.request(url, options);
-            const resp = await fetch(url, { credentials: 'include', ...options });
+            const resp = await fetch(url, {
+                credentials: 'include',
+                ...options
+            });
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             return resp.json();
         }
     </script>
 </head>
+
 <body>
     <?php require_once __DIR__ . '/../components/navbar.php'; ?>
 
@@ -69,7 +75,7 @@ $currentUser = $userService->getCurrentUser();
                         $current_path .= '/' . $segment;
                         $name = str_replace(['-', '_'], ' ', $segment);
                         $name = ucwords($name);
-                        
+
                         // Check if it's the last item
                         if (end($path_segments) === $segment) {
                             echo '<li class="breadcrumb-item active" aria-current="page">' . htmlspecialchars($name) . '</li>';
@@ -100,7 +106,7 @@ $currentUser = $userService->getCurrentUser();
 
         <?= $content ?? '' ?>
     </main>
-    
+
     <!-- Command Palette (Global) -->
     <?php require_once __DIR__ . '/../components/command-palette.php'; ?>
 
@@ -121,7 +127,7 @@ $currentUser = $userService->getCurrentUser();
     <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
         // CSRF Token para requisições AJAX
         const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
-        
+
         // Função para requisições autenticadas
         async function fetchAPI(url, options = {}) {
             const defaultOptions = {
@@ -130,22 +136,25 @@ $currentUser = $userService->getCurrentUser();
                     'X-CSRF-Token': csrfToken
                 }
             };
-            return fetch(url, { ...defaultOptions, ...options });
+            return fetch(url, {
+                ...defaultOptions,
+                ...options
+            });
         }
     </script>
-    
+
     <!-- Real-time Notifications JS -->
     <script nonce="<?= $cspNonce ?>" src="/js/realtime-notifications.js"></script>
     <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
         // Inicializar sistema de notificações em tempo real
         window.enableRealTimeNotifications = true;
-        
+
         document.addEventListener('DOMContentLoaded', async function() {
             if (typeof RealTimeNotifications !== 'undefined') {
                 // Carregar configurações salvas do servidor
                 try {
                     const data = await requestJson('/api/notifications/realtime/settings');
-                    
+
                     if (data.success && data.settings) {
                         const s = data.settings;
                         window.realTimeNotifications = new RealTimeNotifications({
@@ -170,4 +179,5 @@ $currentUser = $userService->getCurrentUser();
         });
     </script>
 </body>
+
 </html>
