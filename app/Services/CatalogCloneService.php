@@ -114,6 +114,78 @@ class CatalogCloneService
     }
 
     /**
+     * Normaliza facets de marca e categoria para arrays indexados.
+     *
+     * Converte formatos internos (associativos) para arrays de objetos
+     * compatíveis com o frontend: [{id, name, count}, ...].
+     *
+     * @param array<string,int> $brandCounts  Marcas no formato {nome => contagem}
+     * @param array<string,array{name:string,count:int}> $categoryFacets Categorias no formato {id => {name, count}}
+     * @return array{brands: list<array{id:string,name:string,count:int}>, categories: list<array{id:string,name:string,count:int}>}
+     */
+    private function normalizeFacets(array $brandCounts, array $categoryFacets): array
+    {
+        $brands = [];
+        foreach ($brandCounts as $name => $count) {
+            $brands[] = ['id' => (string)$name, 'name' => (string)$name, 'count' => (int)$count];
+        }
+
+        $categories = [];
+        foreach ($categoryFacets as $catId => $catData) {
+            $categories[] = [
+                'id'    => (string)$catId,
+                'name'  => (string)($catData['name'] ?? $catId),
+                'count' => (int)($catData['count'] ?? 0),
+            ];
+        }
+
+        return ['brands' => $brands, 'categories' => $categories];
+    }
+
+    /**
+     * Normaliza a resposta de summary para formato compatível com o wizard JS.
+     *
+     * Adiciona chaves alias (nickname, top_brands, top_categories, seller_reputation como objeto)
+     * mantendo backward-compat com consumidores que usam as chaves originais.
+     *
+     * @param array $summary Resposta original do summary
+     * @param array<string,int> $brandCounts Marcas brutas
+     * @param array<string,array{name:string,count:int}> $categoryFacets Categorias brutas
+     * @return array Summary normalizado
+     */
+    private function normalizeSummaryResponse(array $summary, array $brandCounts, array $categoryFacets): array
+    {
+        $topBrands = [];
+        foreach (array_slice($brandCounts, 0, 50, true) as $name => $count) {
+            $topBrands[] = ['name' => (string)$name, 'count' => (int)$count];
+        }
+
+        $topCategories = [];
+        foreach (array_slice($categoryFacets, 0, 50, true) as $catId => $catData) {
+            $topCategories[] = [
+                'id'    => (string)$catId,
+                'name'  => (string)($catData['name'] ?? $catId),
+                'count' => (int)($catData['count'] ?? 0),
+            ];
+        }
+
+        // Alias 'nickname' para o wizard JS (que usa info.nickname)
+        $summary['nickname'] = $summary['seller_nickname'] ?? '';
+
+        // Wrap seller_reputation como objeto {level_id: "..."}  para o wizard JS
+        $repValue = $summary['seller_reputation'] ?? null;
+        if (!is_array($repValue)) {
+            $summary['seller_reputation'] = ['level_id' => $repValue];
+        }
+
+        // Arrays normalizados para o wizard JS
+        $summary['top_brands']     = $topBrands;
+        $summary['top_categories'] = $topCategories;
+
+        return $summary;
+    }
+
+    /**
      * Lista todos os seller_ids de contas próprias vinculadas
      *
      * @return array Lista de seller_ids
@@ -265,10 +337,7 @@ class CatalogCloneService
                 'non_catalog' => $nonCatalogCount,
                 'total_in_page' => count($processedItems),
             ],
-            'facets' => [
-                'brands' => $brandCounts,
-                'categories' => $categoryFacets,
-            ],
+            'facets' => $this->normalizeFacets($brandCounts, $categoryFacets),
         ];
     }
 
@@ -360,7 +429,7 @@ class CatalogCloneService
 
         $collected = $catalogCount + $nonCatalogCount;
 
-        return [
+        return $this->normalizeSummaryResponse([
             'status' => 'success',
             'seller_id' => $sellerId,
             'seller_nickname' => $nickname,
@@ -372,7 +441,7 @@ class CatalogCloneService
             'catalog_percentage' => $collected > 0 ? round(($catalogCount / $collected) * 100, 1) : 0,
             'brands' => array_slice($brandCounts, 0, 50, true),
             'categories' => array_slice($categoryFacets, 0, 50, true),
-        ];
+        ], $brandCounts, $categoryFacets);
     }
 
     // =========================================================================
@@ -1680,10 +1749,7 @@ class CatalogCloneService
                 'non_catalog' => $nonCatalogCount,
                 'total_in_page' => count($items),
             ],
-            'facets' => [
-                'brands' => $brandCounts,
-                'categories' => $categoryFacets,
-            ],
+            'facets' => $this->normalizeFacets($brandCounts, $categoryFacets),
         ];
     }
 
@@ -1836,7 +1902,7 @@ class CatalogCloneService
         $sellerNickname = $sellerInfo['nickname'] ?? 'Seller ' . $sellerId;
         $sellerReputation = $sellerInfo['seller_reputation']['level_id'] ?? null;
 
-        return [
+        return $this->normalizeSummaryResponse([
             'status' => 'success',
             'seller_id' => $sellerId,
             'seller_nickname' => $sellerNickname,
@@ -1846,9 +1912,9 @@ class CatalogCloneService
             'catalog_count' => $catalogCount,
             'non_catalog_count' => $nonCatalogCount,
             'catalog_percentage' => $collected > 0 ? round(($catalogCount / $collected) * 100, 1) : 0,
-            'brands' => array_slice($brandCounts, 0, 50, true), // Top 50 marcas
-            'categories' => array_slice($categoryFacets, 0, 50, true), // Top 50 categorias (contagem global quando disponível)
-        ];
+            'brands' => array_slice($brandCounts, 0, 50, true),
+            'categories' => array_slice($categoryFacets, 0, 50, true),
+        ], $brandCounts, $categoryFacets);
     }
 
     /**

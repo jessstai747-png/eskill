@@ -6,6 +6,39 @@
 
 ---
 
+## Sessão: 2026-02-24 — fix(clone-wizard): corrigir formato de dados API↔JS
+
+### Contexto
+Diagnóstico revelou mismatch crítico entre formato dos dados retornados pela API PHP e o que o JavaScript do wizard espera. Isso causava crash na renderização de facets (`.map()` em objetos) e dados de seller summary não populados corretamente.
+
+### Bugs corrigidos
+
+- **Facets de marca** — API retornava `{"Honda": 15}` (objeto associativo), JS esperava `[{id, name, count}]` (array indexado). `.map()` crashava silenciosamente.
+- **Facets de categoria** — API retornava `{"MLB123": {name, count}}`, JS esperava `[{id, name, count}]`. Mesmo problema.
+- **Seller nickname** — API retornava `seller_nickname`, JS lia `nickname`. Resultado: "undefined" no card do seller.
+- **Seller reputation** — API retornava string `"5_green"`, JS fazia `info.seller_reputation.level_id`. TypeError porque `.level_id` em string = undefined.
+- **Top brands/categories** — API retornava `brands`/`categories` (objetos), JS lia `top_brands`/`top_categories` como arrays de `{name, count}`.
+- Mesmo problema em 4 code paths: `listSellerItems`, `listOwnAccountItems`, `getSellerSummary`, `getOwnAccountSummary`.
+
+### Implementado
+
+- **`app/Services/CatalogCloneService.php`** — 2 novos helpers privados:
+  - `normalizeFacets(brandCounts, categoryFacets)` — converte `{name: count}` → `[{id, name, count}]`
+  - `normalizeSummaryResponse(summary, brandCounts, categoryFacets)` — adiciona aliases `nickname`, `top_brands`, `top_categories`, wraps `seller_reputation` como `{level_id: value}`
+- Aplicados nos 4 code paths: `listSellerItems`, `listOwnAccountItems`, `getSellerSummary`, `getOwnAccountSummary`
+- Backward-compat mantida: chaves originais (`brands`, `categories`, `seller_nickname`) preservadas
+
+- **`tests/Unit/Services/CatalogCloneServiceTest.php`** — 12 novos testes:
+  - `normalizeFacets`: brands to array, categories to array, empty arrays, name fallback to id
+  - `normalizeSummaryResponse`: nickname alias, reputation wrap, null reputation, top_brands, top_categories, original keys preserved
+  - `normalizeFacets` e `normalizeSummaryResponse` adicionados ao `privateMethodsProvider`
+
+### Validação
+- `php -l` — todos os arquivos sem erros
+- `phpunit --testsuite=Unit` — 2869 testes (+12), 0 falhas, 34 skipped
+
+---
+
 ## Sessão: 2026-02-24 (continuação) — test(clone-wizard): testes + UX + sidebar
 
 ### Contexto

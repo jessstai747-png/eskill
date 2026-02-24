@@ -100,6 +100,8 @@ class CatalogCloneServiceTest extends TestCase
             ['checkNonCatalogDuplicate'],
             ['logAndReturnError'],
             ['logResult'],
+            ['normalizeFacets'],
+            ['normalizeSummaryResponse'],
         ];
     }
 
@@ -588,5 +590,133 @@ class CatalogCloneServiceTest extends TestCase
         ]);
 
         $this->assertSame($itemIds, $capturedParams['item_ids']);
+    }
+
+    // =========================================================================
+    // Behavioral: normalizeFacets
+    // =========================================================================
+
+    public function testNormalizeFacetsConvertsBrandsToIndexedArray(): void
+    {
+        $brandCounts = ['Honda' => 15, 'Yamaha' => 8, 'Suzuki' => 3];
+        $result = $this->invokePrivateMethod('normalizeFacets', [$brandCounts, []]);
+
+        $this->assertCount(3, $result['brands']);
+        $this->assertSame('Honda', $result['brands'][0]['id']);
+        $this->assertSame('Honda', $result['brands'][0]['name']);
+        $this->assertSame(15, $result['brands'][0]['count']);
+        $this->assertSame('Yamaha', $result['brands'][1]['id']);
+        $this->assertSame(8, $result['brands'][1]['count']);
+    }
+
+    public function testNormalizeFacetsConvertsCategoriesToIndexedArray(): void
+    {
+        $categoryFacets = [
+            'MLB12345' => ['name' => 'Acessórios para Motos', 'count' => 42],
+            'MLB67890' => ['name' => 'Bagageiros', 'count' => 18],
+        ];
+        $result = $this->invokePrivateMethod('normalizeFacets', [[], $categoryFacets]);
+
+        $this->assertCount(2, $result['categories']);
+        $this->assertSame('MLB12345', $result['categories'][0]['id']);
+        $this->assertSame('Acessórios para Motos', $result['categories'][0]['name']);
+        $this->assertSame(42, $result['categories'][0]['count']);
+        $this->assertSame('MLB67890', $result['categories'][1]['id']);
+    }
+
+    public function testNormalizeFacetsReturnsEmptyArraysWhenEmpty(): void
+    {
+        $result = $this->invokePrivateMethod('normalizeFacets', [[], []]);
+
+        $this->assertSame([], $result['brands']);
+        $this->assertSame([], $result['categories']);
+    }
+
+    public function testNormalizeFacetsCategoryFallbackToIdWhenNameMissing(): void
+    {
+        $categoryFacets = ['MLB999' => ['count' => 5]];
+        $result = $this->invokePrivateMethod('normalizeFacets', [[], $categoryFacets]);
+
+        $this->assertSame('MLB999', $result['categories'][0]['name']);
+    }
+
+    // =========================================================================
+    // Behavioral: normalizeSummaryResponse
+    // =========================================================================
+
+    public function testNormalizeSummaryResponseAddsNicknameAlias(): void
+    {
+        $summary = ['seller_nickname' => 'LOJA_TESTE', 'seller_reputation' => '5_green'];
+        $result = $this->invokePrivateMethod('normalizeSummaryResponse', [$summary, [], []]);
+
+        $this->assertSame('LOJA_TESTE', $result['nickname']);
+        $this->assertSame('LOJA_TESTE', $result['seller_nickname']);
+    }
+
+    public function testNormalizeSummaryResponseWrapsReputationAsObject(): void
+    {
+        $summary = ['seller_nickname' => 'X', 'seller_reputation' => '5_green'];
+        $result = $this->invokePrivateMethod('normalizeSummaryResponse', [$summary, [], []]);
+
+        $this->assertIsArray($result['seller_reputation']);
+        $this->assertSame('5_green', $result['seller_reputation']['level_id']);
+    }
+
+    public function testNormalizeSummaryResponseWrapsNullReputation(): void
+    {
+        $summary = ['seller_nickname' => 'X', 'seller_reputation' => null];
+        $result = $this->invokePrivateMethod('normalizeSummaryResponse', [$summary, [], []]);
+
+        $this->assertIsArray($result['seller_reputation']);
+        $this->assertNull($result['seller_reputation']['level_id']);
+    }
+
+    public function testNormalizeSummaryResponseConvertsTopBrands(): void
+    {
+        $brandCounts = ['Honda' => 10, 'Yamaha' => 5];
+        $summary = ['seller_nickname' => 'X', 'seller_reputation' => null];
+        $result = $this->invokePrivateMethod('normalizeSummaryResponse', [$summary, $brandCounts, []]);
+
+        $this->assertCount(2, $result['top_brands']);
+        $this->assertSame('Honda', $result['top_brands'][0]['name']);
+        $this->assertSame(10, $result['top_brands'][0]['count']);
+    }
+
+    public function testNormalizeSummaryResponseConvertsTopCategories(): void
+    {
+        $categoryFacets = [
+            'MLB123' => ['name' => 'Cat A', 'count' => 20],
+            'MLB456' => ['name' => 'Cat B', 'count' => 8],
+        ];
+        $summary = ['seller_nickname' => 'X', 'seller_reputation' => null];
+        $result = $this->invokePrivateMethod('normalizeSummaryResponse', [$summary, [], $categoryFacets]);
+
+        $this->assertCount(2, $result['top_categories']);
+        $this->assertSame('MLB123', $result['top_categories'][0]['id']);
+        $this->assertSame('Cat A', $result['top_categories'][0]['name']);
+        $this->assertSame(20, $result['top_categories'][0]['count']);
+    }
+
+    public function testNormalizeSummaryResponsePreservesOriginalKeys(): void
+    {
+        $brandCounts = ['Honda' => 10];
+        $categoryFacets = ['MLB1' => ['name' => 'X', 'count' => 5]];
+        $summary = [
+            'status' => 'success',
+            'seller_id' => '12345',
+            'seller_nickname' => 'Test',
+            'seller_reputation' => '3_yellow',
+            'total_items' => 100,
+            'brands' => $brandCounts,
+            'categories' => $categoryFacets,
+        ];
+        $result = $this->invokePrivateMethod('normalizeSummaryResponse', [$summary, $brandCounts, $categoryFacets]);
+
+        // Original keys preserved for backward compat
+        $this->assertSame('success', $result['status']);
+        $this->assertSame('12345', $result['seller_id']);
+        $this->assertSame(100, $result['total_items']);
+        $this->assertSame($brandCounts, $result['brands']);
+        $this->assertSame($categoryFacets, $result['categories']);
     }
 }
