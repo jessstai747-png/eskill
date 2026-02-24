@@ -6,6 +6,45 @@
 
 ---
 
+## Sessão: 2026-02-24b — refactor: migrate last 7 ApiClient.json views to global requestJson
+
+### Contexto
+Continuação da sessão anterior. As 7 views restantes que definiam `requestJson` localmente usando `ApiClient.json()` (retorna `{ response, data }`, nunca lança erro) foram migradas para usar a versão global (usa `ApiClient.request()`, retorna `data` direto, lança erro em `!ok`).
+
+### Implementado
+- **7 views migradas**, 40 call sites atualizados:
+  - `profile-content.php` — 6 call sites
+  - `competitors.php` — 3 call sites (inclui reestruturação de `response.ok` check)
+  - `notifications/settings.php` — 2 call sites
+  - `marketing/promotions.php` — 3 call sites
+  - `clone_items_management.php` — 7 call sites (destructuring multi-linha)
+  - `settings-content.php` — 10 call sites (5 com `.then()` chains, adicionados `.catch()`)
+  - `seo.php` — 9 call sites
+
+### Padrões de migração aplicados
+- `const { data } = await requestJson(...)` → `const data = await requestJson(...)`
+- `const { data: result } = await requestJson(...)` → `const result = await requestJson(...)`
+- `const { response } = await requestJson(...)` + `response.ok` check → removido (global lança em !ok)
+- `.then(({ data }) => ...)` → `.then(data => ...).catch(() => alert('Erro'))`
+
+### Validação
+- Zero definições locais de `requestJson` restantes em todas as views
+- PHP lint passou em todos os 7 arquivos
+- PHPUnit: 2896 testes, 6727 assertions, 0 falhas
+
+### Commits
+- `97a58fb` — style: fix formatting in layout files
+- `3b7b70b` — refactor(js): migrate last 7 views from ApiClient.json to global requestJson
+
+### Status
+✅ **Migração ApiClient completa.** Todas as 82+ views usam agora a `requestJson` global definida no `<head>` dos layouts. Nenhuma definição local duplicada permanece.
+
+### Próximos passos
+- [Baixa] Remover guard morto `if (typeof requestJson === 'undefined')` em `dashboard-modern.js`
+- [Baixa] Verificar se há chamadas diretas a `ApiClient.json()` em outros JS que poderiam ser simplificadas
+
+---
+
 ## Sessão: 2026-02-24 — refactor: migrate fetch to ApiClient + deduplicate requestJson across 78 views
 
 ### Contexto
