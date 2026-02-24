@@ -59,7 +59,9 @@
                     </tr>
                 </thead>
                 <tbody id="competitorsTable">
-                    <tr><td colspan="5" class="text-center py-5 text-muted">Carregando...</td></tr>
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">Carregando...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -90,21 +92,21 @@
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-async function loadCompetitors() {
-    try {
-        const data = await requestJson('/api/competitors');
-        
-        document.getElementById('totalCompetitors').textContent = data.total || 0;
-        document.getElementById('totalProducts').textContent = data.total_products || 0;
-        document.getElementById('priceAlerts').textContent = data.price_alerts || 0;
-        
-        const tbody = document.getElementById('competitorsTable');
-        if (!data.competitors || data.competitors.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted"><i class="bi bi-people fs-1 d-block mb-2"></i>Nenhum concorrente cadastrado</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = data.competitors.map(c => `
+    async function loadCompetitors() {
+        try {
+            const data = await requestJson('/api/competitors');
+
+            document.getElementById('totalCompetitors').textContent = data.total || 0;
+            document.getElementById('totalProducts').textContent = data.total_products || 0;
+            document.getElementById('priceAlerts').textContent = data.price_alerts || 0;
+
+            const tbody = document.getElementById('competitorsTable');
+            if (!data.competitors || data.competitors.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted"><i class="bi bi-people fs-1 d-block mb-2"></i>Nenhum concorrente cadastrado</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.competitors.map(c => `
             <tr>
                 <td>
                     <div class="d-flex align-items-center">
@@ -136,40 +138,46 @@ async function loadCompetitors() {
                 </td>
             </tr>
         `).join('');
-    } catch (e) {
-        document.getElementById('competitorsTable').innerHTML = '<tr><td colspan="5" class="text-center py-5 text-danger">Erro ao carregar</td></tr>';
+        } catch (e) {
+            document.getElementById('competitorsTable').innerHTML = '<tr><td colspan="5" class="text-center py-5 text-danger">Erro ao carregar</td></tr>';
+        }
     }
-}
 
-async function addCompetitor() {
-    const input = document.getElementById('competitorInput').value.trim();
-    if (!input) return alert('Digite o ID ou link do vendedor');
-    
-    try {
-        await requestJson('/api/competitors', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ input })
-        });
-        
-        bootstrap.Modal.getInstance(document.getElementById('addCompetitorModal')).hide();
-        document.getElementById('competitorInput').value = '';
-        loadCompetitors();
-    } catch (e) {
-        alert('Erro ao adicionar concorrente');
+    async function addCompetitor() {
+        const input = document.getElementById('competitorInput').value.trim();
+        if (!input) return alert('Digite o ID ou link do vendedor');
+
+        try {
+            await requestJson('/api/competitors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    input
+                })
+            });
+
+            bootstrap.Modal.getInstance(document.getElementById('addCompetitorModal')).hide();
+            document.getElementById('competitorInput').value = '';
+            loadCompetitors();
+        } catch (e) {
+            alert('Erro ao adicionar concorrente');
+        }
     }
-}
 
-async function removeCompetitor(sellerId) {
-    if (!confirm('Remover este concorrente?')) return;
-    
-    try {
-        await requestJson(`/api/competitors/${sellerId}`, { method: 'DELETE' });
-        loadCompetitors();
-    } catch (e) {
-        alert('Erro ao remover');
+    async function removeCompetitor(sellerId) {
+        if (!confirm('Remover este concorrente?')) return;
+
+        try {
+            await requestJson(`/api/competitors/${sellerId}`, {
+                method: 'DELETE'
+            });
+            loadCompetitors();
+        } catch (e) {
+            alert('Erro ao remover');
+        }
     }
-}
 
-loadCompetitors();
+    loadCompetitors();
 </script>

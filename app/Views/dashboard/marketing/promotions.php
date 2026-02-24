@@ -26,7 +26,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                             </tr>
                         </thead>
                         <tbody id="promo-list">
-                            <tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <div class="spinner-border text-primary"></div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -69,7 +73,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
     const promoManager = {
         currentPromoId: null,
-        
+
         init: function() {
             this.loadPromotions();
         },
@@ -77,7 +81,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         loadPromotions: async function() {
             try {
                 const data = await requestJson('/api/marketing/promotions');
-                
+
                 if (data.success) {
                     this.render(data.promotions);
                 }
@@ -96,8 +100,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 
             let html = '';
             promotions.forEach(promo => {
-                const deadline = new Date(promo.deadline_date).toLocaleDateString('pt-BR') + ' ' + new Date(promo.deadline_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-                
+                const deadline = new Date(promo.deadline_date).toLocaleDateString('pt-BR') + ' ' + new Date(promo.deadline_date).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
                 let typeBadge = 'bg-secondary';
                 if (promo.type === 'DEAL_OF_THE_DAY') typeBadge = 'bg-warning text-dark';
                 if (promo.type === 'LIGHTNING') typeBadge = 'bg-danger';
@@ -125,16 +132,16 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             });
             container.innerHTML = html;
         },
-        
+
         viewItems: async function(promoId) {
             this.currentPromoId = promoId;
             const container = document.getElementById('promo-items-list');
             container.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
             new bootstrap.Modal(document.getElementById('itemsModal')).show();
-            
+
             try {
                 const data = await requestJson('/api/marketing/promotions/items?id=' + promoId);
-                
+
                 if (data.success) {
                     this.renderItems(data.items);
                 }
@@ -143,20 +150,23 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                 container.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erro ao carregar itens.</td></tr>';
             }
         },
-        
+
         renderItems: function(items) {
             const container = document.getElementById('promo-items-list');
-            const money = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-            
+            const money = (val) => new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(val);
+
             if (items.length === 0) {
-                  container.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum item elegível.</td></tr>';
-                  return;
+                container.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum item elegível.</td></tr>';
+                return;
             }
-            
+
             let html = '';
             items.forEach(item => {
                 const isJoined = item.status === 'joined';
-                
+
                 html += `
                     <tr>
                         <td class="ps-4">
@@ -166,8 +176,8 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                         <td><span class="text-muted text-decoration-line-through">${money(item.price)}</span></td>
                         <td class="text-success fw-bold">${money(item.suggested_price || item.promotion_price)}</td>
                         <td class="text-end pe-4">
-                            ${isJoined ? 
-                                '<span class="badge bg-success">Participando</span>' : 
+                            ${isJoined ?
+                                '<span class="badge bg-success">Participando</span>' :
                                 `<button class="btn btn-sm btn-success" onclick="promoManager.join('${item.id}', ${item.suggested_price})">Participar</button>`
                             }
                         </td>
@@ -176,33 +186,35 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             });
             container.innerHTML = html;
         },
-        
-        join: async function(itemId, price) {
-             if (!confirm('Confirmar participação com o preço sugerido?')) return;
-             
-             try {
-                 const result = await requestJson('/api/marketing/promotions/join', {
-                     method: 'POST',
-                     headers: {'Content-Type': 'application/json'},
-                     body: JSON.stringify({
-                         promotion_id: this.currentPromoId,
-                         items: [{
-                             item_id: itemId,
-                             price: price
-                         }]
-                     })
-                 });
-                 
 
-                 if (result.success) {
-                     Toast.success('Item adicionado à promoção!');
-                     this.viewItems(this.currentPromoId); // Refresh modal
-                 } else {
-                     Toast.error(result.error);
-                 }
-             } catch (e) {
-                 Toast.error('Erro ao participar');
-             }
+        join: async function(itemId, price) {
+            if (!confirm('Confirmar participação com o preço sugerido?')) return;
+
+            try {
+                const result = await requestJson('/api/marketing/promotions/join', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        promotion_id: this.currentPromoId,
+                        items: [{
+                            item_id: itemId,
+                            price: price
+                        }]
+                    })
+                });
+
+
+                if (result.success) {
+                    Toast.success('Item adicionado à promoção!');
+                    this.viewItems(this.currentPromoId); // Refresh modal
+                } else {
+                    Toast.error(result.error);
+                }
+            } catch (e) {
+                Toast.error('Erro ao participar');
+            }
         }
     };
 

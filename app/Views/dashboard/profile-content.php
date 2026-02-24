@@ -1,6 +1,21 @@
 <style>
-    .profile-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; }
-    .profile-avatar { width: 100px; height: 100px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #667eea; }
+    .profile-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 16px;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #667eea;
+    }
 </style>
 
 <div class="row g-4">
@@ -16,7 +31,7 @@
                 <?= $currentUser['role'] === 'admin' ? 'Administrador' : 'Usuário' ?>
             </span>
         </div>
-        
+
         <!-- Quick Stats -->
         <div class="card">
             <div class="card-header">
@@ -38,7 +53,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-8">
         <!-- Informações Pessoais -->
         <div class="card mb-4">
@@ -71,7 +86,7 @@
                 </form>
             </div>
         </div>
-        
+
         <!-- Alterar Senha -->
         <div class="card mb-4">
             <div class="card-header">
@@ -99,7 +114,7 @@
                 </form>
             </div>
         </div>
-        
+
         <!-- Segurança -->
         <div class="card mb-4">
             <div class="card-header">
@@ -127,7 +142,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Contas ML Conectadas -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -144,26 +159,26 @@
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-document.addEventListener('DOMContentLoaded', function() {
-    loadAccounts();
-});
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAccounts();
+    });
 
-async function loadAccounts() {
-    try {
-        const data = await requestJson('/api/auth/accounts');
-        
-        // API retorna { accounts: [...], total: N }
-        const accounts = Array.isArray(data) ? data : (data.accounts || []);
-        
-        document.getElementById('accountsCount').textContent = accounts.length;
-        
-        const container = document.getElementById('mlAccountsList');
-        if (accounts.length === 0) {
-            container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-link-slash fs-1 d-block mb-2"></i>Nenhuma conta conectada</div>';
-            return;
-        }
-        
-        container.innerHTML = accounts.map(acc => `
+    async function loadAccounts() {
+        try {
+            const data = await requestJson('/api/auth/accounts');
+
+            // API retorna { accounts: [...], total: N }
+            const accounts = Array.isArray(data) ? data : (data.accounts || []);
+
+            document.getElementById('accountsCount').textContent = accounts.length;
+
+            const container = document.getElementById('mlAccountsList');
+            if (accounts.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-link-slash fs-1 d-block mb-2"></i>Nenhuma conta conectada</div>';
+                return;
+            }
+
+            container.innerHTML = accounts.map(acc => `
             <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                     <strong>${acc.nickname || 'Conta ' + acc.id}</strong>
@@ -182,133 +197,145 @@ async function loadAccounts() {
                 </div>
             </div>
         `).join('');
-    } catch (e) {
-        document.getElementById('mlAccountsList').innerHTML = '<div class="text-center py-4 text-danger">Erro ao carregar</div>';
-    }
-}
-
-document.getElementById('profileForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    try {
-        const data = await requestJson('/api/user/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: document.getElementById('userName').value,
-                phone: document.getElementById('userPhone').value,
-                company: document.getElementById('userCompany').value
-            })
-        });
-
-        alert(data.success ? 'Perfil atualizado!' : 'Erro ao atualizar');
-    } catch (e) {
-        alert('Erro ao salvar');
-    }
-});
-
-document.getElementById('passwordForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const newPass = document.getElementById('newPassword').value;
-    const confirmPass = document.getElementById('confirmPassword').value;
-    
-    if (newPass !== confirmPass) {
-        alert('As senhas não conferem');
-        return;
-    }
-    
-    try {
-        const data = await requestJson('/api/user/password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                current_password: document.getElementById('currentPassword').value,
-                new_password: newPass
-            })
-        });
-
-        if (data.success) {
-            alert('Senha alterada!');
-            this.reset();
-        } else {
-            alert(data.error || 'Erro ao alterar senha');
+        } catch (e) {
+            document.getElementById('mlAccountsList').innerHTML = '<div class="text-center py-4 text-danger">Erro ao carregar</div>';
         }
-    } catch (e) {
-        alert('Erro ao alterar senha');
     }
-});
 
-document.getElementById('enable2FA').addEventListener('change', async function() {
-    const enabled = this.checked;
-    
-    if (enabled) {
-        // Show 2FA setup modal or redirect
-        window.location.href = '/auth/2fa/setup';
-    } else {
-        if (!confirm('Desativar a autenticação em dois fatores?')) {
-            this.checked = true;
+    document.getElementById('profileForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        try {
+            const data = await requestJson('/api/user/profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: document.getElementById('userName').value,
+                    phone: document.getElementById('userPhone').value,
+                    company: document.getElementById('userCompany').value
+                })
+            });
+
+            alert(data.success ? 'Perfil atualizado!' : 'Erro ao atualizar');
+        } catch (e) {
+            alert('Erro ao salvar');
+        }
+    });
+
+    document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const newPass = document.getElementById('newPassword').value;
+        const confirmPass = document.getElementById('confirmPassword').value;
+
+        if (newPass !== confirmPass) {
+            alert('As senhas não conferem');
             return;
         }
-        
+
         try {
-            await requestJson('/api/user/2fa/disable', { method: 'POST' });
+            const data = await requestJson('/api/user/password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    current_password: document.getElementById('currentPassword').value,
+                    new_password: newPass
+                })
+            });
+
+            if (data.success) {
+                alert('Senha alterada!');
+                this.reset();
+            } else {
+                alert(data.error || 'Erro ao alterar senha');
+            }
         } catch (e) {
-            this.checked = true;
-            alert('Erro ao desativar 2FA');
+            alert('Erro ao alterar senha');
         }
-    }
-});
+    });
 
-async function disconnectAccount(accountId) {
-    if (!confirm('Desconectar esta conta? (O histórico será mantido)')) return;
-    
-    try {
-        const result = await requestJson(`/auth/disconnect/${accountId}`, { method: 'POST' });
-        
-        if (result.success) {
-            alert('Conta desconectada com sucesso!');
-            loadAccounts();
+    document.getElementById('enable2FA').addEventListener('change', async function() {
+        const enabled = this.checked;
+
+        if (enabled) {
+            // Show 2FA setup modal or redirect
+            window.location.href = '/auth/2fa/setup';
         } else {
-            alert('Erro: ' + result.error);
-        }
-    } catch (e) {
-        alert('Erro ao desconectar');
-    }
-}
+            if (!confirm('Desativar a autenticação em dois fatores?')) {
+                this.checked = true;
+                return;
+            }
 
-async function deleteAccount(accountId) {
-    if (!confirm('⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nDeseja realmente EXCLUIR PERMANENTEMENTE esta conta?\n\nTodos os dados relacionados serão perdidos!')) {
-        return;
-    }
-    
-    // Segunda confirmação
-    if (!confirm('Confirme novamente: EXCLUIR PERMANENTEMENTE esta conta?')) {
-        return;
-    }
-    
-    try {
-        const result = await requestJson(`/auth/account/${accountId}`, { method: 'DELETE' });
-        
-        if (result.success) {
-            alert('Conta excluída permanentemente!');
-            loadAccounts();
-        } else {
-            alert('Erro: ' + result.error);
+            try {
+                await requestJson('/api/user/2fa/disable', {
+                    method: 'POST'
+                });
+            } catch (e) {
+                this.checked = true;
+                alert('Erro ao desativar 2FA');
+            }
         }
-    } catch (e) {
-        alert('Erro ao excluir conta');
-    }
-}
+    });
 
-async function logoutAllSessions() {
-    if (!confirm('Encerrar todas as outras sessões?')) return;
-    
-    try {
-        await requestJson('/api/user/sessions/logout-all', { method: 'POST' });
-        alert('Sessões encerradas');
-    } catch (e) {
-        alert('Erro');
+    async function disconnectAccount(accountId) {
+        if (!confirm('Desconectar esta conta? (O histórico será mantido)')) return;
+
+        try {
+            const result = await requestJson(`/auth/disconnect/${accountId}`, {
+                method: 'POST'
+            });
+
+            if (result.success) {
+                alert('Conta desconectada com sucesso!');
+                loadAccounts();
+            } else {
+                alert('Erro: ' + result.error);
+            }
+        } catch (e) {
+            alert('Erro ao desconectar');
+        }
     }
-}
+
+    async function deleteAccount(accountId) {
+        if (!confirm('⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nDeseja realmente EXCLUIR PERMANENTEMENTE esta conta?\n\nTodos os dados relacionados serão perdidos!')) {
+            return;
+        }
+
+        // Segunda confirmação
+        if (!confirm('Confirme novamente: EXCLUIR PERMANENTEMENTE esta conta?')) {
+            return;
+        }
+
+        try {
+            const result = await requestJson(`/auth/account/${accountId}`, {
+                method: 'DELETE'
+            });
+
+            if (result.success) {
+                alert('Conta excluída permanentemente!');
+                loadAccounts();
+            } else {
+                alert('Erro: ' + result.error);
+            }
+        } catch (e) {
+            alert('Erro ao excluir conta');
+        }
+    }
+
+    async function logoutAllSessions() {
+        if (!confirm('Encerrar todas as outras sessões?')) return;
+
+        try {
+            await requestJson('/api/user/sessions/logout-all', {
+                method: 'POST'
+            });
+            alert('Sessões encerradas');
+        } catch (e) {
+            alert('Erro');
+        }
+    }
 </script>

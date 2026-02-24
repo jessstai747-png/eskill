@@ -74,7 +74,7 @@
                     <i class="bi bi-info-circle me-1"></i>
                     Receba alertas sonoros instantâneos quando houver novos pedidos ou perguntas.
                 </div>
-                
+
                 <!-- Controles principais -->
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -98,7 +98,7 @@
                         <input type="range" class="form-range" id="soundVolume" min="0" max="100" value="80">
                     </div>
                 </div>
-                
+
                 <!-- Sons por tipo -->
                 <div class="row g-2 mb-3">
                     <div class="col-md-4">
@@ -148,7 +148,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Intervalo e horário silencioso -->
                 <div class="row g-2">
                     <div class="col-md-6">
@@ -170,7 +170,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <button class="btn btn-primary btn-sm mt-3" data-action="savertnotificationsettings">
                     <i class="bi bi-save me-1"></i>Salvar Sons
                 </button>
@@ -232,7 +232,7 @@
                 </button>
             </div>
         </div>
-        
+
         <!-- Tema -->
         <div class="card">
             <div class="card-header">
@@ -289,13 +289,22 @@
             </div>
             <div class="card-body">
                 <table class="table table-sm mb-0">
-                    <tr><td class="text-muted">Versão:</td><td>2.0.0</td></tr>
-                    <tr><td class="text-muted">PHP:</td><td><?= phpversion() ?></td></tr>
-                    <tr><td class="text-muted">Atualização:</td><td><?= date('d/m/Y H:i') ?></td></tr>
+                    <tr>
+                        <td class="text-muted">Versão:</td>
+                        <td>2.0.0</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">PHP:</td>
+                        <td><?= phpversion() ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Atualização:</td>
+                        <td><?= date('d/m/Y H:i') ?></td>
+                    </tr>
                 </table>
             </div>
         </div>
-        
+
         <!-- Links Úteis -->
         <div class="card">
             <div class="card-header">
@@ -317,253 +326,271 @@
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-function saveNotifications() {
-    const settings = {
-        newOrders: document.getElementById('notifyNewOrders').checked,
-        tokenExpiring: document.getElementById('notifyTokenExpiring').checked,
-        priceChanges: document.getElementById('notifyPriceChanges').checked,
-        newCompetitors: document.getElementById('notifyNewCompetitors').checked
-    };
-    
-    requestJson('/api/settings/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-    }).then(data => {
-        alert(data.success ? 'Preferências salvas!' : 'Erro ao salvar');
-    }).catch(() => alert('Erro ao salvar'));
-}
-
-function saveTelegram() {
-    const token = document.getElementById('telegramBotToken').value;
-    const chatId = document.getElementById('telegramChatId').value;
-    
-    requestJson('/api/settings/telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, chatId })
-    }).then(data => {
-        alert(data.success ? 'Configuração salva!' : 'Erro ao salvar');
-    }).catch(() => alert('Erro ao salvar'));
-}
-
-function saveSyncSettings() {
-    const autoSync = document.getElementById('autoSyncOrders').checked;
-    const interval = document.getElementById('syncInterval').value;
-    
-    requestJson('/api/settings/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ autoSync, interval })
-    }).then(data => {
-        alert(data.success ? 'Configurações salvas!' : 'Erro');
-    }).catch(() => alert('Erro'));
-}
-
-function syncNow() {
-    if (!confirm('Sincronizar agora?')) return;
-    requestJson('/api/polling/all', { method: 'POST' })
-        .then(() => alert('Sincronização iniciada!'))
-        .catch(() => alert('Erro ao sincronizar'));
-}
-
-function exportData() {
-    window.open('/api/export/analysis/json', '_blank');
-}
-
-function clearCache() {
-    if (!confirm('Limpar o cache?')) return;
-    requestJson('/api/cache/clear', { method: 'POST' })
-        .then(() => alert('Cache limpo!'))
-        .catch(() => alert('Erro ao limpar cache'));
-}
-
-function changeTheme(theme) {
-    document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? 
-        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme);
-    localStorage.setItem('theme', theme);
-}
-
-// =====================================
-// Notificações em Tempo Real com Áudio
-// =====================================
-
-// Carregar configurações de notificação em tempo real
-async function loadRTNotificationSettings() {
-    try {
-        const data = await requestJson('/api/notifications/realtime/settings');
-        
-        if (data.success && data.settings) {
-            const s = data.settings;
-            document.getElementById('soundEnabled').checked = s.sound_enabled;
-            document.getElementById('desktopEnabled').checked = s.desktop_enabled;
-            document.getElementById('soundVolume').value = s.sound_volume || 80;
-            document.getElementById('volumeValue').textContent = s.sound_volume || 80;
-            document.getElementById('soundOrder').value = s.sound_order || 'order_notification';
-            document.getElementById('soundQuestion').value = s.sound_question || 'question_notification';
-            document.getElementById('soundMessage').value = s.sound_message || 'message_notification';
-            document.getElementById('pollingInterval').value = s.polling_interval || 30;
-            
-            if (s.quiet_hours_start) document.getElementById('quietHoursStart').value = s.quiet_hours_start;
-            if (s.quiet_hours_end) document.getElementById('quietHoursEnd').value = s.quiet_hours_end;
-        }
-    } catch (error) {
-        console.error('Erro ao carregar configurações de som:', error);
-    }
-}
-
-// Salvar configurações de notificação em tempo real
-async function saveRTNotificationSettings() {
-    const settings = {
-        sound_enabled: document.getElementById('soundEnabled').checked,
-        desktop_enabled: document.getElementById('desktopEnabled').checked,
-        sound_volume: parseInt(document.getElementById('soundVolume').value),
-        sound_order: document.getElementById('soundOrder').value,
-        sound_question: document.getElementById('soundQuestion').value,
-        sound_message: document.getElementById('soundMessage').value,
-        polling_interval: parseInt(document.getElementById('pollingInterval').value),
-        quiet_hours_start: document.getElementById('quietHoursStart').value || null,
-        quiet_hours_end: document.getElementById('quietHoursEnd').value || null
-    };
-    
-    try {
-        const data = await requestJson('/api/notifications/realtime/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(settings)
-        });
-        
-        if (data.success) {
-            alert('✅ Configurações de som salvas!');
-            
-            // Atualizar instância global de notificações
-            if (window.realTimeNotifications) {
-                window.realTimeNotifications.updateConfig({
-                    soundEnabled: settings.sound_enabled,
-                    desktopEnabled: settings.desktop_enabled,
-                    soundVolume: settings.sound_volume / 100,
-                    pollingInterval: settings.polling_interval * 1000
-                });
-            }
-        } else {
-            alert('❌ Erro ao salvar configurações');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('❌ Erro ao salvar configurações');
-    }
-}
-
-// Testar som de notificação
-function testSound(type) {
-    // Usar sistema de notificações global se disponível
-    if (window.realTimeNotifications) {
-        const volume = parseInt(document.getElementById('soundVolume').value) / 100;
-        window.realTimeNotifications.config.soundVolume = volume;
-        window.realTimeNotifications.config.soundOrder = document.getElementById('soundOrder').value;
-        window.realTimeNotifications.config.soundQuestion = document.getElementById('soundQuestion').value;
-        window.realTimeNotifications.config.soundMessage = document.getElementById('soundMessage').value;
-        window.realTimeNotifications.testSound(type);
-    } else {
-        // Fallback com Web Audio API
-        playTestSound(type);
-    }
-}
-
-// Som de teste com Web Audio API (fallback)
-function playTestSound(type) {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        const frequencies = {
-            order: [880, 1100, 1320],
-            question: [660, 880],
-            message: [523]
+    function saveNotifications() {
+        const settings = {
+            newOrders: document.getElementById('notifyNewOrders').checked,
+            tokenExpiring: document.getElementById('notifyTokenExpiring').checked,
+            priceChanges: document.getElementById('notifyPriceChanges').checked,
+            newCompetitors: document.getElementById('notifyNewCompetitors').checked
         };
-        
-        const freqs = frequencies[type] || [700];
-        const volume = parseInt(document.getElementById('soundVolume').value) / 100;
-        
-        gainNode.gain.setValueAtTime(volume * 0.3, audioContext.currentTime);
-        
-        let time = audioContext.currentTime;
-        for (const freq of freqs) {
-            oscillator.frequency.setValueAtTime(freq, time);
-            time += 0.15;
-        }
-        
-        gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(time + 0.3);
-    } catch (error) {
-        console.warn('Erro ao tocar som:', error);
+
+        requestJson('/api/settings/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        }).then(data => {
+            alert(data.success ? 'Preferências salvas!' : 'Erro ao salvar');
+        }).catch(() => alert('Erro ao salvar'));
     }
-}
 
-// Atualizar valor do volume em tempo real
-document.getElementById('soundVolume')?.addEventListener('input', function() {
-    document.getElementById('volumeValue').textContent = this.value;
-});
+    function saveTelegram() {
+        const token = document.getElementById('telegramBotToken').value;
+        const chatId = document.getElementById('telegramChatId').value;
 
-// Load saved theme
-document.addEventListener('DOMContentLoaded', function() {
-    const saved = localStorage.getItem('theme') || 'light';
-    document.getElementById('themeSelect').value = saved;
+        requestJson('/api/settings/telegram', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                token,
+                chatId
+            })
+        }).then(data => {
+            alert(data.success ? 'Configuração salva!' : 'Erro ao salvar');
+        }).catch(() => alert('Erro ao salvar'));
+    }
+
+    function saveSyncSettings() {
+        const autoSync = document.getElementById('autoSyncOrders').checked;
+        const interval = document.getElementById('syncInterval').value;
+
+        requestJson('/api/settings/sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                autoSync,
+                interval
+            })
+        }).then(data => {
+            alert(data.success ? 'Configurações salvas!' : 'Erro');
+        }).catch(() => alert('Erro'));
+    }
+
+    function syncNow() {
+        if (!confirm('Sincronizar agora?')) return;
+        requestJson('/api/polling/all', {
+                method: 'POST'
+            })
+            .then(() => alert('Sincronização iniciada!'))
+            .catch(() => alert('Erro ao sincronizar'));
+    }
+
+    function exportData() {
+        window.open('/api/export/analysis/json', '_blank');
+    }
+
+    function clearCache() {
+        if (!confirm('Limpar o cache?')) return;
+        requestJson('/api/cache/clear', {
+                method: 'POST'
+            })
+            .then(() => alert('Cache limpo!'))
+            .catch(() => alert('Erro ao limpar cache'));
+    }
+
+    function changeTheme(theme) {
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ?
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme);
+        localStorage.setItem('theme', theme);
+    }
+
+    // =====================================
+    // Notificações em Tempo Real com Áudio
+    // =====================================
 
     // Carregar configurações de notificação em tempo real
-    loadRTNotificationSettings();
+    async function loadRTNotificationSettings() {
+        try {
+            const data = await requestJson('/api/notifications/realtime/settings');
 
-    // Carregar contas do Mercado Livre
-    loadMLAccounts();
-});
+            if (data.success && data.settings) {
+                const s = data.settings;
+                document.getElementById('soundEnabled').checked = s.sound_enabled;
+                document.getElementById('desktopEnabled').checked = s.desktop_enabled;
+                document.getElementById('soundVolume').value = s.sound_volume || 80;
+                document.getElementById('volumeValue').textContent = s.sound_volume || 80;
+                document.getElementById('soundOrder').value = s.sound_order || 'order_notification';
+                document.getElementById('soundQuestion').value = s.sound_question || 'question_notification';
+                document.getElementById('soundMessage').value = s.sound_message || 'message_notification';
+                document.getElementById('pollingInterval').value = s.polling_interval || 30;
 
-// =====================================
-// Gerenciamento de Contas ML
-// =====================================
-
-async function loadMLAccounts() {
-    const loadingEl = document.getElementById('ml-accounts-loading');
-    const listEl = document.getElementById('ml-accounts-list');
-    const emptyEl = document.getElementById('ml-accounts-empty');
-
-    try {
-        const data = await requestJson('/api/auth/accounts');
-        
-        // API retorna { accounts: [...], total: N }
-        const accounts = Array.isArray(data) ? data : (data.accounts || []);
-
-        loadingEl.style.display = 'none';
-
-        if (!accounts || accounts.length === 0) {
-            emptyEl.style.display = 'block';
-            return;
+                if (s.quiet_hours_start) document.getElementById('quietHoursStart').value = s.quiet_hours_start;
+                if (s.quiet_hours_end) document.getElementById('quietHoursEnd').value = s.quiet_hours_end;
+            }
+        } catch (error) {
+            console.error('Erro ao carregar configurações de som:', error);
         }
-
-        listEl.style.display = 'block';
-        listEl.innerHTML = accounts.map(account => renderMLAccount(account)).join('');
-
-    } catch (error) {
-        console.error('Erro ao carregar contas:', error);
-        loadingEl.innerHTML = '<div class="alert alert-danger">Erro ao carregar contas</div>';
     }
-}
 
-function renderMLAccount(account) {
-    const isExpired = account.status === 'expired' ||
-        (account.token_expires_at && new Date(account.token_expires_at) < new Date());
-    const statusClass = isExpired ? 'danger' : (account.status === 'active' ? 'success' : 'warning');
-    const statusText = isExpired ? 'Token Expirado' : (account.status === 'active' ? 'Ativo' : 'Inativo');
-    const statusIcon = isExpired ? 'exclamation-triangle' : (account.status === 'active' ? 'check-circle' : 'pause-circle');
+    // Salvar configurações de notificação em tempo real
+    async function saveRTNotificationSettings() {
+        const settings = {
+            sound_enabled: document.getElementById('soundEnabled').checked,
+            desktop_enabled: document.getElementById('desktopEnabled').checked,
+            sound_volume: parseInt(document.getElementById('soundVolume').value),
+            sound_order: document.getElementById('soundOrder').value,
+            sound_question: document.getElementById('soundQuestion').value,
+            sound_message: document.getElementById('soundMessage').value,
+            polling_interval: parseInt(document.getElementById('pollingInterval').value),
+            quiet_hours_start: document.getElementById('quietHoursStart').value || null,
+            quiet_hours_end: document.getElementById('quietHoursEnd').value || null
+        };
 
-    const expiresAt = account.token_expires_at ? new Date(account.token_expires_at).toLocaleString('pt-BR') : 'N/A';
+        try {
+            const data = await requestJson('/api/notifications/realtime/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
 
-    return `
+            if (data.success) {
+                alert('✅ Configurações de som salvas!');
+
+                // Atualizar instância global de notificações
+                if (window.realTimeNotifications) {
+                    window.realTimeNotifications.updateConfig({
+                        soundEnabled: settings.sound_enabled,
+                        desktopEnabled: settings.desktop_enabled,
+                        soundVolume: settings.sound_volume / 100,
+                        pollingInterval: settings.polling_interval * 1000
+                    });
+                }
+            } else {
+                alert('❌ Erro ao salvar configurações');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('❌ Erro ao salvar configurações');
+        }
+    }
+
+    // Testar som de notificação
+    function testSound(type) {
+        // Usar sistema de notificações global se disponível
+        if (window.realTimeNotifications) {
+            const volume = parseInt(document.getElementById('soundVolume').value) / 100;
+            window.realTimeNotifications.config.soundVolume = volume;
+            window.realTimeNotifications.config.soundOrder = document.getElementById('soundOrder').value;
+            window.realTimeNotifications.config.soundQuestion = document.getElementById('soundQuestion').value;
+            window.realTimeNotifications.config.soundMessage = document.getElementById('soundMessage').value;
+            window.realTimeNotifications.testSound(type);
+        } else {
+            // Fallback com Web Audio API
+            playTestSound(type);
+        }
+    }
+
+    // Som de teste com Web Audio API (fallback)
+    function playTestSound(type) {
+        try {
+            const audioContext = new(window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            const frequencies = {
+                order: [880, 1100, 1320],
+                question: [660, 880],
+                message: [523]
+            };
+
+            const freqs = frequencies[type] || [700];
+            const volume = parseInt(document.getElementById('soundVolume').value) / 100;
+
+            gainNode.gain.setValueAtTime(volume * 0.3, audioContext.currentTime);
+
+            let time = audioContext.currentTime;
+            for (const freq of freqs) {
+                oscillator.frequency.setValueAtTime(freq, time);
+                time += 0.15;
+            }
+
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(time + 0.3);
+        } catch (error) {
+            console.warn('Erro ao tocar som:', error);
+        }
+    }
+
+    // Atualizar valor do volume em tempo real
+    document.getElementById('soundVolume')?.addEventListener('input', function() {
+        document.getElementById('volumeValue').textContent = this.value;
+    });
+
+    // Load saved theme
+    document.addEventListener('DOMContentLoaded', function() {
+        const saved = localStorage.getItem('theme') || 'light';
+        document.getElementById('themeSelect').value = saved;
+
+        // Carregar configurações de notificação em tempo real
+        loadRTNotificationSettings();
+
+        // Carregar contas do Mercado Livre
+        loadMLAccounts();
+    });
+
+    // =====================================
+    // Gerenciamento de Contas ML
+    // =====================================
+
+    async function loadMLAccounts() {
+        const loadingEl = document.getElementById('ml-accounts-loading');
+        const listEl = document.getElementById('ml-accounts-list');
+        const emptyEl = document.getElementById('ml-accounts-empty');
+
+        try {
+            const data = await requestJson('/api/auth/accounts');
+
+            // API retorna { accounts: [...], total: N }
+            const accounts = Array.isArray(data) ? data : (data.accounts || []);
+
+            loadingEl.style.display = 'none';
+
+            if (!accounts || accounts.length === 0) {
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            listEl.style.display = 'block';
+            listEl.innerHTML = accounts.map(account => renderMLAccount(account)).join('');
+
+        } catch (error) {
+            console.error('Erro ao carregar contas:', error);
+            loadingEl.innerHTML = '<div class="alert alert-danger">Erro ao carregar contas</div>';
+        }
+    }
+
+    function renderMLAccount(account) {
+        const isExpired = account.status === 'expired' ||
+            (account.token_expires_at && new Date(account.token_expires_at) < new Date());
+        const statusClass = isExpired ? 'danger' : (account.status === 'active' ? 'success' : 'warning');
+        const statusText = isExpired ? 'Token Expirado' : (account.status === 'active' ? 'Ativo' : 'Inativo');
+        const statusIcon = isExpired ? 'exclamation-triangle' : (account.status === 'active' ? 'check-circle' : 'pause-circle');
+
+        const expiresAt = account.token_expires_at ? new Date(account.token_expires_at).toLocaleString('pt-BR') : 'N/A';
+
+        return `
         <div class="d-flex justify-content-between align-items-center p-3 border rounded mb-2" id="ml-account-${account.id}">
             <div class="d-flex align-items-center">
                 <div class="me-3">
@@ -599,102 +626,111 @@ function renderMLAccount(account) {
             </div>
         </div>
     `;
-}
+    }
 
-async function refreshMLToken(accountId) {
-    const btn = event.target.closest('button');
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    btn.disabled = true;
+    async function refreshMLToken(accountId) {
+        const btn = event.target.closest('button');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        btn.disabled = true;
 
-    try {
-        const data = await requestJson('/api/settings/ml-refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ account_id: accountId })
-        });
+        try {
+            const data = await requestJson('/api/settings/ml-refresh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    account_id: accountId
+                })
+            });
 
-        if (data.success) {
-            alert('✅ Token renovado com sucesso!');
-            loadMLAccounts(); // Recarregar lista
-        } else {
-            if (data.action_required === 'reauthorize') {
-                if (confirm('❌ O token expirou e não pode ser renovado automaticamente.\n\nDeseja reconectar a conta agora?')) {
-                    window.location.href = '/auth/authorize';
+            if (data.success) {
+                alert('✅ Token renovado com sucesso!');
+                loadMLAccounts(); // Recarregar lista
+            } else {
+                if (data.action_required === 'reauthorize') {
+                    if (confirm('❌ O token expirou e não pode ser renovado automaticamente.\n\nDeseja reconectar a conta agora?')) {
+                        window.location.href = '/auth/authorize';
+                    }
+                } else {
+                    alert('❌ Falha ao renovar token: ' + (data.message || 'Erro desconhecido'));
+                }
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('❌ Erro ao renovar token');
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    }
+
+    async function diagnoseMLAccount(accountId) {
+        try {
+            const data = await requestJson(`/api/settings/ml-diagnostico?account_id=${accountId}`);
+
+            let message = `Diagnóstico da Conta #${accountId}\n\n`;
+
+            if (data.diagnostics && data.diagnostics[accountId]) {
+                const diag = data.diagnostics[accountId];
+                message += `Status: ${diag.status || 'desconhecido'}\n`;
+                message += `Nickname: ${diag.nickname || 'N/A'}\n`;
+                message += `Token válido: ${diag.token_valid ? 'Sim' : 'Não'}\n`;
+                message += `Expira em: ${diag.expires_in || 'N/A'}\n`;
+
+                if (diag.api_test) {
+                    message += `\nTeste API: ${diag.api_test.success ? '✅ OK' : '❌ Falhou'}\n`;
+                    if (diag.api_test.error) {
+                        message += `Erro: ${diag.api_test.error}\n`;
+                    }
                 }
             } else {
-                alert('❌ Falha ao renovar token: ' + (data.message || 'Erro desconhecido'));
+                message += 'Não foi possível obter diagnóstico detalhado.\n';
+                message += JSON.stringify(data, null, 2);
             }
+
+            alert(message);
+
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('❌ Erro ao obter diagnóstico');
         }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('❌ Erro ao renovar token');
-    } finally {
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
     }
-}
 
-async function diagnoseMLAccount(accountId) {
-    try {
-        const data = await requestJson(`/api/settings/ml-diagnostico?account_id=${accountId}`);
+    async function disconnectMLAccount(accountId, nickname) {
+        if (!confirm(`Deseja realmente desconectar a conta "${nickname}"?\n\nVocê poderá reconectar a qualquer momento.`)) {
+            return;
+        }
 
-        let message = `Diagnóstico da Conta #${accountId}\n\n`;
-
-        if (data.diagnostics && data.diagnostics[accountId]) {
-            const diag = data.diagnostics[accountId];
-            message += `Status: ${diag.status || 'desconhecido'}\n`;
-            message += `Nickname: ${diag.nickname || 'N/A'}\n`;
-            message += `Token válido: ${diag.token_valid ? 'Sim' : 'Não'}\n`;
-            message += `Expira em: ${diag.expires_in || 'N/A'}\n`;
-
-            if (diag.api_test) {
-                message += `\nTeste API: ${diag.api_test.success ? '✅ OK' : '❌ Falhou'}\n`;
-                if (diag.api_test.error) {
-                    message += `Erro: ${diag.api_test.error}\n`;
+        try {
+            const data = await requestJson(`/auth/disconnect/${accountId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
                 }
+            });
+
+            if (data.success) {
+                alert('✅ Conta desconectada com sucesso!');
+                loadMLAccounts(); // Recarregar lista
+            } else {
+                alert('❌ Erro ao desconectar: ' + (data.error || 'Erro desconhecido'));
             }
-        } else {
-            message += 'Não foi possível obter diagnóstico detalhado.\n';
-            message += JSON.stringify(data, null, 2);
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('❌ Erro ao desconectar conta');
         }
-
-        alert(message);
-
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('❌ Erro ao obter diagnóstico');
     }
-}
-
-async function disconnectMLAccount(accountId, nickname) {
-    if (!confirm(`Deseja realmente desconectar a conta "${nickname}"?\n\nVocê poderá reconectar a qualquer momento.`)) {
-        return;
-    }
-
-    try {
-        const data = await requestJson(`/auth/disconnect/${accountId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        if (data.success) {
-            alert('✅ Conta desconectada com sucesso!');
-            loadMLAccounts(); // Recarregar lista
-        } else {
-            alert('❌ Erro ao desconectar: ' + (data.error || 'Erro desconhecido'));
+    // CSP Event Delegation
+    document.addEventListener('click', e => {
+        const t = e.target.closest('[data-action]');
+        if (!t) return;
+        const action = t.dataset.action;
+        const fn = window[action] || window[action.replace(/-([a-z])/g, (m, c) => c.toUpperCase())];
+        if (fn) {
+            e.preventDefault();
+            fn(t.dataset.param || t.dataset.id);
         }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('❌ Erro ao desconectar conta');
-    }
-}
-// CSP Event Delegation
-document.addEventListener('click', e => {
-    const t = e.target.closest('[data-action]');
-    if (!t) return;
-    const action = t.dataset.action;
-    const fn = window[action] || window[action.replace(/-([a-z])/g, (m,c) => c.toUpperCase())];
-    if (fn) { e.preventDefault(); fn(t.dataset.param || t.dataset.id); }
-});
+    });
 </script>

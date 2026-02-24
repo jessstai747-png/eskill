@@ -113,7 +113,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm bg-primary text-white mb-4">
             <div class="card-body">
@@ -135,14 +135,14 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         loadSettings: async function() {
             try {
                 const data = await requestJson('/api/notifications/settings');
-                
+
                 if (data.success) {
                     const s = data.settings;
                     // Populate fields
                     const fields = ['email_orders', 'whatsapp_orders', 'email_questions', 'whatsapp_questions', 'whatsapp_low_stock', 'sound_enabled', 'desktop_enabled'];
                     fields.forEach(f => {
-                       const el = document.getElementById(f);
-                       if (el) el.checked = !!s[f];
+                        const el = document.getElementById(f);
+                        if (el) el.checked = !!s[f];
                     });
                 }
             } catch (e) {
@@ -154,7 +154,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             e.preventDefault();
             const form = e.target;
             const data = {};
-            
+
             // Collect all checkbox values
             const fields = ['email_orders', 'whatsapp_orders', 'email_questions', 'whatsapp_questions', 'whatsapp_low_stock', 'sound_enabled', 'desktop_enabled'];
             fields.forEach(f => {
@@ -165,7 +165,9 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             try {
                 const result = await requestJson('/api/notifications/settings', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify(data)
                 });
 
@@ -179,6 +181,6 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             }
         }
     };
-    
+
     document.addEventListener('DOMContentLoaded', () => settingsManager.init());
 </script>

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @deprecated Use /dashboard/seo-killer instead. This view is no longer routed directly.
  * SEO e Otimização - Versão Moderna
@@ -8,11 +9,28 @@
 
 <!-- Custom Styles for SEO Tools -->
 <style>
-/* Functional styles for SEO Score */
-.seo-score { font-size: 3.5rem; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
-.feature-icon { font-size: 3rem; margin-bottom: 1rem; transition: transform 0.3s ease; }
-.tool-card:hover .feature-icon { transform: scale(1.2) rotate(5deg); }
-.badge-lg { font-size: 0.85rem; padding: 0.5rem 1rem; font-weight: 600; }
+    /* Functional styles for SEO Score */
+    .seo-score {
+        font-size: 3.5rem;
+        font-weight: 800;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        transition: transform 0.3s ease;
+    }
+
+    .tool-card:hover .feature-icon {
+        transform: scale(1.2) rotate(5deg);
+    }
+
+    .badge-lg {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+    }
 </style>
 
 <!-- Page Header -->
@@ -666,17 +684,17 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     async function loadEanWidget() {
         try {
             const data = await requestJson('/api/ean/widget');
-            
+
             if (data.success) {
                 const widget = data.widget;
                 const badge = document.getElementById('ean-balance-badge');
                 const status = document.getElementById('ean-widget-status');
-                
+
                 if (badge) {
                     badge.textContent = `${widget.available} disponíveis`;
                     badge.className = `badge ${widget.alert_level === 'danger' ? 'bg-danger' : widget.alert_level === 'warning' ? 'bg-warning text-dark' : 'bg-success'}`;
                 }
-                
+
                 if (status) {
                     if (widget.available === 0) {
                         status.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Sem EANs. <a href="/dashboard/ean#packages">Comprar pacote</a></span>';
@@ -695,18 +713,18 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     async function autoFillEan() {
         const eanInput = document.getElementById('builderEan');
         const status = document.getElementById('ean-widget-status');
-        
+
         if (eanInput.value.trim()) {
             if (!confirm('Já existe um EAN preenchido. Deseja substituir?')) {
                 return;
             }
         }
-        
+
         status.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split"></i> Buscando EAN...</span>';
-        
+
         try {
             const data = await requestJson('/api/ean/preview');
-            
+
             if (data.success) {
                 eanInput.value = data.preview.ean;
                 status.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> EAN preenchido. Restam ${data.preview.available_after_use} após usar este.</span>`;
@@ -1247,11 +1265,11 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     document.addEventListener('click', function(e) {
         const target = e.target.closest('[data-action]');
         if (!target) return;
-        
+
         e.preventDefault();
         const action = target.dataset.action;
-        
-        switch(action) {
+
+        switch (action) {
             case 'open-analyzer':
                 openAnalyzer();
                 break;
