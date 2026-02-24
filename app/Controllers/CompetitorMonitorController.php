@@ -43,12 +43,12 @@ class CompetitorMonitorController
     public function getTracked(): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     ct.*,
                     i.title as my_title,
                     i.price as my_price,
@@ -64,10 +64,10 @@ class CompetitorMonitorController
             // Enrich with current competitor data
             foreach ($competitors as &$comp) {
                 $comp['price_diff'] = $comp['competitor_price'] - $comp['my_price'];
-                $comp['price_diff_percent'] = $comp['my_price'] > 0 
-                    ? round(($comp['price_diff'] / $comp['my_price']) * 100, 2) 
+                $comp['price_diff_percent'] = $comp['my_price'] > 0
+                    ? round(($comp['price_diff'] / $comp['my_price']) * 100, 2)
                     : 0;
-                
+
                 // Determine status based on price changes
                 if ($comp['price_diff'] < -5) {
                     $comp['status'] = 'price_drop';
@@ -98,15 +98,15 @@ class CompetitorMonitorController
     public function getAlerts(): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
             $limit = min($this->request->getInt('limit', 10), 50);
             $limitSql = max(1, (int)$limit);
-            
+
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     ca.*,
                     ct.my_item_id,
                     ct.competitor_item_id,
@@ -144,14 +144,14 @@ class CompetitorMonitorController
     public function getStats(): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
             // Active competitors
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) as count 
-                FROM competitor_tracking 
+                SELECT COUNT(*) as count
+                FROM competitor_tracking
                 WHERE account_id = ? AND is_active = 1
             ");
             $stmt->execute([$this->accountId]);
@@ -159,10 +159,10 @@ class CompetitorMonitorController
 
             // Today's alerts
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) as count 
+                SELECT COUNT(*) as count
                 FROM competitor_alerts ca
                 LEFT JOIN competitor_tracking ct ON ca.tracking_id = ct.id
-                WHERE ct.account_id = ? 
+                WHERE ct.account_id = ?
                 AND DATE(ca.created_at) = CURDATE()
             ");
             $stmt->execute([$this->accountId]);
@@ -170,10 +170,10 @@ class CompetitorMonitorController
 
             // Price changes today
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) as count 
+                SELECT COUNT(*) as count
                 FROM competitor_alerts ca
                 LEFT JOIN competitor_tracking ct ON ca.tracking_id = ct.id
-                WHERE ct.account_id = ? 
+                WHERE ct.account_id = ?
                 AND DATE(ca.created_at) = CURDATE()
                 AND ca.type IN ('price_drop', 'price_increase')
             ");
@@ -182,9 +182,9 @@ class CompetitorMonitorController
 
             // Opportunities (out of stock or price drops)
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) as count 
-                FROM competitor_tracking 
-                WHERE account_id = ? 
+                SELECT COUNT(*) as count
+                FROM competitor_tracking
+                WHERE account_id = ?
                 AND (competitor_stock = 0 OR competitor_price < my_price - 10)
             ");
             $stmt->execute([$this->accountId]);
@@ -212,11 +212,11 @@ class CompetitorMonitorController
     public function track(): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         $data = json_decode(file_get_contents('php://input'), true);
-        
+
         if (!isset($data['my_item_id']) || !isset($data['competitor_item_id'])) {
             http_response_code(400);
             echo json_encode(['error' => 'my_item_id and competitor_item_id are required']);
@@ -234,12 +234,12 @@ class CompetitorMonitorController
             // Store alert preferences
             if (isset($data['alerts'])) {
                 $stmt = $this->db->prepare("
-                    UPDATE competitor_tracking 
+                    UPDATE competitor_tracking
                     SET alert_price_drop = ?,
                         alert_price_increase = ?,
                         alert_stock_change = ?
-                    WHERE my_item_id = ? 
-                    AND competitor_item_id = ? 
+                    WHERE my_item_id = ?
+                    AND competitor_item_id = ?
                     AND account_id = ?
                 ");
                 $stmt->execute([
@@ -270,7 +270,7 @@ class CompetitorMonitorController
     public function startMonitoring(): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
@@ -284,8 +284,8 @@ class CompetitorMonitorController
 
             // Activate all tracked competitors
             $stmt = $this->db->prepare("
-                UPDATE competitor_tracking 
-                SET is_active = 1 
+                UPDATE competitor_tracking
+                SET is_active = 1
                 WHERE account_id = ?
             ");
             $stmt->execute([$this->accountId]);
@@ -307,7 +307,7 @@ class CompetitorMonitorController
     public function pauseMonitoring(): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
@@ -335,13 +335,13 @@ class CompetitorMonitorController
     public function toggleMonitoring(string $id): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
             $stmt = $this->db->prepare("
-                UPDATE competitor_tracking 
-                SET is_active = NOT is_active 
+                UPDATE competitor_tracking
+                SET is_active = NOT is_active
                 WHERE id = ? AND account_id = ?
             ");
             $stmt->execute([$id, $this->accountId]);
@@ -363,12 +363,12 @@ class CompetitorMonitorController
     public function remove(string $id): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
             $stmt = $this->db->prepare("
-                DELETE FROM competitor_tracking 
+                DELETE FROM competitor_tracking
                 WHERE id = ? AND account_id = ?
             ");
             $stmt->execute([$id, $this->accountId]);
@@ -390,14 +390,14 @@ class CompetitorMonitorController
     public function markAlertRead(string $id): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         try {
             $stmt = $this->db->prepare("
                 UPDATE competitor_alerts ca
                 LEFT JOIN competitor_tracking ct ON ca.tracking_id = ct.id
-                SET ca.is_read = 1 
+                SET ca.is_read = 1
                 WHERE ca.id = ? AND ct.account_id = ?
             ");
             $stmt->execute([$id, $this->accountId]);
@@ -419,7 +419,7 @@ class CompetitorMonitorController
     public function saveSettings(): void
     {
         header('Content-Type: application/json');
-        
+
         if (!$this->checkAuth()) return;
 
         $data = json_decode(file_get_contents('php://input'), true);
@@ -463,7 +463,7 @@ class CompetitorMonitorController
     private function getUnreadAlertsCount(): int
     {
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) as count 
+            SELECT COUNT(*) as count
             FROM competitor_alerts ca
             LEFT JOIN competitor_tracking ct ON ca.tracking_id = ct.id
             WHERE ct.account_id = ? AND ca.is_read = 0

@@ -7,7 +7,7 @@ use Exception;
 
 /**
  * Sistema de Recomendações Inteligentes por IA
- * 
+ *
  * Engine avançada de recomendações para o ecossistema ML:
  * - Recomendações de produtos para clonagem
  * - Sugestões de preços dinâmicas
@@ -16,7 +16,7 @@ use Exception;
  * - Estratégias de cross-selling
  * - Análise preditiva de tendências
  * - Personalização por perfil de vendedor
- * 
+ *
  * @author Sistema ML Manager V8.0
  * @version 8.0.0
  */
@@ -59,10 +59,10 @@ class AIRecommendationEngineService
 
             // Perfil do usuário
             $userProfile = $this->buildUserProfile($userId);
-            
+
             // Contexto atual
             $context = $this->gatherContext($userId);
-            
+
             // Diferentes tipos de recomendações
             $recommendations = [
                 'products_to_clone' => $this->recommendProductsToClone($userProfile, $context),
@@ -77,10 +77,10 @@ class AIRecommendationEngineService
 
             // Score e priorização
             $prioritized = $this->prioritizeRecommendations($recommendations, $userProfile);
-            
+
             // Explicações e insights
             $explained = $this->addExplanations($prioritized, $userProfile, $context);
-            
+
             // Métricas de confiança
             $confidence = $this->calculateRecommendationConfidence($explained, $userProfile);
 
@@ -98,7 +98,7 @@ class AIRecommendationEngineService
 
             // Cache por 6 horas
             $this->cache->set($cacheKey, $result, 'ai_recommendations', 21600);
-            
+
             // Log das recomendações
             $this->logger->info('AI recommendations generated', [
                 'user_id' => $userId,
@@ -107,7 +107,6 @@ class AIRecommendationEngineService
             ]);
 
             return $result;
-
         } catch (Exception $e) {
             $this->logger->error('AI recommendation generation failed', [
                 'error' => $e->getMessage(),
@@ -127,10 +126,10 @@ class AIRecommendationEngineService
             // Análise de categorias do usuário
             $userCategories = $userProfile['preferred_categories'] ?? [];
             $userBrands = $userProfile['preferred_brands'] ?? [];
-            
+
             // Buscar produtos com potencial
             $candidates = $this->findCloneCandidates($userCategories, $userBrands, $context);
-            
+
             // Análise de cada candidato
             $analyzedProducts = [];
             foreach ($candidates as $product) {
@@ -139,14 +138,14 @@ class AIRecommendationEngineService
                     $analyzedProducts[] = array_merge($product, $analysis);
                 }
             }
-            
+
             // Ordenar por score e limitar
-            usort($analyzedProducts, function($a, $b) {
+            usort($analyzedProducts, function ($a, $b) {
                 return $b['score'] <=> $a['score'];
             });
-            
+
             $recommendations = array_slice($analyzedProducts, 0, $limit);
-            
+
             // Adicionar insights específicos
             foreach ($recommendations as &$rec) {
                 $rec['why_recommended'] = $this->explainCloneRecommendation($rec, $userProfile);
@@ -154,9 +153,8 @@ class AIRecommendationEngineService
                 $rec['risk_factors'] = $this->identifyCloneRisks($rec, $userProfile);
                 $rec['action_plan'] = $this->generateCloneActionPlan($rec);
             }
-            
-            return $recommendations;
 
+            return $recommendations;
         } catch (Exception $e) {
             $this->logger->error('Clone recommendations failed', ['error' => $e->getMessage()]);
             return [];
@@ -169,7 +167,7 @@ class AIRecommendationEngineService
     public function recommendMarketOpportunities(array $userProfile, array $context): array
     {
         $opportunities = [];
-        
+
         // Análise de gaps de mercado
         $gaps = $this->identifyMarketGaps($userProfile, $context);
         foreach ($gaps as $gap) {
@@ -185,7 +183,7 @@ class AIRecommendationEngineService
                 'requirements' => $gap['requirements']
             ];
         }
-        
+
         // Produtos em alta demanda
         $trending = $this->identifyTrendingProducts($context);
         foreach ($trending as $trend) {
@@ -200,7 +198,7 @@ class AIRecommendationEngineService
                 'recommended_action' => $trend['action']
             ];
         }
-        
+
         // Nichos subestimados
         $niches = $this->identifyUndersuppliedNiches($userProfile, $context);
         foreach ($niches as $niche) {
@@ -215,12 +213,12 @@ class AIRecommendationEngineService
                 'key_success_factors' => $niche['success_factors']
             ];
         }
-        
+
         // Ordenar por score
-        usort($opportunities, function($a, $b) {
+        usort($opportunities, function ($a, $b) {
             return $b['score'] <=> $a['score'];
         });
-        
+
         return array_slice($opportunities, 0, 15);
     }
 
@@ -230,13 +228,13 @@ class AIRecommendationEngineService
     public function recommendPricingStrategies(array $userProfile, array $context): array
     {
         $strategies = [];
-        
+
         // Análise de produtos do usuário
         $userProducts = $this->getUserProducts($userProfile['user_id']);
-        
+
         foreach ($userProducts as $product) {
             $priceAnalysis = $this->analyzePricingOpportunity($product, $context);
-            
+
             if ($priceAnalysis['has_opportunity']) {
                 $strategies[] = [
                     'product_id' => $product['id'],
@@ -254,12 +252,12 @@ class AIRecommendationEngineService
                 ];
             }
         }
-        
+
         // Ordenar por impacto esperado
-        usort($strategies, function($a, $b) {
+        usort($strategies, function ($a, $b) {
             return $b['expected_impact'] <=> $a['expected_impact'];
         });
-        
+
         return array_slice($strategies, 0, 10);
     }
 
@@ -276,7 +274,7 @@ class AIRecommendationEngineService
         $stmt = $this->db->prepare("SELECT created_at FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         $createdAt = $user['created_at'] ?? date('Y-m-d H:i:s');
         $priceRange = $this->getPriceRangePreference($userId);
         $performanceMetrics = $this->getPerformanceMetrics($userId);
@@ -294,7 +292,7 @@ class AIRecommendationEngineService
             'growth_stage' => $this->determineGrowthStage($userId)
         ];
     }
-    
+
     private function calculateAccountAgeFromDate(string $date): int
     {
         $created = new \DateTime($date);
@@ -331,10 +329,10 @@ class AIRecommendationEngineService
             'user_location_trends' => $this->getLocationBasedTrends($userId),
             'market_summary' => []
         ];
-        
+
         // Gerar resumo do contexto
         $context['market_summary'] = $this->generateMarketSummary($context);
-        
+
         return $context;
     }
 
@@ -347,37 +345,37 @@ class AIRecommendationEngineService
     {
         $score = 0;
         $factors = [];
-        
+
         // Demanda vs Oferta
         $demandSupplyRatio = $this->calculateDemandSupplyRatio($product, $context);
         $score += min(25, $demandSupplyRatio * 25);
         $factors['demand_supply'] = $demandSupplyRatio;
-        
+
         // Margem de lucro potencial
         $profitMargin = $this->calculatePotentialMargin($product, $userProfile);
         $score += min(20, $profitMargin * 20);
         $factors['profit_margin'] = $profitMargin;
-        
+
         // Adequação ao perfil do usuário
         $profileFit = $this->calculateProfileFit($product, $userProfile);
         $score += min(20, $profileFit * 20);
         $factors['profile_fit'] = $profileFit;
-        
+
         // Tendência de mercado
         $trendScore = $this->calculateTrendScore($product, $context);
         $score += min(15, $trendScore * 15);
         $factors['trend_score'] = $trendScore;
-        
+
         // Competitividade
         $competitiveness = $this->calculateCompetitiveness($product);
         $score += min(10, (1 - $competitiveness) * 10);
         $factors['competitiveness'] = $competitiveness;
-        
+
         // Facilidade de clonagem
         $cloneEase = $this->calculateCloneEase($product);
         $score += min(10, $cloneEase * 10);
         $factors['clone_ease'] = $cloneEase;
-        
+
         return [
             'score' => round($score, 2),
             'factors' => $factors,
@@ -391,20 +389,20 @@ class AIRecommendationEngineService
     private function prioritizeRecommendations(array $recommendations, array $userProfile): array
     {
         $prioritized = [];
-        
+
         foreach ($recommendations as $type => $items) {
             if (empty($items)) continue;
-            
+
             $typeWeight = $this->getTypeWeight($type, $userProfile);
-            
+
             foreach ($items as &$item) {
                 $item['priority_score'] = ($item['score'] ?? 0) * $typeWeight;
                 $item['recommendation_type'] = $type;
             }
-            
+
             $prioritized[$type] = $items;
         }
-        
+
         return $prioritized;
     }
 
@@ -416,20 +414,20 @@ class AIRecommendationEngineService
     private function addExplanations(array $recommendations, array $userProfile, array $context): array
     {
         $explained = [];
-        
+
         foreach ($recommendations as $type => $items) {
             $explained[$type] = [];
-            
+
             foreach ($items as $item) {
                 $explanation = $this->generateExplanation($item, $type, $userProfile, $context);
                 $item['explanation'] = $explanation;
                 $item['confidence_factors'] = $this->getConfidenceFactors($item, $type);
                 $item['implementation_difficulty'] = $this->assessImplementationDifficulty($item, $type);
-                
+
                 $explained[$type][] = $item;
             }
         }
-        
+
         return $explained;
     }
 
@@ -445,24 +443,24 @@ class AIRecommendationEngineService
             'success_probability' => 0,
             'alternative_options' => []
         ];
-        
+
         switch ($type) {
             case 'products_to_clone':
                 $explanation['why_recommended'] = $this->explainCloneRecommendation($item, $userProfile);
                 break;
-                
+
             case 'pricing_opportunities':
                 $explanation['why_recommended'] = $this->explainPricingRecommendation($item, $userProfile);
                 break;
-                
+
             case 'market_opportunities':
                 $explanation['why_recommended'] = $this->explainMarketRecommendation($item, $userProfile);
                 break;
-                
+
             default:
                 $explanation['why_recommended'] = 'Recomendação baseada em análise de IA';
         }
-        
+
         return $explanation;
     }
 
@@ -518,7 +516,8 @@ class AIRecommendationEngineService
         ];
     }
 
-    private function recommendCategoryExpansion($profile, $context): array {
+    private function recommendCategoryExpansion($profile, $context): array
+    {
         $accountId = $context['account_id'] ?? null;
         if (!$accountId) {
             return [];
@@ -551,14 +550,15 @@ class AIRecommendationEngineService
         }
         return array_slice($recommendations, 0, 5);
     }
-    private function recommendCompetitiveStrategies($profile, $context): array {
+    private function recommendCompetitiveStrategies($profile, $context): array
+    {
         $accountId = $context['account_id'] ?? null;
         if (!$accountId) {
             return [];
         }
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     SUM(CASE WHEN competitor_price < my_price THEN 1 ELSE 0 END) as cheaper_count,
                     COUNT(*) as total_count
                 FROM competitor_tracking
@@ -584,7 +584,8 @@ class AIRecommendationEngineService
             return [];
         }
     }
-    private function recommendOptimizations($profile, $context): array {
+    private function recommendOptimizations($profile, $context): array
+    {
         $accountId = $context['account_id'] ?? null;
         if (!$accountId) {
             return [];
@@ -613,7 +614,8 @@ class AIRecommendationEngineService
             return [];
         }
     }
-    private function recommendTrendingProducts($profile, $context): array {
+    private function recommendTrendingProducts($profile, $context): array
+    {
         $accountId = $context['account_id'] ?? null;
         if (!$accountId) {
             return [];
@@ -640,7 +642,8 @@ class AIRecommendationEngineService
             return [];
         }
     }
-    private function recommendSeasonalOpportunities($profile, $context): array {
+    private function recommendSeasonalOpportunities($profile, $context): array
+    {
         $accountId = $context['account_id'] ?? null;
         if (!$accountId) {
             return [];
@@ -667,7 +670,8 @@ class AIRecommendationEngineService
             return [];
         }
     }
-    private function calculateRecommendationConfidence($recommendations, $profile): array {
+    private function calculateRecommendationConfidence($recommendations, $profile): array
+    {
         $scores = [];
         foreach ($recommendations as $group) {
             if (!is_array($group)) {
@@ -687,14 +691,16 @@ class AIRecommendationEngineService
         $avg = array_sum($scores) / count($scores);
         return ['average_confidence' => round($avg / 100, 2), 'min_confidence' => round(min($scores) / 100, 2)];
     }
-    private function summarizeUserProfile($profile): array {
+    private function summarizeUserProfile($profile): array
+    {
         return [
             'experience' => $profile['selling_experience'] ?? null,
             'categories' => $profile['preferred_categories'] ?? [],
             'price_range' => $profile['price_range_preference'] ?? []
         ];
     }
-    private function getPersonalizationFactors($profile): array {
+    private function getPersonalizationFactors($profile): array
+    {
         $factors = [];
         if (!empty($profile['selling_experience'])) $factors[] = 'selling_experience';
         if (!empty($profile['preferred_categories'])) $factors[] = 'preferred_categories';
@@ -703,8 +709,8 @@ class AIRecommendationEngineService
         if (!empty($profile['risk_tolerance'])) $factors[] = 'risk_tolerance';
         return $factors;
     }
-    private function findCloneCandidates($categories, $brands, $context): array 
-    { 
+    private function findCloneCandidates($categories, $brands, $context): array
+    {
         // Fetch real competitor items
         $accountId = $context['account_id'] ?? null;
         if (!$accountId) {
@@ -737,7 +743,8 @@ class AIRecommendationEngineService
         }
         return array_values($items);
     }
-    private function explainCloneRecommendation($item, $profile): string {
+    private function explainCloneRecommendation($item, $profile): string
+    {
         $score = $item['score'] ?? 0;
         if ($score >= 85) {
             return 'Alta demanda e baixa concorrência identificadas';
@@ -747,7 +754,8 @@ class AIRecommendationEngineService
         }
         return 'Oportunidade moderada com necessidade de ajuste de preço';
     }
-    private function predictClonePerformance($item, $profile): array {
+    private function predictClonePerformance($item, $profile): array
+    {
         $expectedSales = (int)($item['sold_quantity'] ?? 0);
         $price = (float)($item['price'] ?? 0);
         $revenue = $expectedSales * $price;
@@ -757,7 +765,8 @@ class AIRecommendationEngineService
             'roi' => $revenue > 0 ? round(($revenue * 0.2), 2) : 0
         ];
     }
-    private function identifyCloneRisks($item, $profile): array {
+    private function identifyCloneRisks($item, $profile): array
+    {
         $categoryId = $item['category_id'] ?? null;
         $competition = 'unknown';
         if ($categoryId) {
@@ -771,7 +780,8 @@ class AIRecommendationEngineService
             'stock' => (int)($item['available_quantity'] ?? 0) > 0 ? 'available' : 'unknown'
         ];
     }
-    private function generateCloneActionPlan($item): array {
+    private function generateCloneActionPlan($item): array
+    {
         $steps = ['Validar margem e custo logístico', 'Comparar preços com concorrentes'];
         if (!empty($item['category_id'])) {
             $steps[] = 'Revisar atributos da categoria';
@@ -779,7 +789,8 @@ class AIRecommendationEngineService
         $steps[] = 'Preparar anúncio com SEO completo';
         return ['steps' => $steps];
     }
-    private function identifyMarketGaps($profile, $context): array {
+    private function identifyMarketGaps($profile, $context): array
+    {
         try {
             $accountId = $context['account_id'] ?? null;
             if (!$accountId) {
@@ -837,28 +848,29 @@ class AIRecommendationEngineService
             return [];
         }
     }
-    private function identifyTrendingProducts($context): array 
-    { 
+    private function identifyTrendingProducts($context): array
+    {
         $stmt = $this->db->prepare("SELECT title, price, sold_quantity FROM competitor_items ORDER BY sold_quantity DESC LIMIT 5");
-         $stmt->execute();
-         $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-         
-         $trends = [];
-         foreach ($items as $item) {
-             $trends[] = [
+        $stmt->execute();
+        $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $trends = [];
+        foreach ($items as $item) {
+            $trends[] = [
                 'type' => substr($item['title'], 0, 30) . '...',
-                'strength' => ($item['sold_quantity'] ?? 0) > 50 ? 'high' : 'medium', 
-                'growth_rate' => null, 
-                'saturation' => 'unknown', 
-                'score' => (float)($item['sold_quantity'] ?? 0), 
-                'seasonal' => null, 
+                'strength' => ($item['sold_quantity'] ?? 0) > 50 ? 'high' : 'medium',
+                'growth_rate' => null,
+                'saturation' => 'unknown',
+                'score' => (float)($item['sold_quantity'] ?? 0),
+                'seasonal' => null,
                 'action' => 'Monitorar concorrência'
-             ];
-         }
-         
-         return $trends;
+            ];
+        }
+
+        return $trends;
     }
-    private function identifyUndersuppliedNiches($profile, $context): array {
+    private function identifyUndersuppliedNiches($profile, $context): array
+    {
         try {
             $accountId = $context['account_id'] ?? null;
             if (!$accountId) {
@@ -921,15 +933,15 @@ class AIRecommendationEngineService
             return [];
         }
     }
-    private function getUserProducts($userId): array 
-    { 
+    private function getUserProducts($userId): array
+    {
         $stmt = $this->db->prepare("
-            SELECT ml_item_id as id, title, price, category_id 
-            FROM items 
+            SELECT ml_item_id as id, title, price, category_id
+            FROM items
             WHERE account_id = :account_id
-            ORDER BY created_at DESC 
+            ORDER BY created_at DESC
             LIMIT 50
-        "); 
+        ");
         $accountId = $this->resolveAccountId($userId);
         if (!$accountId) {
             return [];
@@ -937,7 +949,8 @@ class AIRecommendationEngineService
         $stmt->execute(['account_id' => $accountId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    private function analyzePricingOpportunity($product, $context): array {
+    private function analyzePricingOpportunity($product, $context): array
+    {
         $categoryId = $product['category_id'] ?? null;
         $price = (float)($product['price'] ?? 0);
         if (!$categoryId || $price <= 0) {
@@ -1476,11 +1489,23 @@ class AIRecommendationEngineService
 
             // Mapear estado para região
             $regionMap = [
-                'SP' => 'southeast', 'RJ' => 'southeast', 'MG' => 'southeast', 'ES' => 'southeast',
-                'PR' => 'south', 'SC' => 'south', 'RS' => 'south',
-                'BA' => 'northeast', 'PE' => 'northeast', 'CE' => 'northeast', 'MA' => 'northeast',
-                'PA' => 'north', 'AM' => 'north',
-                'GO' => 'midwest', 'MT' => 'midwest', 'MS' => 'midwest', 'DF' => 'midwest'
+                'SP' => 'southeast',
+                'RJ' => 'southeast',
+                'MG' => 'southeast',
+                'ES' => 'southeast',
+                'PR' => 'south',
+                'SC' => 'south',
+                'RS' => 'south',
+                'BA' => 'northeast',
+                'PE' => 'northeast',
+                'CE' => 'northeast',
+                'MA' => 'northeast',
+                'PA' => 'north',
+                'AM' => 'north',
+                'GO' => 'midwest',
+                'MT' => 'midwest',
+                'MS' => 'midwest',
+                'DF' => 'midwest'
             ];
 
             $region = $state ? ($regionMap[$state] ?? null) : null;
@@ -1791,16 +1816,24 @@ class AIRecommendationEngineService
 
         $weights = [
             'products_to_clone' => [
-                'beginner' => 1.2, 'intermediate' => 1.0, 'advanced' => 0.8
+                'beginner' => 1.2,
+                'intermediate' => 1.0,
+                'advanced' => 0.8
             ],
             'pricing_opportunities' => [
-                'beginner' => 0.7, 'intermediate' => 1.0, 'advanced' => 1.2
+                'beginner' => 0.7,
+                'intermediate' => 1.0,
+                'advanced' => 1.2
             ],
             'market_opportunities' => [
-                'startup' => 1.1, 'growth' => 1.2, 'mature' => 1.0
+                'startup' => 1.1,
+                'growth' => 1.2,
+                'mature' => 1.0
             ],
             'optimization_actions' => [
-                'beginner' => 1.0, 'intermediate' => 1.1, 'advanced' => 1.2
+                'beginner' => 1.0,
+                'intermediate' => 1.1,
+                'advanced' => 1.2
             ]
         ];
 
@@ -1874,11 +1907,11 @@ class AIRecommendationEngineService
         if ($recommendedPrice > $currentPrice) {
             $increase = round((($recommendedPrice - $currentPrice) / $currentPrice) * 100, 1);
             return "Análise de mercado indica oportunidade de aumento de {$increase}%. " .
-                   "Produtos similares estão sendo vendidos a preços maiores com boa conversão.";
+                "Produtos similares estão sendo vendidos a preços maiores com boa conversão.";
         } elseif ($recommendedPrice < $currentPrice) {
             $decrease = round((($currentPrice - $recommendedPrice) / $currentPrice) * 100, 1);
             return "Recomendamos redução de {$decrease}% para aumentar competitividade. " .
-                   "Concorrentes com preços menores estão capturando maior volume de vendas.";
+                "Concorrentes com preços menores estão capturando maior volume de vendas.";
         }
 
         return "Preço atual está adequado ao mercado. Mantenha e monitore a concorrência.";
@@ -1895,17 +1928,17 @@ class AIRecommendationEngineService
         switch ($type) {
             case 'market_gap':
                 return "Identificamos uma lacuna de mercado com baixa concorrência e demanda consistente. " .
-                       "Score de oportunidade: {$score}/100.";
+                    "Score de oportunidade: {$score}/100.";
 
             case 'trending_product':
                 $growth = $item['growth_rate'] ?? 0;
                 return "Produto em tendência com crescimento de {$growth}% nas últimas semanas. " .
-                       "Boa oportunidade para entrada rápida no mercado.";
+                    "Boa oportunidade para entrada rápida no mercado.";
 
             case 'undersupplied_niche':
                 $ratio = $item['supply_demand_ratio'] ?? 1;
                 return "Nicho com demanda {$ratio}x maior que a oferta atual. " .
-                       "Potencial de margens acima da média do mercado.";
+                    "Potencial de margens acima da média do mercado.";
 
             default:
                 return "Oportunidade identificada através de análise de dados de mercado.";

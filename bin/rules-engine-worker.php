@@ -3,12 +3,12 @@
 
 /**
  * Rules Engine Worker
- * 
+ *
  * Processa regras de precificação automáticas
- * 
+ *
  * Usage:
  *   php bin/rules-engine-worker.php [--once] [--account=ID] [--verbose]
- * 
+ *
  * Options:
  *   --once      Executa uma vez e sai
  *   --account   Processa apenas uma conta específica
@@ -46,7 +46,8 @@ $specificAccount = $options['account'] ?? null;
 $verbose = isset($options['verbose']);
 
 // Logger
-function logMsg(string $message, bool $verbose = false): void {
+function logMsg(string $message, bool $verbose = false): void
+{
     global $verbose;
     if ($verbose || !$verbose) {
         echo "[" . date('Y-m-d H:i:s') . "] {$message}\n";
@@ -81,40 +82,40 @@ do {
         foreach ($accounts as $account) {
             $accountId = $account['id'];
             $accountName = $account['nickname'] ?? "Account #{$accountId}";
-            
+
             if ($verbose) {
                 logMsg("📊 Processando conta: {$accountName}");
             }
-            
+
             try {
                 // Verificar regras ativas
                 $stmt = $db->prepare("
-                    SELECT COUNT(*) as count 
-                    FROM pricing_rules 
+                    SELECT COUNT(*) as count
+                    FROM pricing_rules
                     WHERE account_id = :account_id AND is_active = 1
                 ");
                 $stmt->execute(['account_id' => $accountId]);
                 $ruleCount = $stmt->fetchColumn();
-                
+
                 if ($ruleCount == 0) {
                     if ($verbose) {
                         logMsg("  ⏭️  Nenhuma regra ativa");
                     }
                     continue;
                 }
-                
+
                 logMsg("  🔧 Executando {$ruleCount} regras...");
-                
+
                 // Executar regras
                 $service = new PriceRulesEngineService($accountId);
                 $result = $service->executeAllRules(true, 50); // Aplica em lotes de 50
-                
+
                 if ($result['success']) {
                     $applied = $result['applied'] ?? 0;
                     $skipped = $result['skipped'] ?? 0;
-                    
+
                     logMsg("  ✅ Concluído: {$applied} aplicados, {$skipped} ignorados");
-                    
+
                     // Enviar notificação se houver mudanças
                     if ($applied > 0) {
                         try {
@@ -138,27 +139,24 @@ do {
                 } else {
                     logMsg("  ❌ Erro: " . ($result['message'] ?? 'Desconhecido'));
                 }
-                
             } catch (\Throwable $e) {
                 logMsg("  ❌ Erro na conta {$accountId}: " . $e->getMessage());
             }
         }
-        
+
         if (!$runOnce) {
             // Aguardar antes do próximo ciclo (5 minutos)
             $sleepTime = 300;
             logMsg("💤 Aguardando {$sleepTime}s até próximo ciclo...");
             sleep($sleepTime);
         }
-        
     } catch (\Throwable $e) {
         logMsg("❌ Erro crítico: " . $e->getMessage());
-        
+
         if (!$runOnce) {
             sleep(60); // Aguardar 1 minuto em caso de erro
         }
     }
-    
 } while (!$runOnce);
 
 logMsg("🏁 Rules Engine Worker finalizado");
