@@ -6,6 +6,40 @@
 
 ---
 
+## Sessão: 2026-02-25a — Tooling de deploy para produção com dados reais do ML
+
+### Contexto
+Solicitação para finalizar a implementação do eskill.com.br para rodar REAL em produção com dados reais do Mercado Livre. 7 tarefas priorizadas: (1) Infraestrutura, (2) Auth ML, (3) Dados reais, (4) SEO, (5) Clone, (6) Workers/Crons, (7) Monitoramento.
+
+### Descobertas
+- Ambiente sandbox CloudWays com root FS read-only — não é possível iniciar/parar serviços diretamente
+- Arquitetura CloudWays: Client → Nginx(:443 SSL) → Nginx(:8080 proxy) → PHP-FPM(:19001 TCP)
+- .env já configurado corretamente para produção (APP_ENV=production, APP_URL=https://eskill.com.br)
+- Todas as chaves de API presentes: ML_APP_ID, ML_CLIENT_SECRET, ML_REDIRECT_URI, OPENAI_API_KEY, TELEGRAM
+- Redis/MySQL indisponíveis no sandbox (esperado — CloudWays painel gerencia)
+
+### Implementado
+- **`bin/deploy.sh`** (249 linhas) — Script master de deploy com modos: --check, --services, --cron, --migrate, full
+- **`bin/production-check.php`** — Health checker PHP completo: MySQL, Redis, PHP-FPM, Nginx, PHP extensions, ML config, OpenAI, Telegram, disco
+- **`bin/collect-ml-data.php`** — Coleta inicial de dados ML para todas as contas ativas (items, orders, test mode)
+- **`config/production-crontab`** — Crontab completo: token refresh (30min), poll_orders (15min), poll_items (6h), bulk SEO (1h), competitor (6h), clone (1min), repricer (10min), AI (1min), monitoramento, backups, limpeza
+- **`config/nginx.conf`** — Atualizado para CloudWays (TCP :19001 ao invés de unix socket), headers de segurança, cache de assets
+
+### Validação
+- `php -l` em todos os 4 arquivos PHP criados/editados: sem erros
+- `php vendor/bin/phpunit --testsuite=Unit`: 2896 testes, 6727 assertions, 0 falhas, 34 skipped (DB)
+- Rota `/auth/callback` bate com ML_REDIRECT_URI no .env ✓
+- Redis/cache graceful degradation confirmada em CacheMiddleware, RateLimitMiddleware ✓
+
+### Próximos Passos (requer serviços rodando)
+1. Rodar `bash bin/deploy.sh --check` no servidor real
+2. Rodar `php bin/migrate.php` para aplicar 102 migrações
+3. Acessar https://eskill.com.br/auth/authorize → completar OAuth ML
+4. Rodar `php bin/collect-ml-data.php --test` → `--all` para coleta inicial
+5. Instalar crontab: `crontab config/production-crontab`
+
+---
+
 ## Sessão: 2026-02-24g — integração OpenClaw com paginação/filtros da API do Mercado Livre
 
 ### Contexto
