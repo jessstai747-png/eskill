@@ -1,0 +1,31 @@
+{
+  "name": "account-monitor",
+  "version": "1.0.0",
+  "description": "MVP Account Monitor — Telegram alerts + daily digest for eskill OpenClaw sellers",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "collect": "tsx src/index.ts collect",
+    "analyze": "tsx src/index.ts analyze",
+    "digest": "tsx src/index.ts digest",
+    "cron": "tsx src/index.ts cron",
+    "start": "node dist/index.js cron",
+    "dev": "tsx watch src/index.ts cron"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.13.5",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
