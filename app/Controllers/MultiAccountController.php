@@ -166,7 +166,7 @@ class MultiAccountController
             if (!$accountIds) {
                 // Buscar todas as contas do usuário
                 $stmt = \App\Database::getInstance()->prepare("
-                    SELECT id FROM ml_accounts WHERE user_id = ? AND is_active = 1
+                    SELECT id FROM ml_accounts WHERE user_id = ? AND status = 'active'
                 ");
                 $stmt->execute([$this->userId]);
                 $accountIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
@@ -268,7 +268,7 @@ class MultiAccountController
                     ma.id,
                     ma.nickname,
                     ma.country_id,
-                    ma.is_active,
+                    ma.status,
                     ma.created_at,
                     COUNT(DISTINCT so.item_id) as items_count,
                     COUNT(so.id) as optimizations_count,
@@ -278,7 +278,7 @@ class MultiAccountController
                 LEFT JOIN seo_optimizations so ON so.account_id = ma.id
                 WHERE ma.user_id = ?
                 GROUP BY ma.id
-                ORDER BY ma.is_active DESC, optimizations_count DESC
+                ORDER BY (ma.status = 'active') DESC, optimizations_count DESC
             ");
             $stmt->execute([$this->userId]);
             $accounts = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -286,7 +286,7 @@ class MultiAccountController
             $this->jsonResponse([
                 'accounts' => $accounts,
                 'total' => count($accounts),
-                'active' => count(array_filter($accounts, fn($a) => $a['is_active']))
+                'active' => count(array_filter($accounts, fn($a) => ($a['status'] ?? '') === 'active'))
             ]);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);

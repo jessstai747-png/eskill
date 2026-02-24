@@ -7,14 +7,14 @@ use PDO;
 
 /**
  * Multi-Account Manager Service
- * 
+ *
  * Gerencia operações em múltiplas contas do Mercado Livre simultaneamente:
  * - Dashboard consolidado
  * - Comparações entre contas
  * - Relatórios unificados
  * - Operações em lote cross-account
  * - Agrupamento de contas
- * 
+ *
  * @package App\Services\AI\SEO
  * @version 1.9.0
  * @since 2025-12-31
@@ -32,7 +32,7 @@ class MultiAccountManager
 
     /**
      * Dashboard consolidado de todas as contas
-     * 
+     *
      * @param array|null $accountIds IDs específicos ou null para todas
      * @param array $options Filtros e opções adicionais
      * @return array Dashboard com métricas agregadas
@@ -40,7 +40,7 @@ class MultiAccountManager
     public function getDashboard(?array $accountIds = null, array $options = []): array
     {
         $accountIds = $accountIds ?? $this->getUserAccountIds();
-        
+
         if (empty($accountIds)) {
             return [
                 'accounts' => [],
@@ -51,10 +51,10 @@ class MultiAccountManager
         }
 
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         // Métricas totais
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(DISTINCT so.item_id) as total_items,
                 COUNT(so.id) as total_optimizations,
                 AVG(so.score_improvement) as avg_improvement,
@@ -68,11 +68,11 @@ class MultiAccountManager
 
         // Performance por conta
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 ma.id,
                 ma.nickname,
                 ma.country_id,
-                ma.is_active,
+                ma.status,
                 COUNT(DISTINCT so.item_id) as items_count,
                 COUNT(so.id) as optimizations_count,
                 AVG(so.score_before) as avg_score_before,
@@ -97,7 +97,7 @@ class MultiAccountManager
 
         // Distribuição por tipo de otimização
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 optimization_type,
                 COUNT(*) as count
             FROM seo_optimizations
@@ -117,7 +117,7 @@ class MultiAccountManager
                 'optimizations_7d' => (int)$totals['optimizations_7d'],
                 'optimizations_30d' => (int)$totals['optimizations_30d'],
                 'total_accounts' => count($accounts),
-                'active_accounts' => count(array_filter($accounts, fn($a) => $a['is_active']))
+                'active_accounts' => count(array_filter($accounts, fn($a) => ($a['status'] ?? '') === 'active'))
             ],
             'trends' => $trends,
             'alerts' => $alerts,
@@ -127,7 +127,7 @@ class MultiAccountManager
 
     /**
      * Compara performance entre múltiplas contas
-     * 
+     *
      * @param array $accountIds IDs das contas a comparar
      * @param string $metric Métrica para comparar (score, sales, views, conversions)
      * @param int $days Período em dias
@@ -140,10 +140,10 @@ class MultiAccountManager
         }
 
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         // Validar contas pertencem ao usuário
         $stmt = $this->db->prepare("
-            SELECT id, nickname FROM ml_accounts 
+            SELECT id, nickname FROM ml_accounts
             WHERE id IN ($placeholders) AND user_id = ?
         ");
         $stmt->execute([...$accountIds, $this->userId]);
@@ -184,7 +184,7 @@ class MultiAccountManager
 
     /**
      * Relatório consolidado de múltiplas contas
-     * 
+     *
      * @param array $accountIds IDs das contas
      * @param string $period Período (daily, weekly, monthly)
      * @param array $options Opções adicionais
@@ -193,13 +193,13 @@ class MultiAccountManager
     public function consolidatedReport(array $accountIds, string $period = 'monthly', array $options = []): array
     {
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         // Determinar range de datas
         $dateRange = $this->getDateRange($period);
 
         // Otimizações por conta
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 ma.id,
                 ma.nickname,
                 COUNT(so.id) as optimizations,
@@ -219,7 +219,7 @@ class MultiAccountManager
 
         // Performance tracking
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 account_id,
                 AVG(score_after - score_before) as avg_score_gain,
                 SUM(views_increase) as total_views_increase,
@@ -237,7 +237,7 @@ class MultiAccountManager
         foreach ($accountStats as $stat) {
             $perf = array_filter($performance, fn($p) => $p['account_id'] == $stat['id']);
             $perf = reset($perf) ?: ['avg_score_gain' => 0, 'total_views_increase' => 0, 'total_sales_increase' => 0];
-            
+
             $report[] = [
                 'account_id' => $stat['id'],
                 'nickname' => $stat['nickname'],
@@ -283,7 +283,7 @@ class MultiAccountManager
 
     /**
      * Otimização em lote cross-account
-     * 
+     *
      * @param array $accountIds IDs das contas
      * @param array $options Opções de otimização
      * @return array Resultado da operação
@@ -302,7 +302,7 @@ class MultiAccountManager
                     SELECT id FROM ml_accounts WHERE id = ? AND user_id = ?
                 ");
                 $stmt->execute([$accountId, $this->userId]);
-                
+
                 if (!$stmt->fetch()) {
                     $results[] = [
                         'account_id' => $accountId,
@@ -351,7 +351,6 @@ class MultiAccountManager
 
                 $totalProcessed += count($itemIds);
                 $totalSuccess++;
-
             } catch (\Exception $e) {
                 $results[] = [
                     'account_id' => $accountId,
@@ -373,7 +372,7 @@ class MultiAccountManager
 
     /**
      * Gerenciar grupos de contas
-     * 
+     *
      * @param string $action create, update, delete, list
      * @param array $data Dados do grupo
      * @return array Resultado da operação
@@ -400,7 +399,7 @@ class MultiAccountManager
 
     /**
      * Trocar contexto de conta ativa
-     * 
+     *
      * @param int $accountId ID da conta
      * @return array Dados da conta ativada
      */
@@ -436,7 +435,7 @@ class MultiAccountManager
                 'id' => $account['id'],
                 'nickname' => $account['nickname'],
                 'country_id' => $account['country_id'],
-                'is_active' => (bool)$account['is_active']
+                'is_active' => ($account['status'] ?? '') === 'active'
             ]
         ];
     }
@@ -468,9 +467,9 @@ class MultiAccountManager
     private function getTrends(array $accountIds): array
     {
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(created_at) as date,
                 COUNT(*) as optimizations,
                 AVG(score_improvement) as avg_improvement
@@ -489,9 +488,9 @@ class MultiAccountManager
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
 
         $limitSql = max(1, min(200, (int)$limit));
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 ca.*,
                 ma.nickname as account_nickname
             FROM competitor_alerts ca
@@ -508,9 +507,9 @@ class MultiAccountManager
     private function compareScores(array $accountIds, int $days): array
     {
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 account_id,
                 AVG(score_before) as avg_score_before,
                 AVG(score_after) as avg_score_after,
@@ -527,9 +526,9 @@ class MultiAccountManager
     private function compareSales(array $accountIds, int $days): array
     {
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 account_id,
                 SUM(sales_increase) as total_sales_increase,
                 AVG(sales_increase) as avg_sales_increase
@@ -545,9 +544,9 @@ class MultiAccountManager
     private function compareViews(array $accountIds, int $days): array
     {
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 account_id,
                 SUM(views_increase) as total_views_increase,
                 AVG(views_increase) as avg_views_increase
@@ -563,9 +562,9 @@ class MultiAccountManager
     private function compareConversions(array $accountIds, int $days): array
     {
         $placeholders = str_repeat('?,', count($accountIds) - 1) . '?';
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 account_id,
                 SUM(sales_increase) / NULLIF(SUM(views_increase), 0) * 100 as conversion_rate
             FROM seo_optimizations
@@ -606,7 +605,7 @@ class MultiAccountManager
         // Variação
         $values = array_column($comparison, 'avg_improvement');
         $stddev = $this->calculateStdDev($values);
-        
+
         if ($stddev < 5) {
             $insights[] = "Performance is consistent across accounts (low variation)";
         } else {
@@ -623,7 +622,7 @@ class MultiAccountManager
         // Top performer
         usort($report, fn($a, $b) => $b['optimizations'] <=> $a['optimizations']);
         $top = $report[0] ?? null;
-        
+
         if ($top) {
             $insights[] = "Most active account: {$top['nickname']} with {$top['optimizations']} optimizations";
         }
@@ -645,7 +644,7 @@ class MultiAccountManager
     private function getDateRange(string $period): array
     {
         $end = date('Y-m-d H:i:s');
-        
+
         switch ($period) {
             case 'daily':
                 $start = date('Y-m-d 00:00:00');
@@ -666,10 +665,10 @@ class MultiAccountManager
     private function calculateStdDev(array $values): float
     {
         if (empty($values)) return 0;
-        
+
         $mean = array_sum($values) / count($values);
         $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $values)) / count($values);
-        
+
         return sqrt($variance);
     }
 
@@ -679,7 +678,7 @@ class MultiAccountManager
             INSERT INTO account_groups (user_id, name, description, created_at)
             VALUES (?, ?, ?, NOW())
         ");
-        
+
         $stmt->execute([
             $this->userId,
             $data['name'],
@@ -705,11 +704,11 @@ class MultiAccountManager
     private function updateAccountGroup(array $data): array
     {
         $stmt = $this->db->prepare("
-            UPDATE account_groups 
+            UPDATE account_groups
             SET name = ?, description = ?
             WHERE id = ? AND user_id = ?
         ");
-        
+
         $stmt->execute([
             $data['name'],
             $data['description'] ?? null,
@@ -746,7 +745,7 @@ class MultiAccountManager
     private function listAccountGroups(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 ag.*,
                 COUNT(agm.account_id) as account_count
             FROM account_groups ag
@@ -755,7 +754,7 @@ class MultiAccountManager
             GROUP BY ag.id
         ");
         $stmt->execute([$this->userId]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -776,7 +775,7 @@ class MultiAccountManager
     private function removeAccountFromGroup(int $groupId, int $accountId): array
     {
         $stmt = $this->db->prepare("
-            DELETE FROM account_group_members 
+            DELETE FROM account_group_members
             WHERE group_id = ? AND account_id = ?
         ");
         $stmt->execute([$groupId, $accountId]);

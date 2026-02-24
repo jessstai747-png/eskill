@@ -6,6 +6,48 @@
 
 ---
 
+## Sessão: 2026-02-25c — Auditoria estendida app/ layer + fix log paths crontab
+
+### Contexto
+Continuação da sessão 2026-02-25b. Auditoria do app/ layer (Controllers, Services) e scripts/ para os mesmos padrões de bugs encontrados nos workers bin/.
+
+### Bugs Encontrados e Corrigidos
+
+1. **`app/Controllers/MultiAccountController.php`** — 4 bugs de `is_active` no `ml_accounts`:
+   - Linha 169: `WHERE is_active = 1` → `WHERE status = 'active'`
+   - Linha 271: `ma.is_active` no SELECT → `ma.status`
+   - Linha 281: `ORDER BY ma.is_active DESC` → `ORDER BY (ma.status = 'active') DESC`
+   - Linha 289: `fn($a) => $a['is_active']` → `fn($a) => ($a['status'] ?? '') === 'active'`
+
+2. **`app/Services/AI/SEO/MultiAccountManager.php`** — 3 bugs de `is_active`:
+   - Linha 75: `ma.is_active` no SELECT → `ma.status`
+   - Linha 120: `fn($a) => $a['is_active']` → `fn($a) => ($a['status'] ?? '') === 'active'`
+   - Linha 439: `(bool)$account['is_active']` → `($account['status'] ?? '') === 'active'`
+
+3. **`config/production-crontab`** — Log path mismatch com health check:
+   - `clone_worker.log` → `cron-catalog-clone.log` (para alinhar com health check)
+   - `clone_post_actions.log` → `cron-post-actions.log`
+   - Adicionado `bin/clone-health-monitor.php` com log em `cron-health.log`
+
+### Auditorias Realizadas (sem bugs encontrados)
+- `scripts/poll_items.php` — Usa nickname + status='active' corretamente
+- `scripts/poll_questions.php` — seller_id é coluna real em ml_questions, não ml_accounts
+- `scripts/poll_orders.php` — Delega para PollingService
+- `scripts/refresh_ml_tokens.php` — Delega para TokenRefreshJob
+- `scripts/scheduler.php` — is_active está em scheduled_reports (tabela correta)
+- `scripts/cron_health_check.php` — Não faz queries SQL
+- `scripts/cron_auto_remediate.php` — Não faz queries SQL
+- Todos os 26 scripts do production-crontab existem como arquivos
+- `mp_access_token` — só em MercadoPagoService via ean_settings (correto)
+- Sweep completo de `$account['name']` — nenhum restante no codebase
+- Verificação completa de item_id → nenhum INSERT INTO items com coluna errada
+
+### Validação
+- `php -l` em todos os arquivos editados: sem erros
+- `php vendor/bin/phpunit --testsuite=Unit`: 2896 testes, 0 falhas, 34 skipped
+
+---
+
 ## Sessão: 2026-02-25b — Auditoria de schema SQL em workers de produção
 
 ### Contexto

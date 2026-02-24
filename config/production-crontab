@@ -41,13 +41,16 @@ LOG=/home/eskill/htdocs/eskill.com.br/storage/logs
 
 # ── CATALOG CLONE ──
 # Clone Worker: a cada minuto (processa jobs pendentes)
-* * * * * cd $PROJECT && $PHP bin/catalog-clone-worker.php >> $LOG/clone_worker.log 2>&1
+* * * * * cd $PROJECT && $PHP bin/catalog-clone-worker.php >> $LOG/cron-catalog-clone.log 2>&1
 
 # Clone Post-Actions: a cada 2 minutos
-*/2 * * * * cd $PROJECT && $PHP bin/clone-post-actions-worker.php >> $LOG/clone_post_actions.log 2>&1
+*/2 * * * * cd $PROJECT && $PHP bin/clone-post-actions-worker.php >> $LOG/cron-post-actions.log 2>&1
 
 # Clone Sync: a cada 15 minutos
 */15 * * * * cd $PROJECT && $PHP bin/clone-sync-worker.php >> $LOG/clone_sync.log 2>&1
+
+# Clone Health Monitor: a cada 10 minutos
+*/10 * * * * cd $PROJECT && $PHP bin/clone-health-monitor.php >> $LOG/cron-health.log 2>&1
 
 # ── PRICING ──
 # Repricer: a cada 10 minutos
