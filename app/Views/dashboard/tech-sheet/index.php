@@ -3468,7 +3468,7 @@ const TechSheet = {
                                     <div class="action-dropdown-item success" onclick="TechSheet.openPreviewModal('${item.item_id}')">
                                         <i class="fas fa-eye"></i> Preview & Aplicar
                                     </div>
-                                    <div class="action-dropdown-item" onclick="window.open('https://www.mercadolivre.com.br/p/${item.item_id}', '_blank')">
+                                    <div class="action-dropdown-item" onclick="window.open(ML.itemUrl('${item.item_id}'), '_blank')">
                                         <i class="fas fa-external-link-alt"></i> Ver no ML
                                     </div>
                                 </div>

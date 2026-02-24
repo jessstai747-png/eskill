@@ -1008,7 +1008,7 @@
                     </div>
 
                     <div class="d-flex gap-2 mt-3">
-                        <a href="https://www.mercadolivre.com.br/p/${competitor.id}" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <a href="${ML.itemUrl(competitor.id)}" target="_blank" class="btn btn-outline-primary btn-sm">
                             <i class="bi bi-box-arrow-up-right"></i> Ver no ML
                         </a>
                         <button class="btn btn-outline-success btn-sm" onclick="CompetitorSpy.toggleWatchlist('${competitor.id}')">

@@ -6,6 +6,78 @@
 
 ---
 
+## Sessão: 2026-02-24 — refactor: centralizar URLs ML + fix api() wrapper + corrigir 5 views
+
+### Contexto
+Correção completa baseada no diagnóstico da sessão anterior. O fix inicial corrigiu apenas o clone wizard, mas o mesmo padrão errado de URL (`/p/` + ID sem dash) existia em mais 4 views. Além disso, o `api()` wrapper do wizard não rejeitava em HTTP errors e não enviava CSRF token.
+
+### Implementado
+
+#### A. PHP Helper: `MercadoLivreHelper`
+- Novo helper `app/Helpers/MercadoLivreHelper.php` com 3 métodos estáticos:
+  - `formatItemId()` — MLB1234567890 → MLB-1234567890 (idempotente)
+  - `itemUrl()` — Constrói URL completa: https://produto.mercadolivre.com.br/MLB-1234567890
+  - `extractItemId()` — Extrai e normaliza ID de qualquer URL ML
+- `ItemService.php` atualizado para usar `MercadoLivreHelper::itemUrl()` em vez de string inline
+
+#### B. JS Global Utility: `window.ML`
+- Adicionado `window.ML` ao `dashboard-modern.js` (carregado por todas as views do layout moderno)
+- `ML.formatItemId(id)` — formata ID com dash (mesma lógica do PHP)
+- `ML.itemUrl(id)` — constrói URL completa para uso em template literals
+
+#### C. Fix `api()` wrapper no Clone Wizard
+- Adicionado reject em HTTP 4xx/5xx (antes retornava silenciosamente `null` do `r.json()`)
+- Body do erro é parseado e anexado ao objeto Error (`err.body`, `err.status`)
+- Adicionado envio automático de CSRF token via `X-CSRF-TOKEN` header
+- Callers existentes compatíveis — `.catch()` handlers já tratam erros
+
+#### D. Correção de 4 views adicionais com URL errada
+- `tech-sheet/index.php` — `ML.itemUrl('${item.item_id}')`
+- `pricing/dashboard.php` — `${ML.itemUrl(item.id)}`
+- `clone_items_management.php` — `${ML.itemUrl(item.target_item_id)}`
+- `competitor-spy-tab.php` — `${ML.itemUrl(competitor.id)}`
+
+#### E. Removida função local `formatMlItemId()` do wizard
+- Wizard agora usa `ML.itemUrl()` global ao invés de função inline duplicada
+
+### Testes
+- 11 novos testes em `MercadoLivreHelperTest.php` cobrindo formatItemId, itemUrl, extractItemId
+- 2896 testes passando (0 falhas, 34 skips pré-existentes)
+- `php -l` — 7 arquivos sem erros de sintaxe
+
+---
+
+## Sessão: 2026-02-24 — fix(clone-wizard): URL de item ML + race condition nickname
+
+### Contexto
+Diagnóstico solicitado sobre a implementação anterior (commit a8d087d). Auditoria completa do fluxo de dados: wizard JS → controller → service → DB → worker → ML API.
+
+### Bugs Encontrados e Corrigidos
+
+#### Bug 1 (Primário): URL de item-alvo incorreta nos resultados do job
+- **Sintoma**: Links de itens clonados levavam a 404 no Mercado Livre
+- **Causa raiz**: URL usava `https://www.mercadolivre.com.br/p/MLB1234567890` — o path `/p/` é para fichas de catálogo (produtos), não para anúncios (items). IDs de item (ex: MLB1234567890) precisam de dash e domínio diferente
+- **Fix**: Mudado para `https://produto.mercadolivre.com.br/MLB-1234567890`
+- Adicionada função helper `formatMlItemId()` que insere dash entre prefixo de site (3 letras) e parte numérica
+
+#### Bug 2 (Secundário): Race condition no nickname da conta
+- **Sintoma**: Navegar entre passos 3→4 múltiplas vezes causava nickname duplicado: "Conta AWA (nick) (nick) (nick)"
+- **Causa raiz**: `textContent +=` acumulava a cada resposta assíncrona de validação. `populateSummary()` reseta com `=`, mas resposta async de navegação anterior chegava depois de novo `populateSummary()`
+- **Fix**: Mudado para `textContent =` com re-derivação do nome base da conta a partir do select element
+
+### Confirmações (não são bugs)
+- `normalizeCloneOptions()` É chamado corretamente em `JobService.php:504`
+- Fluxo de pricing end-to-end está correto
+- `sellerTotalItems` inicializado corretamente
+- `api()` não rejeitar em HTTP errors é pré-existente (não introduzido nesta implementação)
+
+### Validação
+- `php -l` — sem erros de sintaxe
+- PHPUnit — 104 testes CatalogCloneServiceTest passando
+- Commit: `0175400`
+
+---
+
 ## Sessão: 2026-02-24 — feat(clone-wizard): validação pré-execução + select all + resultados detalhados + fix pricing type mapping
 
 ### Contexto

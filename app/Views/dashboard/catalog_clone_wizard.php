@@ -607,10 +607,22 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
       function api(url, opts) {
          opts = opts || {};
          opts.headers = Object.assign({
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': (typeof window.getCsrfToken === 'function')
+               ? window.getCsrfToken()
+               : (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
          }, opts.headers || {});
          return fetch(url, opts).then(function(r) {
-            return r.json();
+            // Rejeitar HTTP errors (4xx/5xx) — attach body para callers que precisam de detalhes
+            return r.json().catch(function() { return null; }).then(function(body) {
+               if (!r.ok) {
+                  var err = new Error(body && body.error ? body.error : 'HTTP ' + r.status);
+                  err.status = r.status;
+                  err.body = body;
+                  throw err;
+               }
+               return body;
+            });
          });
       }
 
@@ -838,16 +850,6 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
          return String(str)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      }
-
-      /**
-       * Formata ML item ID para URL: MLB1234567890 → MLB-1234567890
-       * Insere dash entre prefixo de site (3 letras) e parte numérica.
-       */
-      function formatMlItemId(id) {
-         var s = String(id);
-         var m = s.match(/^([A-Z]{3})(\d+)$/);
-         return m ? m[1] + '-' + m[2] : s;
       }
 
       function renderItems() {
@@ -1110,9 +1112,9 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 
                // Show account info if available (usar = em vez de += para evitar acúmulo em race conditions)
                if (data.account && data.account.nickname) {
-                  var baseAcctName = qs('targetAccountSelect').options[qs('targetAccountSelect').selectedIndex]
-                     ? qs('targetAccountSelect').options[qs('targetAccountSelect').selectedIndex].text
-                     : '—';
+                  var baseAcctName = qs('targetAccountSelect').options[qs('targetAccountSelect').selectedIndex] ?
+                     qs('targetAccountSelect').options[qs('targetAccountSelect').selectedIndex].text :
+                     '—';
                   qs('summAccount').textContent = baseAcctName + ' (' + data.account.nickname + ')';
                }
 
@@ -1277,9 +1279,8 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             var st = String(item.status || 'pending');
             var badge = statusBadge[st] || '<span class="badge bg-light text-dark">' + escHtml(st) + '</span>';
             var sourceId = escHtml(String(item.source_item_id || ''));
-            // ML item IDs (ex: MLB1234567890) → URL: produto.mercadolivre.com.br/MLB-1234567890
             var targetId = item.target_item_id ?
-               '<a href="https://produto.mercadolivre.com.br/' + escHtml(formatMlItemId(item.target_item_id)) + '" target="_blank" rel="noopener">' +
+               '<a href="' + escHtml(ML.itemUrl(item.target_item_id)) + '" target="_blank" rel="noopener">' +
                escHtml(item.target_item_id) + ' <i class="bi bi-box-arrow-up-right"></i></a>' :
                '—';
             var detail = escHtml(String(item.error_message || ''));

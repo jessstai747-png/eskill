@@ -390,7 +390,7 @@ function renderItems(items) {
                         <button class="btn btn-outline-info" data-action="syncitem" data-param="${item.target_item_id}" title="Sincronizar">
                             <i class="fas fa-sync-alt"></i>
                         </button>
-                        <a href="https://www.mercadolivre.com.br/p/${item.target_item_id}" 
+                        <a href="${ML.itemUrl(item.target_item_id)}" 
                            target="_blank" class="btn btn-outline-warning" title="Ver no ML">
                             <i class="fas fa-external-link-alt"></i>
                         </a>

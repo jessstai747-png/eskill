@@ -2763,7 +2763,7 @@ function renderItems(items) {
                 <button class="btn btn-sm btn-primary" onclick="abrirPrecificador('${item.id}')" title="Precificador">
                     <i class="bi bi-calculator"></i>
                 </button>
-                <a href="https://www.mercadolivre.com.br/p/${item.id}" target="_blank" 
+                <a href="${ML.itemUrl(item.id)}" target="_blank" 
                    class="btn btn-sm btn-outline-secondary" title="Ver no ML">
                     <i class="bi bi-box-arrow-up-right"></i>
                 </a>

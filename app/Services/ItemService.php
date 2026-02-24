@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Services\MercadoLivreClient;
+use App\Helpers\MercadoLivreHelper;
 use App\Database;
 use PDO;
 
@@ -541,8 +542,7 @@ class ItemService
                     // Usar permalink salvo ou construir URL real do ML
                     $permalink = $local['permalink'] ?? $data['permalink'] ?? null;
                     if (!$permalink) {
-                        // Construir URL real do ML Brasil
-                        $permalink = "https://produto.mercadolivre.com.br/MLB-{$local['ml_item_id']}";
+                        $permalink = MercadoLivreHelper::itemUrl($local['ml_item_id']);
                     }
                     return array_merge($data, [
                         'id' => $local['ml_item_id'],

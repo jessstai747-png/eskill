@@ -2,6 +2,36 @@
  * Modern Dashboard Logic
  */
 
+// ── Mercado Livre URL Utilities ─────────────────────────────────────
+// Centraliza construção de URLs de itens/anúncios do ML Brasil.
+// Regras:
+//   - Item IDs (ex: MLB1234567890) usam domínio produto.mercadolivre.com.br
+//   - Dash obrigatório entre prefixo de site (3 letras) e parte numérica
+//   - /p/ em www é para fichas de catálogo, NÃO para anúncios
+window.ML = {
+    ITEM_BASE_URL: 'https://produto.mercadolivre.com.br',
+
+    /**
+     * Formata ML item ID inserindo dash: MLB1234567890 → MLB-1234567890
+     * Se já formatado (MLB-123), retorna inalterado.
+     */
+    formatItemId: function(id) {
+        var s = String(id || '').trim();
+        if (/^[A-Z]{3}-\d+$/.test(s)) return s;
+        var m = s.match(/^([A-Z]{3})(\d+)$/);
+        return m ? m[1] + '-' + m[2] : s;
+    },
+
+    /**
+     * Constrói URL completa de anúncio ML.
+     * @param {string} id  Item ID (com ou sem dash)
+     * @returns {string}   https://produto.mercadolivre.com.br/MLB-1234567890
+     */
+    itemUrl: function(id) {
+        return this.ITEM_BASE_URL + '/' + this.formatItemId(id);
+    }
+};
+
 async function requestJson(url, options = {}) {
     if (window.ApiClient) return window.ApiClient.request(url, options);
     const resp = await fetch(url, { credentials: 'include', ...options });
