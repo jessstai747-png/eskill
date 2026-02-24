@@ -1467,7 +1467,7 @@ class AIRecommendationEngineService
         try {
             // Obter região do vendedor
             $stmt = $this->db->prepare("
-                SELECT state, city FROM accounts WHERE id = :user_id
+                SELECT site_id AS state, '' AS city FROM ml_accounts WHERE id = :user_id
             ");
             $stmt->execute(['user_id' => $userId]);
             $location = $stmt->fetch(\PDO::FETCH_ASSOC);

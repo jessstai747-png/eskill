@@ -62,26 +62,25 @@ $db = Database::getInstance();
 do {
     try {
         // Obter contas ativas
-        $where = '';
+        $where = "WHERE status = 'active'";
         $params = [];
-        
+
         if ($specificAccount) {
-            $where = 'WHERE id = :account_id';
+            $where .= ' AND id = :account_id';
             $params['account_id'] = $specificAccount;
         }
-        
+
         $stmt = $db->prepare("
-            SELECT id, nome FROM accounts 
-            WHERE ativo = 1 
+            SELECT id, nickname FROM ml_accounts
             {$where}
             ORDER BY id
         ");
         $stmt->execute($params);
         $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($accounts as $account) {
             $accountId = $account['id'];
-            $accountName = $account['nome'] ?? "Account #{$accountId}";
+            $accountName = $account['nickname'] ?? "Account #{$accountId}";
             
             if ($verbose) {
                 logMsg("📊 Processando conta: {$accountName}");

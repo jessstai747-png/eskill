@@ -6,6 +6,49 @@
 
 ---
 
+## Sessão: 2026-02-25e — Auditoria ml_orders, accounts fantasma, pricing_rules
+
+### Contexto
+Continuação da sessão 2026-02-25d. Auditoria expandida para ml_orders, tabela fantasma `accounts`, e pricing_rules.
+
+### Descobertas e Correções
+
+1. **`ml_orders.shipping_cost` — coluna ausente (6 refs em SettlementService)**
+   - Criada migration: `database/migrations/2026_02_25_add_shipping_cost_to_ml_orders.sql`
+   - Adicionada coluna + backfill via JSON_EXTRACT de order_data + índice
+   - `app/Services/OrderService.php` — INSERT expandido para persistir shipping_cost
+
+2. **Tabela fantasma `accounts` — NÃO EXISTE (deveria ser `ml_accounts`)**
+   - `bin/rules-engine-worker.php` — `FROM accounts WHERE ativo = 1` → `FROM ml_accounts WHERE status = 'active'` + `nome` → `nickname` + fix double WHERE
+   - `bin/scheduled-price-worker.php` — 2x `FROM accounts` → `FROM ml_accounts` + `nome` → `nickname AS nome` + `ativo = 1` → `status = 'active'`
+   - `app/Controllers/CompetitorMonitorController.php` — 3x `FROM accounts WHERE id = ?` → `FROM ml_accounts WHERE id = ?`
+   - `app/Services/AIRecommendationEngineService.php` — `FROM accounts WHERE id = :user_id` → `FROM ml_accounts`; `state, city` → `site_id AS state`
+
+3. **`pricing_rules.ativo` — coluna errada (deveria ser `is_active`)**
+   - `app/Controllers/PricingIntelligenceController.php` — 3 correções:
+     - `SET ativo = NOT ativo` → `SET is_active = NOT is_active`
+     - `SELECT ativo FROM pricing_rules` → `SELECT is_active`
+     - `SUM(CASE WHEN ativo = 1...)` → `SUM(CASE WHEN is_active = 1...)`
+
+### Tabelas auditadas e confirmadas corretas
+- `clone_event_triggers.is_active` ✓
+- `pricing_rules.is_active` ✓ (após fix)
+- `stock_sync_rules.is_active` ✓
+- `clone_schedules.is_active` ✓
+- `clone_templates.is_active` ✓
+- `pricing_price_alerts.ativo` ✓ (tabela auto-criada inline com ativo)
+- `ml_questions.seller_id` ✓
+- `order_items.item_id` ✓ (é o ML item ID, não confundir com items.ml_item_id)
+
+### Validação
+- ✅ 7 arquivos PHP passam `php -l` (zero erros de sintaxe)
+- ✅ 2896 testes passando, 0 failures, 34 skipped
+
+### Commit
+`fix: ml_orders shipping_cost + accounts → ml_accounts + pricing_rules ativo → is_active`
+
+---
+
 ## Sessão: 2026-02-25d — Auditoria massiva de schema da tabela items + migration
 
 ### Contexto

@@ -277,7 +277,7 @@ class CompetitorMonitorController
             // Update user settings
             $stmt = $this->db->prepare("
                 INSERT INTO user_settings (user_id, setting_key, setting_value)
-                VALUES ((SELECT user_id FROM accounts WHERE id = ?), 'competitor_monitoring_active', '1')
+                VALUES ((SELECT user_id FROM ml_accounts WHERE id = ?), 'competitor_monitoring_active', '1')
                 ON DUPLICATE KEY UPDATE setting_value = '1'
             ");
             $stmt->execute([$this->accountId]);
@@ -313,7 +313,7 @@ class CompetitorMonitorController
         try {
             $stmt = $this->db->prepare("
                 INSERT INTO user_settings (user_id, setting_key, setting_value)
-                VALUES ((SELECT user_id FROM accounts WHERE id = ?), 'competitor_monitoring_active', '0')
+                VALUES ((SELECT user_id FROM ml_accounts WHERE id = ?), 'competitor_monitoring_active', '0')
                 ON DUPLICATE KEY UPDATE setting_value = '0'
             ");
             $stmt->execute([$this->accountId]);
@@ -425,7 +425,7 @@ class CompetitorMonitorController
         $data = json_decode(file_get_contents('php://input'), true);
 
         try {
-            $stmtUser = $this->db->prepare("SELECT user_id FROM accounts WHERE id = ?");
+            $stmtUser = $this->db->prepare("SELECT user_id FROM ml_accounts WHERE id = ?");
             $stmtUser->execute([$this->accountId]);
             $userId = $stmtUser->fetchColumn();
 

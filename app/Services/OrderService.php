@@ -334,18 +334,20 @@ class OrderService
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO ml_orders (ml_order_id, ml_account_id, user_id, order_data, status, total_amount, date_created)
-            VALUES (:ml_order_id, :ml_account_id, :user_id, :order_data, :status, :total_amount, :date_created)
+            INSERT INTO ml_orders (ml_order_id, ml_account_id, user_id, order_data, status, total_amount, shipping_cost, date_created)
+            VALUES (:ml_order_id, :ml_account_id, :user_id, :order_data, :status, :total_amount, :shipping_cost, :date_created)
             ON DUPLICATE KEY UPDATE
                 order_data = :order_data_upd,
                 status = :status_upd,
                 total_amount = :total_amount_upd,
+                shipping_cost = :shipping_cost_upd,
                 synced_at = CURRENT_TIMESTAMP
         ");
 
         $orderJson = json_encode($orderData) ?: '{}';
         $status = $orderData['status'] ?? 'unknown';
         $total = $orderData['total_amount'] ?? 0;
+        $shippingCost = (float)($orderData['shipping']['cost'] ?? 0);
 
         $stmt->execute([
             'ml_order_id' => $orderData['id'],
@@ -354,10 +356,12 @@ class OrderService
             'order_data' => $orderJson,
             'status' => $status,
             'total_amount' => $total,
+            'shipping_cost' => $shippingCost,
             'date_created' => $orderData['date_created'] ?? date('Y-m-d H:i:s'),
             'order_data_upd' => $orderJson,
             'status_upd' => $status,
             'total_amount_upd' => $total,
+            'shipping_cost_upd' => $shippingCost,
         ]);
     }
 

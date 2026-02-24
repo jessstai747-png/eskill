@@ -68,10 +68,10 @@ do {
         }
         
         $stmt = $db->prepare("
-            SELECT DISTINCT a.id, a.nome
-            FROM accounts a
+            SELECT DISTINCT a.id, a.nickname AS nome
+            FROM ml_accounts a
             INNER JOIN pricing_schedules ps ON ps.account_id = a.id
-            WHERE a.ativo = 1
+            WHERE a.status = 'active'
             AND ps.status = 'pending'
             AND ps.scheduled_at <= NOW()
             {$accountQuery}
@@ -81,10 +81,10 @@ do {
         
         // Também verificar rollbacks pendentes
         $stmt = $db->prepare("
-            SELECT DISTINCT a.id, a.nome
-            FROM accounts a
+            SELECT DISTINCT a.id, a.nickname AS nome
+            FROM ml_accounts a
             INNER JOIN pricing_schedules ps ON ps.account_id = a.id
-            WHERE a.ativo = 1
+            WHERE a.status = 'active'
             AND ps.status = 'executed'
             AND ps.rollback_at <= NOW()
             AND ps.rollback_at IS NOT NULL
