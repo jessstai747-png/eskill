@@ -738,7 +738,8 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                         }
                      })
                      .catch(function() {
-                        /* summary falhou — card básico já exibido */ });
+                        /* summary falhou — card básico já exibido */
+                     });
                }
             })
             .catch(function(err) {
@@ -839,6 +840,16 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
 
+      /**
+       * Formata ML item ID para URL: MLB1234567890 → MLB-1234567890
+       * Insere dash entre prefixo de site (3 letras) e parte numérica.
+       */
+      function formatMlItemId(id) {
+         var s = String(id);
+         var m = s.match(/^([A-Z]{3})(\d+)$/);
+         return m ? m[1] + '-' + m[2] : s;
+      }
+
       function renderItems() {
          if (!state.allItems.length) {
             qs('itemList').innerHTML = '<div class="p-4 text-center text-muted">Nenhum anúncio encontrado</div>';
@@ -937,7 +948,10 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 
          function fetchPage() {
             var url = '/api/catalog/clone/source/seller/' + encodeURIComponent(state.sellerId) + '/items';
-            var params = new URLSearchParams({ offset: String(offset), limit: String(pageLimit) });
+            var params = new URLSearchParams({
+               offset: String(offset),
+               limit: String(pageLimit)
+            });
             if (state.activeBrand) params.set('brand', state.activeBrand);
             if (state.activeCat) params.set('category', state.activeCat);
 
@@ -1074,7 +1088,9 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                if (errors.length > 0) {
                   errorsEl.className = 'alert alert-danger small';
                   errorsEl.innerHTML = '<strong><i class="bi bi-x-circle"></i> Erros (impeditivos):</strong><ul class="mb-0 mt-1">' +
-                     errors.map(function(e) { return '<li>' + escHtml(e) + '</li>'; }).join('') +
+                     errors.map(function(e) {
+                        return '<li>' + escHtml(e) + '</li>';
+                     }).join('') +
                      '</ul>';
                   execBtn.disabled = true;
                   execBtn.innerHTML = '<i class="bi bi-x-circle"></i> Corrija os erros acima';
@@ -1086,13 +1102,18 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                if (warnings.length > 0) {
                   warningsEl.className = 'alert alert-warning small';
                   warningsEl.innerHTML = '<strong><i class="bi bi-exclamation-triangle"></i> Avisos:</strong><ul class="mb-0 mt-1">' +
-                     warnings.map(function(w) { return '<li>' + escHtml(w) + '</li>'; }).join('') +
+                     warnings.map(function(w) {
+                        return '<li>' + escHtml(w) + '</li>';
+                     }).join('') +
                      '</ul>';
                }
 
-               // Show account info if available
+               // Show account info if available (usar = em vez de += para evitar acúmulo em race conditions)
                if (data.account && data.account.nickname) {
-                  qs('summAccount').textContent += ' (' + data.account.nickname + ')';
+                  var baseAcctName = qs('targetAccountSelect').options[qs('targetAccountSelect').selectedIndex]
+                     ? qs('targetAccountSelect').options[qs('targetAccountSelect').selectedIndex].text
+                     : '—';
+                  qs('summAccount').textContent = baseAcctName + ' (' + data.account.nickname + ')';
                }
 
                show('validationResult');
@@ -1256,10 +1277,11 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             var st = String(item.status || 'pending');
             var badge = statusBadge[st] || '<span class="badge bg-light text-dark">' + escHtml(st) + '</span>';
             var sourceId = escHtml(String(item.source_item_id || ''));
-            var targetId = item.target_item_id
-               ? '<a href="https://www.mercadolivre.com.br/p/' + escHtml(item.target_item_id) + '" target="_blank" rel="noopener">'
-                 + escHtml(item.target_item_id) + ' <i class="bi bi-box-arrow-up-right"></i></a>'
-               : '—';
+            // ML item IDs (ex: MLB1234567890) → URL: produto.mercadolivre.com.br/MLB-1234567890
+            var targetId = item.target_item_id ?
+               '<a href="https://produto.mercadolivre.com.br/' + escHtml(formatMlItemId(item.target_item_id)) + '" target="_blank" rel="noopener">' +
+               escHtml(item.target_item_id) + ' <i class="bi bi-box-arrow-up-right"></i></a>' :
+               '—';
             var detail = escHtml(String(item.error_message || ''));
 
             return '<tr>' +
@@ -1276,9 +1298,9 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
          var panel = qs('jobResultsPanel');
          var visible = !panel.classList.contains('d-none');
          panel.classList.toggle('d-none', visible);
-         this.innerHTML = visible
-            ? '<i class="bi bi-list-ul"></i> Ver Detalhes'
-            : '<i class="bi bi-eye-slash"></i> Ocultar Detalhes';
+         this.innerHTML = visible ?
+            '<i class="bi bi-list-ul"></i> Ver Detalhes' :
+            '<i class="bi bi-eye-slash"></i> Ocultar Detalhes';
       });
 
       qs('btnNewWizard').addEventListener('click', function() {
