@@ -6,6 +6,43 @@
 
 ---
 
+## Sessão: 2026-02-24 — refactor: migrate fetch to ApiClient + deduplicate requestJson across 78 views
+
+### Contexto
+Continuação da sessão anterior. Foco em duas frentes: (1) migrar todas as views que usavam `fetch()` cru para `ApiClient.fetch()` (ganhando CSRF, retry, 401 handling), e (2) eliminar 75 cópias duplicadas de `requestJson()` que existiam em views individuais.
+
+### Implementado
+
+#### A. Migrar raw `fetch()` para `ApiClient.fetch()` (6 views)
+- **catalog_clone_wizard.php** — `api()` wrapper agora delega para `ApiClient.fetch()` ao invés de reimplementar CSRF/fetch. Mantém contrato idêntico (resolve com JSON body, rejeita com Error).
+- **account-governance.php** — 2 chamadas POST agora usam `ApiClient.fetch()`. **CRÍTICO: POSTs estavam sem CSRF token.**
+- **shipping.php** — 1 chamada POST (blob download) agora usa `ApiClient.fetch()`. **CRÍTICO: POST sem CSRF.**
+- **ai_optimization/index.php** — `fetch()` + manual error check → `requestJson()` em uma linha.
+- **categories.php** — `fetch()` → `ApiClient.fetch()` com fallback.
+- **account-health.php** — `fetch()` → `ApiClient.fetch()` via `apiFetch` variable.
+
+#### B. Deduplicar `requestJson()` — 75 cópias removidas
+- Descoberta: 82 views definiam localmente a mesma função `requestJson()` que já existia no layout.
+- **Causa raiz**: os 3 layouts (`modern/app.php`, `app.php`, `main.php`) definiam `requestJson` DEPOIS do slot de conteúdo (`$content`), então views precisavam redefinir localmente.
+- **Solução**: Movi `csrf-helper.js`, `api-client.js` e `requestJson` para `<head>` em todos os 3 layouts. Agora estão disponíveis ANTES de qualquer script de view.
+- 75 definições locais removidas (todas idênticas, usando `ApiClient.request()`).
+- 7 definições mantidas (pattern diferente: usam `ApiClient.json()` retornando `{ response, data }`).
+- `dashboard-modern.js` agora tem guard `if (typeof requestJson === 'undefined')` ao invés de redeclarar.
+
+### Testes
+- `php -l` em 79 arquivos — 0 erros de sintaxe
+- PHPUnit: 2896 testes, 6727 asserções, 0 falhas (34 skips pré-existentes)
+
+### Commits
+- `f78dece` — refactor: migrate raw fetch to ApiClient across 6 views, fix missing CSRF on POST
+- `68a1dfc` — style: fix indentation and trailing whitespace across views and services
+- `5f20905` — refactor: deduplicate requestJson - move to layout head, remove 75 local copies
+
+### Próximos Passos
+- **[Prioridade Média]** Migrar as 7 views restantes que usam `ApiClient.json()` pattern para `ApiClient.request()` (requer atualizar call sites que fazem `{ response, data }` destructuring)
+- **[Prioridade Baixa]** Remover `requestJson` duplicado do `dashboard-modern.js` (já tem guard, é apenas código morto)
+- **[Monitoramento]** Verificar em produção que os POSTs de account-governance e shipping agora enviam CSRF corretamente
+
 ## Sessão: 2026-02-24 — refactor: centralizar URLs ML + fix api() wrapper + corrigir 5 views
 
 ### Contexto
