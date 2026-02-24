@@ -10,29 +10,29 @@
 
 ## 1. Stack & Arquitetura
 
-| Item              | Detalhe                                                      |
-|-------------------|--------------------------------------------------------------|
-| **Framework**     | Custom PHP 8.0+ MVC (`Router → Controller → Service → Model`) |
-| **Banco**         | MySQL 8 via PDO                                              |
-| **HTTP Client**   | Guzzle 7                                                     |
-| **Logging**       | Monolog 3                                                    |
-| **Auth**          | Bearer Token (`ApiAuthMiddleware` + `ApiTokenService`)       |
-| **Rate Limit**    | Por token (controlado no middleware)                          |
-| **CORS**          | Habilitado para `/api/openclaw*`                              |
+| Item            | Detalhe                                                       |
+| --------------- | ------------------------------------------------------------- |
+| **Framework**   | Custom PHP 8.0+ MVC (`Router → Controller → Service → Model`) |
+| **Banco**       | MySQL 8 via PDO                                               |
+| **HTTP Client** | Guzzle 7                                                      |
+| **Logging**     | Monolog 3                                                     |
+| **Auth**        | Bearer Token (`ApiAuthMiddleware` + `ApiTokenService`)        |
+| **Rate Limit**  | Por token (controlado no middleware)                          |
+| **CORS**        | Habilitado para `/api/openclaw*`                              |
 
 ### Arquivos-chave
 
-| Arquivo | Responsabilidade |
-|---------|-----------------|
-| `app/Routes/api.php` (linhas 170–189) | Registro das 17 rotas OpenClaw |
-| `app/Controllers/OpenClawConnectorController.php` | Controller HTTP (540 linhas) |
-| `app/Services/OpenClawConnectorService.php` | Lógica de negócio (638 linhas) |
-| `app/Middleware/ApiAuthMiddleware.php` | Extração e validação do Bearer token |
-| `app/Services/ApiTokenService.php` | CRUD + validação de tokens e escopos |
-| `app/Services/ItemService.php` | Backend de itens (API ML + cache local) |
-| `app/Services/OrderService.php` | Backend de pedidos (API ML + cache local) |
-| `app/Services/AssistantConnectorService.php` | Infra compartilhada: sellers, actions |
-| `public/api-docs/openapi.json` | Spec OpenAPI 3.0 |
+| Arquivo                                           | Responsabilidade                          |
+| ------------------------------------------------- | ----------------------------------------- |
+| `app/Routes/api.php` (linhas 170–189)             | Registro das 17 rotas OpenClaw            |
+| `app/Controllers/OpenClawConnectorController.php` | Controller HTTP (540 linhas)              |
+| `app/Services/OpenClawConnectorService.php`       | Lógica de negócio (638 linhas)            |
+| `app/Middleware/ApiAuthMiddleware.php`            | Extração e validação do Bearer token      |
+| `app/Services/ApiTokenService.php`                | CRUD + validação de tokens e escopos      |
+| `app/Services/ItemService.php`                    | Backend de itens (API ML + cache local)   |
+| `app/Services/OrderService.php`                   | Backend de pedidos (API ML + cache local) |
+| `app/Services/AssistantConnectorService.php`      | Infra compartilhada: sellers, actions     |
+| `public/api-docs/openapi.json`                    | Spec OpenAPI 3.0                          |
 
 ---
 
@@ -45,6 +45,7 @@ Authorization: Bearer <token>
 ```
 
 O token é validado pelo `ApiAuthMiddleware`:
+
 1. Extraído do header `Authorization: Bearer ...`
 2. Buscado na tabela `api_tokens`
 3. Verificado: `is_active = 1`, `expires_at > NOW()`
@@ -52,19 +53,19 @@ O token é validado pelo `ApiAuthMiddleware`:
 
 ### Escopos
 
-| Escopo | Acesso |
-|--------|--------|
-| `openclaw:read` | GET em sellers, items, orders, actions, webhooks |
-| `openclaw:write` | POST em actions e webhooks; DELETE webhooks |
-| `openclaw:admin` | Acesso completo (superset de read + write) |
+| Escopo           | Acesso                                           |
+| ---------------- | ------------------------------------------------ |
+| `openclaw:read`  | GET em sellers, items, orders, actions, webhooks |
+| `openclaw:write` | POST em actions e webhooks; DELETE webhooks      |
+| `openclaw:admin` | Acesso completo (superset de read + write)       |
 
 ### Erros de Auth
 
-| HTTP | Body | Quando |
-|------|------|--------|
-| `401` | `{"error": "Unauthorized", "message": "Token não fornecido"}` | Header ausente |
+| HTTP  | Body                                                                 | Quando                  |
+| ----- | -------------------------------------------------------------------- | ----------------------- |
+| `401` | `{"error": "Unauthorized", "message": "Token não fornecido"}`        | Header ausente          |
 | `401` | `{"error": "Unauthorized", "message": "Token inválido ou expirado"}` | Token inválido/expirado |
-| `403` | `{"error": "Forbidden", "message": "Permissão insuficiente"}` | Escopo não autorizado |
+| `403` | `{"error": "Forbidden", "message": "Permissão insuficiente"}`        | Escopo não autorizado   |
 
 ---
 
@@ -79,6 +80,7 @@ O token é validado pelo `ApiAuthMiddleware`:
 Lista todos os endpoints disponíveis, escopos e formato de auth.
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -109,6 +111,7 @@ Lista todos os endpoints disponíveis, escopos e formato de auth.
 Verifica comunicação com DB e estado do serviço.
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -134,11 +137,12 @@ Verifica comunicação com DB e estado do serviço.
 
 Lista todas as contas do Mercado Livre vinculadas ao usuário.
 
-| Query Param | Tipo | Default | Descrição |
-|-------------|------|---------|-----------|
-| *(nenhum)* | — | — | Retorna todas as contas do usuário |
+| Query Param | Tipo | Default | Descrição                          |
+| ----------- | ---- | ------- | ---------------------------------- |
+| _(nenhum)_  | —    | —       | Retorna todas as contas do usuário |
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -168,6 +172,7 @@ Lista todas as contas do Mercado Livre vinculadas ao usuário.
 ```
 
 **Campos importantes para monitoramento:**
+
 - `created_at` — quando a conta foi criada (detectar contas novas)
 - `last_synced_at` — última sincronização (detectar inatividade)
 - `status` — estado da conta
@@ -180,11 +185,12 @@ Lista todas as contas do Mercado Livre vinculadas ao usuário.
 
 Detalhe de uma conta ML específica.
 
-| Path Param | Tipo | Descrição |
-|------------|------|-----------|
-| `id` | int | ID interno da conta (`ml_accounts.id`) |
+| Path Param | Tipo | Descrição                              |
+| ---------- | ---- | -------------------------------------- |
+| `id`       | int  | ID interno da conta (`ml_accounts.id`) |
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -217,19 +223,20 @@ Detalhe de uma conta ML específica.
 
 Lista anúncios de uma conta ML com paginação e filtros.
 
-| Path Param | Tipo | Descrição |
-|------------|------|-----------|
-| `id` | int | ID da conta (`ml_accounts.id`) |
+| Path Param | Tipo | Descrição                      |
+| ---------- | ---- | ------------------------------ |
+| `id`       | int  | ID da conta (`ml_accounts.id`) |
 
-| Query Param | Tipo | Default | Descrição |
-|-------------|------|---------|-----------|
-| `status` | string | *(todos)* | `active`, `paused`, `closed` |
-| `category_id` | string | *(todos)* | Filtrar por categoria ML |
-| `search` | string | *(vazio)* | Busca por texto no título |
-| `page` | int | `1` | Página atual |
-| `per_page` | int | `50` | Itens por página (máx: 200) |
+| Query Param   | Tipo   | Default   | Descrição                    |
+| ------------- | ------ | --------- | ---------------------------- |
+| `status`      | string | _(todos)_ | `active`, `paused`, `closed` |
+| `category_id` | string | _(todos)_ | Filtrar por categoria ML     |
+| `search`      | string | _(vazio)_ | Busca por texto no título    |
+| `page`        | int    | `1`       | Página atual                 |
+| `per_page`    | int    | `50`      | Itens por página (máx: 200)  |
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -238,7 +245,7 @@ Lista anúncios de uma conta ML com paginação e filtros.
       "id": "MLB1234567890",
       "title": "Bagageiro Para Honda CG 160 Titan Fan Start 2016 a 2025",
       "status": "active",
-      "price": 189.90,
+      "price": 189.9,
       "available_quantity": 42,
       "sold_quantity": 387,
       "catalog_product_id": null,
@@ -259,6 +266,7 @@ Lista anúncios de uma conta ML com paginação e filtros.
 ```
 
 **Campos importantes para monitoramento:**
+
 - `date_created` — criação do item (padrão de atividade)
 - `last_updated` — última atualização
 - `available_quantity` — estoque disponível
@@ -273,6 +281,7 @@ Lista anúncios de uma conta ML com paginação e filtros.
 Estatísticas agregadas de todos os itens da conta.
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -283,7 +292,7 @@ Estatísticas agregadas de todos os itens da conta.
     "closed": 12,
     "catalog": 45,
     "common": 192,
-    "total_revenue": 458750.50,
+    "total_revenue": 458750.5,
     "total_quantity": 1520,
     "total_views": 385200,
     "total_sold": 4830,
@@ -300,12 +309,13 @@ Estatísticas agregadas de todos os itens da conta.
 
 Detalhe completo de um anúncio.
 
-| Path Param | Tipo | Descrição |
-|------------|------|-----------|
-| `id` | int | ID da conta |
-| `itemId` | string | ID do item ML (ex: `MLB1234567890`) |
+| Path Param | Tipo   | Descrição                           |
+| ---------- | ------ | ----------------------------------- |
+| `id`       | int    | ID da conta                         |
+| `itemId`   | string | ID do item ML (ex: `MLB1234567890`) |
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -316,7 +326,7 @@ Detalhe completo de um anúncio.
     "subtitle": null,
     "seller_id": 123456789,
     "category_id": "MLB189462",
-    "price": 189.90,
+    "price": 189.9,
     "currency_id": "BRL",
     "available_quantity": 42,
     "sold_quantity": 387,
@@ -353,22 +363,23 @@ Detalhe completo de um anúncio.
 
 Lista pedidos de uma conta ML com filtros por status e período.
 
-| Path Param | Tipo | Descrição |
-|------------|------|-----------|
-| `id` | int | ID da conta |
+| Path Param | Tipo | Descrição   |
+| ---------- | ---- | ----------- |
+| `id`       | int  | ID da conta |
 
-| Query Param | Tipo | Default | Descrição |
-|-------------|------|---------|-----------|
-| `status` | string | *(todos)* | `paid`, `cancelled`, `shipped`, `delivered` |
-| `date_from` | string | *(sem limite)* | ISO 8601 ou `YYYY-MM-DD`. Ex: `2026-02-01` |
-| `date_to` | string | *(sem limite)* | ISO 8601 ou `YYYY-MM-DD`. Ex: `2026-02-24` |
-| `search` | string | *(vazio)* | Busca por order_id ou buyer nickname |
-| `sort` | string | `date_created` | Campo de ordenação: `date_created`, `total_amount`, `status` |
-| `order` | string | `DESC` | Direção: `ASC` ou `DESC` |
-| `page` | int | `1` | Página atual |
-| `per_page` | int | `50` | Itens por página (máx: 200) |
+| Query Param | Tipo   | Default        | Descrição                                                    |
+| ----------- | ------ | -------------- | ------------------------------------------------------------ |
+| `status`    | string | _(todos)_      | `paid`, `cancelled`, `shipped`, `delivered`                  |
+| `date_from` | string | _(sem limite)_ | ISO 8601 ou `YYYY-MM-DD`. Ex: `2026-02-01`                   |
+| `date_to`   | string | _(sem limite)_ | ISO 8601 ou `YYYY-MM-DD`. Ex: `2026-02-24`                   |
+| `search`    | string | _(vazio)_      | Busca por order_id ou buyer nickname                         |
+| `sort`      | string | `date_created` | Campo de ordenação: `date_created`, `total_amount`, `status` |
+| `order`     | string | `DESC`         | Direção: `ASC` ou `DESC`                                     |
+| `page`      | int    | `1`            | Página atual                                                 |
+| `per_page`  | int    | `50`           | Itens por página (máx: 200)                                  |
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -377,7 +388,7 @@ Lista pedidos de uma conta ML com filtros por status e período.
     {
       "id": 2000000123456789,
       "status": "paid",
-      "total_amount": 189.90,
+      "total_amount": 189.9,
       "date_created": "2026-02-24T10:30:00.000-04:00",
       "buyer": {
         "id": 555777999,
@@ -391,7 +402,7 @@ Lista pedidos de uma conta ML com filtros por status e período.
             "variation_id": null
           },
           "quantity": 1,
-          "unit_price": 189.90
+          "unit_price": 189.9
         }
       ],
       "shipping": {
@@ -401,7 +412,7 @@ Lista pedidos de uma conta ML com filtros por status e período.
         {
           "id": 98765432,
           "status": "approved",
-          "transaction_amount": 189.90,
+          "transaction_amount": 189.9,
           "payment_type": "credit_card"
         }
       ],
@@ -417,6 +428,7 @@ Lista pedidos de uma conta ML com filtros por status e período.
 ```
 
 **Campos importantes para monitoramento:**
+
 - `status`: `paid` = venda confirmada, `cancelled` = cancelado
 - `date_created`: timestamp da venda → detectar "conta sem vendas" comparando com NOW
 - `total_amount`: valor total
@@ -430,19 +442,20 @@ Lista pedidos de uma conta ML com filtros por status e período.
 
 Detalhe completo de um pedido.
 
-| Path Param | Tipo | Descrição |
-|------------|------|-----------|
-| `id` | int | ID da conta |
-| `orderId` | string | ID do pedido ML |
+| Path Param | Tipo   | Descrição       |
+| ---------- | ------ | --------------- |
+| `id`       | int    | ID da conta     |
+| `orderId`  | string | ID do pedido ML |
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
   "source": "ml_api",
   "id": 2000000123456789,
   "status": "paid",
-  "total_amount": 189.90,
+  "total_amount": 189.9,
   "date_created": "2026-02-24T10:30:00.000-04:00",
   "data": { "...": "objeto completo da API do ML" }
 }
@@ -464,6 +477,7 @@ Criar uma ação assíncrona. Suporta idempotência via `Idempotency-Key` header
 | `Idempotency-Key` | UUID para evitar ação duplicada |
 
 **Body (JSON):**
+
 ```json
 {
   "action": "update_stock",
@@ -478,18 +492,19 @@ Criar uma ação assíncrona. Suporta idempotência via `Idempotency-Key` header
 
 **Ações permitidas:**
 
-| Action | Descrição |
-|--------|-----------|
-| `answer_question` | Responder pergunta de comprador |
-| `update_stock` | Atualizar estoque |
-| `update_price` | Atualizar preço |
-| `reconcile_order` | Reconciliar pedido |
-| `refresh_account_token` | Renovar token OAuth ML |
-| `sync_item` | Sincronizar item com ML |
-| `pause_item` | Pausar anúncio |
-| `activate_item` | Ativar/reativar anúncio |
+| Action                  | Descrição                       |
+| ----------------------- | ------------------------------- |
+| `answer_question`       | Responder pergunta de comprador |
+| `update_stock`          | Atualizar estoque               |
+| `update_price`          | Atualizar preço                 |
+| `reconcile_order`       | Reconciliar pedido              |
+| `refresh_account_token` | Renovar token OAuth ML          |
+| `sync_item`             | Sincronizar item com ML         |
+| `pause_item`            | Pausar anúncio                  |
+| `activate_item`         | Ativar/reativar anúncio         |
 
 **Response `202` (Created):**
+
 ```json
 {
   "success": true,
@@ -506,6 +521,7 @@ Criar uma ação assíncrona. Suporta idempotência via `Idempotency-Key` header
 ```
 
 **Response `200` (Idempotente — já existia):**
+
 ```json
 {
   "success": true,
@@ -520,7 +536,7 @@ Criar uma ação assíncrona. Suporta idempotência via `Idempotency-Key` header
 | HTTP | Error | Quando |
 |------|-------|--------|
 | `400` | `validation_error` | Ação inválida ou body malformado |
-| `503` | *(variável)* | Falha interna ao criar a ação |
+| `503` | _(variável)_ | Falha interna ao criar a ação |
 
 ---
 
@@ -530,11 +546,12 @@ Criar uma ação assíncrona. Suporta idempotência via `Idempotency-Key` header
 
 Consulta status de uma ação criada.
 
-| Path Param | Tipo | Descrição |
-|------------|------|-----------|
-| `id` | int | ID do action_run |
+| Path Param | Tipo | Descrição        |
+| ---------- | ---- | ---------------- |
+| `id`       | int  | ID do action_run |
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -562,6 +579,7 @@ Consulta status de uma ação criada.
 Lista webhooks registrados.
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -589,6 +607,7 @@ Lista webhooks registrados.
 Registra um novo webhook.
 
 **Body (JSON):**
+
 ```json
 {
   "name": "OpenClaw Events",
@@ -598,14 +617,15 @@ Registra um novo webhook.
 }
 ```
 
-| Campo | Tipo | Obrigatório | Descrição |
-|-------|------|-------------|-----------|
-| `name` | string | Sim | Nome descritivo |
-| `url` | string | Sim | URL de callback (HTTPS recomendado) |
-| `events` | string[] | Sim | Eventos a receber (ver lista abaixo) |
-| `secret` | string | Não | HMAC secret para assinatura. Auto-gerado se omitido |
+| Campo    | Tipo     | Obrigatório | Descrição                                           |
+| -------- | -------- | ----------- | --------------------------------------------------- |
+| `name`   | string   | Sim         | Nome descritivo                                     |
+| `url`    | string   | Sim         | URL de callback (HTTPS recomendado)                 |
+| `events` | string[] | Sim         | Eventos a receber (ver lista abaixo)                |
+| `secret` | string   | Não         | HMAC secret para assinatura. Auto-gerado se omitido |
 
 **Response `201`:**
+
 ```json
 {
   "success": true,
@@ -640,6 +660,7 @@ Remove um webhook.
 Envia um payload de teste para o webhook.
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -648,6 +669,7 @@ Envia um payload de teste para o webhook.
 ```
 
 O payload de teste enviado ao seu endpoint:
+
 ```json
 {
   "event": "webhook.test",
@@ -660,6 +682,7 @@ O payload de teste enviado ao seu endpoint:
 ```
 
 **Headers enviados:**
+
 ```
 Content-Type: application/json
 X-Signature: <hmac-sha256-do-body-com-secret>
@@ -676,6 +699,7 @@ User-Agent: eskill-openclaw-webhook/1.0
 Lista todos os tipos de evento disponíveis para subscrição.
 
 **Response `200`:**
+
 ```json
 {
   "success": true,
@@ -709,22 +733,23 @@ O endpoint `GET /sellers/{id}/orders` suporta **filtragem por período**:
 # Pedidos criados desde ontem
 GET /api/openclaw/sellers/1/orders?date_from=2026-02-23&date_to=2026-02-24
 
-# Apenas pedidos pagos na última hora  
+# Apenas pedidos pagos na última hora
 GET /api/openclaw/sellers/1/orders?date_from=2026-02-24T14:00:00&status=paid
 
 # Pedidos mais recentes primeiro
 GET /api/openclaw/sellers/1/orders?sort=date_created&order=DESC&page=1&per_page=50
 ```
 
-| Param | Para delta sync |
-|-------|-----------------|
-| `date_from` | **Use como `since`**: data/hora da última execução |
-| `date_to` | Opcional: até quando buscar |
-| `sort=date_created` | Ordenar por criação (default) |
-| `order=DESC` | Mais recentes primeiro |
-| `page` + `per_page` | Paginação offset-based |
+| Param               | Para delta sync                                    |
+| ------------------- | -------------------------------------------------- |
+| `date_from`         | **Use como `since`**: data/hora da última execução |
+| `date_to`           | Opcional: até quando buscar                        |
+| `sort=date_created` | Ordenar por criação (default)                      |
+| `order=DESC`        | Mais recentes primeiro                             |
+| `page` + `per_page` | Paginação offset-based                             |
 
 **Estratégia recomendada:**
+
 ```
 1. Armazenar localmente: last_sync_at = "2026-02-24T10:00:00"
 2. Buscar: GET /sellers/{id}/orders?date_from=2026-02-24T10:00:00&sort=date_created&order=ASC
@@ -751,18 +776,19 @@ GET /api/openclaw/sellers/1/items?status=active&page=1&per_page=200
 ### 4.3 Sellers (Contas)
 
 Sellers raramente mudam. Use:
+
 - `GET /sellers` → campo `created_at` para detectar contas novas
 - `GET /sellers` → campo `last_synced_at` para detectar inatividade
 
 ### 4.4 Resumo de Paginação
 
-| Endpoint | Paginação | Params |
-|----------|-----------|--------|
-| `/sellers` | Sem paginação (todas) | — |
-| `/sellers/{id}/items` | Offset-based | `page`, `per_page` (max 200) |
-| `/sellers/{id}/orders` | Offset-based | `page`, `per_page` (max 200) |
-| `/actions/{id}` | Unitário | — |
-| `/webhooks` | Sem paginação (todas) | — |
+| Endpoint               | Paginação             | Params                       |
+| ---------------------- | --------------------- | ---------------------------- |
+| `/sellers`             | Sem paginação (todas) | —                            |
+| `/sellers/{id}/items`  | Offset-based          | `page`, `per_page` (max 200) |
+| `/sellers/{id}/orders` | Offset-based          | `page`, `per_page` (max 200) |
+| `/actions/{id}`        | Unitário              | —                            |
+| `/webhooks`            | Sem paginação (todas) | —                            |
 
 ---
 
@@ -814,16 +840,16 @@ GET /api/openclaw/sellers/{id}/items/stats
 
 ## 6. Erros Comuns
 
-| HTTP | Formato | Descrição |
-|------|---------|-----------|
-| `400` | `{"success": false, "error": "...", "message": "..."}` | Parâmetro inválido |
-| `401` | `{"error": "Unauthorized", "message": "Token não fornecido\|inválido"}` | Sem auth |
-| `403` | `{"error": "Forbidden", "message": "Permissão insuficiente"}` | Escopo errado |
-| `404` | `{"success": false, "error": "...não encontrado"}` | Recurso não existe |
-| `422` | `{"success": false, "error": "validation_error", "message": "..."}` | Body malformado |
-| `500` | `{"success": false, "error": "..."}` | Erro interno |
-| `502` | `{"success": false, "error": "..."}` | Falha no webhook delivery |
-| `503` | `{"success": false, "error": "..."}` | DB ou API ML indisponível |
+| HTTP  | Formato                                                                 | Descrição                 |
+| ----- | ----------------------------------------------------------------------- | ------------------------- |
+| `400` | `{"success": false, "error": "...", "message": "..."}`                  | Parâmetro inválido        |
+| `401` | `{"error": "Unauthorized", "message": "Token não fornecido\|inválido"}` | Sem auth                  |
+| `403` | `{"error": "Forbidden", "message": "Permissão insuficiente"}`           | Escopo errado             |
+| `404` | `{"success": false, "error": "...não encontrado"}`                      | Recurso não existe        |
+| `422` | `{"success": false, "error": "validation_error", "message": "..."}`     | Body malformado           |
+| `500` | `{"success": false, "error": "..."}`                                    | Erro interno              |
+| `502` | `{"success": false, "error": "..."}`                                    | Falha no webhook delivery |
+| `503` | `{"success": false, "error": "..."}`                                    | DB ou API ML indisponível |
 
 ---
 
@@ -943,13 +969,14 @@ curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
 
 ## 8. Testes Automatizados
 
-| Tipo | Ferramenta | Status |
-|------|-----------|--------|
-| Unit + Integration | PHPUnit 9 | 2896 testes passando |
-| E2E | Playwright (TS) | Configurado em `playwright.config.ts` |
-| Postman Collection | *(não existe ainda)* | Para gerar, exportar os curls acima |
+| Tipo               | Ferramenta           | Status                                |
+| ------------------ | -------------------- | ------------------------------------- |
+| Unit + Integration | PHPUnit 9            | 2896 testes passando                  |
+| E2E                | Playwright (TS)      | Configurado em `playwright.config.ts` |
+| Postman Collection | _(não existe ainda)_ | Para gerar, exportar os curls acima   |
 
 ### Comando para rodar testes:
+
 ```bash
 # Todos
 php vendor/bin/phpunit
@@ -965,25 +992,25 @@ php vendor/bin/phpunit --filter OpenClaw
 
 ## 9. Resumo Quick Reference
 
-| # | Método | Path | Auth | Uso para monitoramento |
-|---|--------|------|------|----------------------|
-| 0 | `GET` | `/api/openclaw` | público | Discovery + lista endpoints |
-| 1 | `GET` | `/api/openclaw/health` | qualquer | Verificar conectividade |
-| 2 | `GET` | `/api/openclaw/sellers` | read | **Listar contas** (created_at, status) |
-| 3 | `GET` | `/api/openclaw/sellers/{id}` | read | **Detalhe conta** (last_synced_at) |
-| 4 | `GET` | `/api/openclaw/sellers/{id}/items` | read | **Listar anúncios** (date_created, last_updated) |
-| 5 | `GET` | `/api/openclaw/sellers/{id}/items/stats` | read | **Totais**: ativos, pausados, estoque baixo |
-| 6 | `GET` | `/api/openclaw/sellers/{id}/items/{itemId}` | read | Detalhe de anúncio |
-| 7 | `GET` | `/api/openclaw/sellers/{id}/orders` | read | **Vendas por período** (date_from, status) |
-| 8 | `GET` | `/api/openclaw/sellers/{id}/orders/{orderId}` | read | Detalhe do pedido |
-| 9 | `POST` | `/api/openclaw/actions` | write | Executar ação (update_stock, etc.) |
-| 10 | `GET` | `/api/openclaw/actions/{id}` | read | Status da ação |
-| 11 | `GET` | `/api/openclaw/webhooks` | read | Listar webhooks registrados |
-| 12 | `POST` | `/api/openclaw/webhooks` | write | **Registrar webhook** (push notifications) |
-| 13 | `DELETE` | `/api/openclaw/webhooks/{id}` | write | Remover webhook |
-| 14 | `POST` | `/api/openclaw/webhooks/{id}/test` | write | Testar webhook |
-| 15 | `GET` | `/api/openclaw/webhook-events` | read | Tipos de evento para webhook |
+| #   | Método   | Path                                          | Auth     | Uso para monitoramento                           |
+| --- | -------- | --------------------------------------------- | -------- | ------------------------------------------------ |
+| 0   | `GET`    | `/api/openclaw`                               | público  | Discovery + lista endpoints                      |
+| 1   | `GET`    | `/api/openclaw/health`                        | qualquer | Verificar conectividade                          |
+| 2   | `GET`    | `/api/openclaw/sellers`                       | read     | **Listar contas** (created_at, status)           |
+| 3   | `GET`    | `/api/openclaw/sellers/{id}`                  | read     | **Detalhe conta** (last_synced_at)               |
+| 4   | `GET`    | `/api/openclaw/sellers/{id}/items`            | read     | **Listar anúncios** (date_created, last_updated) |
+| 5   | `GET`    | `/api/openclaw/sellers/{id}/items/stats`      | read     | **Totais**: ativos, pausados, estoque baixo      |
+| 6   | `GET`    | `/api/openclaw/sellers/{id}/items/{itemId}`   | read     | Detalhe de anúncio                               |
+| 7   | `GET`    | `/api/openclaw/sellers/{id}/orders`           | read     | **Vendas por período** (date_from, status)       |
+| 8   | `GET`    | `/api/openclaw/sellers/{id}/orders/{orderId}` | read     | Detalhe do pedido                                |
+| 9   | `POST`   | `/api/openclaw/actions`                       | write    | Executar ação (update_stock, etc.)               |
+| 10  | `GET`    | `/api/openclaw/actions/{id}`                  | read     | Status da ação                                   |
+| 11  | `GET`    | `/api/openclaw/webhooks`                      | read     | Listar webhooks registrados                      |
+| 12  | `POST`   | `/api/openclaw/webhooks`                      | write    | **Registrar webhook** (push notifications)       |
+| 13  | `DELETE` | `/api/openclaw/webhooks/{id}`                 | write    | Remover webhook                                  |
+| 14  | `POST`   | `/api/openclaw/webhooks/{id}/test`            | write    | Testar webhook                                   |
+| 15  | `GET`    | `/api/openclaw/webhook-events`                | read     | Tipos de evento para webhook                     |
 
 ---
 
-*Gerado em 2026-02-24 — eskill.com.br OpenClaw Connector v1.0.0*
+_Gerado em 2026-02-24 — eskill.com.br OpenClaw Connector v1.0.0_

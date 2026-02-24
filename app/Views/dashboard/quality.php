@@ -20,7 +20,7 @@
         .quality-good { border-left: 4px solid #17a2b8; }
         .quality-fair { border-left: 4px solid #ffc107; }
         .quality-poor { border-left: 4px solid #dc3545; }
-        
+
         .score-badge {
             font-size: 2rem;
             font-weight: bold;
@@ -31,7 +31,7 @@
         .score-good { background: linear-gradient(135deg, #17a2b8, #138496); color: white; }
         .score-fair { background: linear-gradient(135deg, #ffc107, #e0a800); color: black; }
         .score-poor { background: linear-gradient(135deg, #dc3545, #c82333); color: white; }
-        
+
         .stat-card {
             background: white;
             border-radius: 15px;
@@ -205,7 +205,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="/js/ml-integration-preflight.js"></script>
     <script src="/js/quality-dashboard.js"></script>
-    
+
     <script>
         // Initialize dashboard on page load
         document.addEventListener('DOMContentLoaded', () => {
