@@ -143,41 +143,6 @@ $currentUser = $userService->getCurrentUser();
         }
     </script>
 
-    <!-- Real-time Notifications JS -->
-    <script nonce="<?= $cspNonce ?>" src="/js/realtime-notifications.js"></script>
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-        // Inicializar sistema de notificações em tempo real
-        window.enableRealTimeNotifications = true;
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            if (typeof RealTimeNotifications !== 'undefined') {
-                // Carregar configurações salvas do servidor
-                try {
-                    const data = await requestJson('/api/notifications/realtime/settings');
-
-                    if (data.success && data.settings) {
-                        const s = data.settings;
-                        window.realTimeNotifications = new RealTimeNotifications({
-                            pollingInterval: (s.polling_interval || 30) * 1000,
-                            soundEnabled: s.sound_enabled !== false,
-                            desktopEnabled: s.desktop_enabled !== false,
-                            soundVolume: (s.sound_volume || 80) / 100,
-                            soundOrder: s.sound_order || 'order_notification',
-                            soundQuestion: s.sound_question || 'question_notification',
-                            soundMessage: s.sound_message || 'message_notification',
-                            quietHoursStart: s.quiet_hours_start || null,
-                            quietHoursEnd: s.quiet_hours_end || null
-                        });
-                    } else {
-                        window.realTimeNotifications = new RealTimeNotifications();
-                    }
-                } catch (error) {
-                    console.warn('Usando configurações padrão de notificações:', error);
-                    window.realTimeNotifications = new RealTimeNotifications();
-                }
-            }
-        });
-    </script>
 </body>
 
 </html>

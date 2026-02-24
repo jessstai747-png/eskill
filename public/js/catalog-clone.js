@@ -102,49 +102,41 @@ class CatalogClone {
 
         this.mlIntegrationCheckPromise = (async () => {
             try {
-                const [health, accountsPayload] = await Promise.all([
-                    requestJson('/api/health/ml'),
-                    requestJson('/api/tokens/accounts?status=active&sort=expires_at&order=asc')
-                ]);
-
-                const credentialsOk = health?.result?.credentials === 'ok';
-                const pingStatus = health?.result?.ping ?? 'skipped';
-                const pingOk = pingStatus === 'ok' || pingStatus === 'skipped';
-
-                const accounts = Array.isArray(accountsPayload?.data) ? accountsPayload.data : [];
-                const healthyAccounts = accounts.filter((account) => {
-                    const apiValidationStatus = account?.api_validation_status ?? 'ok';
-                    return account?.status === 'active' && apiValidationStatus === 'ok';
-                });
-
-                this.mlIntegration.checked = true;
-                this.mlIntegration.activeAccounts = accounts.length;
-                this.mlIntegration.details = {
-                    health,
-                    accounts,
-                    healthyAccounts,
-                };
-
-                if (!credentialsOk) {
-                    this.mlIntegration.ready = false;
-                    this.mlIntegration.message = 'Credenciais do Mercado Livre não configuradas no servidor.';
-                } else if (accounts.length === 0) {
-                    this.mlIntegration.ready = false;
-                    this.mlIntegration.message = 'Nenhuma conta ativa do Mercado Livre encontrada para clonagem.';
-                } else if (healthyAccounts.length === 0) {
-                    this.mlIntegration.ready = false;
-                    this.mlIntegration.message = 'Contas ativas encontradas, mas sem validação de token na API do Mercado Livre.';
+                if (!window.MercadoLivreIntegration || typeof window.MercadoLivreIntegration.check !== 'function') {
+                    this.mlIntegration = {
+                        checked: true,
+                        ready: false,
+                        message: 'Validador da integração Mercado Livre indisponível no frontend.',
+                        details: null,
+                        activeAccounts: 0,
+                    };
                 } else {
-                    this.mlIntegration.ready = true;
-                    this.mlIntegration.message = pingOk
-                        ? `Integração ML ativa (${healthyAccounts.length} conta(s) válida(s)).`
-                        : `Integração ML ativa, mas o ping de saúde está instável (${healthyAccounts.length} conta(s) válida(s)).`;
+                    const state = await window.MercadoLivreIntegration.check(force);
+                    const accounts = Array.isArray(state?.accounts) ? state.accounts : [];
+                    const healthyAccounts = Array.isArray(state?.healthyAccounts) ? state.healthyAccounts : [];
+
+                    this.mlIntegration = {
+                        checked: Boolean(state?.checked),
+                        ready: Boolean(state?.ready),
+                        message: state?.message || 'Não foi possível validar a integração com a API do Mercado Livre.',
+                        details: {
+                            health: state?.health ?? null,
+                            accounts,
+                            healthyAccounts,
+                        },
+                        activeAccounts: Number.isInteger(state?.activeAccounts)
+                            ? state.activeAccounts
+                            : accounts.length,
+                    };
                 }
             } catch (error) {
-                this.mlIntegration.checked = true;
-                this.mlIntegration.ready = false;
-                this.mlIntegration.details = null;
-                this.mlIntegration.message = 'Não foi possível validar a integração com a API do Mercado Livre.';
+                this.mlIntegration = {
+                    checked: true,
+                    ready: false,
+                    message: 'Não foi possível validar a integração com a API do Mercado Livre.',
+                    details: null,
+                    activeAccounts: 0,
+                };
             }
 
             this.applyMlIntegrationState();
@@ -1181,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Periodic refresh
     setInterval(() => {
-        window.catalogClone.initMercadoLivreIntegration()
+        window.catalogClone.initMercadoLivreIntegration(true)
             .then((isReady) => {
                 if (isReady) {
                     window.catalogClone.initMetrics();

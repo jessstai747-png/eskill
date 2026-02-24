@@ -6,6 +6,35 @@
 
 ---
 
+## Sessão: 2026-02-24f — fix completo: bootstrap realtime duplicado + preflight ML no Catalog Clone
+
+### Contexto
+Diagnóstico apontou conflito de inicialização em tempo real (script/instância duplicados) e necessidade de consolidar o preflight de integração ML no fluxo principal de clonagem.
+
+### Implementado
+- **`app/Views/layouts/main.php`**
+   - Removida carga duplicada de `realtime-notifications.js`.
+   - Removida inicialização manual redundante de `RealTimeNotifications`.
+   - Layout passa a usar apenas o bootstrap centralizado já fornecido por `head_common.php` + auto-init do módulo.
+
+- **`public/js/realtime-notifications.js`**
+   - Hardening para evitar re-instanciação duplicada:
+      - construtor global exposto via `window.RealTimeNotifications`.
+      - guarda de idempotência no `DOMContentLoaded` para reaproveitar `window.realTimeNotifications` quando já existir.
+
+- **`public/js/catalog-clone.js`**
+   - Preflight local removido e substituído por integração com helper compartilhado `window.MercadoLivreIntegration.check(force)`.
+   - Estado local (`checked`, `ready`, `message`, `details`, `activeAccounts`) agora deriva do helper central.
+   - Refresh periódico ajustado para `initMercadoLivreIntegration(true)` a cada 30s para revalidação ativa.
+
+### Validação
+- `php -l app/Views/layouts/main.php`: sem erros.
+- PHPUnit Unit: **2896 testes, 6727 assertions, 0 falhas** (34 skipped esperados no ambiente).
+- `get_errors` nos arquivos alterados: sem erros de linguagem.
+
+### Observações
+- `project-status.json` já estava consistente para as features afetadas (`CLONE-001` e `NOTIF-002` com `passes: true` e `last_tested: 2026-02-24`), sem necessidade de alteração adicional de data nesta sessão.
+
 ## Sessão: 2026-02-24e — integração ML complementar em Quality Dashboard e Real-time Notifications
 
 ### Contexto

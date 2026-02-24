@@ -8,7 +8,7 @@
 
 // requestJson is defined globally in <head> via the layout
 
-class RealTimeNotifications {
+var RealTimeNotifications = window.RealTimeNotifications || class RealTimeNotifications {
     constructor(options = {}) {
         // Configurações padrão
         this.config = {
@@ -850,7 +850,9 @@ class RealTimeNotifications {
             this.audioContext.close();
         }
     }
-}
+};
+
+window.RealTimeNotifications = RealTimeNotifications;
 
 // Instância global
 let realTimeNotifications = null;
@@ -859,6 +861,11 @@ let realTimeNotifications = null;
 document.addEventListener('DOMContentLoaded', () => {
     // Verificar se está numa página autenticada
     if (document.querySelector('#notification-badge') || window.enableRealTimeNotifications) {
+        if (window.realTimeNotifications instanceof RealTimeNotifications) {
+            realTimeNotifications = window.realTimeNotifications;
+            return;
+        }
+
         realTimeNotifications = new RealTimeNotifications({
             onOrderNotification: (notification) => {
                 console.log('🛒 Novo pedido:', notification);
