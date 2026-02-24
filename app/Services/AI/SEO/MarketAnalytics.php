@@ -43,14 +43,14 @@ class MarketAnalytics
         // Buscar histórico de vendas dos últimos 90 dias
         $stmt = $this->db->prepare("
             SELECT
-                DATE(pm.date) as date,
-                SUM(pm.sales_change) as sales
+                DATE(pm.metric_date) as date,
+                SUM(COALESCE(pm.sold_quantity, 0)) as sales
             FROM seo_performance_metrics pm
             JOIN items i ON i.ml_item_id = pm.item_id
             WHERE pm.account_id = :account_id
               AND i.category_id = :category_id
-              AND pm.date >= DATE_SUB(NOW(), INTERVAL 90 DAY)
-            GROUP BY DATE(pm.date)
+              AND pm.metric_date >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+            GROUP BY DATE(pm.metric_date)
             ORDER BY date ASC
         ");
         $stmt->execute([
@@ -116,15 +116,15 @@ class MarketAnalytics
         // Buscar dados de 12 meses para análise sazonal
         $stmt = $this->db->prepare("
             SELECT
-                MONTH(pm.date) as month,
-                YEAR(pm.date) as year,
-                AVG(pm.sales_change) as avg_sales
+                MONTH(pm.metric_date) as month,
+                YEAR(pm.metric_date) as year,
+                AVG(COALESCE(pm.sold_quantity, 0)) as avg_sales
             FROM seo_performance_metrics pm
             JOIN items i ON i.ml_item_id = pm.item_id
             WHERE pm.account_id = :account_id
               AND i.category_id = :category_id
-              AND pm.date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-            GROUP BY YEAR(pm.date), MONTH(pm.date)
+              AND pm.metric_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+            GROUP BY YEAR(pm.metric_date), MONTH(pm.metric_date)
             ORDER BY year, month
         ");
         $stmt->execute([
@@ -211,12 +211,12 @@ class MarketAnalytics
             SELECT
                 i.category_id,
                 COUNT(DISTINCT i.id) as products_count,
-                SUM(pm.sales_change) as sales_growth,
-                AVG(pm.views_change) as avg_views_growth
+                SUM(COALESCE(pm.sold_quantity, 0)) as sales_growth,
+                AVG(COALESCE(pm.views, 0)) as avg_views_growth
             FROM items i
             JOIN seo_performance_metrics pm ON pm.item_id = i.ml_item_id
             WHERE i.account_id = :account_id
-              AND pm.date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+              AND pm.metric_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             GROUP BY i.category_id
             HAVING sales_growth > 0
             ORDER BY sales_growth DESC

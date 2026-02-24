@@ -6,6 +6,69 @@
 
 ---
 
+## Sessão: 2026-02-25f — Reconciliação pricing_rules e seo_performance_metrics
+
+### Contexto
+Continuação da sessão 2026-02-25e. Auditoria profunda de tabelas com múltiplas migrations conflitantes.
+
+### Descobertas Críticas
+
+#### pricing_rules: TRÊS migrations conflitantes + QUATRO services com colunas diferentes
+- `2024_06_01` (English: name, rule_type, is_active, config, items, categories, priority)
+- `2025_01_01_000003` (Minimal: item_id, rules, active)
+- `2026_01_29` (Portuguese: nome, descricao, estrategia, ativo, margem_minima, etc.)
+- PricingScenarioService usa PT, PriceRulesEngineService usa EN, PricingRulesService usa EN2, AIPricingOptimizer usa minimal
+- PricingIntelligenceController.togglePricingRule() e dashboard stats usam `ativo` (PricingScenarioService)
+- Sessão e tinha erroneamente mudado `ativo` → `is_active` — REVERTIDO
+
+#### seo_performance_metrics: DUAS migrations conflitantes + código com colunas inexistentes
+- `030` (visits, unique_visitors, questions, sales, seo_score, search_rank)
+- `2026_02_16` (views, visits, sold_quantity, revenue, conversion_rate, position_avg, was_optimized)
+- Código referenciava: `date` (→metric_date), `current_score` (→seo_score), `views_change` (→views), `sales_change` (→sold_quantity)
+
+#### Mais tabelas com conflitos identificadas (não corrigidas nesta sessão):
+- pricing_rule_executions: `applied` vs `applied_successfully`, `change_percent` vs `price_change_percentage`
+- notifications: `ml_account_id` vs `user_id`, falta `title`/`message`/`is_read` no schema 005
+- scheduled_reports: schemas completamente diferentes entre 009 e 2026_02_01
+- audit_logs: COMPATÍVEL (007 vs 017 — só FKs de diferença)
+
+### Correções Aplicadas
+
+1. **PricingIntelligenceController.php** — Revertido 2 mudanças da sessão-e de `is_active` para `ativo`:
+   - togglePricingRule(): `SET ativo = NOT ativo`, `SELECT ativo`
+   - dashboard stats: `SUM(CASE WHEN ativo = 1...)`
+
+2. **MarketAnalytics.php** — 3 queries corrigidas:
+   - predictDemand(): pm.date→pm.metric_date, pm.sales_change→pm.sold_quantity  
+   - detectSeasonality(): pm.date→pm.metric_date, pm.sales_change→pm.sold_quantity
+   - detectEmergingOpportunities(): pm.sales_change→pm.sold_quantity, pm.views_change→pm.views
+
+3. **PredictiveAnalyticsService.php** — 1 query corrigida:
+   - getHistoricalPerformance(): date→metric_date, sales→sold_quantity
+
+4. **AutomatedReporting.php** — 2 queries corrigidas:
+   - Weekly/monthly reports: current_score→seo_score, views_change→views, sales_change→sold_quantity, date→metric_date
+
+5. **PdfExporter.php** — 1 query corrigida:
+   - avg_score: current_score→seo_score, total_views_increase: views_change→views, date→metric_date
+
+6. **Migrations criadas**:
+   - `2026_02_25_reconcile_pricing_rules.sql` — Stored procedure que ADD COLUMN IF NOT EXISTS para ~30 colunas de todas as 3 migrations + 4 services
+   - `2026_02_25_reconcile_seo_performance_metrics.sql` — Stored procedure para todas as colunas de ambas migrations + traffic_sources
+
+### Validação
+- `php -l`: Todos os 5 arquivos PHP sem erros de sintaxe
+- `phpunit --testsuite=Unit`: 2896 tests, 6727 assertions, 34 skipped — ALL PASSING
+- MySQL inacessível do sandbox — migrations não aplicadas
+
+### Próximos passos
+- Aplicar migrations pendentes quando MySQL estiver acessível (4 reconciliation migrations + itens columns + shipping_cost)
+- Criar reconciliation migrations para: pricing_rule_executions, notifications, scheduled_reports
+- Auditar código que usa pricing_rule_executions para column bugs
+- Auditar código que usa notifications/scheduled_reports para column bugs
+
+---
+
 ## Sessão: 2026-02-25e — Auditoria ml_orders, accounts fantasma, pricing_rules
 
 ### Contexto

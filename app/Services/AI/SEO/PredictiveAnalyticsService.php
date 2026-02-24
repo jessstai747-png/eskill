@@ -4,13 +4,13 @@ namespace App\Services\AI\SEO;
 
 /**
  * Predictive Analytics Service for SEO Killer 2.0
- * 
+ *
  * Usa dados históricos e heurísticas (weighted averages) para:
  * - Estimar performance de itens
  * - Identificar oportunidades de otimização
  * - Estimar tendências de mercado
  * - Fornecer recomendações proativas
- * 
+ *
  * Nota: Não usa Machine Learning — previsões são baseadas em pesos fixos e médias ponderadas.
  */
 class PredictiveAnalyticsService
@@ -35,14 +35,14 @@ class PredictiveAnalyticsService
     {
         $cacheKey = "prediction_{$itemId}_{$days}";
         $cached = $this->cache->get($cacheKey);
-        
+
         if ($cached) {
             return $cached;
         }
 
         // Get historical data
         $historical = $this->getHistoricalPerformance($itemId, 90);
-        
+
         if (count($historical) < 7) {
             return [
                 'success' => false,
@@ -51,14 +51,14 @@ class PredictiveAnalyticsService
         }
 
         $prediction = $this->generatePrediction($historical, $days);
-        
+
         // Add confidence score
         $prediction['confidence'] = $this->calculateConfidence($historical, $prediction);
         $prediction['recommendations'] = $this->generatePredictiveRecommendations($prediction);
-        
+
         // Cache for 6 hours
         $this->cache->set($cacheKey, $prediction, 21600);
-        
+
         return [
             'success' => true,
             'data' => $prediction
@@ -72,14 +72,14 @@ class PredictiveAnalyticsService
     {
         $cacheKey = "trends_{$categoryId}_{$days}";
         $cached = $this->cache->get($cacheKey);
-        
+
         if ($cached) {
             return $cached;
         }
 
         $trendData = $this->collectMarketData($categoryId, $days);
         $analysis = $this->performTrendAnalysis($trendData);
-        
+
         $result = [
             'category_id' => $categoryId,
             'analysis_period' => $days,
@@ -93,7 +93,7 @@ class PredictiveAnalyticsService
 
         // Cache for 12 hours
         $this->cache->set($cacheKey, $result, 43200);
-        
+
         return $result;
     }
 
@@ -104,7 +104,7 @@ class PredictiveAnalyticsService
     {
         $cacheKey = "pricing_{$itemId}_{$categoryId}";
         $cached = $this->cache->get($cacheKey);
-        
+
         if ($cached) {
             return $cached;
         }
@@ -112,18 +112,18 @@ class PredictiveAnalyticsService
         // Get item details
         $mlClient = new \App\Services\MercadoLivreClient();
         $item = $mlClient->getItemDetails($itemId);
-        
+
         // Get competitor pricing data
         $competitors = $mlClient->getCompetitorAnalysis(
-            $item['title'] ?? '', 
+            $item['title'] ?? '',
             $categoryId
         );
 
         // Get historical pricing performance
         $pricingHistory = $this->getPricingHistory($itemId, 30);
-        
+
         $prediction = $this->generatePricingPrediction($item, $competitors, $pricingHistory);
-        
+
         $result = [
             'item_id' => $itemId,
             'current_price' => $item['price'] ?? 0,
@@ -142,7 +142,7 @@ class PredictiveAnalyticsService
 
         // Cache for 4 hours
         $this->cache->set($cacheKey, $result, 14400);
-        
+
         return $result;
     }
 
@@ -153,7 +153,7 @@ class PredictiveAnalyticsService
     {
         $cacheKey = "seo_prediction_{$itemId}";
         $cached = $this->cache->get($cacheKey);
-        
+
         if ($cached) {
             return $cached;
         }
@@ -161,16 +161,16 @@ class PredictiveAnalyticsService
         // Get current SEO analysis
         $seoEngine = new SEOKillerEngine($this->accountId);
         $currentAnalysis = $seoEngine->diagnoseSingleItem($itemId);
-        
+
         // Calculate improvement potential
         $improvements = $this->calculateImprovementPotential($currentAnalysis);
-        
+
         // Predict timeline for improvements
         $timeline = $this->predictImprovementTimeline($improvements);
-        
+
         // Estimate performance impact
         $impact = $this->predictSEOImpact($improvements, $currentAnalysis);
-        
+
         $result = [
             'item_id' => $itemId,
             'current_score' => $currentAnalysis['overall_score'] ?? 0,
@@ -185,7 +185,7 @@ class PredictiveAnalyticsService
 
         // Cache for 8 hours
         $this->cache->set($cacheKey, $result, 28800);
-        
+
         return $result;
     }
 
@@ -196,23 +196,23 @@ class PredictiveAnalyticsService
     {
         $cacheKey = "seasonal_{$categoryId}";
         $cached = $this->cache->get($cacheKey);
-        
+
         if ($cached) {
             return $cached;
         }
 
         // Get historical seasonal data
         $seasonalData = $this->getSeasonalData($categoryId, 24); // 24 months
-        
+
         // Identify seasonal patterns
         $patterns = $this->identifySeasonalPatterns($seasonalData);
-        
+
         // Predict upcoming opportunities
         $opportunities = $this->predictUpcomingSeasonal($patterns);
-        
+
         // Generate recommendations
         $recommendations = $this->generateSeasonalRecommendations($opportunities);
-        
+
         $result = [
             'category_id' => $categoryId,
             'seasonal_patterns' => $patterns,
@@ -225,7 +225,7 @@ class PredictiveAnalyticsService
 
         // Cache for 24 hours
         $this->cache->set($cacheKey, $result, 86400);
-        
+
         return $result;
     }
 
@@ -236,7 +236,7 @@ class PredictiveAnalyticsService
     {
         $cacheKey = "insights_{$accountId}";
         $cached = $this->cache->get($cacheKey);
-        
+
         if ($cached) {
             return $cached;
         }
@@ -244,7 +244,7 @@ class PredictiveAnalyticsService
         // Get account items
         $mlClient = new \App\Services\MercadoLivreClient($accountId);
         $items = $mlClient->getMyItems(['limit' => 50]);
-        
+
         $insights = [
             'account_id' => $accountId,
             'generated_at' => time(),
@@ -260,7 +260,7 @@ class PredictiveAnalyticsService
 
         // Cache for 6 hours
         $this->cache->set($cacheKey, $insights, 21600);
-        
+
         return $insights;
     }
 
@@ -283,12 +283,12 @@ class PredictiveAnalyticsService
     private function getHistoricalPerformance(string $itemId, int $days): array
     {
         $stmt = $this->db->prepare("
-            SELECT date, views, sales, revenue, conversion_rate
-            FROM seo_performance_metrics 
-            WHERE item_id = :item_id AND date >= DATE_SUB(NOW(), INTERVAL :days DAY)
-            ORDER BY date ASC
+            SELECT metric_date AS date, COALESCE(views, 0) AS views, COALESCE(sold_quantity, 0) AS sales, COALESCE(revenue, 0) AS revenue, COALESCE(conversion_rate, 0) AS conversion_rate
+            FROM seo_performance_metrics
+            WHERE item_id = :item_id AND metric_date >= DATE_SUB(NOW(), INTERVAL :days DAY)
+            ORDER BY metric_date ASC
         ");
-        
+
         $stmt->execute(['item_id' => $itemId, 'days' => $days]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
@@ -310,11 +310,11 @@ class PredictiveAnalyticsService
         // More data = higher confidence
         $dataPoints = count($historical);
         $baseConfidence = min(0.95, $dataPoints / 30);
-        
+
         // Check for data consistency
         $variance = $this->calculateViance($historical);
         $consistencyBonus = max(0, 1 - ($variance / 100));
-        
+
         return round($baseConfidence * $consistencyBonus, 2);
     }
 
@@ -324,7 +324,7 @@ class PredictiveAnalyticsService
     private function generatePredictiveRecommendations(array $prediction): array
     {
         $recommendations = [];
-        
+
         // Analyze predicted trends
         if ($prediction['trend'] === 'declining') {
             $recommendations[] = [
@@ -334,7 +334,7 @@ class PredictiveAnalyticsService
                 'action' => 'Executar otimização SEO completa imediatamente'
             ];
         }
-        
+
         if ($prediction['trend'] === 'growing') {
             $recommendations[] = [
                 'type' => 'opportunity',
@@ -343,7 +343,7 @@ class PredictiveAnalyticsService
                 'action' => 'Aumentar investimento em marketing e otimização'
             ];
         }
-        
+
         return $recommendations;
     }
 
@@ -353,16 +353,16 @@ class PredictiveAnalyticsService
     private function collectMarketData(string $categoryId, int $days): array
     {
         $mlClient = new \App\Services\MercadoLivreClient();
-        
+
         // Get category trends
         $trends = $mlClient->getTrends($categoryId);
-        
+
         // Get competitor data
         $competitors = $mlClient->searchByKeyword('', $categoryId, 50);
-        
+
         // Get price trends
         $priceAnalysis = $mlClient->getCompetitorAnalysis('', $categoryId);
-        
+
         return [
             'trends' => $trends,
             'competitors' => $competitors,
@@ -385,7 +385,7 @@ class PredictiveAnalyticsService
     private function identifyOpportunities(array $analysis): array
     {
         $opportunities = [];
-        
+
         // Price gap opportunities
         if (isset($analysis['pricing_gaps'])) {
             foreach ($analysis['pricing_gaps'] as $gap) {
@@ -396,7 +396,7 @@ class PredictiveAnalyticsService
                 ];
             }
         }
-        
+
         // Keyword opportunities
         if (isset($analysis['keyword_opportunities'])) {
             foreach ($analysis['keyword_opportunities'] as $keyword) {
@@ -408,7 +408,7 @@ class PredictiveAnalyticsService
                 ];
             }
         }
-        
+
         return $opportunities;
     }
 
@@ -445,16 +445,16 @@ class PredictiveAnalyticsService
             'image_optimization' => 0,
             'seo_strategy' => 0
         ];
-        
+
         // Calculate potential improvements for each category
         $potential['title_optimization'] = min(20, (100 - ($analysis['title_score'] ?? 0)) * 0.3);
         $potential['description_optimization'] = min(25, (100 - ($analysis['description_score'] ?? 0)) * 0.4);
         $potential['attribute_completion'] = min(15, (100 - ($analysis['attributes_score'] ?? 0)) * 0.2);
         $potential['image_optimization'] = min(20, (100 - ($analysis['images_score'] ?? 0)) * 0.3);
         $potential['seo_strategy'] = min(20, (100 - ($analysis['strategy_score'] ?? 0)) * 0.25);
-        
+
         $potential['total_gain'] = array_sum($potential);
-        
+
         return $potential;
     }
 
@@ -464,15 +464,15 @@ class PredictiveAnalyticsService
     private function calculateViance(array $data): float
     {
         if (empty($data)) return 0;
-        
+
         $values = array_column($data, 'views');
         $mean = array_sum($values) / count($values);
-        
+
         $variance = 0;
         foreach ($values as $value) {
             $variance += pow($value - $mean, 2);
         }
-        
+
         return $variance / count($values);
     }
 
@@ -630,7 +630,7 @@ class PredictiveAnalyticsService
         try {
             // Try competitor_price_history first (has item-level granularity)
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     cph.price,
                     cph.min_price,
                     cph.max_price,
@@ -665,7 +665,7 @@ class PredictiveAnalyticsService
             }
 
             $stmtCat = $this->db->prepare("
-                SELECT 
+                SELECT
                     avg_price AS price,
                     min_price,
                     max_price,
@@ -820,27 +820,32 @@ class PredictiveAnalyticsService
 
         $actionConfigs = [
             'title_optimization' => [
-                'effort' => 1, 'impact_multiplier' => 2.0,
+                'effort' => 1,
+                'impact_multiplier' => 2.0,
                 'label' => 'Otimizar Título',
                 'description' => 'Reformule o título com keywords de alto impacto nos primeiros caracteres'
             ],
             'attribute_completion' => [
-                'effort' => 1, 'impact_multiplier' => 1.5,
+                'effort' => 1,
+                'impact_multiplier' => 1.5,
                 'label' => 'Completar Atributos',
                 'description' => 'Preencha todos os atributos obrigatórios e recomendados da categoria'
             ],
             'image_optimization' => [
-                'effort' => 3, 'impact_multiplier' => 1.3,
+                'effort' => 3,
+                'impact_multiplier' => 1.3,
                 'label' => 'Otimizar Imagens',
                 'description' => 'Adicione imagens 1200x1200+ com fundo branco de múltiplos ângulos'
             ],
             'description_optimization' => [
-                'effort' => 2, 'impact_multiplier' => 1.2,
+                'effort' => 2,
+                'impact_multiplier' => 1.2,
                 'label' => 'Melhorar Descrição',
                 'description' => 'Estruture com bullets, mínimo 500 caracteres, inclua especificações'
             ],
             'seo_strategy' => [
-                'effort' => 3, 'impact_multiplier' => 1.0,
+                'effort' => 3,
+                'impact_multiplier' => 1.0,
                 'label' => 'Estratégia SEO Completa',
                 'description' => 'Ative frete grátis, Full, e garanta ficha técnica completa'
             ]
@@ -920,7 +925,7 @@ class PredictiveAnalyticsService
         try {
             // Order-based seasonal data grouped by month
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     DATE_FORMAT(o.date_created, '%Y-%m') AS month,
                     COUNT(DISTINCT o.ml_order_id) AS total_orders,
                     SUM(oi.quantity) AS total_units,
@@ -945,7 +950,7 @@ class PredictiveAnalyticsService
 
             // Get weekly granularity for recent months
             $stmtWeekly = $this->db->prepare("
-                SELECT 
+                SELECT
                     YEARWEEK(o.date_created, 1) AS week,
                     COUNT(DISTINCT o.ml_order_id) AS orders,
                     SUM(oi.quantity) AS units,
@@ -1466,7 +1471,7 @@ class PredictiveAnalyticsService
         try {
             // Get recent sales data for trend calculation
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     DATE_FORMAT(o.date_created, '%Y-%m') AS month,
                     COUNT(DISTINCT o.ml_order_id) AS orders,
                     SUM(oi.quantity) AS units,
@@ -1796,8 +1801,9 @@ class PredictiveAnalyticsService
             }
 
             // Risk 3: Stale listings (active but no sales)
-            $staleItems = count(array_filter($items, fn($i) =>
-                ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
+            $staleItems = count(array_filter(
+                $items,
+                fn($i) => ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
             ));
             $staleRatio = $staleItems / max(1, $totalItems);
             if ($staleRatio > 0.2) {
@@ -1970,8 +1976,9 @@ class PredictiveAnalyticsService
             }
 
             // Short-term: Activate dormant items
-            $dormant = array_filter($items, fn($i) =>
-                ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
+            $dormant = array_filter(
+                $items,
+                fn($i) => ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
             );
             if (count($dormant) > 3) {
                 $plan['short_term'][] = [

@@ -7,13 +7,13 @@ use PDO;
 
 /**
  * 📄 PDF Exporter para Análise de Concorrentes
- * 
+ *
  * Gera relatórios PDF completos com:
  * - Análise comparativa detalhada
  * - Gráficos de tendências
  * - Insights acionáveis
  * - Recomendações estratégicas
- * 
+ *
  * @version 1.0.0
  */
 class PdfExporter
@@ -29,7 +29,7 @@ class PdfExporter
 
     /**
      * Exporta análise de concorrente para PDF
-     * 
+     *
      * @param string $itemId ID do seu produto
      * @param array $competitors Lista de competidores analisados
      * @param array $options Opções de customização
@@ -122,7 +122,7 @@ class PdfExporter
     {
         // Buscar dados do seu produto
         $stmt = $this->db->prepare("
-            SELECT * FROM items 
+            SELECT * FROM items
             WHERE item_id = :item_id AND account_id = :account_id
         ");
         $stmt->execute([
@@ -165,7 +165,7 @@ class PdfExporter
     {
         // Buscar watchlist item
         $stmt = $this->db->prepare("
-            SELECT w.*, 
+            SELECT w.*,
                    COUNT(h.id) as total_changes,
                    COUNT(a.id) as total_alerts
             FROM competitor_watchlist w
@@ -236,12 +236,12 @@ class PdfExporter
 
         // Métricas de performance
         $stmt = $this->db->prepare("
-            SELECT 
-                AVG(current_score) as avg_score,
-                SUM(views_change) as total_views_increase
+            SELECT
+                AVG(COALESCE(seo_score, 0)) as avg_score,
+                SUM(COALESCE(views, 0)) as total_views_increase
             FROM seo_performance_metrics
             WHERE account_id = :account_id
-              AND date BETWEEN :start AND :end
+              AND metric_date BETWEEN :start AND :end
         ");
         $stmt->execute([
             'account_id' => $this->accountId,
@@ -291,46 +291,46 @@ class PdfExporter
         h2 { color: #FF4500; margin-top: 30px; }
         .header { text-align: center; margin-bottom: 40px; }
         .header img { max-width: 200px; }
-        .metric-box { 
-            display: inline-block; 
-            width: 23%; 
-            padding: 15px; 
-            margin: 1%; 
-            background: #f5f5f5; 
+        .metric-box {
+            display: inline-block;
+            width: 23%;
+            padding: 15px;
+            margin: 1%;
+            background: #f5f5f5;
             border-radius: 8px;
             text-align: center;
         }
         .metric-value { font-size: 28px; font-weight: bold; color: #0066FF; }
         .metric-label { font-size: 12px; color: #666; text-transform: uppercase; }
-        .comparison-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin: 20px 0; 
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
         }
-        .comparison-table th { 
-            background: #0066FF; 
-            color: white; 
-            padding: 12px; 
-            text-align: left; 
+        .comparison-table th {
+            background: #0066FF;
+            color: white;
+            padding: 12px;
+            text-align: left;
         }
-        .comparison-table td { 
-            padding: 10px; 
-            border-bottom: 1px solid #ddd; 
+        .comparison-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
         }
         .comparison-table tr:hover { background: #f9f9f9; }
         .better { color: #00A650; font-weight: bold; }
         .worse { color: #FF3333; font-weight: bold; }
-        .recommendation { 
-            background: #FFF9E6; 
-            border-left: 4px solid #FFA500; 
-            padding: 15px; 
-            margin: 10px 0; 
+        .recommendation {
+            background: #FFF9E6;
+            border-left: 4px solid #FFA500;
+            padding: 15px;
+            margin: 10px 0;
         }
-        .footer { 
-            margin-top: 50px; 
-            text-align: center; 
-            font-size: 11px; 
-            color: #999; 
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 11px;
+            color: #999;
         }
         @page { margin: 20mm; }
     </style>
@@ -340,7 +340,7 @@ class PdfExporter
         <h1>🔥 Análise Competitiva - SEO Killer</h1>
         <p>Gerado em: ' . $data['generated_at'] . '</p>
     </div>
-    
+
     <h2>📊 Visão Geral</h2>
     <div class="metric-box">
         <div class="metric-value">' . $data['total_competitors'] . '</div>
@@ -358,12 +358,12 @@ class PdfExporter
         <div class="metric-value">' . round($data['averages']['sales']) . '</div>
         <div class="metric-label">Vendas Médias</div>
     </div>
-    
+
     <h2>🏆 Top Performer</h2>
     <p><strong>Produto:</strong> ' . htmlspecialchars($data['top_performer']['title'] ?? 'N/A') . '</p>
     <p><strong>Score SEO:</strong> ' . ($data['top_performer']['seo_score'] ?? 0) . '/100</p>
     <p><strong>Preço:</strong> R$ ' . number_format($data['top_performer']['price'] ?? 0, 2, ',', '.') . '</p>
-    
+
     <h2>📈 Comparação Detalhada</h2>
     <table class="comparison-table">
         <thead>
@@ -434,17 +434,17 @@ class PdfExporter
         body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
         h1 { color: #0066FF; }
         .timeline { margin: 20px 0; }
-        .timeline-item { 
-            border-left: 3px solid #0066FF; 
-            padding-left: 20px; 
-            margin: 15px 0; 
+        .timeline-item {
+            border-left: 3px solid #0066FF;
+            padding-left: 20px;
+            margin: 15px 0;
         }
         .timeline-date { font-weight: bold; color: #666; }
-        .change-badge { 
-            display: inline-block; 
-            padding: 3px 8px; 
-            border-radius: 3px; 
-            font-size: 12px; 
+        .change-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
             margin-right: 5px;
         }
         .price-change { background: #FFE6E6; color: #FF3333; }
@@ -457,7 +457,7 @@ class PdfExporter
     <p><strong>Período:</strong> Últimos ' . $data['period_days'] . ' dias</p>
     <p><strong>Total de Mudanças:</strong> ' . count($data['history']) . '</p>
     <p><strong>Total de Alertas:</strong> ' . count($data['alerts']) . '</p>
-    
+
     <h2>🕐 Timeline de Mudanças</h2>
     <div class="timeline">';
 
@@ -492,11 +492,11 @@ class PdfExporter
         body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
         h1 { color: #0066FF; text-align: center; }
         .stats { text-align: center; margin: 40px 0; }
-        .stat-box { 
-            display: inline-block; 
-            width: 30%; 
-            padding: 20px; 
-            margin: 1%; 
+        .stat-box {
+            display: inline-block;
+            width: 30%;
+            padding: 20px;
+            margin: 1%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 10px;
@@ -507,7 +507,7 @@ class PdfExporter
 </head>
 <body>
     <h1>📊 Relatório Mensal - ' . $data['period']['month_name'] . '</h1>
-    
+
     <div class="stats">
         <div class="stat-box">
             <div class="stat-value">' . $data['optimizations'] . '</div>
@@ -522,7 +522,7 @@ class PdfExporter
             <div class="stat-label">Concorrentes Monitorados</div>
         </div>
     </div>
-    
+
     <p style="text-align: center; margin-top: 50px;">
         <strong>Gerado em:</strong> ' . $data['generated_at'] . '
     </p>

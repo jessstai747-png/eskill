@@ -1570,13 +1570,13 @@ class PricingIntelligenceController extends BaseController
         try {
             $stmt = $this->db->prepare("
                 UPDATE pricing_rules
-                SET is_active = NOT is_active
+                SET ativo = NOT ativo
                 WHERE id = :id AND account_id = :account_id
             ");
             $stmt->execute(['id' => $ruleId, 'account_id' => $this->accountId]);
 
             // Buscar estado atual
-            $stmt = $this->db->prepare("SELECT is_active FROM pricing_rules WHERE id = :id");
+            $stmt = $this->db->prepare("SELECT ativo FROM pricing_rules WHERE id = :id");
             $stmt->execute(['id' => $ruleId]);
             $ativo = $stmt->fetchColumn();
 
@@ -2160,7 +2160,7 @@ class PricingIntelligenceController extends BaseController
                 $stmtRegras = $this->db->prepare("
                     SELECT
                         COUNT(*) as total,
-                        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as ativas
+                        SUM(CASE WHEN ativo = 1 THEN 1 ELSE 0 END) as ativas
                     FROM pricing_rules
                     WHERE account_id = :account_id
                 ");
