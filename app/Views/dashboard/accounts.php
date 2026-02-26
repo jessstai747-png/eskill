@@ -104,10 +104,10 @@ $userId = $_SESSION['user_id'] ?? 0;
                             <i class="bi bi-three-dots-vertical fs-5"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#" onclick="reconnectAccount(this)">
+                            <li><a class="dropdown-item action-reconnect" href="#" onclick="reconnectAccount(this)">
                                 <i class="bi bi-arrow-repeat me-2"></i>Reconectar
                             </a></li>
-                            <li><a class="dropdown-item" href="#" onclick="syncAccount(this)">
+                            <li><a class="dropdown-item action-sync" href="#" onclick="syncAccount(this)">
                                 <i class="bi bi-cloud-download me-2"></i>Sincronizar Itens
                             </a></li>
                             <li><a class="dropdown-item" href="#" onclick="refreshToken(this)">
@@ -350,6 +350,8 @@ async function loadAccounts() {
             tokenBadge.className = `badge ${tokenStatus.class}`;
             
             card.querySelector('.account-card').dataset.status = tokenStatus.status;
+            const requiresReconnect = shouldRequireReconnect(status, tokenStatus.status);
+            card.querySelector('.account-card').dataset.syncAllowed = requiresReconnect ? '0' : '1';
             
             // Expires
             const expiresEl = card.querySelector('.account-expires');
@@ -363,18 +365,30 @@ async function loadAccounts() {
                 ? `Último sync: ${formatRelativeTime(account.last_synced_at)}`
                 : 'Nunca sincronizado';
             
-            // Show reconnect button only if needed
-            if (status === 'active' && tokenStatus.status === 'valid') {
-                card.querySelector('.btn-reconnect').classList.add('d-none');
-            }
-            
-            // Disable sync if token invalid
-            if (status === 'expired' || !tokenStatus.status || tokenStatus.status === 'expired') {
-                const syncBtn = card.querySelector('.btn-sync');
+            // Ajustar ações por elegibilidade de sincronização para evitar 401 desnecessário.
+            const reconnectBtn = card.querySelector('.btn-reconnect');
+            const syncBtn = card.querySelector('.btn-sync');
+            const reconnectMenuAction = card.querySelector('.action-reconnect');
+            const syncMenuAction = card.querySelector('.action-sync');
+
+            if (requiresReconnect) {
+                if (reconnectBtn) reconnectBtn.classList.remove('d-none');
                 if (syncBtn) {
                     syncBtn.disabled = true;
-                    syncBtn.title = 'Token expirado - reconecte a conta';
+                    syncBtn.title = 'Conta desconectada/inativa. Reconecte antes de sincronizar.';
+                    syncBtn.classList.add('d-none');
                 }
+                if (reconnectMenuAction) reconnectMenuAction.classList.remove('d-none');
+                if (syncMenuAction) syncMenuAction.classList.add('d-none');
+            } else {
+                if (reconnectBtn) reconnectBtn.classList.add('d-none');
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.removeAttribute('title');
+                    syncBtn.classList.remove('d-none');
+                }
+                if (reconnectMenuAction) reconnectMenuAction.classList.add('d-none');
+                if (syncMenuAction) syncMenuAction.classList.remove('d-none');
             }
             
             grid.appendChild(card);
@@ -387,6 +401,17 @@ async function loadAccounts() {
         console.error('Erro ao carregar contas:', error);
         showToast('Erro ao carregar contas', 'error');
     }
+}
+
+function shouldRequireReconnect(status, tokenStatus) {
+    const normalizedStatus = String(status || '').toLowerCase();
+    const normalizedTokenStatus = String(tokenStatus || '').toLowerCase();
+
+    if (normalizedStatus !== 'active') {
+        return true;
+    }
+
+    return normalizedTokenStatus === 'expired' || normalizedTokenStatus === 'invalid';
 }
 
 async function loadSyncStatuses() {
@@ -534,6 +559,13 @@ async function syncAccount(el) {
     const accountId = card.dataset.accountId;
     const syncBtn = card.querySelector('.btn-sync');
     const originalHtml = syncBtn.innerHTML;
+    const canSync = card.dataset.syncAllowed === '1';
+
+    if (!canSync) {
+        showToast('Conta precisa ser reconectada antes de sincronizar.', 'warning');
+        window.location.href = `/auth/authorize?reconnect=${accountId}`;
+        return;
+    }
     
     try {
         // Mostrar loading

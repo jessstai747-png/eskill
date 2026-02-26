@@ -6,6 +6,37 @@
 
 ---
 
+## Sessão: 2026-02-26e — Hardening da página de contas (bloqueio de sync inválido)
+
+### Causa raiz complementar
+- A página `dashboard/accounts` ainda permitia acionamento de `sync` para contas não ativas/desconectadas, o que gerava `401` em `/api/accounts/{id}/sync` em cenários de token inválido.
+
+### Arquivo alterado
+- `app/Views/dashboard/accounts.php`
+
+### Implementado
+1. Adição de classes de ação no menu da conta (`action-reconnect`, `action-sync`) para controle dinâmico de visibilidade.
+2. Adição de regra de elegibilidade `shouldRequireReconnect(status, tokenStatus)`:
+   - se conta não estiver `active`, força reconexão;
+   - se token estiver `expired/invalid`, força reconexão.
+3. Durante renderização dos cards:
+   - grava `data-sync-allowed` no card;
+   - exibe/oculta botões e itens de menu (`Sincronizar` vs `Reconectar`) conforme elegibilidade.
+4. Guard no `syncAccount(el)`:
+   - bloqueia chamada de API quando `data-sync-allowed` não permitir;
+   - redireciona para `/auth/authorize?reconnect={id}` com aviso.
+
+### Validação executada
+- ✅ `php -l app/Views/dashboard/accounts.php`
+- ✅ `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+  - `2902 tests`, `6778 assertions`, `0 failures`, `27 skipped`
+- ✅ `php vendor/bin/phpunit --testsuite Integration --no-coverage --colors=never`
+  - `3467 tests`, `11016 assertions`, `0 failures`, `10 skipped`, `2 risky`
+
+### Resultado final
+- As duas interfaces de conta (`dashboard/index` e `dashboard/accounts`) agora evitam sync inválido e direcionam reconexão antes de chamar backend.
+- Redução prática de `401` causados por ação de sync em contas desconectadas/expiradas.
+
 ## Sessão: 2026-02-26d — Correção dashboard (422 em pedidos e 401 em sync de contas)
 
 ### Causa raiz
