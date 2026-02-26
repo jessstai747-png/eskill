@@ -358,26 +358,79 @@ class SEOStrategiesEngine
         $performance = [];
         
         foreach ($keywords as $keyword) {
-            // Buscar dados de performance
-            $stmt = $db->prepare("
-                SELECT 
-                    keyword,
-                    impressions,
-                    clicks,
-                    conversions,
-                    avg_position,
-                    updated_at
-                FROM seo_keyword_performance
-                WHERE category_id = :category_id AND keyword = :keyword
-                ORDER BY updated_at DESC
-                LIMIT 1
-            ");
-            $stmt->execute([
-                'category_id' => $categoryId,
-                'keyword' => $keyword
-            ]);
-            
-            $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $queries = [
+                "
+                    SELECT
+                        keyword,
+                        impressions,
+                        clicks,
+                        conversions,
+                        avg_position,
+                        updated_at
+                    FROM seo_keyword_performance
+                    WHERE category_id = :category_id AND keyword = :keyword
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                ",
+                "
+                    SELECT
+                        keyword,
+                        impressions,
+                        clicks,
+                        conversions,
+                        updated_at
+                    FROM seo_keyword_performance
+                    WHERE category_id = :category_id AND keyword = :keyword
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                ",
+                "
+                    SELECT
+                        keyword,
+                        impressions,
+                        clicks,
+                        conversions
+                    FROM seo_keyword_performance
+                    WHERE category_id = :category_id AND keyword = :keyword
+                    LIMIT 1
+                ",
+            ];
+
+            $data = null;
+            $lastUnknownColumnError = null;
+            $queryExecuted = false;
+            foreach ($queries as $query) {
+                try {
+                    $stmt = $db->prepare($query);
+                    $stmt->execute([
+                        'category_id' => $categoryId,
+                        'keyword' => $keyword
+                    ]);
+                    $queryExecuted = true;
+                    $fetched = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    $data = is_array($fetched) ? $fetched : null;
+                    break;
+                } catch (\PDOException $e) {
+                    if (str_contains($e->getMessage(), 'Unknown column')) {
+                        $lastUnknownColumnError = $e;
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
+
+            if (!$queryExecuted && $lastUnknownColumnError !== null) {
+                throw $lastUnknownColumnError;
+            }
+
+            if (is_array($data)) {
+                if (!array_key_exists('avg_position', $data)) {
+                    $data['avg_position'] = 0;
+                }
+                if (!array_key_exists('updated_at', $data)) {
+                    $data['updated_at'] = null;
+                }
+            }
             
             if ($data) {
                 $performance[$keyword] = [

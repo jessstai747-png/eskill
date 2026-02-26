@@ -412,7 +412,7 @@ class CompetitorAnalysisService
             }
         }
         
-        return round(($below / $count) * 100);
+        return (int) round(($below / $count) * 100);
     }
     
     /**

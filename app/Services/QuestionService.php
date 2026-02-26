@@ -40,6 +40,8 @@ class QuestionService
 
         if ($answerGenerator !== null) {
             $this->answerGenerator = $answerGenerator;
+        } elseif ($skipDbAutoConnect) {
+            $this->answerGenerator = null;
         } else {
             $this->answerGenerator = null;
             try {
@@ -54,6 +56,8 @@ class QuestionService
 
         if ($questionAnalyzer !== null) {
             $this->questionAnalyzer = $questionAnalyzer;
+        } elseif ($skipDbAutoConnect) {
+            $this->questionAnalyzer = null;
         } else {
             $this->questionAnalyzer = null;
             try {

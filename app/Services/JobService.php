@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
+use DateTimeImmutable;
+use DateTimeInterface;
 use PDO;
 
 use App\Services\OrderService;
 use App\Services\ItemService;
+use App\Services\QuestionService;
 use App\Services\CatalogCloneService;
 use App\Services\MercadoLivreClient;
 use App\Services\MercadoLivreWebhookService;
@@ -22,6 +27,12 @@ use App\Services\AssistantConnectorService;
 class JobService
 {
     private \PDO $db;
+
+    private const DEFAULT_RETRY_BASE_SECONDS = 5;
+    private const DEFAULT_RETRY_MAX_SECONDS = 300;
+    private const DEFAULT_RETRY_JITTER_PERCENT = 0.20;
+    private const DEFAULT_STALE_PROCESSING_SECONDS = 900;
+    private const DEFAULT_RECLAIM_DELAY_SECONDS = 2;
 
 
     public function __construct()
@@ -47,13 +58,20 @@ class JobService
                     error_message TEXT NULL,
                     result JSON NULL,
                     scheduled_at DATETIME NULL,
+                    next_attempt_at DATETIME NULL,
+                    claim_token VARCHAR(64) NULL,
+                    claimed_by VARCHAR(128) NULL,
+                    claimed_at DATETIME NULL,
                     started_at DATETIME NULL,
                     completed_at DATETIME NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_status (status),
                     INDEX idx_type (type),
-                    INDEX idx_scheduled_at (scheduled_at)
+                    INDEX idx_scheduled_at (scheduled_at),
+                    INDEX idx_next_attempt_at (next_attempt_at),
+                    INDEX idx_claim_token (claim_token),
+                    INDEX idx_claimed_at (claimed_at)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
 
@@ -90,6 +108,16 @@ class JobService
             $cols = is_array($cols) ? $cols : [];
             $colsMap = array_fill_keys($cols, true);
 
+            $idxStmt = $this->db->prepare("
+                SELECT INDEX_NAME
+                FROM INFORMATION_SCHEMA.STATISTICS
+                WHERE TABLE_SCHEMA = :db
+                  AND TABLE_NAME = 'jobs'
+            ");
+            $idxStmt->execute([':db' => $dbName]);
+            $indexes = $idxStmt->fetchAll(PDO::FETCH_COLUMN);
+            $idxMap = array_fill_keys(is_array($indexes) ? $indexes : [], true);
+
             if (!isset($colsMap['result'])) {
                 $this->db->exec("ALTER TABLE jobs ADD COLUMN result JSON NULL");
             }
@@ -97,9 +125,43 @@ class JobService
             if (!isset($colsMap['updated_at'])) {
                 $this->db->exec("ALTER TABLE jobs ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
             }
+
+            if (!isset($colsMap['next_attempt_at'])) {
+                $this->db->exec("ALTER TABLE jobs ADD COLUMN next_attempt_at DATETIME NULL AFTER scheduled_at");
+            }
+
+            if (!isset($colsMap['claim_token'])) {
+                $this->db->exec("ALTER TABLE jobs ADD COLUMN claim_token VARCHAR(64) NULL AFTER scheduled_at");
+            }
+
+            if (!isset($colsMap['claimed_by'])) {
+                $this->db->exec("ALTER TABLE jobs ADD COLUMN claimed_by VARCHAR(128) NULL AFTER claim_token");
+            }
+
+            if (!isset($colsMap['claimed_at'])) {
+                $this->db->exec("ALTER TABLE jobs ADD COLUMN claimed_at DATETIME NULL AFTER claimed_by");
+            }
+
+            $this->ensureIndexExists($idxMap, 'idx_scheduled_at', "ALTER TABLE jobs ADD INDEX idx_scheduled_at (scheduled_at)");
+            $this->ensureIndexExists($idxMap, 'idx_next_attempt_at', "ALTER TABLE jobs ADD INDEX idx_next_attempt_at (next_attempt_at)");
+            $this->ensureIndexExists($idxMap, 'idx_claim_token', "ALTER TABLE jobs ADD INDEX idx_claim_token (claim_token)");
+            $this->ensureIndexExists($idxMap, 'idx_claimed_at', "ALTER TABLE jobs ADD INDEX idx_claimed_at (claimed_at)");
         } catch (\Exception $e) {
             error_log('JobService: schema migration skipped - ' . $e->getMessage());
         }
+    }
+
+    /**
+     * @param array<string, bool> $idxMap
+     */
+    private function ensureIndexExists(array &$idxMap, string $indexName, string $createSql): void
+    {
+        if (isset($idxMap[$indexName])) {
+            return;
+        }
+
+        $this->db->exec($createSql);
+        $idxMap[$indexName] = true;
     }
 
     /**
@@ -124,7 +186,7 @@ class JobService
         if (!$scheduledAt || $scheduledAt <= new \DateTime()) {
             try {
                 $queue = new QueueService();
-                $queue->push('process_job', ['job_id' => $jobId]);
+                $queue->push('process_job', ['job_id' => $jobId], $this->resolveQueueName());
             } catch (\Exception $e) {
                 // Redis failure shouldn't block the request, worker fallback (polling) handles it
                 log_warning('Falha ao enviar job para Redis', [
@@ -136,6 +198,16 @@ class JobService
         }
 
         return $jobId;
+    }
+
+    private function resolveQueueName(): string
+    {
+        $queueName = trim((string)($_ENV['JOB_QUEUE_NAME'] ?? getenv('JOB_QUEUE_NAME') ?? 'default'));
+        if ($queueName === '') {
+            return 'default';
+        }
+
+        return $queueName;
     }
 
     /**
@@ -159,8 +231,9 @@ class JobService
             SELECT * FROM jobs
             WHERE status = 'pending'
             AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+            AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
             AND attempts < max_attempts
-            ORDER BY created_at DESC
+            ORDER BY COALESCE(next_attempt_at, scheduled_at, created_at) ASC, created_at ASC
             LIMIT {$limitSql}
         ");
         $stmt->execute();
@@ -174,20 +247,18 @@ class JobService
     public function process(int $limit = 10): array
     {
         $processed = [];
+        $reclaimed = $this->reclaimStaleProcessingJobs(
+            $this->getStaleProcessingTimeoutSeconds(),
+            max(10, min(500, $limit * 5))
+        );
+        if ($reclaimed > 0) {
+            log_warning('JobService: jobs reclaimados após timeout de claim', [
+                'service' => 'JobService',
+                'reclaimed' => $reclaimed,
+            ]);
+        }
 
-        $limitSql = max(1, min((int)$limit, 200));
-
-        // Buscar jobs pendentes ou agendados
-        $stmt = $this->db->prepare("
-            SELECT * FROM jobs
-            WHERE status = 'pending'
-            AND (scheduled_at IS NULL OR scheduled_at <= NOW())
-            AND attempts < max_attempts
-            ORDER BY created_at ASC
-            LIMIT {$limitSql}
-        ");
-        $stmt->execute();
-        $jobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $jobs = $this->claimPendingJobs($limit);
 
         foreach ($jobs as $job) {
             $result = $this->processJob($job);
@@ -202,12 +273,44 @@ class JobService
      */
     public function processJob(array $job): array
     {
-        $jobId = $job['id'];
-        $type = $job['type'];
-        $payload = json_decode($job['payload'], true);
+        $jobId = (int)($job['id'] ?? 0);
+        $type = (string)($job['type'] ?? '');
+        $jobStatus = (string)($job['status'] ?? 'pending');
 
-        // Marcar como processando
-        $this->updateJobStatus($jobId, 'processing', null, new \DateTime());
+        if ($jobId <= 0 || $type === '') {
+            throw new \InvalidArgumentException('Job inválido para processamento');
+        }
+
+        if (in_array($jobStatus, ['completed', 'failed'], true)) {
+            return [
+                'id' => $jobId,
+                'type' => $type,
+                'status' => $jobStatus,
+            ];
+        }
+
+        if ($jobStatus === 'pending') {
+            $claimed = $this->claimJob($jobId);
+            if ($claimed === null) {
+                return [
+                    'id' => $jobId,
+                    'type' => $type,
+                    'status' => 'skipped',
+                    'error' => 'Job não pôde ser claimado (já em processamento ou concluído)',
+                ];
+            }
+            $job = $claimed;
+            $jobStatus = (string)($job['status'] ?? 'processing');
+        }
+
+        if ($jobStatus !== 'processing') {
+            $this->updateJobStatus($jobId, 'processing', null, new \DateTime());
+        }
+
+        $payload = json_decode((string)($job['payload'] ?? '{}'), true);
+        if (!is_array($payload)) {
+            $payload = [];
+        }
 
         try {
             // Executar job baseado no tipo
@@ -215,6 +318,7 @@ class JobService
 
             // Marcar como concluído
             $this->updateJobStatus($jobId, 'completed', null, null, new \DateTime(), null, $result);
+            $this->syncMlWebhookInboxStatusOnSuccess($type, is_array($payload) ? $payload : [], $jobId, $result);
 
             return [
                 'id' => $jobId,
@@ -229,6 +333,7 @@ class JobService
             if ($attempts >= $maxAttempts) {
                 // Marcar como falhou
                 $this->updateJobStatus($jobId, 'failed', $e->getMessage());
+                $this->syncMlWebhookInboxStatusOnFailure($type, is_array($payload) ? $payload : [], $jobId, $e->getMessage(), true, $attempts, $maxAttempts);
 
                 // DLQ best-effort para assistant_action
                 if ($type === 'assistant_action') {
@@ -248,7 +353,20 @@ class JobService
                 }
             } else {
                 // Reagendar para tentar novamente
-                $this->updateJobStatus($jobId, 'pending', $e->getMessage(), null, null, $attempts);
+                $retryDelaySeconds = $this->calculateRetryDelaySeconds($attempts);
+                $nextAttemptAt = (new DateTimeImmutable())->modify('+' . $retryDelaySeconds . ' seconds');
+                $this->updateJobStatus($jobId, 'pending', $e->getMessage(), null, null, $attempts, null, $nextAttemptAt);
+                $this->syncMlWebhookInboxStatusOnFailure(
+                    $type,
+                    is_array($payload) ? $payload : [],
+                    $jobId,
+                    $e->getMessage(),
+                    false,
+                    $attempts,
+                    $maxAttempts,
+                    $nextAttemptAt,
+                    $retryDelaySeconds
+                );
             }
 
             return [
@@ -257,7 +375,91 @@ class JobService
                 'status' => $attempts >= $maxAttempts ? 'failed' : 'pending',
                 'error' => $e->getMessage(),
                 'attempts' => $attempts,
+                'next_attempt_at' => isset($nextAttemptAt) ? $nextAttemptAt->format(DATE_ATOM) : null,
             ];
+        }
+    }
+
+    /**
+     * Mantém a inbox de webhook ML consistente com o ciclo de vida do job.
+     * Fluxo esperado: received -> queued -> processed/failed.
+     */
+    private function syncMlWebhookInboxStatusOnSuccess(string $type, array $payload, int $jobId, $result): void
+    {
+        if ($type !== 'ml_webhook') {
+            return;
+        }
+
+        $eventHash = (string)($payload['event_hash'] ?? '');
+        if ($eventHash === '') {
+            return;
+        }
+
+        $resultPayload = is_array($result) ? $result : ['result' => $result];
+        $resultPayload['job_id'] = $jobId;
+        $resultPayload['job_status'] = 'completed';
+        $resultPayload['processed_by'] = 'job_service';
+
+        try {
+            $inbox = new WebhookInboxService();
+            $inbox->markProcessed('mercadolivre', $eventHash, $resultPayload);
+        } catch (\Throwable $t) {
+            log_warning('Falha ao marcar inbox de webhook ML como processed', [
+                'service' => 'JobService',
+                'job_id' => $jobId,
+                'event_hash' => $eventHash,
+                'error' => $t->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Sincroniza status de falha/retry do job com a inbox de webhook ML.
+     */
+    private function syncMlWebhookInboxStatusOnFailure(
+        string $type,
+        array $payload,
+        int $jobId,
+        string $errorMessage,
+        bool $terminalFailure,
+        int $attempts,
+        int $maxAttempts,
+        ?DateTimeInterface $nextAttemptAt = null,
+        ?int $retryDelaySeconds = null
+    ): void {
+        if ($type !== 'ml_webhook') {
+            return;
+        }
+
+        $eventHash = (string)($payload['event_hash'] ?? '');
+        if ($eventHash === '') {
+            return;
+        }
+
+        try {
+            $inbox = new WebhookInboxService();
+            if ($terminalFailure) {
+                $inbox->markFailed('mercadolivre', $eventHash, $errorMessage);
+                return;
+            }
+
+            $inbox->markQueued('mercadolivre', $eventHash, $jobId, [
+                'queue_status' => 'retry_pending',
+                'last_error' => mb_substr($errorMessage, 0, 500),
+                'attempts' => $attempts,
+                'max_attempts' => $maxAttempts,
+                'next_attempt_at' => $nextAttemptAt ? $nextAttemptAt->format(DATE_ATOM) : null,
+                'retry_delay_seconds' => $retryDelaySeconds,
+                'updated_by' => 'job_service',
+            ]);
+        } catch (\Throwable $t) {
+            log_warning('Falha ao atualizar inbox de webhook ML após erro de job', [
+                'service' => 'JobService',
+                'job_id' => $jobId,
+                'event_hash' => $eventHash,
+                'terminal_failure' => $terminalFailure,
+                'error' => $t->getMessage(),
+            ]);
         }
     }
 
@@ -272,6 +474,9 @@ class JobService
 
             case 'sync_items':
                 return $this->syncItemsJob($payload);
+
+            case 'sync_questions':
+                return $this->syncQuestionsJob($payload);
 
             case 'update_price_history':
                 return $this->updatePriceHistoryJob($payload);
@@ -1138,12 +1343,24 @@ class JobService
 
         $orderService = new OrderService($accountId);
         $limit = (int)($payload['limit'] ?? 100);
-        $result = $orderService->syncOrders(null, $limit);
+        $result = $orderService->syncOrders(null, $limit, [
+            'cursor' => isset($payload['cursor']) ? (int)$payload['cursor'] : null,
+            'since' => $payload['since'] ?? null,
+            'until' => $payload['until'] ?? null,
+            'page_limit' => isset($payload['page_limit']) ? (int)$payload['page_limit'] : 20,
+            'full_backfill' => (bool)($payload['full_backfill'] ?? false),
+            'persist_checkpoint' => !isset($payload['persist_checkpoint']) || (bool)$payload['persist_checkpoint'],
+            'overlap_seconds' => isset($payload['overlap_seconds']) ? (int)$payload['overlap_seconds'] : 300,
+        ]);
 
         return [
             'account_id' => $accountId,
             'synced' => $result['synced'] ?? 0,
-            'errors' => $result['errors'] ?? 0,
+            'errors' => $result['errors'] ?? [],
+            'error_count' => $result['error_count'] ?? (is_array($result['errors'] ?? null) ? count($result['errors']) : 0),
+            'has_more' => $result['has_more'] ?? false,
+            'next_cursor' => $result['next_cursor'] ?? null,
+            'pages_processed' => $result['pages_processed'] ?? 0,
         ];
     }
 
@@ -1168,6 +1385,29 @@ class JobService
             'synced' => $result['synced'] ?? 0,
             'errors' => $result['errors'] ?? 0,
             'total_found' => $result['total_found'] ?? null,
+        ];
+    }
+
+    /**
+     * Job: Sincronizar perguntas
+     */
+    private function syncQuestionsJob(array $payload): array
+    {
+        $accountId = $payload['account_id'] ?? null;
+
+        if (!$accountId) {
+            throw new \Exception('account_id é obrigatório para sync_questions');
+        }
+
+        $service = new QuestionService((int)$accountId);
+        $limit = (int)($payload['limit'] ?? 50);
+        $result = $service->syncQuestions($limit);
+
+        return [
+            'account_id' => (int)$accountId,
+            'synced' => (int)($result['synced'] ?? 0),
+            'errors' => (int)($result['errors'] ?? 0),
+            'last_error' => $result['last_error'] ?? null,
         ];
     }
 
@@ -1224,7 +1464,8 @@ class JobService
         ?\DateTime $startedAt = null,
         ?\DateTime $completedAt = null,
         ?int $attempts = null,
-        mixed $result = null
+        mixed $result = null,
+        ?DateTimeInterface $nextAttemptAt = null
     ): void {
         $updates = ['status = :status'];
         $params = [':status' => $status, ':id' => $jobId];
@@ -1255,9 +1496,274 @@ class JobService
             $params[':result'] = $encoded === false ? null : $encoded;
         }
 
+        if ($status === 'pending') {
+            if ($nextAttemptAt !== null) {
+                $updates[] = 'next_attempt_at = :next_attempt_at';
+                $params[':next_attempt_at'] = $nextAttemptAt->format('Y-m-d H:i:s');
+            } else {
+                $updates[] = 'next_attempt_at = NULL';
+            }
+        }
+
+        if (in_array($status, ['completed', 'failed'], true)) {
+            $updates[] = 'next_attempt_at = NULL';
+        }
+
+        if (in_array($status, ['pending', 'completed', 'failed'], true)) {
+            $updates[] = 'claim_token = NULL';
+            $updates[] = 'claimed_by = NULL';
+            $updates[] = 'claimed_at = NULL';
+        }
+
         $sql = "UPDATE jobs SET " . implode(', ', $updates) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
+    }
+
+    /**
+     * Claim atômico de jobs pendentes para evitar processamento duplicado entre workers.
+     */
+    public function claimPendingJobs(int $limit = 10, ?string $workerId = null): array
+    {
+        $limitSql = max(1, min((int)$limit, 200));
+        $workerId = $this->normalizeWorkerId($workerId);
+
+        return $this->claimJobsBySelection(
+            "status = 'pending'
+             AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+             AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
+             AND attempts < max_attempts",
+            [],
+            $limitSql,
+            $workerId
+        );
+    }
+
+    /**
+     * Claim atômico de um job específico.
+     */
+    public function claimJob(int $jobId, ?string $workerId = null): ?array
+    {
+        $rows = $this->claimJobsBySelection(
+            "id = :job_id
+             AND status = 'pending'
+             AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+             AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
+             AND attempts < max_attempts",
+            [':job_id' => $jobId],
+            1,
+            $this->normalizeWorkerId($workerId)
+        );
+
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<int, array<string, mixed>>
+     */
+    private function claimJobsBySelection(string $whereSql, array $params, int $limitSql, string $workerId): array
+    {
+        $claimToken = bin2hex(random_bytes(16));
+
+        $this->db->beginTransaction();
+        try {
+            $selectSqlBase = "
+                SELECT id
+                FROM jobs
+                WHERE {$whereSql}
+                ORDER BY COALESCE(next_attempt_at, scheduled_at, created_at) ASC, created_at ASC
+                LIMIT {$limitSql}
+                FOR UPDATE
+            ";
+
+            $idsStmt = $this->db->prepare($selectSqlBase . ' SKIP LOCKED');
+            try {
+                $idsStmt->execute($params);
+            } catch (\PDOException $e) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+
+                $this->db->beginTransaction();
+                $idsStmt = $this->db->prepare($selectSqlBase);
+                $idsStmt->execute($params);
+            }
+
+            $ids = $idsStmt->fetchAll(PDO::FETCH_COLUMN);
+            $ids = array_values(array_map('intval', is_array($ids) ? $ids : []));
+
+            if ($ids === []) {
+                $this->db->commit();
+                return [];
+            }
+
+            $placeholders = [];
+            $updateParams = [
+                ':claim_token' => $claimToken,
+                ':claimed_by' => $workerId,
+            ];
+            foreach ($ids as $idx => $id) {
+                $ph = ':id_' . $idx;
+                $placeholders[] = $ph;
+                $updateParams[$ph] = $id;
+            }
+
+            $updateStmt = $this->db->prepare(
+                "UPDATE jobs
+                 SET status = 'processing',
+                     started_at = COALESCE(started_at, NOW()),
+                     error_message = NULL,
+                     claim_token = :claim_token,
+                     claimed_by = :claimed_by,
+                     claimed_at = NOW()
+                 WHERE id IN (" . implode(',', $placeholders) . ")
+                   AND status = 'pending'"
+            );
+            $updateStmt->execute($updateParams);
+
+            if ((int)$updateStmt->rowCount() === 0) {
+                $this->db->commit();
+                return [];
+            }
+
+            $fetchStmt = $this->db->prepare(
+                "SELECT *
+                 FROM jobs
+                 WHERE claim_token = :claim_token
+                 ORDER BY created_at ASC"
+            );
+            $fetchStmt->execute([':claim_token' => $claimToken]);
+            $rows = $fetchStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $this->db->commit();
+
+            return is_array($rows) ? $rows : [];
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Reagenda jobs presos em processing por timeout de claim.
+     */
+    public function reclaimStaleProcessingJobs(?int $staleAfterSeconds = null, int $limit = 50): int
+    {
+        $staleAfterSeconds = $staleAfterSeconds ?? $this->getStaleProcessingTimeoutSeconds();
+        $staleAfterSeconds = max(30, min(86400, $staleAfterSeconds));
+        $limitSql = max(1, min((int)$limit, 500));
+
+        $cutoff = (new DateTimeImmutable())->modify('-' . $staleAfterSeconds . ' seconds');
+        $reclaimDelaySeconds = max(0, min(300, (int)($_ENV['JOB_RECLAIM_RETRY_DELAY_SECONDS'] ?? self::DEFAULT_RECLAIM_DELAY_SECONDS)));
+        $nextAttemptAt = (new DateTimeImmutable())->modify('+' . $reclaimDelaySeconds . ' seconds');
+        $reclaimErrorMessage = sprintf('Job reclaimado após timeout de %ds em processing', $staleAfterSeconds);
+
+        $this->db->beginTransaction();
+        try {
+            $selectBase = "
+                SELECT id
+                FROM jobs
+                WHERE status = 'processing'
+                  AND claimed_at IS NOT NULL
+                  AND claimed_at < :cutoff
+                  AND attempts < max_attempts
+                ORDER BY claimed_at ASC
+                LIMIT {$limitSql}
+                FOR UPDATE
+            ";
+
+            $idsStmt = $this->db->prepare($selectBase . ' SKIP LOCKED');
+            try {
+                $idsStmt->execute([':cutoff' => $cutoff->format('Y-m-d H:i:s')]);
+            } catch (\PDOException $e) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+
+                $this->db->beginTransaction();
+                $idsStmt = $this->db->prepare($selectBase);
+                $idsStmt->execute([':cutoff' => $cutoff->format('Y-m-d H:i:s')]);
+            }
+
+            $ids = $idsStmt->fetchAll(PDO::FETCH_COLUMN);
+            $ids = array_values(array_map('intval', is_array($ids) ? $ids : []));
+            if ($ids === []) {
+                $this->db->commit();
+                return 0;
+            }
+
+            $placeholders = [];
+            $updateParams = [
+                ':error_message' => $reclaimErrorMessage,
+                ':next_attempt_at' => $nextAttemptAt->format('Y-m-d H:i:s'),
+            ];
+            foreach ($ids as $idx => $id) {
+                $ph = ':id_' . $idx;
+                $placeholders[] = $ph;
+                $updateParams[$ph] = $id;
+            }
+
+            $updateStmt = $this->db->prepare(
+                "UPDATE jobs
+                 SET status = 'pending',
+                     claim_token = NULL,
+                     claimed_by = NULL,
+                     claimed_at = NULL,
+                     started_at = NULL,
+                     next_attempt_at = :next_attempt_at,
+                     error_message = :error_message
+                 WHERE id IN (" . implode(',', $placeholders) . ")
+                   AND status = 'processing'"
+            );
+            $updateStmt->execute($updateParams);
+            $reclaimed = (int)$updateStmt->rowCount();
+
+            $this->db->commit();
+
+            return $reclaimed;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    private function calculateRetryDelaySeconds(int $attempts): int
+    {
+        $attempts = max(1, $attempts);
+        $base = max(1, (int)($_ENV['JOB_RETRY_BASE_SECONDS'] ?? self::DEFAULT_RETRY_BASE_SECONDS));
+        $max = max($base, (int)($_ENV['JOB_RETRY_MAX_SECONDS'] ?? self::DEFAULT_RETRY_MAX_SECONDS));
+        $jitterPercent = (float)($_ENV['JOB_RETRY_JITTER_PERCENT'] ?? self::DEFAULT_RETRY_JITTER_PERCENT);
+        $jitterPercent = max(0.0, min(1.0, $jitterPercent));
+
+        $exp = min(20, $attempts - 1);
+        $coreDelay = (int)min($max, $base * (2 ** $exp));
+        $jitterMax = (int)floor($coreDelay * $jitterPercent);
+        $jitter = $jitterMax > 0 ? random_int(0, $jitterMax) : 0;
+
+        return min($max, $coreDelay + $jitter);
+    }
+
+    private function getStaleProcessingTimeoutSeconds(): int
+    {
+        $value = (int)($_ENV['JOB_STALE_PROCESSING_SECONDS'] ?? self::DEFAULT_STALE_PROCESSING_SECONDS);
+        return max(60, min(86400, $value));
+    }
+
+    private function normalizeWorkerId(?string $workerId): string
+    {
+        $workerId = trim((string)($workerId ?? ''));
+        if ($workerId !== '') {
+            return mb_substr($workerId, 0, 128);
+        }
+
+        $host = gethostname();
+        $host = is_string($host) && $host !== '' ? $host : 'unknown-host';
+        return mb_substr(sprintf('%s:%d', $host, getmypid()), 0, 128);
     }
 
     /**
@@ -1266,7 +1772,7 @@ class JobService
      */
     public function getJobPublic(int $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT id, type, status, attempts, max_attempts, error_message, started_at, completed_at, created_at, updated_at, result FROM jobs WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT id, type, status, attempts, max_attempts, error_message, started_at, completed_at, scheduled_at, next_attempt_at, created_at, updated_at, result FROM jobs WHERE id = :id");
         $stmt->execute([':id' => $id]);
         $job = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$job) {

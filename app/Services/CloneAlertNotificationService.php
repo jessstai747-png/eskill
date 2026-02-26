@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace App\Services;
 
@@ -21,6 +22,8 @@ class CloneAlertNotificationService
 {
     private PDO $db;
     private array $config;
+    /** @var array<string, bool> */
+    private array $cloneAlertsColumns = [];
     
     // Thresholds para alertas
     private const STUCK_JOB_MINUTES = 30;
@@ -30,6 +33,7 @@ class CloneAlertNotificationService
     public function __construct()
     {
         $this->db = Database::getInstance();
+        $this->cloneAlertsColumns = $this->loadCloneAlertsColumns();
         
         $this->config = [
             'smtp_enabled' => getenv('SMTP_ENABLED') === 'true',
@@ -263,24 +267,51 @@ class CloneAlertNotificationService
         string $message,
         array $context = []
     ): array {
-        $stmt = $this->db->prepare("
-            INSERT INTO clone_alerts 
-            (alert_type, severity, title, message, context_json, triggered_at, notification_sent)
-            VALUES (:type, :severity, :title, :message, :context, NOW(), 0)
-        ");
-        
-        $stmt->execute([
-            'type' => $type,
-            'severity' => $severity,
-            'title' => $title,
-            'message' => $message,
-            'context' => json_encode($context)
-        ]);
+        $normalizedSeverity = $this->normalizeSeverity($severity);
+        $encodedContext = json_encode($context);
+        if ($encodedContext === false) {
+            $encodedContext = '{}';
+        }
+
+        if (
+            $this->hasCloneAlertColumn('title')
+            && $this->hasCloneAlertColumn('context_json')
+            && $this->hasCloneAlertColumn('triggered_at')
+            && $this->hasCloneAlertColumn('notification_sent')
+        ) {
+            $stmt = $this->db->prepare("
+                INSERT INTO clone_alerts 
+                (alert_type, severity, title, message, context_json, triggered_at, notification_sent)
+                VALUES (:type, :severity, :title, :message, :context, NOW(), 0)
+            ");
+
+            $stmt->execute([
+                'type' => $type,
+                'severity' => $normalizedSeverity,
+                'title' => $title,
+                'message' => $message,
+                'context' => $encodedContext
+            ]);
+        } else {
+            $contextColumn = $this->hasCloneAlertColumn('context') ? 'context' : 'context_json';
+            $stmt = $this->db->prepare("
+                INSERT INTO clone_alerts 
+                (alert_type, severity, message, {$contextColumn})
+                VALUES (:type, :severity, :message, :context)
+            ");
+
+            $stmt->execute([
+                'type' => $type,
+                'severity' => $normalizedSeverity,
+                'message' => $message,
+                'context' => $encodedContext
+            ]);
+        }
         
         return [
             'id' => (int) $this->db->lastInsertId(),
             'type' => $type,
-            'severity' => $severity,
+            'severity' => $normalizedSeverity,
             'title' => $title,
             'message' => $message,
             'context' => $context
@@ -296,13 +327,19 @@ class CloneAlertNotificationService
      */
     private function hasRecentAlert(string $type, string $identifier): bool
     {
+        $contextColumn = $this->hasCloneAlertColumn('context_json') ? 'context_json' : 'context';
+        $timestampColumn = $this->hasCloneAlertColumn('triggered_at') ? 'triggered_at' : 'created_at';
+        $activeCondition = $this->hasCloneAlertColumn('resolved_at')
+            ? 'resolved_at IS NULL'
+            : ($this->hasCloneAlertColumn('acknowledged') ? 'acknowledged = 0' : '1=1');
+
         $stmt = $this->db->prepare("
             SELECT COUNT(*) as count
             FROM clone_alerts
             WHERE alert_type = :type
-              AND context_json LIKE :identifier
-              AND triggered_at > DATE_SUB(NOW(), INTERVAL :minutes MINUTE)
-              AND resolved_at IS NULL
+              AND {$contextColumn} LIKE :identifier
+              AND {$timestampColumn} > DATE_SUB(NOW(), INTERVAL :minutes MINUTE)
+              AND {$activeCondition}
         ");
         
         $stmt->execute([
@@ -312,7 +349,7 @@ class CloneAlertNotificationService
         ]);
         
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result['count'] > 0;
+        return (int)($result['count'] ?? 0) > 0;
     }
     
     /**
@@ -368,13 +405,15 @@ class CloneAlertNotificationService
                 $sent = mail(trim($email), $subject, $body, implode("\r\n", $headers));
                 
                 if ($sent) {
-                    // Marcar como enviado
-                    $stmt = $this->db->prepare("
-                        UPDATE clone_alerts 
-                        SET notification_sent = 1 
-                        WHERE id = :id
-                    ");
-                    $stmt->execute(['id' => $alert['id']]);
+                    // Marcar como enviado quando o schema suportar a coluna.
+                    if ($this->hasCloneAlertColumn('notification_sent')) {
+                        $stmt = $this->db->prepare("
+                            UPDATE clone_alerts 
+                            SET notification_sent = 1 
+                            WHERE id = :id
+                        ");
+                        $stmt->execute(['id' => $alert['id']]);
+                    }
                 }
             }
             
@@ -397,20 +436,41 @@ class CloneAlertNotificationService
      */
     public function resolveAlert(int $alertId, ?int $userId = null, ?string $notes = null): bool
     {
-        $stmt = $this->db->prepare("
-            UPDATE clone_alerts 
-            SET resolved_at = NOW(),
-                resolved_by_user_id = :user_id,
-                resolution_notes = :notes
-            WHERE id = :id
-              AND resolved_at IS NULL
-        ");
-        
-        return $stmt->execute([
-            'id' => $alertId,
-            'user_id' => $userId,
-            'notes' => $notes
-        ]);
+        if ($this->hasCloneAlertColumn('resolved_at')) {
+            $stmt = $this->db->prepare("
+                UPDATE clone_alerts 
+                SET resolved_at = NOW(),
+                    resolved_by_user_id = :user_id,
+                    resolution_notes = :notes
+                WHERE id = :id
+                  AND resolved_at IS NULL
+            ");
+
+            return $stmt->execute([
+                'id' => $alertId,
+                'user_id' => $userId,
+                'notes' => $notes
+            ]);
+        }
+
+        if ($this->hasCloneAlertColumn('acknowledged')) {
+            $stmt = $this->db->prepare("
+                UPDATE clone_alerts
+                SET acknowledged = 1,
+                    acknowledged_by = :user_id,
+                    acknowledged_at = NOW()
+                WHERE id = :id
+                  AND acknowledged = 0
+            ");
+
+            return $stmt->execute([
+                'id' => $alertId,
+                'user_id' => $userId
+            ]);
+        }
+
+        $stmt = $this->db->prepare("UPDATE clone_alerts SET id = id WHERE id = :id");
+        return $stmt->execute(['id' => $alertId]);
     }
     
     /**
@@ -421,18 +481,34 @@ class CloneAlertNotificationService
      */
     public function getActiveAlerts(?string $severity = null): array
     {
+        $titleSelect = $this->hasCloneAlertColumn('title')
+            ? 'title'
+            : 'NULL AS title';
+        $contextSelect = $this->hasCloneAlertColumn('context_json')
+            ? 'context_json'
+            : ($this->hasCloneAlertColumn('context') ? 'context AS context_json' : 'NULL AS context_json');
+        $timestampSelect = $this->hasCloneAlertColumn('triggered_at')
+            ? 'triggered_at'
+            : ($this->hasCloneAlertColumn('created_at') ? 'created_at AS triggered_at' : 'NOW() AS triggered_at');
+        $notificationSentSelect = $this->hasCloneAlertColumn('notification_sent')
+            ? 'notification_sent'
+            : '0 AS notification_sent';
+        $activeCondition = $this->hasCloneAlertColumn('resolved_at')
+            ? 'resolved_at IS NULL'
+            : ($this->hasCloneAlertColumn('acknowledged') ? 'acknowledged = 0' : '1=1');
+
         $sql = "
             SELECT 
                 id,
                 alert_type,
                 severity,
-                title,
+                {$titleSelect},
                 message,
-                context_json,
-                triggered_at,
-                notification_sent
+                {$contextSelect},
+                {$timestampSelect},
+                {$notificationSentSelect}
             FROM clone_alerts
-            WHERE resolved_at IS NULL
+            WHERE {$activeCondition}
         ";
         
         if ($severity) {
@@ -461,10 +537,60 @@ class CloneAlertNotificationService
         
         // Decode JSON context
         foreach ($alerts as &$alert) {
-            $alert['context'] = json_decode($alert['context_json'], true);
+            $context = json_decode((string)($alert['context_json'] ?? ''), true);
+            $alert['context'] = is_array($context) ? $context : [];
+            if (!isset($alert['title']) || $alert['title'] === null || $alert['title'] === '') {
+                $alert['title'] = $this->buildDefaultTitle((string)($alert['alert_type'] ?? 'alerta'));
+            }
             unset($alert['context_json']);
         }
         
         return $alerts;
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function loadCloneAlertsColumns(): array
+    {
+        try {
+            $stmt = $this->db->query('SHOW COLUMNS FROM clone_alerts');
+            $columns = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                if (!isset($row['Field'])) {
+                    continue;
+                }
+                $columns[(string)$row['Field']] = true;
+            }
+            return $columns;
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function hasCloneAlertColumn(string $column): bool
+    {
+        return isset($this->cloneAlertsColumns[$column]);
+    }
+
+    private function normalizeSeverity(string $severity): string
+    {
+        $normalized = strtolower(trim($severity));
+        if ($normalized === 'error') {
+            $normalized = 'critical';
+        }
+        if (!in_array($normalized, ['info', 'warning', 'critical'], true)) {
+            return 'warning';
+        }
+        return $normalized;
+    }
+
+    private function buildDefaultTitle(string $alertType): string
+    {
+        $label = str_replace('_', ' ', trim($alertType));
+        if ($label === '') {
+            return 'Alerta de clonagem';
+        }
+        return 'Alerta: ' . ucfirst($label);
     }
 }

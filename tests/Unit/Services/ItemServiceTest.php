@@ -36,7 +36,7 @@ class ItemServiceTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->testItemId && $this->db) {
-            $this->db->prepare("DELETE FROM ml_items WHERE ml_item_id = :id")
+            $this->db->prepare("DELETE FROM ml_items WHERE id = :id")
                 ->execute(['id' => $this->testItemId]);
         }
         parent::tearDown();
@@ -58,18 +58,27 @@ class ItemServiceTest extends TestCase
         $this->db->exec("SET FOREIGN_KEY_CHECKS=0");
 
         $stmt = $this->db->prepare("
-            INSERT INTO ml_items (ml_item_id, title, price, available_quantity, status, category_id, permalink, ml_account_id, created_at, updated_at)
-            VALUES (:id, :title, :price, :qty, :status, :cat, :link, :acct, NOW(), NOW())
+            INSERT INTO ml_items (
+                id, account_id, title, category_id, price, currency_id,
+                available_quantity, sold_quantity, status, permalink, raw_data, created_at, updated_at
+            )
+            VALUES (
+                :id, :acct, :title, :cat, :price, :currency,
+                :qty, :sold_qty, :status, :link, :raw_data, NOW(), NOW()
+            )
         ");
         $stmt->execute([
             'id' => $this->testItemId,
-            'title' => 'Item teste unitário',
-            'price' => 99.90,
-            'qty' => 10,
-            'status' => 'active',
-            'cat' => 'MLB1234',
-            'link' => 'https://produto.mercadolivre.com.br/test',
             'acct' => 999,
+            'title' => 'Item teste unitário',
+            'cat' => 'MLB1234',
+            'price' => 99.90,
+            'currency' => 'BRL',
+            'qty' => 10,
+            'sold_qty' => 0,
+            'status' => 'active',
+            'link' => 'https://produto.mercadolivre.com.br/test',
+            'raw_data' => json_encode(['source' => 'phpunit']),
         ]);
 
         $this->db->exec("SET FOREIGN_KEY_CHECKS=1");
@@ -160,6 +169,8 @@ class ItemServiceTest extends TestCase
         $service = new ItemService(999);
         $result = $service->listItems(['status' => 'active']);
 
+        $this->assertArrayHasKey('items', $result);
+        $this->assertIsArray($result['items']);
         foreach ($result['items'] as $item) {
             $this->assertEquals('active', $item['status'] ?? $item['ml_status'] ?? 'active');
         }

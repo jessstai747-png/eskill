@@ -10,10 +10,15 @@ class JobProcessingFlowTest extends TestCase
 {
     private ?JobService $jobService = null;
     private ?QueueService $queueService = null;
+    private string $queueName = 'job_processing_flow_test';
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->queueName = 'job_processing_flow_test_' . bin2hex(random_bytes(6));
+        $_ENV['JOB_QUEUE_NAME'] = $this->queueName;
+        putenv('JOB_QUEUE_NAME=' . $this->queueName);
+
         try {
             $this->jobService = new JobService();
             $this->queueService = new QueueService();
@@ -35,7 +40,7 @@ class JobProcessingFlowTest extends TestCase
         $this->assertGreaterThan(0, $jobId);
         
         // Job should be in Redis queue
-        $queuedJob = $this->queueService->pop('default', 2);
+        $queuedJob = $this->queueService->pop($this->queueName, 2);
         
         $this->assertIsArray($queuedJob);
         $this->assertArrayHasKey('payload', $queuedJob);
@@ -74,5 +79,12 @@ class JobProcessingFlowTest extends TestCase
             $this->assertIsInt($count);
             $this->assertGreaterThanOrEqual(0, $count);
         }
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('JOB_QUEUE_NAME');
+        unset($_ENV['JOB_QUEUE_NAME']);
+        parent::tearDown();
     }
 }

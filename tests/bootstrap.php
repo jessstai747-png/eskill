@@ -36,6 +36,10 @@ if (file_exists($localEnv)) {
 // Set testing environment
 $_ENV['APP_ENV'] = 'testing';
 $_ENV['CACHE_ENABLED'] = false; // Disable cache in tests
+if (!isset($_ENV['REDIS_DB']) || trim((string)$_ENV['REDIS_DB']) === '') {
+    $_ENV['REDIS_DB'] = '15';
+}
+putenv('REDIS_DB=' . (string)$_ENV['REDIS_DB']);
 
 // Make sessions safe in CLI tests even when there is output before session_start().
 // PHPUnit may emit output (logs) during the run, and some services depend on $_SESSION.

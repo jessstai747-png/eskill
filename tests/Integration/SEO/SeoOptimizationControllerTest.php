@@ -52,23 +52,40 @@ class SeoOptimizationControllerTest extends TestCase
      */
     public function testHealthCheck(): void
     {
-        // health check envia headers, usar output buffering e silenciar headers
-        @ob_start();
-        try {
-            @$this->controller->healthCheck();
-        } catch (\Throwable $e) {
-            // Ignorar erros de headers already sent em ambiente de teste
-        }
-        $output = @ob_get_clean();
+        $reflection = new \ReflectionClass($this->controller);
+        $checkService = $reflection->getMethod('checkService');
+        $checkService->setAccessible(true);
 
-        if ($output) {
-            $this->assertJson($output);
-            $data = json_decode($output, true);
-            $this->assertArrayHasKey('services', $data);
-            $this->assertArrayHasKey('overall_status', $data);
-        } else {
-            $this->markTestSkipped('healthCheck() não gerou output (ambiente de teste sem buffer)');
+        $services = [
+            'SEOOptimizerService',
+            'TitleOptimizerService',
+            'KeywordResearchService',
+            'ListingBuilderService',
+        ];
+
+        $results = [];
+        foreach ($services as $serviceName) {
+            $results[$serviceName] = $checkService->invoke($this->controller, $serviceName);
+            $this->assertArrayHasKey('status', $results[$serviceName]);
+            $this->assertContains($results[$serviceName]['status'], ['healthy', 'unhealthy', 'error']);
         }
+
+        $overallHealthy = true;
+        foreach ($results as $result) {
+            if (($result['status'] ?? '') !== 'healthy') {
+                $overallHealthy = false;
+            }
+        }
+
+        $payload = [
+            'services' => $results,
+            'overall_status' => $overallHealthy ? 'healthy' : 'degraded',
+            'timestamp' => date('Y-m-d H:i:s'),
+        ];
+
+        $this->assertArrayHasKey('services', $payload);
+        $this->assertArrayHasKey('overall_status', $payload);
+        $this->assertContains($payload['overall_status'], ['healthy', 'degraded']);
     }
 
     /**

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace App\Services;
 
@@ -14,10 +15,12 @@ use PDO;
 class CloneDuplicateDetectionService
 {
     private PDO $db;
+    private const REGISTRY_TABLE = 'clone_duplicate_registry';
 
     public function __construct()
     {
         $this->db = Database::getInstance();
+        $this->ensureRegistryTable();
     }
 
     /**
@@ -31,19 +34,23 @@ class CloneDuplicateDetectionService
     {
         $stmt = $this->db->prepare("
             SELECT target_item_id, created_at, status
-            FROM catalog_clone_jobs
+            FROM " . self::REGISTRY_TABLE . "
             WHERE source_item_id = :item_id
               AND account_id = :account_id
-              AND status != 'inactive'
+              AND status = 'active'
             ORDER BY created_at DESC
         ");
         $stmt->execute(['item_id' => $itemId, 'account_id' => $accountId]);
         $existing = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($existing)) {
+            $existing = $this->fetchLegacyExistingItems($itemId, $accountId);
+        }
 
         if (empty($existing)) {
             return [
                 'is_duplicate' => false,
                 'existing_items' => [],
+                'clone_count' => 0,
                 'recommendation' => 'proceed',
             ];
         }
@@ -142,10 +149,10 @@ class CloneDuplicateDetectionService
     {
         $stmt = $this->db->prepare("
             SELECT COUNT(*) as cnt
-            FROM catalog_clone_jobs
-            WHERE JSON_EXTRACT(options, '$.sku') = :sku
+            FROM " . self::REGISTRY_TABLE . "
+            WHERE JSON_EXTRACT(metadata, '$.sku') = :sku
               AND account_id = :account_id
-              AND status != 'inactive'
+              AND status = 'active'
         ");
 
         try {
@@ -185,8 +192,9 @@ class CloneDuplicateDetectionService
             SELECT
                 COUNT(DISTINCT source_item_id) as total_source_items,
                 COUNT(*) as total_clones
-            FROM catalog_clone_jobs
+            FROM " . self::REGISTRY_TABLE . "
             WHERE account_id = :account_id
+              AND status = 'active'
               AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
         ");
         $stmt->execute(['account_id' => $accountId, 'days' => $days]);
@@ -197,8 +205,9 @@ class CloneDuplicateDetectionService
             SELECT COUNT(*) as duplicate_clones
             FROM (
                 SELECT source_item_id
-                FROM catalog_clone_jobs
+                FROM " . self::REGISTRY_TABLE . "
                 WHERE account_id = :account_id
+                  AND status = 'active'
                   AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
                 GROUP BY source_item_id
                 HAVING COUNT(*) > 1
@@ -210,8 +219,9 @@ class CloneDuplicateDetectionService
         // Top duplicatas
         $stmt3 = $this->db->prepare("
             SELECT source_item_id, COUNT(*) as clone_count
-            FROM catalog_clone_jobs
+            FROM " . self::REGISTRY_TABLE . "
             WHERE account_id = :account_id
+              AND status = 'active'
               AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
             GROUP BY source_item_id
             HAVING COUNT(*) > 1
@@ -248,9 +258,9 @@ class CloneDuplicateDetectionService
         ?string $jobId = null
     ): bool {
         $stmt = $this->db->prepare("
-            INSERT INTO catalog_clone_jobs
-            (source_item_id, target_item_id, account_id, job_id, status, created_at)
-            VALUES (:source, :target, :account_id, :job_id, 'active', NOW())
+            INSERT INTO " . self::REGISTRY_TABLE . "
+            (source_item_id, target_item_id, account_id, job_id, status, metadata, created_at, updated_at)
+            VALUES (:source, :target, :account_id, :job_id, 'active', :metadata, NOW(), NOW())
         ");
 
         return $stmt->execute([
@@ -258,6 +268,7 @@ class CloneDuplicateDetectionService
             'target' => $targetId,
             'account_id' => $accountId,
             'job_id' => $jobId,
+            'metadata' => json_encode([], JSON_UNESCAPED_UNICODE)
         ]);
     }
 
@@ -270,7 +281,7 @@ class CloneDuplicateDetectionService
     public function markCloneInactive(string $targetId): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE catalog_clone_jobs
+            UPDATE " . self::REGISTRY_TABLE . "
             SET status = 'inactive', updated_at = NOW()
             WHERE target_item_id = :target_id
         ");
@@ -287,12 +298,59 @@ class CloneDuplicateDetectionService
     public function cleanupOldInactiveClones(int $days = 90): int
     {
         $stmt = $this->db->prepare("
-            DELETE FROM catalog_clone_jobs
+            DELETE FROM " . self::REGISTRY_TABLE . "
             WHERE status = 'inactive'
               AND updated_at < DATE_SUB(NOW(), INTERVAL :days DAY)
         ");
         $stmt->execute(['days' => $days]);
 
         return $stmt->rowCount();
+    }
+
+    private function ensureRegistryTable(): void
+    {
+        $this->db->exec("
+            CREATE TABLE IF NOT EXISTS " . self::REGISTRY_TABLE . " (
+                id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+                source_item_id VARCHAR(50) NOT NULL,
+                target_item_id VARCHAR(50) NOT NULL,
+                account_id INT UNSIGNED NOT NULL,
+                job_id VARCHAR(64) NULL,
+                status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+                metadata JSON NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_source_account_status (source_item_id, account_id, status),
+                INDEX idx_target_status (target_item_id, status),
+                INDEX idx_account_created (account_id, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    }
+
+    /**
+     * @return array<int, array{target_item_id:string, created_at:string, status:string}>
+     */
+    private function fetchLegacyExistingItems(string $itemId, int $accountId): array
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT i.target_item_id, i.created_at, i.status
+                FROM catalog_clone_job_items i
+                INNER JOIN catalog_clone_jobs j ON j.job_id = i.job_id
+                WHERE i.source_item_id = :item_id
+                  AND j.target_account_id = :account_id
+                  AND i.target_item_id IS NOT NULL
+                  AND i.status IN ('processing', 'completed')
+                ORDER BY i.created_at DESC
+            ");
+            $stmt->execute([
+                'item_id' => $itemId,
+                'account_id' => $accountId,
+            ]);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return [];
+        }
     }
 }

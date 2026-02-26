@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Exception;
@@ -13,6 +15,7 @@ class QueueService
     private $redis;
     private $queueName = 'default_queue';
     private bool $connected = false;
+    private int $database = 0;
 
     public function __construct()
     {
@@ -25,12 +28,16 @@ class QueueService
         $redisClass = 'Redis';
         $this->redis = new $redisClass();
         $host = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
-        $port = $_ENV['REDIS_PORT'] ?? 6379;
+        $port = (int)($_ENV['REDIS_PORT'] ?? 6379);
+        $this->database = (int)($_ENV['REDIS_DB'] ?? 0);
         
         try {
             $this->redis->connect($host, $port);
             if (!empty($_ENV['REDIS_PASSWORD'])) {
                 $this->redis->auth($_ENV['REDIS_PASSWORD']);
+            }
+            if (!$this->redis->select($this->database)) {
+                throw new Exception('Falha ao selecionar Redis DB ' . $this->database);
             }
             $this->connected = true;
         } catch (Exception $e) {
@@ -38,6 +45,7 @@ class QueueService
             log_error('Erro de conexão no QueueService', [
                 'service' => 'QueueService',
                 'error' => $e->getMessage(),
+                'redis_db' => $this->database,
             ]);
         }
     }

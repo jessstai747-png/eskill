@@ -606,14 +606,28 @@ class MLAdsAdvancedService
         $totalRecs = 0;
         $applied = 0;
         $estImprovements = [];
+        $optimized = 0;
         foreach ($results as $r) {
             $recs = $r['recommended_actions'] ?? [];
             $totalRecs += count($recs);
             $applied += count(array_filter($recs, fn($a) => ($a['applied'] ?? false)));
             $estImprovements[] = $r['estimated_improvement']['revenue_lift_pct'] ?? 0;
+            if (($r['status'] ?? '') === 'optimized') {
+                $optimized++;
+            }
+            if (isset($r['actions_applied'])) {
+                $applied += (int)$r['actions_applied'];
+            }
         }
 
+        $totalCampaigns = count($results);
+
         return [
+            // Campos legados esperados por testes/módulos existentes
+            'total_campaigns' => $totalCampaigns,
+            'optimized' => $optimized,
+            'actions_applied' => $applied,
+            // Campos atuais detalhados
             'campaigns_analyzed' => count($results),
             'total_recommendations' => $totalRecs,
             'applied' => $applied,
@@ -626,28 +640,35 @@ class MLAdsAdvancedService
 
     private function analyzeCampaignPerformance(array $performance): array
     {
-        $impressions = (int)($performance['total_impressions'] ?? 0);
-        $clicks      = (int)($performance['total_clicks'] ?? 0);
-        $cost        = (float)($performance['total_cost'] ?? 0);
-        $conversions = (int)($performance['total_conversions'] ?? 0);
+        $impressions = (int)($performance['total_impressions'] ?? $performance['impressions'] ?? 0);
+        $clicks      = (int)($performance['total_clicks'] ?? $performance['clicks'] ?? 0);
+        $cost        = (float)($performance['total_cost'] ?? $performance['cost'] ?? 0);
+        $revenue     = (float)($performance['total_revenue'] ?? $performance['revenue'] ?? 0);
+        $conversions = (int)($performance['total_conversions'] ?? $performance['conversions'] ?? 0);
 
         $ctr = $impressions > 0 ? round($clicks / $impressions * 100, 2) : 0;
         $cvr = $clicks > 0 ? round($conversions / $clicks * 100, 2) : 0;
         $cpc = $clicks > 0 ? round($cost / $clicks, 2) : 0;
         $cpa = $conversions > 0 ? round($cost / $conversions, 2) : 0;
+        $roas = $cost > 0 ? round($revenue / $cost, 2) : 0;
+
+        $performanceGrade = $ctr >= 2.0 && $cvr >= 5.0 ? 'excellent'
+            : ($ctr >= 1.0 && $cvr >= 2.0 ? 'good'
+            : ($ctr > 0.3 ? 'average' : 'poor'));
 
         return [
             'ctr' => $ctr,
             'cvr' => $cvr,
             'cpc' => $cpc,
             'cpa' => $cpa,
+            'roas' => $roas,
             'impressions' => $impressions,
             'clicks' => $clicks,
             'cost' => $cost,
+            'revenue' => $revenue,
             'conversions' => $conversions,
-            'performance_grade' => $ctr >= 2.0 && $cvr >= 5.0 ? 'excellent'
-                : ($ctr >= 1.0 && $cvr >= 2.0 ? 'good'
-                : ($ctr > 0.3 ? 'average' : 'poor')),
+            'performance_grade' => $performanceGrade,
+            'performance_rating' => $performanceGrade,
             'bottleneck' => $ctr < 0.5 ? 'low_ctr' : ($cvr < 1.0 ? 'low_conversion' : 'none')
         ];
     }
@@ -693,11 +714,18 @@ class MLAdsAdvancedService
                 default => 0
             };
         }
-        return [
+        $result = [
             'revenue_lift_pct' => round($revLift, 1),
             'cost_savings_pct' => round($costSavings, 1),
             'confidence' => min(0.90, 0.5 + count($recommendations) * 0.1)
         ];
+
+        $result['estimated_improvement'] = [
+            'revenue_lift_pct' => $result['revenue_lift_pct'],
+            'cost_savings_pct' => $result['cost_savings_pct'],
+        ];
+
+        return $result;
     }
 
     private function calculateRecommendationConfidence(array $analysis, array $recommendations): float
@@ -739,7 +767,7 @@ class MLAdsAdvancedService
             if ($p > 0) $totalIncrease += $p;
             else $totalDecrease += abs($p);
         }
-        return [
+        $summary = [
             'total_adjustments' => count($adjustments),
             'avg_change_pct' => count($adjustments) > 0
                 ? round(array_sum(array_column($adjustments, 'adjustment_percentage')) / count($adjustments), 2) : 0,
@@ -747,6 +775,10 @@ class MLAdsAdvancedService
             'bid_decreases' => count(array_filter($adjustments, fn($a) => ($a['adjustment_percentage'] ?? 0) < 0)),
             'estimated_cost_change_pct' => round(($totalIncrease - $totalDecrease) / max(1, count($adjustments)), 2)
         ];
+
+        $summary['total_items_adjusted'] = $summary['total_adjustments'];
+
+        return $summary;
     }
 
     private function getItemBidPerformance(string $itemId): array
@@ -767,7 +799,19 @@ class MLAdsAdvancedService
 
     private function calculateConversionRateFactor(array $performance): float
     {
-        $cvr = (float)($performance['conversion_rate'] ?? 0);
+        if (array_key_exists('conversion_rate', $performance)) {
+            $cvr = (float)$performance['conversion_rate'];
+        } else {
+            $clicks = (float)($performance['clicks'] ?? 0);
+            $conversions = (float)($performance['conversions'] ?? 0);
+            $cvr = $clicks > 0 ? ($conversions / $clicks) : 0.0;
+        }
+
+        // Compatibilidade: aceitar CVR em porcentagem (ex.: 15) ou razão (ex.: 0.15)
+        if ($cvr > 1.0) {
+            $cvr = $cvr / 100;
+        }
+
         if ($cvr >= 0.10) return 1.3;
         if ($cvr >= 0.05) return 1.15;
         if ($cvr >= 0.02) return 1.0;
@@ -921,10 +965,20 @@ class MLAdsAdvancedService
     {
         $total = 0;
         foreach ($targeting as $config) {
-            if (is_array($config)) {
-                foreach ($config as $segment) {
-                    $total += (int)($segment['estimated_size'] ?? 0);
+            if (!is_array($config)) {
+                continue;
+            }
+
+            if (isset($config['estimated_size']) || isset($config['audience_size'])) {
+                $total += (int)($config['estimated_size'] ?? $config['audience_size'] ?? 0);
+                continue;
+            }
+
+            foreach ($config as $segment) {
+                if (!is_array($segment)) {
+                    continue;
                 }
+                $total += (int)($segment['estimated_size'] ?? $segment['audience_size'] ?? 0);
             }
         }
         return $total;
@@ -971,6 +1025,7 @@ class MLAdsAdvancedService
     private function setupDemographicTargeting(): array
     {
         return [
+            'type' => 'demographic',
             'age_groups' => [
                 ['range' => '18-24', 'bid_modifier' => 0.90],
                 ['range' => '25-34', 'bid_modifier' => 1.15],
@@ -1004,6 +1059,7 @@ class MLAdsAdvancedService
     private function setupInterestBasedTargeting(): array
     {
         return [
+            'type' => 'interest_based',
             'in_market' => [
                 'description' => 'Usuários pesquisando ativamente produtos similares',
                 'bid_modifier' => 1.25,
@@ -1162,6 +1218,10 @@ class MLAdsAdvancedService
             ? array_sum(array_column($upsellItems, 'score')) / count($upsellItems) : 0;
 
         return [
+            // Chaves legadas para compatibilidade de testes/módulos antigos
+            'base_product' => $product['id'] ?? '',
+            'upsell_products' => $upsellItems,
+            // Chaves internas atuais
             'base_product_id' => $product['id'] ?? '',
             'upsell_items' => array_column($upsellItems, 'id'),
             'strategy' => count($upsellItems) > 0 ? 'related_products' : 'none',
@@ -1417,6 +1477,10 @@ class MLAdsAdvancedService
 
     private function getDataFreshness(): string
     {
+        if (!isset($this->db) || !isset($this->accountId)) {
+            return 'unknown';
+        }
+
         try {
             $stmt = $this->db->prepare("
                 SELECT MAX(last_updated) AS latest

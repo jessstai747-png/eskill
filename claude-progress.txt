@@ -6,6 +6,630 @@
 
 ---
 
+## Sessão: 2026-02-26b — Fechamento de integração real (Redis isolado + suíte Integration verde)
+
+### Contexto
+Bloqueio real da sessão: `JobProcessingFlowTest` e regressões subsequentes na suíte `Integration`, com causa raiz inicial de contaminação de fila Redis por uso implícito do DB padrão.
+
+### Implementado
+1. **Isolamento Redis de testes**
+   - `app/Services/QueueService.php`
+     - conexão Redis agora respeita `REDIS_DB` com `select()` explícito (default `0`);
+     - log de erro inclui `redis_db`;
+     - sem breaking change em `push`, `pop`, `isConnected`.
+   - `tests/bootstrap.php`
+     - em `APP_ENV=testing`, força `REDIS_DB=15` quando ausente e propaga via `putenv`.
+   - `.env.testing`
+     - explicitado `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB=15`.
+
+2. **Correções para zerar erros remanescentes da suíte Integration**
+   - `app/Services/SEO/DescriptionBuilderService.php`
+     - contrato compatível com blocos em PT-BR (`beneficios`, `especificacoes`, `compatibilidade`, `faq`);
+     - suporte de entrada para keywords/lista/distribution;
+     - descrição expandida para manter `word_count` esperado nos testes.
+   - `app/Services/SEO/SEOAuditService.php`
+     - `calculateOverallScore()` ajustado para retorno estrito `int`.
+   - `app/Services/CloneAlertNotificationService.php`
+     - compatibilidade com schema real de `clone_alerts` (colunas legadas/atuais);
+     - fallback de seleção/insert/update e título padrão quando coluna `title` não existe.
+   - `app/Services/CloneDuplicateDetectionService.php`
+     - removida dependência de colunas inexistentes em `catalog_clone_jobs`;
+     - criação e uso de `clone_duplicate_registry` para deduplicação;
+     - fallback de leitura em schema legado (`catalog_clone_job_items` + `catalog_clone_jobs`).
+
+3. **Rastreabilidade de status**
+   - `project-status.json`
+     - atualizado somente `last_tested` de `AI-004` para `2026-02-26` (sem alterar features/descrições).
+
+### Validação executada
+- ✅ `bash bin/init.sh`
+- ✅ `php -l app/Services/QueueService.php`
+- ✅ `php -l tests/bootstrap.php`
+- ✅ `php -l app/Services/SEO/DescriptionBuilderService.php`
+- ✅ `php -l app/Services/SEO/SEOAuditService.php`
+- ✅ `php -l app/Services/CloneAlertNotificationService.php`
+- ✅ `php -l app/Services/CloneDuplicateDetectionService.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/SEO/DescriptionBuilderServiceTest.php --no-coverage`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/SEO/SEOAuditServiceTest.php --filter testCalculateOverallScoreWithAllPerfectScores --no-coverage`
+- ✅ `php vendor/bin/phpunit tests/Unit/CloneAlertNotificationServiceTest.php --no-coverage`
+- ✅ `php vendor/bin/phpunit tests/Unit/CloneDuplicateDetectionServiceTest.php --no-coverage`
+- ✅ `php vendor/bin/phpunit --testsuite Integration --stop-on-failure --no-coverage --colors=never`
+  - Resultado: **OK** (`3467` testes, `10868` assertions, `10` skipped, `2` risky, `0` falhas/erros)
+- ✅ `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+  - Resultado: **OK** (`2902` testes, `6778` assertions, `27` skipped, `0` falhas/erros)
+
+---
+
+## Sessão: 2026-02-26a — Deduplicação/cooldown de alertas críticos ML no monitoramento
+
+### Contexto
+Após hardening de métricas/alertas operacionais ML, faltava evitar spam de notificações quando o dashboard consulta `/api/monitoring/alerts` em polling contínuo.
+
+### Implementado
+1. **Novo serviço de dispatch com cooldown persistente**
+   - Criado `app/Services/MonitoringAlertNotificationService.php`.
+   - Responsabilidades:
+     - filtra alertas operacionais ML (`type` iniciado por `ml_`);
+     - aplica threshold de severidade mínimo;
+     - aplica cooldown por fingerprint (`subject`) usando `notification_logs`;
+     - limita volume por execução;
+     - dispara notificação real via `NotificationService::sendAlert()`;
+     - persiste marcador de dispatch para deduplicação (`type=ML_MONITOR_DISPATCH`).
+
+2. **Configuração por ambiente (produção)**
+   - Novas envs:
+     - `ML_MONITOR_ALERT_NOTIFY_ENABLED` (default `false`);
+     - `ML_MONITOR_ALERT_NOTIFY_MIN_SEVERITY` (default `HIGH`);
+     - `ML_MONITOR_ALERT_NOTIFY_COOLDOWN_MINUTES` (default `30`);
+     - `ML_MONITOR_ALERT_NOTIFY_MAX_PER_RUN` (default `5`).
+
+3. **Integração no endpoint de alertas**
+   - `MonitoringController::checkAlerts()` agora aciona o serviço de dispatch para alertas ML e retorna resumo em `notification_dispatch`.
+   - Fluxo preserva compatibilidade do payload existente (`alerts`, `count`, `timestamp`) e adiciona metadados operacionais de envio.
+
+4. **Correção de bug de timezone no cooldown**
+   - Inicialmente o cooldown falhava em SQLite por diferença de timezone entre `CURRENT_TIMESTAMP` do DB e tempo do PHP.
+   - Ajuste aplicado: marcador persiste `created_at` explícito pelo PHP, garantindo consistência da janela de cooldown.
+
+5. **Cobertura unitária**
+   - Novo `tests/Unit/Services/MonitoringAlertNotificationServiceTest.php` cobrindo:
+     - deduplicação por cooldown (sem spam);
+     - filtro por threshold de severidade.
+   - Atualizado `tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php` para verificar integração do dispatcher no controller.
+
+### Validação
+- ✅ `bash bin/init.sh`
+- ✅ `php -l app/Services/MonitoringAlertNotificationService.php`
+- ✅ `php -l app/Controllers/MonitoringController.php`
+- ✅ `php -l tests/Unit/Services/MonitoringAlertNotificationServiceTest.php`
+- ✅ `php -l tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/MonitoringAlertNotificationServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php`
+- ✅ `php vendor/bin/phpunit` (2902 testes, 6747 assertions, 34 skipped)
+
+### Próximo passo recomendado
+1. Expor contadores de `notification_dispatch` no dashboard (enviados/pulados por cooldown/falhas) para observabilidade operacional.
+2. Adicionar worker dedicado (cron) para dispatch de alertas ML desacoplado do endpoint HTTP.
+
+---
+
+## Sessão: 2026-02-25q — Compatibilidade operacional do monitoramento ML (payload/rotas/dashboard)
+
+### Contexto
+Após incluir métricas/alertas operacionais de webhook e fila ML, havia lacunas de integração entre backend e dashboard legado (`basic_stats`, rotas antigas e formato de série para gráfico).
+
+### Implementado
+1. **Compatibilidade de payload em tempo real**
+   - `CatalogCloneMonitoringService::getRealTimeMetrics()` agora publica:
+     - `basic_stats` (compatível com dashboard legado),
+     - `clone_jobs` (shape atual),
+     - `ml_operations` (métricas operacionais ML).
+   - Novo `buildBasicStats()` com:
+     - `pending_jobs`, `completed_jobs`, `failed_jobs`, `total_jobs`, `success_rate`.
+
+2. **Correção de cálculo de taxa de erro**
+   - `getErrorRate()` corrigido para calcular `% de falha` sobre todos os jobs da última hora (antes filtrava `status='failed'` no `WHERE`, retornando 100% sempre que havia falhas).
+
+3. **Normalização de severidade de alertas**
+   - Alertas base de monitoramento migrados para severidades em caixa alta (`CRITICAL`, `WARNING`) para consistência com consumidores já existentes.
+
+4. **Controller/rotas com aliases de compatibilidade**
+   - `MonitoringController::performanceReport()` passou a expor `hourly_stats` como alias compatível (derivado de `daily_stats`).
+   - Novo endpoint `jobStats()` com payload esperado pelo dashboard.
+   - `checkJobQueue()` agora usa fallback `basic_stats` -> `clone_jobs`.
+   - Rotas adicionadas:
+     - `GET /api/monitoring/job-stats`
+     - `GET /api/monitoring/system-logs` (alias para `systemLogs`).
+
+5. **Dashboard de monitoramento atualizado**
+   - `app/Views/monitoring/dashboard.php` agora renderiza também cartões de operações ML:
+     - webhooks falhos,
+     - idade da falha mais antiga,
+     - jobs em retry,
+     - jobs stale em processing.
+   - Render de alertas com normalização defensiva de severidade (`toUpperCase()`), cobrindo payload legado/novo.
+
+6. **Cobertura de regressão (estrutural)**
+   - Atualizado `tests/Unit/Services/CatalogCloneMonitoringServiceOperationalTest.php`.
+   - Novo `tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php`.
+
+### Validação
+- ✅ `php -l app/Services/CatalogCloneMonitoringService.php`
+- ✅ `php -l app/Controllers/MonitoringController.php`
+- ✅ `php -l app/Routes/api.php`
+- ✅ `php -l app/Views/monitoring/dashboard.php`
+- ✅ `php -l tests/Unit/Services/CatalogCloneMonitoringServiceOperationalTest.php`
+- ✅ `php -l tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/CatalogCloneMonitoringServiceOperationalTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php`
+- ✅ `php vendor/bin/phpunit` (2902 testes, 6747 assertions, 34 skipped)
+
+### Próximo passo recomendado
+1. Criar deduplicação/cooldown de notificação para alertas críticos ML (email/telegram/webhook) no monitoramento, evitando spam operacional.
+2. Cobrir `MonitoringController` com testes comportamentais (não só estruturais) via extração de dependências para facilitar mock.
+
+---
+
+## Sessão: 2026-02-25p — Política de tópico desconhecido no webhook ML (sem sucesso silencioso)
+
+### Contexto
+Após replay automático e fila resiliente, foi implementado hardening do processamento de webhook para evitar aceitar tópicos desconhecidos de forma silenciosa.
+
+### Implementado
+1. **MercadoLivreWebhookService com política explícita para tópico desconhecido**
+   - `processWebhookEvent()` agora diferencia:
+     - tópico conhecido: fluxo normal;
+     - tópico desconhecido:
+       - default: sucesso com metadados explícitos de ignore (`ignored=true`, `ignored_reason=unknown_topic`);
+       - strict mode (`ML_WEBHOOK_STRICT_TOPICS=true`): falha controlada com erro de tópico desconhecido.
+   - Logging de tópico desconhecido foi elevado para `warning` com contexto (`topic`, `resource`, `account_id`, `strict_mode`).
+
+2. **Configuração de strict mode**
+   - Novo gate: `ML_WEBHOOK_STRICT_TOPICS` (`1/true/yes/on/enabled`).
+   - Permite endurecer comportamento sem quebrar compatibilidade imediata.
+
+3. **Cobertura unitária**
+   - `tests/Unit/Services/MercadoLivreWebhookServiceTest.php` ganhou cenários:
+     - ignore explícito por default;
+     - falha em strict mode.
+   - Incluído teardown para restaurar variáveis de ambiente alteradas no teste.
+
+### Validação
+- ✅ `php -l app/Services/MercadoLivreWebhookService.php`
+- ✅ `php -l tests/Unit/Services/MercadoLivreWebhookServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/MercadoLivreWebhookServiceTest.php`
+
+### Próximo passo recomendado
+1. Decidir política de produção para `ML_WEBHOOK_STRICT_TOPICS` (on/off) por ambiente.
+2. Expor métrica de `ignored_unknown_topic` para detecção antecipada de novos tópicos ML.
+
+---
+
+## Sessão: 2026-02-25o — Hardening adicional M0 (orquestrador refresh + retry transitório ML client)
+
+### Contexto
+Continuação do plano de integração ML profissional, focando duas lacunas operacionais:
+- inconsistência no retorno do refresh por conta no orquestrador (`bool` vs `array`);
+- ausência de retry transitório explícito para falhas 5xx/conexão no cliente HTTP ML.
+
+### Implementado
+1. **Orquestrador: normalização robusta de retorno de refresh por conta**
+   - `MercadoLivreOrchestratorService::runTokenRefresh()` agora normaliza o retorno de `TokenRefreshJob::refreshAccount()` via método dedicado.
+   - Cobertura de dois formatos:
+     - legado (`bool`);
+     - detalhado (`array` com `success`).
+   - `runTokenRefresh()` também passou a resolver sucesso do modo batch com `resolveBatchRefreshSuccess()` (usa flag `success` quando disponível, com fallback compatível).
+
+2. **Teste unitário do orquestrador**
+   - Novo `tests/Unit/Services/MercadoLivreOrchestratorServiceTest.php` cobrindo:
+     - normalização de retorno booleano;
+     - preservação/normalização de retorno em array;
+     - resolução de sucesso em batch com/sem flag explícita.
+
+3. **MercadoLivreClient: retry transitório para 5xx e rede**
+   - `requestWithRetry()` agora tenta **1 retry adicional** (fora de contexto HTTP síncrono) para:
+     - HTTP 5xx;
+     - `ConnectException`;
+     - exceções de rede consideradas transitórias (timeout/DNS/reset etc.).
+   - Backoff com jitter configurável por env:
+     - `ML_TRANSIENT_RETRY_BASE_SECONDS` (default `2`);
+     - `ML_TRANSIENT_RETRY_JITTER_SECONDS` (default `1`).
+   - Mantém proteção anti-loop usando recursão com `allowRetry=false`.
+
+4. **Teste estrutural para retry transitório do client**
+   - `tests/Unit/Services/MercadoLivreClientExtendedTest.php` recebeu verificação explícita dos novos hooks/mensagens/envs de retry transitório.
+
+### Validação
+- ✅ `php -l app/Services/MercadoLivreOrchestratorService.php`
+- ✅ `php -l tests/Unit/Services/MercadoLivreOrchestratorServiceTest.php`
+- ✅ `php -l app/Services/MercadoLivreClient.php`
+- ✅ `php -l tests/Unit/Services/MercadoLivreClientExtendedTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/MercadoLivreOrchestratorServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/MercadoLivreWebhookReplayServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/MercadoLivreClientExtendedTest.php`
+
+### Próximo passo recomendado
+1. Adicionar política explícita para tópicos de webhook ML desconhecidos (quarentena/alerta) para evitar “sucesso silencioso”.
+2. Criar alerta operacional para taxa de retries transitórios acima do baseline.
+
+---
+
+## Sessão: 2026-02-25n — Replay automático de webhook ML falho (orquestrador + serviço dedicado)
+
+### Contexto
+Continuação da trilha M0 de integração ML real/profissional: remover dependência de replay manual para eventos `webhook_event_inbox` com status `failed`.
+
+### Implementado
+1. **Novo service de replay automático**
+   - Criado `app/Services/MercadoLivreWebhookReplayService.php`.
+   - Fluxo:
+     - lê `failed` da inbox (`provider=mercadolivre`);
+     - valida payload;
+     - re-enfileira job `ml_webhook`;
+     - marca inbox como `queued` com metadados de replay (`queue_status=replay_queued_auto`).
+   - Suporta:
+     - filtro por `event_key`;
+     - `dry_run`;
+     - política de idade mínima de falha (`min_failed_age_seconds`).
+
+2. **Orquestrador com replay automático embutido na fila**
+   - `MercadoLivreOrchestratorService::runQueue()` e `runQueueInternal()` agora executam replay antes do processamento normal da fila.
+   - `runCycle()` também propaga opções de replay para a fase de queue.
+   - Novos controles:
+     - env `ML_WEBHOOK_AUTO_REPLAY_ENABLED` (default true);
+     - env `ML_WEBHOOK_REPLAY_MIN_FAILED_AGE_SECONDS` (default 60);
+     - limite por execução (`webhook_replay_limit`).
+   - Resultado da execução da fila agora inclui bloco `webhook_replay`.
+
+3. **CLI do orquestrador atualizado**
+   - `bin/ml-orchestrator.php` agora aceita:
+     - `--skip-webhook-replay`
+     - `--webhook-replay-limit=25`
+   - Flags suportadas em `queue` e `cycle`.
+
+4. **CLI admin de inbox refatorado para reutilizar o service**
+   - `bin/ml-webhook-inbox-admin.php replay-failed` passou a usar `MercadoLivreWebhookReplayService`.
+   - Novo parâmetro:
+     - `--min-age-seconds=0` (útil para replay manual imediato).
+
+5. **Teste unitário do novo service (sem DB)**
+   - Novo `tests/Unit/Services/MercadoLivreWebhookReplayServiceTest.php` cobrindo:
+     - replay feliz com enqueue + markQueued;
+     - skip por falha recente;
+     - falha por payload inválido com markFailed.
+
+### Validação
+- ✅ `php -l app/Services/MercadoLivreWebhookReplayService.php`
+- ✅ `php -l app/Services/MercadoLivreOrchestratorService.php`
+- ✅ `php -l bin/ml-orchestrator.php`
+- ✅ `php -l bin/ml-webhook-inbox-admin.php`
+- ✅ `php -l tests/Unit/Services/MercadoLivreWebhookReplayServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/MercadoLivreWebhookReplayServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/QueueServiceUnitTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/MercadoLivreWebhookIngressHardeningTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/MercadoLivreWebhookServiceTest.php`
+- ⚠️ Testes de integração que dependem de MySQL continuam condicionados à disponibilidade de `127.0.0.1:3307` (`app_test`).
+
+### Próximo passo recomendado
+1. Executar `runQueue`/`runCycle` em staging com métricas de replay para calibrar `ML_WEBHOOK_REPLAY_MIN_FAILED_AGE_SECONDS`.
+2. Adicionar alerta operacional para backlog de `webhook_event_inbox.status=failed` acima de limiar.
+
+---
+
+## Sessão: 2026-02-25m — Hardening da fila de jobs (retry/backoff + reclaim de processing travado)
+
+### Contexto
+Início da Feature M0 de confiabilidade da fila para integração ML “real/profissional”: evitar reprocessamento imediato após falha e recuperar jobs presos em `processing`.
+
+### Implementado
+1. **Retry com agendamento real**
+   - `jobs` ganhou suporte explícito a `next_attempt_at` (criação e compatibilidade de schema).
+   - `processJob()` passou a aplicar retry com `exponential backoff` + `jitter` (configurável por env):
+     - `JOB_RETRY_BASE_SECONDS` (default `5`)
+     - `JOB_RETRY_MAX_SECONDS` (default `300`)
+     - `JOB_RETRY_JITTER_PERCENT` (default `0.20`)
+   - Em falha não-terminal, job volta para `pending` com `attempts` incrementado e `next_attempt_at` futuro.
+
+2. **Fila respeitando janelas de execução**
+   - `getPendingJobs()`, `claimPendingJobs()` e `claimJob()` agora exigem:
+     - `scheduled_at <= NOW()` (quando definido)
+     - `next_attempt_at <= NOW()` (quando definido)
+   - Ordenação passou a priorizar `COALESCE(next_attempt_at, scheduled_at, created_at)`.
+
+3. **Recuperação automática de jobs travados**
+   - Novo método `reclaimStaleProcessingJobs()`:
+     - identifica jobs em `processing` com `claimed_at` expirado,
+     - reverte para `pending`,
+     - limpa claim metadata,
+     - agenda novo processamento com pequeno delay.
+   - `process()` agora executa esse reclaim antes de claimar novos jobs.
+   - Novos envs:
+     - `JOB_STALE_PROCESSING_SECONDS` (default `900`)
+     - `JOB_RECLAIM_RETRY_DELAY_SECONDS` (default `2`)
+
+4. **Observabilidade de retry no webhook inbox**
+   - Metadados de retry (`next_attempt_at`, `retry_delay_seconds`) agora são enviados no `markQueued` de `ml_webhook` em falha não-terminal.
+
+5. **Testes de integração (novo arquivo)**
+   - `tests/Integration/MercadoLivreWebhookInboxQueueTransitionTest.php` ampliado com cenários:
+     - retry não-terminal com bloqueio de reexecução imediata via `next_attempt_at`;
+     - reclaim de job stale em `processing`.
+
+6. **Teste unitário da política de retry (sem dependência de DB)**
+   - Novo `tests/Unit/Services/JobServiceRetryPolicyTest.php` validando:
+     - backoff exponencial com cap;
+     - jitter limitado;
+     - clamp de `JOB_STALE_PROCESSING_SECONDS`.
+
+### Validação
+- ✅ `bash bin/init.sh`
+- ✅ `php -l app/Services/JobService.php`
+- ✅ `php -l tests/Integration/MercadoLivreWebhookInboxQueueTransitionTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/QueueServiceUnitTest.php tests/Unit/QueueServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/MercadoLivreWebhookIngressHardeningTest.php tests/Unit/Services/MercadoLivreWebhookServiceTest.php`
+- ✅ `php vendor/bin/phpunit tests/Unit/Services/JobServiceRetryPolicyTest.php`
+- ⚠️ `php vendor/bin/phpunit tests/Integration/MercadoLivreWebhookInboxQueueTransitionTest.php` falhou no ambiente atual por indisponibilidade de MySQL (`127.0.0.1:3307`, `app_test`).
+
+### Próximo passo recomendado
+1. Com MySQL de testes ativo, executar os testes de integração da fila/webhook e ajustar bordas de timeout/backoff conforme carga real.
+2. Endereçar replay automático de eventos `webhook_event_inbox` com status `failed` (pipeline contínuo, sem replay manual).
+
+---
+
+## Sessão: 2026-02-25l — `auto-token-refresh-worker` delegado ao orquestrador (compatibilidade MP)
+
+### Contexto
+Fechamento da pendência operacional de sobreposição entre `scripts/refresh_ml_tokens.php` / polling / fila e `bin/auto-token-refresh-worker.php`.
+
+### Implementado
+1. **`bin/auto-token-refresh-worker.php` agora delega por padrão ao orquestrador oficial**
+   - Passou a executar `MercadoLivreOrchestratorService::runCycle()` como comportamento default.
+   - Mantém compatibilidade com flags:
+     - `--all` / `--force-all`
+     - `--account=ID`
+     - `--once` (informativo)
+     - `--compact` (JSON compacto)
+
+2. **Fallback explícito para fluxo antigo**
+   - Novo flag `--legacy` mantém o comportamento histórico completo do worker (refresh + sync manual legado).
+
+3. **Compatibilidade temporária de Mercado Pago**
+   - Para não quebrar side-effects de MP enquanto a fase não é migrada para o orquestrador,
+     o worker executa a fase legada de Mercado Pago após o ciclo ML quando `MERCADO_PAGO_ENABLED=true`.
+   - Novo método público `runMercadoPagoOnly()` no worker legado para executar apenas essa fase.
+   - Pode ser desabilitado por flag: `--skip-mercadopago` / `--skip-mp`.
+
+### Impacto
+- Reduz sobreposição operacional de ML sem eliminar de imediato a compatibilidade com sync MP legado.
+- Abre caminho para descontinuar `bin/auto-token-refresh-worker.php` completamente após migração da fase MP.
+
+### Validação
+- ✅ `php -l bin/auto-token-refresh-worker.php`
+
+### Próxima pendência recomendada
+1. Migrar a fase de Mercado Pago (compatibilidade temporária) para orquestrador dedicado e remover `--legacy`.
+2. Remover DDL runtime em serviços críticos (schema checks/migrations).
+
+---
+
+## Sessão: 2026-02-25k — Consolidação de Orquestração ML (cron/scripts -> orquestrador oficial)
+
+### Contexto
+Continuação do hardening ML focando a lacuna de operação/orquestração duplicada. Objetivo: criar um caminho oficial único para polling + refresh + fila e compatibilizar scripts legados do crontab sem `exec` encadeado.
+
+### Implementado
+1. **`MercadoLivreOrchestratorService` (novo)**
+   - Criado service para operações de cron/CLI:
+     - `runQueue()`
+     - `runPolling()`
+     - `runTokenRefresh()`
+     - `runCycle()`
+   - Usa lock por escopo via `flock` em `storage/locks/ml-orchestrator-*.lock` para evitar sobreposição entre scripts/cron.
+   - Reaproveita `PollingService`, `JobService` e `TokenRefreshJob` (sem duplicar lógica de negócio).
+
+2. **CLI oficial `bin/ml-orchestrator.php`**
+   - Subcomandos:
+     - `cycle`
+     - `poll`
+     - `poll-orders`
+     - `poll-items`
+     - `poll-questions`
+     - `queue`
+     - `refresh-tokens`
+   - Saída JSON (útil para cron/observabilidade simples) e suporte a `help`.
+
+3. **Scripts legados convertidos em wrappers para o orquestrador**
+   - `scripts/poll_orders.php` agora usa `runPolling(['orders'], ... , with queue + cleanup)`
+   - `scripts/poll_items.php` agora usa `runPolling(['items'])`
+   - `scripts/poll_questions.php` agora usa `runPolling(['questions'])`
+   - `scripts/process_jobs.php` agora usa `runQueue()` diretamente
+   - `scripts/run_queue.php` removeu `exec(process_jobs.php)` e passou a chamar o orquestrador direto
+   - `scripts/refresh_ml_tokens.php` agora usa `runTokenRefresh()` (mantendo CLI/saída compatível)
+
+### Impacto
+- Reduz fragmentação entre cron scripts e fluxo canônico (`PollingService -> JobService -> *SyncService`).
+- Evita sobreposição por escopo via lock de processo (especialmente `poll_*` e `queue`).
+- Remove um `exec()` interno desnecessário (`run_queue.php` -> `process_jobs.php`).
+
+### Validação
+- ✅ `php -l app/Services/MercadoLivreOrchestratorService.php`
+- ✅ `php -l bin/ml-orchestrator.php`
+- ✅ `php -l scripts/poll_orders.php`
+- ✅ `php -l scripts/poll_items.php`
+- ✅ `php -l scripts/poll_questions.php`
+- ✅ `php -l scripts/process_jobs.php`
+- ✅ `php -l scripts/run_queue.php`
+- ✅ `php -l scripts/refresh_ml_tokens.php`
+- ✅ Smoke CLI: `php bin/ml-orchestrator.php help`
+
+### Pendências relacionadas (próxima rodada)
+1. Integrar ou descontinuar explicitamente `bin/auto-token-refresh-worker.php` no caminho oficial (ainda é fonte de sobreposição potencial).
+2. Remover DDL runtime restante (`JobService`, `WebhookInboxService`, `MercadoLivreAuthService`) via migrations/boot checks.
+3. Opcional: adicionar métricas/health do orquestrador (tempo, jobs criados/processados, lock busy) para monitoramento externo.
+
+---
+
+## Sessão: 2026-02-25j — Hardening ML P0/P1 (Claim Atômico, Checkpoint de Pedidos, Replay/Sync)
+
+### Contexto
+Implementação incremental do plano de integração ML “real e profissional”, priorizando consistência de sincronização, concorrência segura e operação de webhook em produção.
+
+### Implementado
+1. **Fila `JobService` com claim atômico (anti-duplicidade)**
+   - Adicionadas colunas/índices de claim (`claim_token`, `claimed_by`, `claimed_at`) com compatibilidade de schema.
+   - `process()` agora usa `claimPendingJobs()` (transação + `FOR UPDATE SKIP LOCKED` com fallback).
+   - `processJob()` passa a claimar job pendente antes de executar, reduzindo corrida entre workers/scripts.
+   - Claims são limpos ao retornar para `pending` ou finalizar em `completed`/`failed`.
+
+2. **Suporte oficial a `sync_questions` na fila**
+   - `JobService` ganhou case `sync_questions` + método `syncQuestionsJob()`.
+   - `PollingService::pollAll()` agora inclui `questions` com novo `pollQuestions()`.
+
+3. **`OrderService::syncOrders()` reescrito para sync incremental paginado**
+   - Nova assinatura compatível: `syncOrders(?int $accountId, int $limit, array $options = [])`.
+   - Paginação por `offset`, `page_limit`, filtros `since/until`, `full_backfill`.
+   - Checkpoint em `sync_status` via `SyncStatusService` com `last_sync_at` + `last_sync_id` e retorno `next_cursor`/`has_more`.
+   - Proteção com `overlap_seconds` para evitar perda em borda temporal.
+
+4. **`SyncStatusService` implementado (classe faltante)**
+   - Classe criada para `sync_status` com `markRunning`, `markSuccess`, `markError`, `getStatus`.
+   - Sem DDL runtime (depende de migration existente).
+   - `markRunning()` não avança `last_sync_at` (preserva checkpoint correto).
+
+5. **`SyncController` sem `exec()` para sync manual**
+   - `/api/sync/trigger` passou a enfileirar jobs (`sync_orders`, `sync_items`, `sync_questions`) via `JobService`.
+   - Resposta agora inclui `job_id`/`job_type`.
+   - Atualização de status delegada ao `SyncStatusService`.
+
+6. **Lock por conta no refresh de token ML**
+   - `MercadoLivreAuthService::refreshToken()` agora usa advisory lock MySQL (`GET_LOCK`/`RELEASE_LOCK`) por `account_id`.
+   - Evita corrida de refresh e rotação concorrente de `refresh_token`.
+
+7. **Webhook inbox (ML) — replay/ops**
+   - `WebhookInboxService` já nesta rodada passou a persistir `delivery_id`, `signature_ts`, `signature_nonce` e expôs:
+     - `hasSignatureReplay(...)`
+     - `cleanupOldEvents(...)`
+   - Correção aplicada em `hasSignatureReplay()` para não usar `signature_ts` sozinho como chave (evita falso positivo).
+   - CLI admin criado: `bin/ml-webhook-inbox-admin.php` (`list-failed`, `replay-failed`, `cleanup`).
+
+8. **Fail-fast de rate limit (429) em contexto HTTP**
+   - `MercadoLivreClient` não faz mais `sleep()` em request thread web quando recebe `429`; registra log e falha rápido.
+   - Retry com espera continua para workers/CLI (assíncrono), reduzindo bloqueio de workers PHP HTTP.
+
+### Validação
+- ✅ `php -l` em:
+  - `app/Services/JobService.php`
+  - `app/Services/OrderService.php`
+  - `app/Services/MercadoLivreAuthService.php`
+  - `app/Services/PollingService.php`
+  - `app/Controllers/SyncController.php`
+  - `app/Services/SyncStatusService.php`
+  - `app/Services/WebhookInboxService.php`
+  - `app/Controllers/MercadoLivreWebhookController.php`
+  - `bin/ml-webhook-inbox-admin.php`
+- ✅ `phpunit tests/Unit/MercadoLivreWebhookIngressHardeningTest.php tests/Integration/MercadoLivreWebhookInboxQueueTransitionTest.php`
+- ✅ `phpunit tests/Unit/Services/OrderServiceUnitTest.php tests/Unit/Services/OrderServiceTest.php`
+- ⚠️ `phpunit tests/Integration/JobProcessingFlowTest.php` pulado por indisponibilidade do MySQL de teste (`127.0.0.1:3307`)
+
+### Pendências (próxima rodada)
+1. Consolidar crons/worker duplicados (`current_crontab`) em orquestrador único e desativação de scripts legados.
+2. Remover DDL runtime de `WebhookInboxService`, `JobService`, `MercadoLivreAuthService` para migrations/boot checks.
+3. Revisar `MercadoLivreClient` para fail-fast de 429 em contexto HTTP e retry assíncrono via jobs.
+4. Evoluir smoke de integração ML real/homolog no pipeline.
+
+---
+
+## Sessão: 2026-02-25i — Smoke HTTP de Webhook ML (local) + Fix de Precedência do Secret
+
+### Contexto
+Continuação do hardening dos fluxos críticos ML. Objetivo desta rodada: executar smoke E2E real do endpoint público `/webhook/mercadolivre` via HTTP local e fechar gaps de ambiente/configuração.
+
+### Implementado
+1. **Fix de precedência de `ML_WEBHOOK_SECRET` no controller de webhook**
+   - `MercadoLivreWebhookController` agora respeita `getenv('ML_WEBHOOK_SECRET')` (inclusive valor vazio) antes de cair em `$_ENV`.
+   - Isso permite sobrescrever o secret por processo no servidor local/CI sem editar `.env` e sem ficar preso a valor pré-carregado em `$_ENV`.
+
+2. **Teste estrutural adicional**
+   - `MercadoLivreWebhookIngressHardeningTest` ganhou verificação explícita da leitura via `getenv('ML_WEBHOOK_SECRET')`.
+
+### Smoke HTTP (executado)
+- ✅ Subi servidor PHP local (`php -S 127.0.0.1:8099 router.php`) para testar o endpoint real.
+- ✅ Semeei contas ML temporárias de smoke em DB principal e DB de teste (depois removidas).
+- ✅ Confirmei que o endpoint estava bloqueando por assinatura e que o fix de precedência permitiu controlar o secret por ambiente do processo.
+- ⚠️ Persistiu divergência de ambiente/DB no bootstrap HTTP local (resposta `Account not found` mesmo com conta temporária semeada no DB esperado), indicando que o processo HTTP está consumindo configuração diferente da CLI usada para seed (a investigar em próxima rodada).
+
+### Limpeza
+- ✅ Removidas contas temporárias `nickname LIKE 'smoke-webhook-%'` dos DBs usados no smoke.
+
+### Validação
+- ✅ `php -l app/Controllers/MercadoLivreWebhookController.php`
+- ✅ `php -l tests/Unit/MercadoLivreWebhookIngressHardeningTest.php`
+- ✅ `phpunit tests/Unit/MercadoLivreWebhookIngressHardeningTest.php`
+
+---
+
+## Sessão: 2026-02-25h — Hardening Webhooks/OAuth/Schema Compat (Fluxos Críticos ML)
+
+### Contexto
+Implementação do plano de hardening dos fluxos críticos da API do Mercado Livre, com foco em confiabilidade de webhook/inbox/jobs, compatibilidade de schema de tokens e regressão automatizada com MySQL ativo.
+
+### Implementado
+1. **Webhook inbox/job lifecycle (ML)**
+   - `MercadoLivreWebhookController` agora usa `markQueued()` no caminho assíncrono (antes marcava `processed` prematuramente).
+   - `JobService` sincroniza `webhook_event_inbox` após `ml_webhook`:
+     - sucesso: `queued -> processed`
+     - falha terminal: `queued -> failed`
+     - retry: mantém `queued` com metadados (`retry_pending`, attempts).
+   - `WebhookInboxService::markQueued()` agora atualiza `status='queued'`.
+   - `WebhookInboxService` ganhou suporte de schema para status `queued` (inclui migração incremental de ENUM).
+   - Rota suspeita removida: `POST /dashboard` não aponta mais para webhook ML.
+
+2. **Hardening OAuth callback**
+   - `AuthController::callback()` trocou `@file_put_contents` por helper `logOAuthCallbackEvent()` (best-effort, com `log_info/log_warning` + append sem suppressor).
+
+3. **Compatibilidade de schema (tokens)**
+   - `MercadoLivreClient::loadAccount()` faz fallback para schema antigo sem `last_refresh_error`.
+   - `MercadoLivreAuthService` garante compatibilidade incremental (lazy):
+     - colunas `refresh_failure_count`, `last_refresh_error`, `last_refresh_at`, `last_token_refresh` em `ml_accounts`
+     - tabela `token_refresh_audit`
+
+4. **Compatibilidade de APIs internas/testes**
+   - `UnifiedTokenRefreshService` ganhou aliases `processRefreshQueue()` e `refreshTokensNearExpiry()`.
+   - `bin/auto-token-refresh-worker.php` ganhou suporte explícito a `--once`.
+
+5. **Testes adicionados/ajustados**
+   - **Novo** `tests/Integration/MercadoLivreWebhookInboxQueueTransitionTest.php`
+     - `received -> queued -> processed`
+     - falha terminal `queued -> failed`
+     - deduplicação (`registerIncoming` duplicado)
+   - **Novo** `tests/Unit/MercadoLivreWebhookIngressHardeningTest.php`
+     - controller usa `markQueued`
+     - rota `POST /dashboard` ausente
+   - Ajustes de robustez em testes existentes:
+     - `MLOAuthFlowTest` aceita domínio oficial `.com` e `.com.br`
+     - `MercadoLivreAuthServiceTest` (estado OAuth inválido) tornou-se determinístico
+     - `MercadoLivreWebhookServiceTest` (claims/messages) alinhado ao comportamento best-effort atual
+
+### Validação Executada
+- ✅ `php -l` nos arquivos modificados (controllers/services/routes/bin/tests)
+- ✅ `tests/Integration/MercadoLivreWebhookInboxQueueTransitionTest.php`
+- ✅ `tests/Unit/MercadoLivreWebhookIngressHardeningTest.php`
+- ✅ `tests/Feature/MLOAuthFlowTest.php`
+- ✅ `tests/Feature/TokenRefreshCycleTest.php`
+- ✅ `tests/Integration/MercadoLivreAccountPersistenceTest.php`
+- ✅ `tests/Unit/Controllers/AuthControllerTest.php`
+- ✅ `tests/Unit/Services/MercadoLivreAuthServiceTest.php`
+- ✅ `tests/Unit/MercadoLivreAuthServiceUnitTest.php`
+- ✅ `tests/Unit/Services/MercadoLivreWebhookServiceTest.php`
+- ✅ `tests/Unit/Services/MercadoLivreClientTest.php`
+- ✅ `tests/Unit/MercadoLivreClientDisconnectHandlingTest.php`
+- ✅ `./bin/init.sh` (com falhas remanescentes fora do escopo ML em `QuestionServiceTest` e outras integrações amplas)
+
+### Pendências (fora desta rodada)
+- Smoke E2E real contra API ML (diagnóstico/refresh/webhook HTTP assinado/processamento real) ainda não executado nesta sessão.
+
+---
+
 ## Sessão: 2026-02-25g — Integração SEO Metrics com API do Mercado Livre
 
 ### Contexto

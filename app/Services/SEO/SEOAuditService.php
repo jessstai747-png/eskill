@@ -535,7 +535,7 @@ class SEOAuditService
             $weighted += ($scores[$component] ?? 0) * $weight;
         }
 
-        return round($weighted);
+        return (int) round($weighted);
     }
 
     private function calculateHiddenAttributesCompleteness(string $itemId, array $item): int
