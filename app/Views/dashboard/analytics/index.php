@@ -128,16 +128,26 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 const Analytics = {
     charts: {},
 
+    async safeLoad(label, fn) {
+        try {
+            await fn();
+        } catch (error) {
+            console.error(`[Analytics] Falha em ${label}:`, error);
+        }
+    },
+
     async init() {
-        await this.loadSummary();
-        await this.loadRevenueTrend();
-        await this.loadCustomerLTV();
-        await this.loadProfitMargins();
-        await this.loadInventoryTurnover();
-        await this.loadForecast();
+        await this.safeLoad('summary', () => this.loadSummary());
+        await this.safeLoad('revenue trend', () => this.loadRevenueTrend());
+        await this.safeLoad('customer ltv', () => this.loadCustomerLTV());
+        await this.safeLoad('profit margins', () => this.loadProfitMargins());
+        await this.safeLoad('inventory turnover', () => this.loadInventoryTurnover());
+        await this.safeLoad('forecast', () => this.loadForecast());
         
         // Auto-refresh every 60 seconds
-        setInterval(() => this.loadSummary(), 60000);
+        setInterval(() => {
+            this.safeLoad('summary auto-refresh', () => this.loadSummary());
+        }, 60000);
     },
 
     async loadSummary() {

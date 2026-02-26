@@ -6,6 +6,45 @@
 
 ---
 
+## Sessão: 2026-02-26f — Fix 500 em `/api/analytics/customer-ltv` + hardening da página Analytics
+
+### Causa raiz confirmada
+- Endpoint `GET /api/analytics/customer-ltv` falhava com MySQL `ONLY_FULL_GROUP_BY`.
+- SQL antigo agrupava por alias derivado de `JSON_EXTRACT(order_data, '$.buyer.id')`, gerando erro:
+  - `ERROR 1055 (42000): Expression #1 ... is not in GROUP BY ... incompatible with sql_mode=only_full_group_by`.
+
+### Arquivos alterados
+- `app/Services/AnalyticsService.php`
+- `app/Views/dashboard/analytics/index.php`
+
+### Implementado
+1. **Correção SQL do LTV**
+   - `getCustomerLTV()` agora usa `buyer_id` (coluna nativa de `ml_orders`) em vez de `JSON_EXTRACT(order_data, ...)`.
+   - Filtro alterado para `buyer_id IS NOT NULL`.
+   - Mantém a mesma saída (`segment`, `customer_count`, `avg_ltv`, `total_revenue`) sem breaking change de API.
+
+2. **Hardening do frontend Analytics**
+   - Adicionada função `safeLoad(label, fn)` no objeto `Analytics`.
+   - `init()` agora executa cada bloco (`summary`, `revenue trend`, `customer ltv`, etc.) via `safeLoad`.
+   - Evita que uma falha isolada interrompa o carregamento completo da página e elimina `Uncaught (in promise)` em cascata.
+   - Auto-refresh do summary também passa a usar `safeLoad`.
+
+### Validação executada
+- ✅ Verificação direta no MySQL:
+  - query antiga do LTV reproduziu `ERROR 1055` com `ONLY_FULL_GROUP_BY`;
+  - query nova (com `buyer_id`) executou sem erro.
+- ✅ Chamada direta do serviço em PHP:
+  - `AnalyticsService::getCustomerLTV()` executou sem exceção (`rows=0` no estado atual de dados).
+- ✅ `php -l app/Services/AnalyticsService.php`
+- ✅ `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+  - `2902 tests`, `6778 assertions`, `0 failures`
+- ✅ `php vendor/bin/phpunit --testsuite Integration --no-coverage --colors=never`
+  - `3467 tests`, `11053 assertions`, `0 failures`
+
+### Resultado final
+- Erro `500` de `customer-ltv` removido na camada SQL para o modo MySQL atual.
+- Tela de Analytics fica resiliente a falhas pontuais de endpoint sem derrubar inicialização completa.
+
 ## Sessão: 2026-02-26e — Hardening da página de contas (bloqueio de sync inválido)
 
 ### Causa raiz complementar

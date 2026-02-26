@@ -65,11 +65,11 @@ class AnalyticsService
                 SUM(total) as total_revenue
             FROM (
                 SELECT
-                    JSON_UNQUOTE(JSON_EXTRACT(order_data, '$.buyer.id')) as buyer_id,
+                    buyer_id,
                     SUM(total_amount) as total
                 FROM ml_orders
                 WHERE status = 'paid'
-                AND JSON_EXTRACT(order_data, '$.buyer.id') IS NOT NULL
+                AND buyer_id IS NOT NULL
         ";
 
         $params = [];
