@@ -1231,6 +1231,9 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
             const syncStatus = accountsState.syncStatus[account.id] || {};
             const active = accountsState.activeId === account.id;
             const pending = accountsState.pendingId === account.id;
+            const syncCapability = getAccountSyncCapability(account, tokenStatus, syncStatus);
+            const syncButtonTitle = escapeHtml(syncCapability.reason || '');
+            const syncButtonDisabledAttr = syncCapability.disabled ? 'disabled aria-disabled="true"' : '';
 
             const connectionMeta = getConnectionMeta(account, tokenStatus);
             const syncMeta = getSyncMeta(syncStatus, account.id);
@@ -1276,9 +1279,9 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
                     </div>
                 </div>
                 <div class="account-actions">
-                    <button class="btn btn-outline-primary btn-sm" data-action="sync-account" data-account-id="${account.id}">
-                        <i class="bi bi-arrow-repeat me-1"></i>
-                        Sincronizar
+                    <button class="btn ${syncCapability.buttonClass} btn-sm" data-action="${syncCapability.action}" data-account-id="${account.id}" title="${syncButtonTitle}" ${syncButtonDisabledAttr}>
+                        <i class="bi ${syncCapability.icon} me-1"></i>
+                        ${syncCapability.label}
                     </button>
                     <button class="btn btn-outline-danger btn-sm" data-action="unlink-account" data-account-id="${account.id}">
                         <i class="bi bi-link-45deg me-1"></i>
@@ -1288,6 +1291,59 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
             </div>
         `;
         }).join('');
+    }
+
+    function getAccountSyncCapability(account, tokenStatus, syncStatus) {
+        const accountStatus = String(account?.status || '').toLowerCase();
+        const tokenState = String(tokenStatus?.token_status || '').toLowerCase();
+        const syncTokenState = String(syncStatus?.token_status?.status || '').toLowerCase();
+
+        if (accountsState.pendingId === account.id) {
+            return {
+                action: 'sync-account',
+                label: 'Aguarde',
+                icon: 'bi-hourglass-split',
+                buttonClass: 'btn-outline-secondary',
+                disabled: true,
+                reason: 'Troca de conta em andamento.'
+            };
+        }
+
+        if (['disconnected', 'inactive', 'expired'].includes(accountStatus)) {
+            return {
+                action: 'reconnect-account',
+                label: 'Reconectar',
+                icon: 'bi-link-45deg',
+                buttonClass: 'btn-outline-warning',
+                disabled: false,
+                reason: 'Conta desconectada ou inativa. Reconecte antes de sincronizar.'
+            };
+        }
+
+        if (
+            tokenState === 'expired' ||
+            tokenState === 'invalid' ||
+            syncTokenState === 'expired' ||
+            syncStatus?.can_sync === false
+        ) {
+            return {
+                action: 'reconnect-account',
+                label: 'Reconectar',
+                icon: 'bi-link-45deg',
+                buttonClass: 'btn-outline-warning',
+                disabled: false,
+                reason: 'Token expirado ou inválido. Reconecte a conta.'
+            };
+        }
+
+        return {
+            action: 'sync-account',
+            label: 'Sincronizar',
+            icon: 'bi-arrow-repeat',
+            buttonClass: 'btn-outline-primary',
+            disabled: false,
+            reason: 'Sincronizar itens, pedidos e perguntas.'
+        };
     }
 
     function getConnectionMeta(account, tokenStatus) {
@@ -1416,16 +1472,17 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
     async function loadOrders() {
         const list = document.getElementById('orders-list');
         try {
+        const ordersEndpoint = '/api/orders/all?limit=6&allow_local_cache=1';
         let data;
         if (window.ApiClient) {
-            const { response, data: body } = await window.ApiClient.json('/api/orders/all?limit=6');
+            const { response, data: body } = await window.ApiClient.json(ordersEndpoint);
             data = body || {};
             if (!response.ok && !data.error) {
                 data.error = true;
                 data.message = `Falha ao carregar pedidos (HTTP ${response.status})`;
             }
         } else {
-            const resp = await fetch('/api/orders/all?limit=6', { credentials: 'include' });
+            const resp = await fetch(ordersEndpoint, { credentials: 'include' });
             data = await resp.json().catch(() => ({}));
             if (!resp.ok && !data.error) {
                 data.error = true;
@@ -1757,8 +1814,24 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
 
     async function syncAccountFromDashboard(event, accountId) {
         event.stopPropagation();
+        const numericAccountId = Number(accountId);
+        const account = accountsState.accounts.find(acc => Number(acc.id) === numericAccountId);
+        const tokenStatus = accountsState.tokenStatus[numericAccountId] || accountsState.tokenStatus[accountId] || {};
+        const syncStatus = accountsState.syncStatus[numericAccountId] || accountsState.syncStatus[accountId] || {};
+        const syncCapability = getAccountSyncCapability(account || { id: numericAccountId }, tokenStatus, syncStatus);
+
+        if (syncCapability.action === 'reconnect-account') {
+            window.location.href = `/auth/authorize?reconnect=${numericAccountId}`;
+            return;
+        }
+
+        if (syncCapability.disabled) {
+            Toast.warning(syncCapability.reason || 'Conta em processamento. Aguarde.');
+            return;
+        }
+
         try {
-            const data = await requestJson(`/api/accounts/${accountId}/sync`, {
+            const data = await requestJson(`/api/accounts/${numericAccountId}/sync`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1767,13 +1840,23 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
             });
             if (data.success) {
                 Toast.success('Sincronização concluída');
-                await refreshSingleAccount(accountId);
+                await refreshSingleAccount(numericAccountId);
             } else {
+                if (data.needs_reconnect && data.reconnect_url) {
+                    window.location.href = data.reconnect_url;
+                    return;
+                }
                 Toast.error(data.error || 'Falha na sincronização');
             }
         } catch (error) {
             Toast.error('Erro ao sincronizar conta');
         }
+    }
+
+    function reconnectAccountFromDashboard(event, accountId) {
+        event.stopPropagation();
+        const numericAccountId = Number(accountId);
+        window.location.href = `/auth/authorize?reconnect=${numericAccountId}`;
     }
 
     async function unlinkAccount(event, accountId) {
@@ -1826,6 +1909,11 @@ $userName = htmlspecialchars($_SESSION['user_name'] ?? 'Usuário');
                 e.preventDefault();
                 e.stopPropagation(); // Prevent card selection
                 syncAccountFromDashboard(e, accountId);
+                break;
+            case 'reconnect-account':
+                e.preventDefault();
+                e.stopPropagation(); // Prevent card selection
+                reconnectAccountFromDashboard(e, accountId);
                 break;
             case 'unlink-account':
                 e.preventDefault();

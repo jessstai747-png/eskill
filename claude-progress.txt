@@ -6,6 +6,117 @@
 
 ---
 
+## Sessão: 2026-02-26d — Correção dashboard (422 em pedidos e 401 em sync de contas)
+
+### Causa raiz
+- Dashboard requisitava `/api/orders/all?limit=6` sem fallback local, recebendo `422` quando `seller_id` não estava disponível na conta ativa.
+- A UI permitia acionar `/api/accounts/{id}/sync` para contas com status/token inválido (`disconnected`/`expired`), gerando `401`.
+
+### Arquivo alterado
+- `app/Views/dashboard/index.php`
+
+### Implementado
+1. Adicionado cálculo de capacidade de sincronização por conta (`getAccountSyncCapability`) usando `account.status`, `token_status` e `sync_status.can_sync`.
+2. Botão de ação agora alterna dinamicamente entre:
+   - `Sincronizar` (`data-action="sync-account"`) quando elegível;
+   - `Reconectar` (`data-action="reconnect-account"`) quando token/conta inválidos;
+   - estado desabilitado `Aguarde` durante troca de conta pendente.
+3. Guard-rail em `syncAccountFromDashboard`: bloqueia chamada de sync quando conta não elegível e redireciona para `/auth/authorize?reconnect={id}`.
+4. `loadOrders()` passou a usar endpoint com fallback local:
+   - `/api/orders/all?limit=6&allow_local_cache=1`
+   reduzindo erro `422` no carregamento inicial de “Pedidos Recentes”.
+
+### Validação executada
+- ✅ `php -l app/Views/dashboard/index.php`
+- ✅ `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+  - `2902 tests`, `6778 assertions`, `0 failures`, `27 skipped`
+- ✅ `php vendor/bin/phpunit --testsuite Integration --no-coverage --colors=never`
+  - `3467 tests`, `10979 assertions`, `0 failures`, `10 skipped`, `2 risky`
+
+### Resultado final
+- Dashboard deixa de disparar sync indevido para contas desconectadas/expiradas e passa a direcionar reconexão.
+- Carregamento de pedidos recentes usa fallback local, mitigando `422` por ausência de seller ativo.
+
+## Sessão: 2026-02-26c — Estabilização de produção (DB/Redis/Schema/OAuth) com execução real
+
+### Contexto
+Instabilidade operacional recorrente em produção com sintomas simultâneos:
+- falhas de acesso DB (`root`), Redis intermitente em checks sob sandbox, e 401/`invalid_grant` no fluxo ML;
+- drift de schema (`worker_execution_logs`/`clone_health_logs` ausentes, enum incompatível para `disconnected`/`refresh_disconnected`);
+- migrações pendentes no `migrations` tracking.
+
+### Implementado
+1. **Pré-janela + proteção operacional**
+   - Backup local criado em `storage/backups/pre_stabilization/`:
+     - `.env` snapshot
+     - crontab snapshot (`crontab_live`)
+     - dump completo `meli` (`mysqldump`)
+   - Pausa temporária de jobs de alto volume (refresh/queue/clone workers) com marcador `PAUSED_STABILIZATION_20260226`.
+
+2. **Infra DB/Redis**
+   - Criado usuário dedicado de aplicação `eskill_app` com privilégios mínimos necessários para runtime+migrations (`SELECT/INSERT/UPDATE/DELETE/CREATE/ALTER/INDEX/DROP/...` e complementos de `VIEW`/`ROUTINE` quando exigidos por migrations).
+   - `.env` atualizado para usar `DB_USERNAME=eskill_app`.
+   - Conectividade validada:
+     - MySQL `127.0.0.1:3306` OK com `eskill_app`
+     - Redis `127.0.0.1:6379` OK (`PONG`)
+
+3. **Reconciliação de schema**
+   - `bin/migrate.php` ajustado para priorizar `.env` em produção (antes priorizava `.env.testing`).
+   - Migration nova adicionada:
+     - `database/migrations/2026_02_26_000001_stabilize_production_schema.sql`
+   - Conteúdo da migration:
+     - cria `worker_execution_logs`, `clone_health_logs`, `clone_duplicate_registry` (`CREATE TABLE IF NOT EXISTS`);
+     - ajusta `ml_accounts.status` para incluir `disconnected`;
+     - ajusta `token_refresh_audit.action` para incluir `refresh_disconnected`;
+     - marca contas com `invalid_grant` como `disconnected`.
+   - Execução de migrações:
+     - `php bin/migrate.php` até zerar pendências (`Pending: 0`).
+
+4. **Hardening de compatibilidade em runtime**
+   - `app/Services/MercadoLivreAuthService.php`:
+     - `ensureCompatibilitySchema()` agora também garante compatibilidade de enum para:
+       - `ml_accounts.status` (`disconnected`)
+       - `token_refresh_audit.action` (`refresh_disconnected`)
+   - `bin/init.sh` ajustado para carregar env com precedência de produção (`.env` primeiro).
+
+5. **Remediação OAuth ML**
+   - Contas com `invalid_grant` forçadas para reautorização:
+     - `status='disconnected'`
+     - tokens limpos
+     - marcador `[FORCED_REAUTH_2026-02-26]` em `last_refresh_error`.
+   - Limpeza de fallback inválido em `.env`:
+     - `ML_ACCESS_TOKEN=`
+     - `ML_REFRESH_TOKEN=`
+   - Resultado: ciclos executados sem gerar novos `401`/`invalid_grant` nas linhas novas de log pós-fix.
+
+6. **Reativação gradual**
+   - Cron reativado em estágios:
+     1. token refresh
+     2. queue
+     3. clone monitor/workers
+   - Entradas `PAUSED_STABILIZATION_20260226` removidas após validação.
+
+### Validação executada
+- ✅ `bash bin/init.sh` (com permissão elevada): MySQL OK + Unit/Integration executadas no smoke
+- ✅ `php vendor/bin/phpunit --testsuite Integration --no-coverage --colors=never`
+  - `3467 tests`, `10942 assertions`, `0 failures/errors`, `10 skipped`, `2 risky`
+- ✅ `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+  - `2902 tests`, `6778 assertions`, `0 failures/errors`, `27 skipped`
+- ✅ Smoke HTTP real:
+  - `https://eskill.com.br/` -> `302`
+  - `https://eskill.com.br/login` -> `200`
+  - `https://eskill.com.br/dashboard` -> `302`
+  - `https://eskill.com.br/api/items` -> `401` (endpoint protegido, disponível)
+  - `https://eskill.com.br/api/monitoring/health` -> `401` (endpoint protegido, disponível)
+- ✅ Smoke operacional:
+  - `php scripts/run_queue.php` -> execução OK (`jobs_processed=0`, `batches_run=1`)
+  - `php bin/auto-token-refresh-worker.php` -> execução OK (sem contas ativas inválidas processadas)
+
+### Observação
+- Persistem logs históricos antigos de `Access denied`/`invalid_grant` no arquivo acumulado, porém a validação focou em **linhas novas pós-fix**.
+
+---
+
 ## Sessão: 2026-02-26b — Fechamento de integração real (Redis isolado + suíte Integration verde)
 
 ### Contexto
