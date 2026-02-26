@@ -43,7 +43,7 @@ $userId = $_SESSION['user_id'] ?? 0;
                 <strong id="tokenAlertTitle">Atenção</strong>
                 <p class="mb-0" id="tokenAlertMessage"></p>
             </div>
-            <button class="btn btn-warning btn-sm ms-auto" onclick="refreshAllTokens()">
+            <button class="btn btn-warning btn-sm ms-auto" id="refreshAllTokensBtn">
                 <i class="bi bi-arrow-clockwise me-1"></i>
                 Renovar Tokens
             </button>
@@ -91,8 +91,8 @@ $userId = $_SESSION['user_id'] ?? 0;
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center">
                         <div class="account-avatar me-3">
-                            <img src="" alt="" class="rounded-circle" width="48" height="48" 
-                                 onerror="this.src='https://http2.mlstatic.com/frontend-assets/ui-navigation/5.21.11/mercadolibre/logo__large_plus.png'">
+                            <img src="" alt="" class="rounded-circle" width="48" height="48"
+                                 data-fallback-src="https://http2.mlstatic.com/frontend-assets/ui-navigation/5.21.11/mercadolibre/logo__large_plus.png">
                         </div>
                         <div>
                             <h5 class="mb-0 account-nickname"></h5>
@@ -104,20 +104,20 @@ $userId = $_SESSION['user_id'] ?? 0;
                             <i class="bi bi-three-dots-vertical fs-5"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item action-reconnect" href="#" onclick="reconnectAccount(this)">
+                            <li><a class="dropdown-item action-reconnect" href="#" data-action="reconnect-account">
                                 <i class="bi bi-arrow-repeat me-2"></i>Reconectar
                             </a></li>
-                            <li><a class="dropdown-item action-sync" href="#" onclick="syncAccount(this)">
+                            <li><a class="dropdown-item action-sync" href="#" data-action="sync-account">
                                 <i class="bi bi-cloud-download me-2"></i>Sincronizar Itens
                             </a></li>
-                            <li><a class="dropdown-item" href="#" onclick="refreshToken(this)">
+                            <li><a class="dropdown-item" href="#" data-action="refresh-token">
                                 <i class="bi bi-key me-2"></i>Renovar Token
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="disconnectAccount(this)">
+                            <li><a class="dropdown-item" href="#" data-action="disconnect-account">
                                 <i class="bi bi-plug me-2"></i>Desconectar
                             </a></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteAccount(this)">
+                            <li><a class="dropdown-item text-danger" href="#" data-action="delete-account">
                                 <i class="bi bi-trash me-2"></i>Excluir Permanentemente
                             </a></li>
                         </ul>
@@ -157,13 +157,13 @@ $userId = $_SESSION['user_id'] ?? 0;
             </div>
             <div class="card-footer bg-transparent border-0 pt-0">
                 <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary btn-sm flex-fill" onclick="viewAccountDetails(this)">
+                    <button class="btn btn-outline-primary btn-sm flex-fill" data-action="view-account-details">
                         <i class="bi bi-eye me-1"></i>Detalhes
                     </button>
-                    <button class="btn btn-outline-success btn-sm flex-fill btn-sync" onclick="syncAccount(this)">
+                    <button class="btn btn-outline-success btn-sm flex-fill btn-sync" data-action="sync-account">
                         <i class="bi bi-cloud-download me-1"></i>Sincronizar
                     </button>
-                    <button class="btn btn-primary btn-sm flex-fill btn-reconnect" onclick="reconnectAccount(this)">
+                    <button class="btn btn-primary btn-sm flex-fill btn-reconnect" data-action="reconnect-account">
                         <i class="bi bi-arrow-repeat me-1"></i>Reconectar
                     </button>
                 </div>
@@ -263,8 +263,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnConnect = document.getElementById('connectNewAccountBtn');
         const btnConnectEmpty = document.getElementById('connectNewAccountEmptyBtn');
         const btnSyncAll = document.getElementById('syncAllBtn');
+        const btnRefreshAllTokens = document.getElementById('refreshAllTokensBtn');
+        const accountsGrid = document.getElementById('accountsGrid');
         
-        console.log('Botões encontrados:', { btnConnect, btnConnectEmpty, btnSyncAll });
+        console.log('Botões encontrados:', { btnConnect, btnConnectEmpty, btnSyncAll, btnRefreshAllTokens });
         
         if (btnConnect) {
             btnConnect.addEventListener('click', function(e) {
@@ -287,6 +289,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 console.log('Click em syncAllBtn');
                 syncAllAccounts();
+            });
+        }
+
+        if (btnRefreshAllTokens) {
+            btnRefreshAllTokens.addEventListener('click', function(e) {
+                e.preventDefault();
+                refreshAllTokens();
+            });
+        }
+
+        if (accountsGrid) {
+            accountsGrid.addEventListener('click', function(e) {
+                const actionEl = e.target.closest('[data-action]');
+                if (!actionEl) return;
+                e.preventDefault();
+
+                switch (actionEl.dataset.action) {
+                    case 'view-account-details':
+                        viewAccountDetails(actionEl);
+                        break;
+                    case 'sync-account':
+                        syncAccount(actionEl);
+                        break;
+                    case 'reconnect-account':
+                        reconnectAccount(actionEl);
+                        break;
+                    case 'refresh-token':
+                        refreshToken(actionEl);
+                        break;
+                    case 'disconnect-account':
+                        disconnectAccount(actionEl);
+                        break;
+                    case 'delete-account':
+                        deleteAccount(actionEl);
+                        break;
+                    default:
+                        break;
+                }
             });
         }
         
@@ -334,8 +374,19 @@ async function loadAccounts() {
             card.querySelector('.account-card').dataset.accountId = account.id;
             card.querySelector('.account-nickname').textContent = account.nickname || 'Sem nome';
             card.querySelector('.account-email').textContent = account.email || '';
-            card.querySelector('.account-avatar img').src = normalizeExternalUrl(account.thumbnail) || '';
-            card.querySelector('.account-avatar img').alt = account.nickname || '';
+            const avatarImg = card.querySelector('.account-avatar img');
+            const fallbackSrc = avatarImg?.dataset.fallbackSrc || '';
+            const avatarSrc = normalizeExternalUrl(account.thumbnail);
+            if (avatarImg) {
+                avatarImg.src = avatarSrc || fallbackSrc || '';
+                avatarImg.alt = account.nickname || '';
+                if (fallbackSrc) {
+                    avatarImg.addEventListener('error', function onError() {
+                        avatarImg.src = fallbackSrc;
+                        avatarImg.removeEventListener('error', onError);
+                    });
+                }
+            }
             
             // Status
             const statusBadge = card.querySelector('.account-status');

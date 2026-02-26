@@ -6,6 +6,28 @@
 
 ---
 
+## Sessão: 2026-02-26g — Correção CSP na tela de contas (remoção de handlers inline)
+
+### Causa raiz
+- CSP (`script-src 'strict-dynamic'`) bloqueou `onclick`/`onerror` inline em `dashboard/accounts`, gerando erro no console e impedindo ações.
+
+### Arquivo alterado
+- `app/Views/dashboard/accounts.php`
+
+### Implementado
+1. Remoção de `onclick` e `onerror` inline no template de contas.
+2. Substituição por `data-action` + event delegation no `accountsGrid`.
+3. Adição de handler dedicado para `refreshAllTokens` via `#refreshAllTokensBtn`.
+4. Fallback de avatar tratado via `data-fallback-src` + listener `error`.
+
+### Validação executada
+- ✅ `php -l app/Views/dashboard/accounts.php`
+- ✅ `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+  - `2902 tests`, `6778 assertions`, `0 failures`
+
+### Resultado final
+- CSP deixa de bloquear ações na tela de contas; handlers são todos via JS.
+
 ## Sessão: 2026-02-26f — Fix 500 em `/api/analytics/customer-ltv` + hardening da página Analytics
 
 ### Causa raiz confirmada
