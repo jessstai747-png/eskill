@@ -6,6 +6,38 @@
 
 ---
 
+## Sessão: 2026-02-27g — ML-008 sanitização de segredos hardcoded em scripts de teste/manual
+
+### Objetivo
+- Remover credenciais/sigilos hardcoded em scripts auxiliares de `tests/scripts` e `tests/manual`, migrando para leitura via variáveis de ambiente.
+
+### Arquivos alterados
+- `tests/scripts/test_render_orders.php`
+- `tests/scripts/test_items_module.php`
+- `tests/scripts/test_all_modules.php`
+- `tests/manual/verify_system.php`
+- `tests/manual/verify_backend.php`
+- `tests/manual/verify_metrics_data.php`
+- `tests/manual/verify_orders_api.php`
+
+### Implementado
+1. Substituídas atribuições hardcoded de `DB_PASSWORD` por leitura de `$_ENV`/`getenv('DB_PASSWORD')`.
+2. Substituídas atribuições hardcoded de `APP_KEY` por leitura de `$_ENV`/`getenv('APP_KEY')` onde aplicável.
+3. Mantidos defaults apenas para campos não sensíveis (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`).
+
+### Validação executada
+- `php -l tests/scripts/test_render_orders.php`
+- `php -l tests/scripts/test_items_module.php`
+- `php -l tests/scripts/test_all_modules.php`
+- `php -l tests/manual/verify_system.php`
+- `php -l tests/manual/verify_backend.php`
+- `php -l tests/manual/verify_metrics_data.php`
+- `php -l tests/manual/verify_orders_api.php`
+- `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+
+### Resultado final
+- Não há mais credenciais hardcoded nesses scripts; execução permanece funcional com variáveis de ambiente e a suíte Unit continua verde (com skips esperados no ambiente atual).
+
 ## Sessão: 2026-02-27f — ML-007 hardening de testes clone (risky/no-assert + DB indisponível)
 
 ### Objetivo
