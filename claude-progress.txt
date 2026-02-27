@@ -6,6 +6,58 @@
 
 ---
 
+## Sessão: 2026-02-27c — Fase 4 (ML-002/ML-003) hardening de diagnose/health ML
+
+### Objetivo
+- Iniciar execução do plano por fases com foco em redução de falso crítico e ruído operacional na integração real com Mercado Livre.
+
+### Arquivos alterados
+- `app/Services/MercadoLivreClient.php`
+- `app/Services/CloneHealthMonitorService.php`
+- `tests/Unit/Services/CloneHealthMonitorServiceTest.php`
+
+### Implementado
+1. `MercadoLivreClient::diagnose()` fortalecido para diferenciar:
+   - indisponibilidade real,
+   - ausência de contexto autenticado,
+   - bloqueio de policy em endpoint público (`/sites/MLB`).
+2. Adicionado probe público resiliente com fallback sem `client_id` para reduzir falso negativo por policy.
+3. Classificação de saúde ajustada em `CloneHealthMonitorService`:
+   - mantém `critical` apenas quando há contexto autenticado e API realmente indisponível;
+   - usa `warning` para cenários sem token/conta ativa e para policy block no endpoint público.
+4. Testes unitários atualizados e expandidos para cobrir novos cenários de severidade.
+
+### Validação executada
+- `php -l app/Services/MercadoLivreClient.php`
+- `php -l app/Services/CloneHealthMonitorService.php`
+- `php -l tests/Unit/Services/CloneHealthMonitorServiceTest.php`
+- `php vendor/bin/phpunit --no-coverage --colors=never tests/Unit/Services/CloneHealthMonitorServiceTest.php tests/Unit/Services/MercadoLivreClientExtendedTest.php tests/Unit/Services/MercadoLivre/MercadoLivreAIIntegrationHealthTest.php`
+- `php vendor/bin/phpunit`
+
+### Resultado final
+- Hardening inicial da Fase 4 concluído com suíte total passando (com skips esperados no ambiente atual).
+
+## Sessão: 2026-02-27b — Documento de fechamento por fases (Integracao Real ML)
+
+### Objetivo
+- Consolidar em um unico `.md` tudo que falta para finalizar a integracao real com a API do Mercado Livre, incluindo backlog de erros e plano por fases.
+
+### Arquivo criado
+- `docs/integrations/mercado_livre_real_api_fases.md`
+
+### Conteudo entregue
+1. Estado atual (baseline tecnico).
+2. Catalogo priorizado de erros a corrigir (`invalid_grant`, `401/403`, tabelas ausentes, `422`, riscos de seguranca).
+3. Fases de implementacao de ponta a ponta (pre-janela, infra, OAuth, schema, hardening, workers, validacao final).
+4. Checklist de aceite, criterios de saida por fase e rollback.
+5. Lista de arquivos/scripts chave para execucao operacional.
+
+### Validacao executada
+- Revisao local do arquivo criado e aderencia ao contexto operacional atual levantado em logs/sessoes.
+
+### Resultado final
+- Plano acionavel por fases publicado no repositorio para execucao da estabilizacao real do ML em producao.
+
 ## Sessão: 2026-02-27a — Fechamento CSP global (layout + accounts) e validação completa
 
 ### Causa raiz

@@ -517,18 +517,65 @@ class CloneHealthMonitorService
             $connected = (bool) ($diag['connected'] ?? false);
             $apiAccessible = (bool) ($diag['api_accessible'] ?? false);
             $tokenStatus = (string) ($diag['token_status'] ?? 'unknown');
+            $hasToken = (bool) ($diag['has_token'] ?? false);
+            $publicApiStatus = (string) ($diag['public_api_status'] ?? ($apiAccessible ? 'ok' : 'failed'));
+            $policyBlocked = (bool) ($diag['public_api_policy_blocked'] ?? false);
             $sellerId = $diag['seller_id'] ?? null;
             $itemsCount = (int) ($diag['items_count'] ?? 0);
             $error = $diag['error'] ?? null;
+            $publicApiOperational = $apiAccessible
+                || $policyBlocked
+                || $publicApiStatus === 'policy_blocked'
+                || $publicApiStatus === 'ok_no_client_id';
 
-            // Nível 1: API pública inacessível → critical
-            if (!$apiAccessible) {
+            // Nível 0: autenticado com sucesso. Mesmo se endpoint público estiver bloqueado
+            // por policy, o fluxo autenticado está funcional.
+            if ($connected) {
+                return [
+                    'status' => 'ok',
+                    'value' => 'conectado',
+                    'errors' => 0,
+                    'connected' => true,
+                    'api_accessible' => $apiAccessible,
+                    'public_api_status' => $publicApiStatus,
+                    'policy_blocked' => $policyBlocked,
+                    'token_status' => 'valid',
+                    'seller_id' => $sellerId,
+                    'items_count' => $itemsCount,
+                    'message' => $policyBlocked
+                        ? 'Conectividade autenticada OK — endpoint público com restrição de policy'
+                        : 'Conectividade API OK — seller ' . ($sellerId ?? '?') . ' (' . $itemsCount . ' itens)',
+                ];
+            }
+
+            // Nível 1: endpoint público indisponível SEM contexto autenticado.
+            // Não elevar para critical quando não há token/conta ativa ou quando bloqueio é de policy.
+            if (!$publicApiOperational) {
+                if (!$hasToken || in_array($tokenStatus, ['missing', 'unknown', 'disconnected'], true)) {
+                    return [
+                        'status' => 'warning',
+                        'value' => 'sem contexto ativo',
+                        'errors' => null,
+                        'connected' => false,
+                        'api_accessible' => false,
+                        'public_api_status' => $publicApiStatus,
+                        'policy_blocked' => $policyBlocked,
+                        'token_status' => $tokenStatus,
+                        'seller_id' => null,
+                        'items_count' => 0,
+                        'message' => 'Sem token/conta ativa para validação autenticada; check público indisponível',
+                        'error' => $error,
+                    ];
+                }
+
                 return [
                     'status' => 'critical',
                     'value' => 'API inacessível',
                     'errors' => null,
                     'connected' => false,
                     'api_accessible' => false,
+                    'public_api_status' => $publicApiStatus,
+                    'policy_blocked' => $policyBlocked,
                     'token_status' => $tokenStatus,
                     'seller_id' => null,
                     'items_count' => 0,
@@ -537,11 +584,13 @@ class CloneHealthMonitorService
                 ];
             }
 
-            // Nível 2: token inválido ou ausente → warning
+            // Nível 2: endpoint público operacional, mas sem autenticação.
+            // Tratar como warning acionável (não critical).
             if (!$connected) {
                 $reason = match ($tokenStatus) {
                     'missing', 'unknown' => 'Token ausente ou não configurado',
                     'invalid' => 'Token inválido — reautentique a conta',
+                    'disconnected' => 'Conta desconectada — reautorização necessária',
                     'error' => 'Erro ao validar token: ' . ($error ?? 'desconhecido'),
                     default => 'Não conectado ao Mercado Livre',
                 };
@@ -551,7 +600,9 @@ class CloneHealthMonitorService
                     'value' => $tokenStatus,
                     'errors' => null,
                     'connected' => false,
-                    'api_accessible' => true,
+                    'api_accessible' => $apiAccessible,
+                    'public_api_status' => $publicApiStatus,
+                    'policy_blocked' => $policyBlocked,
                     'token_status' => $tokenStatus,
                     'seller_id' => null,
                     'items_count' => 0,
@@ -560,17 +611,20 @@ class CloneHealthMonitorService
                 ];
             }
 
-            // Nível 3: tudo OK
+            // Fallback defensivo
             return [
-                'status' => 'ok',
-                'value' => 'conectado',
-                'errors' => 0,
-                'connected' => true,
-                'api_accessible' => true,
-                'token_status' => 'valid',
-                'seller_id' => $sellerId,
-                'items_count' => $itemsCount,
-                'message' => 'Conectividade API OK — seller ' . ($sellerId ?? '?') . ' (' . $itemsCount . ' itens)',
+                'status' => 'warning',
+                'value' => 'indeterminado',
+                'errors' => null,
+                'connected' => false,
+                'api_accessible' => $apiAccessible,
+                'public_api_status' => $publicApiStatus,
+                'policy_blocked' => $policyBlocked,
+                'token_status' => $tokenStatus,
+                'seller_id' => null,
+                'items_count' => 0,
+                'message' => 'Estado de conectividade indeterminado',
+                'error' => $error,
             ];
         } catch (\Throwable $e) {
             log_warning('CloneHealthMonitorService: diagnose ML falhou', [

@@ -140,10 +140,19 @@ class MercadoLivreClient
 
         // 3) Aviso único quando não há token disponível de nenhuma fonte
         if (!$this->hasAccessToken && !self::$missingTokenLogged) {
-            log_warning('Sem token configurado para ML API', [
+            $context = [
                 'account_id' => $this->accountId,
                 'hint' => 'ML_ACCESS_TOKEN no ambiente, X-ML-Access-Token (se ML_ALLOW_TOKEN_HEADER=true), ou conta vinculada em ml_accounts',
-            ]);
+            ];
+
+            // Sem accountId explícito em contexto não-HTTP costuma ser cenário esperado
+            // para checks genéricos de health/workers. Evita flood de warning operacional.
+            if ($this->accountId === null && !$this->isHttpContext()) {
+                log_debug('MercadoLivreClient sem token e sem conta ativa (contexto não autenticado)', $context);
+            } else {
+                log_warning('Sem token configurado para ML API', $context);
+            }
+
             self::$missingTokenLogged = true;
         }
 
@@ -244,12 +253,28 @@ class MercadoLivreClient
         }
 
         $db = Database::getInstance();
-        $stmt = $db->prepare(
-            'SELECT access_token, refresh_token, token_expires_at, tokens_encrypted, status, last_refresh_error, nickname
-             FROM ml_accounts WHERE id = :id LIMIT 1'
-        );
-        $stmt->execute(['id' => $this->accountId]);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        try {
+            $stmt = $db->prepare(
+                'SELECT access_token, refresh_token, token_expires_at, tokens_encrypted, status, last_refresh_error, nickname
+                 FROM ml_accounts WHERE id = :id LIMIT 1'
+            );
+            $stmt->execute(['id' => $this->accountId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            // Compatibilidade com esquemas antigos sem last_refresh_error.
+            $errorInfoCode = (int)($e->errorInfo[1] ?? 0);
+            $isUnknownColumn = $errorInfoCode === 1054 || stripos($e->getMessage(), 'Unknown column') !== false;
+            if (!$isUnknownColumn) {
+                throw $e;
+            }
+
+            $stmt = $db->prepare(
+                "SELECT access_token, refresh_token, token_expires_at, tokens_encrypted, status, NULL AS last_refresh_error, nickname
+                 FROM ml_accounts WHERE id = :id LIMIT 1"
+            );
+            $stmt->execute(['id' => $this->accountId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
 
         if (!$row) {
             return false;
@@ -590,7 +615,9 @@ class MercadoLivreClient
      */
     private function decorateLegacyResponse(array $payload): array
     {
-        if (array_is_list($payload)) {
+        $isList = array_keys($payload) === range(0, count($payload) - 1);
+
+        if ($isList) {
             return $payload;
         }
 
@@ -784,20 +811,41 @@ class MercadoLivreClient
             // RATE LIMIT (429) - Respeitar Retry-After
             if ($allowRetry && $status === 429) {
                 $retryAfter = (int)($e->getResponse()?->getHeaderLine('Retry-After') ?? 0);
-                // Se Retry-After for muito longo (> 60s), melhor falhar do que segurar o processo
-                if ($retryAfter > 0 && $retryAfter <= 60) {
-                    log_warning('ML API Rate Limit atingido', [
+                if ($this->isHttpContext()) {
+                    log_warning('ML API Rate Limit atingido (fail-fast em contexto HTTP)', [
                         'endpoint' => $endpoint,
                         'retry_after_seconds' => $retryAfter,
                     ]);
-                    sleep($retryAfter + 1); // +1s de margem
-                    return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
+                } else {
+                    // Se Retry-After for muito longo (> 60s), melhor falhar do que segurar o processo
+                    if ($retryAfter > 0 && $retryAfter <= 60) {
+                        log_warning('ML API Rate Limit atingido', [
+                            'endpoint' => $endpoint,
+                            'retry_after_seconds' => $retryAfter,
+                        ]);
+                        sleep($retryAfter + 1); // +1s de margem
+                        return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
+                    }
                 }
             }
 
             // CIRCUIT BREAKER: Registra falha em erros de servidor (5xx)
             if ($circuitBreaker && $status >= 500) {
                 $circuitBreaker->recordFailure("HTTP {$status} on {$method} {$endpoint}");
+            }
+
+            if ($this->shouldRetryTransientHttpFailure($status, $allowRetry)) {
+                $delaySeconds = $this->calculateTransientRetryDelaySeconds();
+                log_warning('ML API transient HTTP error, retrying once', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'status' => $status,
+                    'retry_delay_seconds' => $delaySeconds,
+                ]);
+                if ($delaySeconds > 0) {
+                    sleep($delaySeconds);
+                }
+                return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
             }
 
             log_error('ML API HTTP Error', [
@@ -824,6 +872,20 @@ class MercadoLivreClient
                 $circuitBreaker->recordFailure("HTTP {$status} on {$method} {$endpoint}");
             }
 
+            if ($this->shouldRetryTransientHttpFailure($status, $allowRetry)) {
+                $delaySeconds = $this->calculateTransientRetryDelaySeconds();
+                log_warning('ML API server error, retrying once', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'status' => $status,
+                    'retry_delay_seconds' => $delaySeconds,
+                ]);
+                if ($delaySeconds > 0) {
+                    sleep($delaySeconds);
+                }
+                return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
+            }
+
             log_error('ML API Server Error', [
                 'method' => $method,
                 'endpoint' => $endpoint,
@@ -846,6 +908,20 @@ class MercadoLivreClient
                 $circuitBreaker->recordFailure("Connection error on {$method} {$endpoint}: " . $e->getMessage());
             }
 
+            if ($allowRetry && !$this->isHttpContext()) {
+                $delaySeconds = $this->calculateTransientRetryDelaySeconds();
+                log_warning('ML API connection error, retrying once', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'retry_delay_seconds' => $delaySeconds,
+                    'error' => $e->getMessage(),
+                ]);
+                if ($delaySeconds > 0) {
+                    sleep($delaySeconds);
+                }
+                return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
+            }
+
             log_error('ML API Connection Error', [
                 'method' => $method,
                 'endpoint' => $endpoint,
@@ -864,6 +940,20 @@ class MercadoLivreClient
                 $circuitBreaker->recordFailure("Network error on {$method} {$endpoint}: " . $e->getMessage());
             }
 
+            if ($allowRetry && !$this->isHttpContext() && $this->isTransientNetworkException($e)) {
+                $delaySeconds = $this->calculateTransientRetryDelaySeconds();
+                log_warning('ML API network error considered transient, retrying once', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'retry_delay_seconds' => $delaySeconds,
+                    'error' => $e->getMessage(),
+                ]);
+                if ($delaySeconds > 0) {
+                    sleep($delaySeconds);
+                }
+                return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
+            }
+
             log_error('ML API Network Error', [
                 'method' => $method,
                 'endpoint' => $endpoint,
@@ -877,6 +967,56 @@ class MercadoLivreClient
                 'status' => 0,
             ]);
         }
+    }
+
+    private function shouldRetryTransientHttpFailure(?int $status, bool $allowRetry): bool
+    {
+        if (!$allowRetry || $this->isHttpContext()) {
+            return false;
+        }
+
+        if ($status === null) {
+            return false;
+        }
+
+        return $status >= 500 && $status < 600;
+    }
+
+    private function calculateTransientRetryDelaySeconds(): int
+    {
+        $base = max(1, min(30, (int)($_ENV['ML_TRANSIENT_RETRY_BASE_SECONDS'] ?? 2)));
+        $jitterMax = max(0, min(5, (int)($_ENV['ML_TRANSIENT_RETRY_JITTER_SECONDS'] ?? 1)));
+        $jitter = $jitterMax > 0 ? random_int(0, $jitterMax) : 0;
+        return $base + $jitter;
+    }
+
+    private function isTransientNetworkException(\Exception $e): bool
+    {
+        $message = strtolower($e->getMessage());
+        if ($message === '') {
+            return false;
+        }
+
+        $patterns = [
+            'timeout',
+            'timed out',
+            'connection reset',
+            'temporarily unavailable',
+            'temporary failure',
+            'dns',
+            'name or service not known',
+            'could not resolve host',
+            'connection refused',
+            'connection aborted',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (str_contains($message, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1615,6 +1755,107 @@ class MercadoLivreClient
     }
 
     /**
+     * Detecta resposta 403 do ML por policy quando client_id é enviado em endpoint público.
+     */
+    private function isPolicyBlockedResponse(array $response): bool
+    {
+        $haystack = strtolower((string) json_encode([
+            'error' => $response['error'] ?? '',
+            'message' => $response['message'] ?? '',
+            'cause' => $response['cause'] ?? [],
+        ]));
+
+        if ($haystack === '') {
+            return false;
+        }
+
+        return str_contains($haystack, 'pa_unauthorized_result_from_policies')
+            || (str_contains($haystack, 'policy') && str_contains($haystack, 'unauthorized'));
+    }
+
+    /**
+     * Probe sem injetar client_id para evitar bloqueios de policy em /sites/MLB.
+     */
+    private function probePublicSiteWithoutClientId(): array
+    {
+        try {
+            $response = $this->getPublicHttpClient()->request('GET', $this->baseUrl . '/sites/MLB', [
+                'timeout' => 8,
+            ]);
+
+            $decoded = json_decode((string)$response->getBody(), true);
+            return is_array($decoded) ? $decoded : [];
+        } catch (\Throwable $e) {
+            return [
+                'error' => 'public_probe_error',
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Verifica conectividade pública de forma resiliente (inclui fallback sem client_id).
+     *
+     * @return array{api_accessible: bool, status: string, policy_blocked: bool, reason: ?string, check: string}
+     */
+    private function probePublicApiConnectivity(): array
+    {
+        try {
+            $site = $this->get('/sites/MLB', [], 60, true);
+
+            if (isset($site['id'])) {
+                return [
+                    'api_accessible' => true,
+                    'status' => 'ok',
+                    'policy_blocked' => false,
+                    'reason' => null,
+                    'check' => 'ok',
+                ];
+            }
+
+            if (is_array($site) && isset($site['error']) && $this->isPolicyBlockedResponse($site)) {
+                $fallback = $this->probePublicSiteWithoutClientId();
+
+                if (isset($fallback['id'])) {
+                    return [
+                        'api_accessible' => true,
+                        'status' => 'ok_no_client_id',
+                        'policy_blocked' => true,
+                        'reason' => 'policy_blocked_with_client_id',
+                        'check' => 'ok (fallback sem client_id)',
+                    ];
+                }
+
+                $reason = (string)($site['message'] ?? $site['error'] ?? 'policy_blocked');
+                return [
+                    'api_accessible' => false,
+                    'status' => 'policy_blocked',
+                    'policy_blocked' => true,
+                    'reason' => $reason,
+                    'check' => 'policy_blocked',
+                ];
+            }
+
+            $reason = (string)($site['message'] ?? $site['error'] ?? 'Resposta inválida da API pública');
+            return [
+                'api_accessible' => false,
+                'status' => 'failed',
+                'policy_blocked' => false,
+                'reason' => $reason,
+                'check' => 'failed: ' . $reason,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'api_accessible' => false,
+                'status' => 'error',
+                'policy_blocked' => false,
+                'reason' => $e->getMessage(),
+                'check' => 'error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Diagnose connection status
      *
      * Verifica se a conexão com a API está funcionando corretamente
@@ -1629,10 +1870,16 @@ class MercadoLivreClient
             'account_id' => $this->accountId,
             'token_source' => $this->tokenSource,
             'db_unavailable' => $this->dbUnavailable,
+            'account_disconnected' => $this->accountDisconnected,
             'seller_id' => null,
             'user_info' => null,
-            'token_status' => 'unknown',
+            'token_status' => $this->accountDisconnected
+                ? 'disconnected'
+                : ($this->hasAccessToken ? 'unknown' : 'missing'),
             'api_accessible' => false,
+            'public_api_status' => 'unknown',
+            'public_api_policy_blocked' => false,
+            'public_api_reason' => null,
             'items_count' => 0,
             'error' => null,
             'checks' => []
@@ -1641,17 +1888,20 @@ class MercadoLivreClient
         // Check 1: Token disponível
         $result['checks']['token'] = $this->hasAccessToken ? 'ok' : 'missing';
 
-        // Check 2: API pública acessível
-        try {
-            $site = $this->get('/sites/MLB', [], 60, true);
-            $result['api_accessible'] = isset($site['id']);
-            $result['checks']['public_api'] = isset($site['id']) ? 'ok' : 'failed';
-        } catch (\Throwable $e) {
-            $result['checks']['public_api'] = 'error: ' . $e->getMessage();
-        }
+        // Check 2: API pública acessível (com fallback para bloqueio de policy)
+        $publicProbe = $this->probePublicApiConnectivity();
+        $result['api_accessible'] = (bool)($publicProbe['api_accessible'] ?? false);
+        $result['public_api_status'] = (string)($publicProbe['status'] ?? 'unknown');
+        $result['public_api_policy_blocked'] = (bool)($publicProbe['policy_blocked'] ?? false);
+        $result['public_api_reason'] = $publicProbe['reason'] ?? null;
+        $result['checks']['public_api'] = (string)($publicProbe['check'] ?? 'unknown');
 
         // Check 3: Autenticação
-        if ($this->hasAccessToken) {
+        if ($this->accountDisconnected) {
+            $result['token_status'] = 'disconnected';
+            $result['error'] = 'Conta desconectada — reautorização OAuth necessária';
+            $result['checks']['auth'] = 'failed: account_disconnected';
+        } elseif ($this->hasAccessToken) {
             try {
                 $me = $this->get('/users/me');
                 if (isset($me['id'])) {
@@ -1695,7 +1945,7 @@ class MercadoLivreClient
 
         // Derived/computed fields for easier consumption
         $result['token_valid'] = $result['token_status'] === 'valid';
-        $result['public_api'] = $result['api_accessible'];
+        $result['public_api'] = $result['api_accessible'] || $result['public_api_status'] === 'policy_blocked';
         $result['auth_ok'] = $result['connected'];
 
         return $result;

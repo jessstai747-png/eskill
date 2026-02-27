@@ -1260,7 +1260,7 @@ class CloneHealthMonitorServiceTest extends TestCase
         $this->assertStringContainsString('reautentique', $health['checks']['api_connectivity']['message']);
     }
 
-    public function testMlClientApiInaccessibleReturnsCritical(): void
+    public function testMlClientApiInaccessibleWithoutTokenReturnsWarning(): void
     {
         $mlClient = $this->createMockMlClient([
             'connected' => false,
@@ -1272,9 +1272,46 @@ class CloneHealthMonitorServiceTest extends TestCase
             'user_info' => null,
             'token_status' => 'unknown',
             'api_accessible' => false,
+            'public_api_status' => 'failed',
+            'public_api_policy_blocked' => false,
             'items_count' => 0,
             'error' => 'Connection timeout',
             'checks' => ['token' => false, 'public_api' => false, 'auth' => false, 'items' => false],
+            'token_valid' => false,
+            'public_api' => false,
+            'auth_ok' => false,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('warning', $health['checks']['api_connectivity']['status']);
+        $this->assertFalse($health['checks']['api_connectivity']['connected']);
+        $this->assertFalse($health['checks']['api_connectivity']['api_accessible']);
+        $this->assertStringContainsString('Sem token/conta ativa', $health['checks']['api_connectivity']['message']);
+    }
+
+    public function testMlClientApiInaccessibleWithTokenContextReturnsCritical(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => false,
+            'has_token' => true,
+            'account_id' => 123,
+            'token_source' => 'db',
+            'db_unavailable' => false,
+            'seller_id' => null,
+            'user_info' => null,
+            'token_status' => 'valid',
+            'api_accessible' => false,
+            'public_api_status' => 'failed',
+            'public_api_policy_blocked' => false,
+            'items_count' => 0,
+            'error' => 'Connection timeout',
+            'checks' => ['token' => true, 'public_api' => false, 'auth' => false, 'items' => false],
             'token_valid' => false,
             'public_api' => false,
             'auth_ok' => false,
@@ -1309,6 +1346,40 @@ class CloneHealthMonitorServiceTest extends TestCase
         $this->assertSame('warning', $health['checks']['api_connectivity']['status']);
         $this->assertStringContainsString('Guzzle timeout', $health['checks']['api_connectivity']['message']);
         $this->assertFalse($health['checks']['api_connectivity']['connected']);
+    }
+
+    public function testMlClientPublicEndpointPolicyBlockedReturnsWarningNotCritical(): void
+    {
+        $mlClient = $this->createMockMlClient([
+            'connected' => false,
+            'has_token' => false,
+            'account_id' => null,
+            'token_source' => 'none',
+            'db_unavailable' => false,
+            'seller_id' => null,
+            'user_info' => null,
+            'token_status' => 'missing',
+            'api_accessible' => false,
+            'public_api_status' => 'policy_blocked',
+            'public_api_policy_blocked' => true,
+            'items_count' => 0,
+            'error' => 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES',
+            'checks' => ['token' => false, 'public_api' => 'policy_blocked', 'auth' => 'skipped (no token)', 'items' => false],
+            'token_valid' => false,
+            'public_api' => true,
+            'auth_ok' => false,
+        ]);
+
+        $this->configurePrepareSequence($this->buildHealthStmtsForMLClient());
+
+        /** @var \App\Services\MercadoLivreClient $client */
+        $client = $mlClient;
+        $svc = new CloneHealthMonitorService(0, $this->pdo, $client);
+        $health = $svc->getSystemHealth();
+
+        $this->assertSame('warning', $health['checks']['api_connectivity']['status']);
+        $this->assertSame('policy_blocked', $health['checks']['api_connectivity']['public_api_status']);
+        $this->assertTrue($health['checks']['api_connectivity']['policy_blocked']);
     }
 
     public function testMlClientConnectedDoesNotAffectOtherChecks(): void
