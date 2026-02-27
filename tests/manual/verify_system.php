@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Comprehensive System Verification Script
  * Tests all major components and reports issues
@@ -85,16 +86,42 @@ try {
 echo "[4/10] Testing Order Service...\n";
 try {
     require_once __DIR__ . '/app/Services/OrderService.php';
-    $orderService = new \App\Services\OrderService(null);
-    
+
     // Get accounts
     $stmt = $db->query("SELECT id FROM ml_accounts LIMIT 3");
     $accountIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
+
     if (!empty($accountIds)) {
-        $orders = $orderService->getOrdersFromMultipleAccounts($accountIds, ['limit' => 5]);
-        $results['order_service'] = 'OK';
-        echo "✓ Order Service working (" . ($orders['total'] ?? 0) . " orders found)\n\n";
+        $processedAccounts = 0;
+        $totalOrders = 0;
+        $accountErrors = [];
+
+        foreach ($accountIds as $accountId) {
+            try {
+                $orderService = new \App\Services\OrderService((int)$accountId);
+                $orders = $orderService->listOrders([
+                    'limit' => 5,
+                    'allow_local_cache' => true,
+                ]);
+
+                if (($orders['success'] ?? false) || isset($orders['results'])) {
+                    $processedAccounts++;
+                    $totalOrders += count($orders['results'] ?? []);
+                } else {
+                    $accountErrors[] = 'Conta ' . $accountId . ': ' . ($orders['message'] ?? $orders['error'] ?? 'erro desconhecido');
+                }
+            } catch (\Throwable $accountError) {
+                $accountErrors[] = 'Conta ' . $accountId . ': ' . $accountError->getMessage();
+            }
+        }
+
+        if ($processedAccounts > 0) {
+            $results['order_service'] = 'OK';
+            echo "✓ Order Service working ($totalOrders orders found em $processedAccounts conta(s))\n\n";
+        } else {
+            $errors[] = 'Order Service: falha em todas as contas testadas' . (!empty($accountErrors) ? ' (' . implode(' | ', array_slice($accountErrors, 0, 2)) . ')' : '');
+            echo "✗ Order Service failed in all tested accounts\n\n";
+        }
     } else {
         echo "⚠ No ML accounts found to test Order Service\n\n";
     }

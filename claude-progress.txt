@@ -6,6 +6,29 @@
 
 ---
 
+## Sessão: 2026-02-27h — Ajuste de scripts manuais de orders para API real do OrderService
+
+### Objetivo
+- Continuar a implementação removendo inconsistência operacional em scripts manuais de verificação (`orders`) após hardening de segurança.
+
+### Arquivos alterados
+- `tests/manual/verify_system.php`
+- `tests/manual/verify_orders_api.php`
+
+### Implementado
+1. Removidas chamadas ao método inexistente `getOrdersFromMultipleAccounts`.
+2. Fluxo ajustado para iteração por conta com `OrderService(accountId)->listOrders(...)`.
+3. Habilitado `allow_local_cache` nos scripts para comportamento degradado previsível sem seller/token remoto.
+4. Mantido output de diagnóstico por conta e resumo agregado de pedidos processados.
+
+### Validação executada
+- `php -l tests/manual/verify_system.php`
+- `php -l tests/manual/verify_orders_api.php`
+- `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+
+### Resultado final
+- Scripts de verificação manual de pedidos compatíveis com a interface atual do `OrderService`, sem erros de análise estática nos pontos alterados.
+
 ## Sessão: 2026-02-27g — ML-008 sanitização de segredos hardcoded em scripts de teste/manual
 
 ### Objetivo
