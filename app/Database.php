@@ -15,11 +15,19 @@ class Database
     {
         // The connection details come from environment variables
         // Prefer TCP default to avoid implicit unix socket behavior (common source of failures in containers/WSL).
-        $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-        $port = $_ENV['DB_PORT'] ?? '3306';
-        $dbname = $_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? 'meli';
-        $username = $_ENV['DB_USERNAME'] ?? $_ENV['DB_USER'] ?? 'root';
-        $password = $_ENV['DB_PASSWORD'] ?? $_ENV['DB_PASS'] ?? '';
+        $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: '127.0.0.1';
+        $port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
+        $dbname = $_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? getenv('DB_DATABASE') ?? getenv('DB_NAME') ?: 'meli';
+        $username = $_ENV['DB_USERNAME'] ?? $_ENV['DB_USER'] ?? getenv('DB_USERNAME') ?? getenv('DB_USER');
+        $password = $_ENV['DB_PASSWORD'] ?? $_ENV['DB_PASS'] ?? getenv('DB_PASSWORD') ?? getenv('DB_PASS') ?: '';
+
+        if (!is_string($username) || trim($username) === '') {
+            throw new \InvalidArgumentException(
+                'DB_USERNAME/DB_USER não configurado. Defina um usuário de aplicação no ambiente.'
+            );
+        }
+
+        $username = trim($username);
 
         // Validate required environment variables
         if (empty($_ENV['DB_HOST']) && empty(getenv('DB_HOST'))) {
@@ -28,8 +36,8 @@ class Database
         if (empty($_ENV['DB_DATABASE']) && empty(getenv('DB_DATABASE'))) {
             log_warning('DB_DATABASE não definido, usando default: meli');
         }
-        if (empty($_ENV['DB_USERNAME']) && empty(getenv('DB_USERNAME'))) {
-            log_warning('DB_USERNAME não definido, usando default: root');
+        if (empty($_ENV['DB_USERNAME']) && empty($_ENV['DB_USER']) && empty(getenv('DB_USERNAME')) && empty(getenv('DB_USER'))) {
+            log_warning('DB_USERNAME/DB_USER não definido no ambiente');
         }
 
         try {
@@ -45,7 +53,7 @@ class Database
             $debugInfo = " | Host: {$host}, Port: {$port}, DB: {$dbname}";
 
             // Add helpful debugging info (never log credentials)
-            if (empty($password) && $username === 'root') {
+            if (empty($password)) {
                 $debugInfo .= " | Hint: Check if DB_PASSWORD is set in your .env file";
             }
 

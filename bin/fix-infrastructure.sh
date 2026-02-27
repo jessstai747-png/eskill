@@ -177,40 +177,52 @@ function check_mysql() {
     # Load env credentials
     source_env
 
+    local db_host="${DB_HOST:-localhost}"
+    local db_port="${DB_PORT:-3306}"
+    local db_name="${DB_DATABASE:-${DB_NAME:-meli}}"
+    local db_user="${DB_USERNAME:-${DB_USER:-}}"
+    local db_pass="${DB_PASSWORD:-${DB_PASS:-}}"
+
+    if [[ -z "$db_user" ]]; then
+        fail "DB_USERNAME/DB_USER não configurado no .env"
+        info "Defina usuário de aplicação (não-root) antes de executar diagnóstico de MySQL"
+        return
+    fi
+
     # Test connection with .env credentials
     if command -v mysql >/dev/null 2>&1; then
-        if mysql -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "${DB_USER:-root}" -p"${DB_PASS}" -e "SELECT 1" >/dev/null 2>&1; then
-            ok "Conexão MySQL: OK (user=${DB_USER:-root}@${DB_HOST:-localhost})"
+        if mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" -e "SELECT 1" >/dev/null 2>&1; then
+            ok "Conexão MySQL: OK (user=$db_user@$db_host)"
         else
             fail "Conexão MySQL: FALHOU com credenciais do .env"
-            info "Host=${DB_HOST:-localhost} Port=${DB_PORT:-3306} User=${DB_USER:-root}"
+            info "Host=$db_host Port=$db_port User=$db_user"
         fi
 
         # Check if database exists
-        if mysql -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "${DB_USER:-root}" -p"${DB_PASS}" -e "USE ${DB_NAME:-meli}" >/dev/null 2>&1; then
-            ok "Database '${DB_NAME:-meli}' existe"
+        if mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" -e "USE $db_name" >/dev/null 2>&1; then
+            ok "Database '$db_name' existe"
 
             # Check key tables
             local tables
-            tables=$(mysql -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "${DB_USER:-root}" -p"${DB_PASS}" "${DB_NAME:-meli}" -N -e "SHOW TABLES" 2>/dev/null | wc -l)
-            info "Database '${DB_NAME:-meli}' tem $tables tabelas"
+            tables=$(mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" "$db_name" -N -e "SHOW TABLES" 2>/dev/null | wc -l)
+            info "Database '$db_name' tem $tables tabelas"
 
             # Check for ml_accounts table
-            if mysql -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "${DB_USER:-root}" -p"${DB_PASS}" "${DB_NAME:-meli}" -N -e "SELECT COUNT(*) FROM ml_accounts" >/dev/null 2>&1; then
+            if mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" "$db_name" -N -e "SELECT COUNT(*) FROM ml_accounts" >/dev/null 2>&1; then
                 local acc_count
-                acc_count=$(mysql -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "${DB_USER:-root}" -p"${DB_PASS}" "${DB_NAME:-meli}" -N -e "SELECT COUNT(*) FROM ml_accounts" 2>/dev/null)
+                acc_count=$(mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" "$db_name" -N -e "SELECT COUNT(*) FROM ml_accounts" 2>/dev/null)
                 ok "ml_accounts: $acc_count conta(s) cadastrada(s)"
             else
                 warn "Tabela ml_accounts não encontrada — rode as migrations"
                 info "  php bin/apply-migrations.php"
             fi
         else
-            fail "Database '${DB_NAME:-meli}' NÃO existe"
+            fail "Database '$db_name' NÃO existe"
             if try_fix; then
-                info "Criando database ${DB_NAME:-meli}..."
-                mysql -h "${DB_HOST:-localhost}" -P "${DB_PORT:-3306}" -u "${DB_USER:-root}" -p"${DB_PASS}" -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME:-meli}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" 2>/dev/null
+                info "Criando database $db_name..."
+                mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" -e "CREATE DATABASE IF NOT EXISTS \`$db_name\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" 2>/dev/null
                 if [[ $? -eq 0 ]]; then
-                    fixed "Database '${DB_NAME:-meli}' criado"
+                    fixed "Database '$db_name' criado"
                     info "Rodando migrations..."
                     cd "$PROJECT_DIR" && php bin/apply-migrations.php 2>&1 | tail -5
                 fi
@@ -223,7 +235,7 @@ function check_mysql() {
     # Test PHP PDO connection
     php -r "
         try {
-            \$pdo = new PDO('mysql:host=${DB_HOST:-localhost};port=${DB_PORT:-3306};dbname=${DB_NAME:-meli}', '${DB_USER:-root}', '${DB_PASS}', [PDO::ATTR_TIMEOUT => 5]);
+            \$pdo = new PDO('mysql:host=$db_host;port=$db_port;dbname=$db_name', '$db_user', '$db_pass', [PDO::ATTR_TIMEOUT => 5]);
             echo 'PHP PDO: OK';
         } catch (Exception \$e) {
             echo 'PHP PDO: FAILED - ' . \$e->getMessage();

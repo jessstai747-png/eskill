@@ -20,8 +20,25 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
-// Load environment (prefere .env.testing quando presente)
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..', ['.env.testing', '.env']);
+// Load environment:
+// - default: production-safe (.env first)
+// - testing mode: .env.testing first when APP_ENV=testing or --env=testing/--testing
+$rawArgs = $argv ?? [];
+$forceTestingEnv = false;
+foreach ($rawArgs as $rawArg) {
+    if ($rawArg === '--testing' || $rawArg === '--env=testing') {
+        $forceTestingEnv = true;
+        break;
+    }
+}
+
+$processEnv = strtolower(trim((string) (getenv('APP_ENV') ?: '')));
+$isTestingEnv = $forceTestingEnv || $processEnv === 'testing';
+$envFiles = $isTestingEnv
+    ? ['.env.testing', '.env']
+    : ['.env', '.env.testing'];
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..', $envFiles);
 $dotenv->safeLoad();
 
 $configDb = require __DIR__ . '/../config/database.php';
@@ -32,8 +49,15 @@ $driver = $conn['driver'] ?? 'mysql';
 $host = $conn['host'] ?? '127.0.0.1';
 $port = $conn['port'] ?? 3306;
 $dbname = $conn['database'] ?? '';
-$user = $conn['username'] ?? $conn['user'] ?? 'root';
+$user = $conn['username'] ?? $conn['user'] ?? '';
 $pass = $conn['password'] ?? '';
+
+if (!is_string($user) || trim($user) === '') {
+    fwrite(STDERR, "ERROR: DB_USERNAME/DB_USER não configurado. Defina usuário de aplicação no .env.\n");
+    exit(2);
+}
+
+$user = trim($user);
 
 // ===========================
 // CONNECT

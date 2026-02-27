@@ -179,13 +179,19 @@ function check_database() {
     local db_check=$(php -r "
         require '$PROJECT_DIR/vendor/autoload.php';
         try {
-            \$dotenv = Dotenv\Dotenv::createImmutable('$PROJECT_DIR', ['.env.testing', '.env']);
+            \$appEnv = strtolower(trim((string)(getenv('APP_ENV') ?: '')));
+            \$envFiles = \$appEnv === 'testing' ? ['.env.testing', '.env'] : ['.env', '.env.testing'];
+            \$dotenv = Dotenv\Dotenv::createImmutable('$PROJECT_DIR', \$envFiles);
             \$dotenv->safeLoad();
             \$host = \$_ENV['DB_HOST'] ?? '127.0.0.1';
             \$port = \$_ENV['DB_PORT'] ?? '3306';
             \$db = \$_ENV['DB_DATABASE'] ?? (\$_ENV['DB_NAME'] ?? 'meli');
-            \$user = \$_ENV['DB_USERNAME'] ?? (\$_ENV['DB_USER'] ?? 'root');
+            \$user = \$_ENV['DB_USERNAME'] ?? (\$_ENV['DB_USER'] ?? (getenv('DB_USERNAME') ?: (getenv('DB_USER') ?: '')));
             \$pass = \$_ENV['DB_PASSWORD'] ?? (\$_ENV['DB_PASS'] ?? '');
+            if (!is_string(\$user) || trim(\$user) === '') {
+                echo 'FAIL:DB_USERNAME/DB_USER não configurado';
+                return;
+            }
             \$dsn = 'mysql:host=' . \$host . ';port=' . \$port . ';dbname=' . \$db . ';charset=utf8mb4';
             \$pdo = new PDO(\$dsn, \$user, \$pass);
             echo 'OK';

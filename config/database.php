@@ -1,11 +1,11 @@
 <?php
 
 // Em produção, falhar explicitamente se credenciais DB não estiverem configuradas
-$appEnv = $_ENV['APP_ENV'] ?? 'production';
-$isProduction = $appEnv === 'production';
+$appEnv = strtolower((string)($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? 'production'));
+$isProduction = in_array($appEnv, ['production', 'prod'], true);
 
-$dbPassword = $_ENV['DB_PASSWORD'] ?? $_ENV['DB_PASS'] ?? null;
-$dbUsername = $_ENV['DB_USERNAME'] ?? $_ENV['DB_USER'] ?? null;
+$dbPassword = $_ENV['DB_PASSWORD'] ?? $_ENV['DB_PASS'] ?? getenv('DB_PASSWORD') ?? getenv('DB_PASS') ?? null;
+$dbUsername = $_ENV['DB_USERNAME'] ?? $_ENV['DB_USER'] ?? getenv('DB_USERNAME') ?? getenv('DB_USER') ?? null;
 
 if ($isProduction && (empty($dbPassword) || $dbPassword === 'CHANGE_ME')) {
     throw new RuntimeException(
@@ -25,10 +25,10 @@ return [
     'connections' => [
         'mysql' => [
             'driver' => 'mysql',
-            'host' => $_ENV['DB_HOST'] ?? 'localhost',
-            'port' => $_ENV['DB_PORT'] ?? 3306,
-            'database' => $_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? 'mercadolivre_db',
-            'username' => $dbUsername ?? 'root',
+            'host' => $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost',
+            'port' => $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? 3306,
+            'database' => $_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? getenv('DB_DATABASE') ?? getenv('DB_NAME') ?? 'mercadolivre_db',
+            'username' => $dbUsername ?? '',
             'password' => $dbPassword ?? '',
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',

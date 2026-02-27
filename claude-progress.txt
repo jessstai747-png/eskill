@@ -6,6 +6,35 @@
 
 ---
 
+## Sessão: 2026-02-27i — ML-005 remoção de fallback root em DB runtime/config/scripts
+
+### Objetivo
+- Iniciar implementação da fase ML-005 padronizando política de banco sem dependência de `root` implícito.
+
+### Arquivos alterados
+- `app/Database.php`
+- `config/database.php`
+- `bin/init.sh`
+- `bin/migrate.php`
+- `bin/fix-infrastructure.sh`
+
+### Implementado
+1. `app/Database.php` agora exige `DB_USERNAME`/`DB_USER` explícito e remove fallback automático para `root`.
+2. `config/database.php` remove default `root` na conexão MySQL e passa a consumir `getenv` além de `$_ENV`.
+3. `bin/init.sh` (`check_database`) falha com mensagem acionável quando `DB_USERNAME`/`DB_USER` não estiver configurado.
+4. `bin/migrate.php` valida usuário de DB obrigatório antes da conexão.
+5. `bin/fix-infrastructure.sh` centraliza credenciais efetivas (`DB_USERNAME`/`DB_USER`, `DB_PASSWORD`/`DB_PASS`) sem fallback `root`.
+
+### Validação executada
+- `php -l app/Database.php`
+- `php -l config/database.php`
+- `php -l bin/migrate.php`
+- `bash bin/init.sh`
+- `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+
+### Resultado final
+- Runtime e scripts críticos deixam de depender de usuário root implícito; validações permanecem verdes no ambiente atual.
+
 ## Sessão: 2026-02-27h — Ajuste de scripts manuais de orders para API real do OrderService
 
 ### Objetivo
