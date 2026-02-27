@@ -6,6 +6,37 @@
 
 ---
 
+## Sessão: 2026-02-27a — Fechamento CSP global (layout + accounts) e validação completa
+
+### Causa raiz
+- Após a correção inicial em `dashboard/accounts`, ainda havia `onclick` inline no layout global (`app/Views/layouts/modern/app.php`) no seletor de conta.
+- Com CSP estrito (`script-src 'strict-dynamic'`), esse handler inline continuava gerando bloqueio no console da página.
+
+### Arquivos alterados
+- `app/Views/layouts/modern/app.php`
+
+### Implementado
+1. Removido `onclick="switchAccount(...)"` dos botões do dropdown de troca de conta.
+2. Adicionado `data-switch-account-id` nos botões.
+3. Adicionado listener delegado em JS para acionar `switchAccount(accountId)` sem uso de inline event handler.
+4. Mantido contrato e comportamento funcional da troca de conta (sem mudança de endpoint).
+
+### Validação executada
+- ✅ `bash bin/init.sh`
+  - Ambiente/smoke OK
+  - `PHPUnit(Unit)` verde (`2902 tests`, `0 failures`)
+  - `PHPUnit(Integration)` verde (`3467 tests`, `0 failures`)
+- ✅ `php -l app/Views/layouts/modern/app.php`
+- ✅ `rg -n "onclick=|onerror=|javascript:" app/Views/layouts/modern/app.php app/Views/dashboard/accounts.php` (sem ocorrências)
+- ✅ `php vendor/bin/phpunit --testsuite Unit --no-coverage --colors=never`
+  - `2902 tests`, `6778 assertions`, `0 failures`
+- ✅ `php vendor/bin/phpunit --testsuite Integration --no-coverage --colors=never`
+  - `3467 tests`, `11164 assertions`, `0 failures` (2 risky já existentes)
+
+### Resultado final
+- A página de contas deixa de acionar violações CSP por handlers inline no escopo da correção aplicada.
+- Fluxos de troca de conta e ações de contas permanecem funcionais com binding via JavaScript.
+
 ## Sessão: 2026-02-26g — Correção CSP na tela de contas (remoção de handlers inline)
 
 ### Causa raiz

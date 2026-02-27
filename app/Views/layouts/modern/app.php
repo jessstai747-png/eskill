@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<?php $cspNonce = $_SESSION['csp_nonce'] ?? ''; ?>
+<?php $cspNonce = $GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? ''; ?>
 <html lang="pt-BR">
 
 <head>
@@ -20,9 +20,17 @@
     <link href="/css/theme.css?v=<?= @filemtime(__DIR__ . '/../../../../public/css/theme.css') ?: time() ?>" rel="stylesheet">
     <link href="/css/components.css?v=<?= @filemtime(__DIR__ . '/../../../../public/css/components.css') ?: time() ?>" rel="stylesheet">
 
-    <!-- Chart.js (with fallback) -->
-    <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
-        onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js';s.nonce='<?= $cspNonce ?>';document.head.appendChild(s);"></script>
+    <!-- Chart.js (with CSP-compliant fallback via nonce'd inline script) -->
+    <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script nonce="<?= $cspNonce ?>">
+        if (typeof Chart === 'undefined') {
+            (function() {
+                var s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js';
+                document.head.appendChild(s);
+            })();
+        }
+    </script>
 
     <!-- API Client (loaded early so view scripts can use requestJson) -->
     <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
@@ -840,7 +848,7 @@
                                 ?>
                                     <li>
                                         <button class="dropdown-item py-2 d-flex align-items-center gap-2 <?= $isActive ? 'active' : '' ?>"
-                                            onclick="switchAccount(<?= (int)$acc['id'] ?>)"
+                                            data-switch-account-id="<?= (int)$acc['id'] ?>"
                                             <?= $isActive ? 'disabled' : '' ?>>
                                             <span class="d-inline-block rounded-circle <?= $isConnected ? 'bg-success' : 'bg-danger' ?>" style="width:8px;height:8px;"></span>
                                             <span class="flex-grow-1">
@@ -1167,6 +1175,19 @@
                 }
             }
         }
+
+        document.addEventListener('click', function(e) {
+            const button = e.target.closest('[data-switch-account-id]');
+            if (!button || button.disabled) {
+                return;
+            }
+
+            e.preventDefault();
+            const accountId = Number(button.getAttribute('data-switch-account-id'));
+            if (Number.isInteger(accountId) && accountId > 0) {
+                switchAccount(accountId);
+            }
+        });
     </script>
 
     <!-- Mobile Bottom Navigation -->
