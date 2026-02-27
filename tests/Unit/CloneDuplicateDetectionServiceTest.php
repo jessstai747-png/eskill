@@ -12,13 +12,13 @@ class CloneDuplicateDetectionServiceTest extends TestCase
     
     protected function setUp(): void
     {
-        $this->db = Database::getInstance();
-
-        // Verificar se as tabelas necessárias existem no banco de teste
         try {
+            $this->db = Database::getInstance();
             $this->db->query('SELECT 1 FROM catalog_clone_jobs LIMIT 1');
-        } catch (\PDOException $e) {
-            $this->markTestSkipped('Tabela catalog_clone_jobs não existe no banco de teste. Execute as migrations.');
+        } catch (\Throwable $e) {
+            $this->markTestSkipped(
+                'Banco de teste indisponível ou schema ausente para CloneDuplicateDetectionServiceTest: ' . $e->getMessage()
+            );
         }
 
         $this->service = new CloneDuplicateDetectionService();
@@ -223,6 +223,9 @@ class CloneDuplicateDetectionServiceTest extends TestCase
             $this->assertArrayHasKey('skip', $result['options']);
             $this->assertArrayHasKey('update', $result['options']);
             $this->assertArrayHasKey('create_new', $result['options']);
+        } else {
+            $this->assertArrayHasKey('recommendation', $result);
+            $this->assertIsString($result['recommendation']);
         }
     }
 }

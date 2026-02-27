@@ -13,8 +13,10 @@ class CloneAlertNotificationServiceTest extends TestCase
         try {
             $db = \App\Database::getInstance();
             $db->query('SELECT 1 FROM catalog_clone_jobs LIMIT 1');
-        } catch (\PDOException $e) {
-            $this->markTestSkipped('Tabela catalog_clone_jobs não existe no banco de teste. Execute as migrations.');
+        } catch (\Throwable $e) {
+            $this->markTestSkipped(
+                'Banco de teste indisponível ou schema ausente para CloneAlertNotificationServiceTest: ' . $e->getMessage()
+            );
         }
 
         $this->service = new CloneAlertNotificationService();
@@ -139,8 +141,8 @@ class CloneAlertNotificationServiceTest extends TestCase
             // Se não houver, pode retornar false (alerta não existe ou já resolvido)
             $this->assertIsBool($result);
         } else {
-            // Sem alertas para testar
-            $this->assertTrue(true);
+            // Sem alertas para testar, validar estado esperado
+            $this->assertEmpty($alerts['stuck_jobs']);
         }
     }
     
@@ -162,7 +164,7 @@ class CloneAlertNotificationServiceTest extends TestCase
                     'Alertas devem estar ordenados por severidade');
             }
         } else {
-            $this->assertTrue(true); // Não há alertas suficientes para testar ordenação
+            $this->assertLessThanOrEqual(1, count($alerts)); // Não há alertas suficientes para testar ordenação
         }
     }
     
