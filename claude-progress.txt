@@ -6,6 +6,33 @@
 
 ---
 
+## Sessão 2026-03-XX (Copilot) — Phase 0 cleanup + 7 Feature tests
+
+### O que foi feito
+- **Phase 0 cleanup**: removidos arquivos lixo raiz: `ml_accounts` (git rm), `host={}` (rm), `2026-03-01` (rm)
+- **7 Feature tests criados** (todos passando, 0 erros, 89 DB-skips esperados):
+  - `tests/Feature/PdfExportTest.php` — DomPDF real, sem DB (14 tests)
+  - `tests/Feature/CsvExportTest.php` — ExportService estrutura + `exportReportToPDF` (12 tests)
+  - `tests/Feature/SEORealOptimizationTest.php` — TitleAnalyzerService + TitleGeneratorService (15 tests)
+  - `tests/Feature/TechSheetMLTest.php` — TechSheetService estrutura + constantes SOURCE_* (12 tests)
+  - `tests/Feature/CloneRealAccountTest.php` — CatalogCloneService estrutura + funcionais (11 tests)
+  - `tests/Feature/PricingAutoRuleTest.php` — PriceRulesEngineService constantes PRIORITY_* + funcionais (13 tests)
+  - `tests/Feature/FinancialReportTest.php` — FinancialService (sem DB no construtor) + reflexão (15 tests)
+- Feature suite: 104 → 205 tests (101 novos), 0 erros, 0 falhas
+
+### Descobertas técnicas
+- `TitleAnalyzerService::analyzeTitle($title, $nonEmptyCategory)` causa TypeError interno (bug existente): categoryId não-vazio é passado como array para `KeywordResearchService::researchKeywords()`; usar `''` como categoryId evita o bug nos testes
+- `PdfService::generateListingAnalysis()` requer chave `condition` no array listing (PHP warning vira TypeError no PHP 8.4 strict mode)
+- Sandbox runtime intercepta heredocs grandes no terminal — usar `replace_string_in_file` para criar arquivos de teste
+- `TechSheetService` e `PriceRulesEngineService` requerem `int $accountId` no construtor (não opcionais)
+
+### Estado do projeto
+- 81 features no project-status.json, todas passes=true
+- PHPUnit: Unit 2923/0/34, Feature 205/0/89, Integration não rodado
+- HEAD antes desta sessão: b01dfac
+
+---
+
 ## Sessão 2026-03-01 (Copilot) — Phase 7 final cleanup + WebhookReplayServiceTest
 
 ### Objetivo
