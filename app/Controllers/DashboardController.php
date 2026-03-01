@@ -121,99 +121,148 @@ class DashboardController extends BaseController
      */
     private function buildAndSendMetrics(): void
     {
-        $accountId = $this->request->get('account_id') ?? $this->userService->getActiveAccountId();
-        $userId = $this->userService->getCurrentUser()['id'];
+        $requestedAccountId = $this->request->get('account_id');
+        $accountId = null;
+        if (is_scalar($requestedAccountId) && is_numeric((string)$requestedAccountId)) {
+            $parsedAccountId = (int)$requestedAccountId;
+            if ($parsedAccountId > 0) {
+                $accountId = $parsedAccountId;
+            }
+        }
+
+        if ($accountId === null) {
+            $accountId = $this->userService->getActiveAccountId();
+            if ($accountId !== null && $accountId <= 0) {
+                $accountId = null;
+            }
+        }
+
+        $currentUser = $this->userService->getCurrentUser();
+        $userId = null;
+        if (is_array($currentUser) && isset($currentUser['id']) && is_numeric((string)$currentUser['id'])) {
+            $userId = (int)$currentUser['id'];
+        }
 
         // 🚀 CACHE: Try to get from cache first (5 min TTL)
         // Note: We might want real-time features to NOT be cached as aggressively,
         // or cached separately. For now, let's keep the main metrics cached
         // and append real-time stuff after.
 
-        $cacheKey = "dashboard:metrics:account:{$accountId}";
+        $cacheKey = 'dashboard:metrics:account:' . ($accountId ?? 'global');
         $cache = new CacheService();
 
-        $metrics = $cache->remember($cacheKey, function () use ($accountId, $userId) {
-            $startTime = microtime(true);
+        try {
+            $metrics = $cache->remember($cacheKey, function () use ($accountId, $userId) {
+                try {
+                    $metrics = $this->dashboardService->getMetrics($accountId);
+                    if (!is_array($metrics)) {
+                        $metrics = [];
+                    }
+                } catch (\Throwable $e) {
+                    log_warning('DashboardController: falha ao carregar métricas principais', [
+                        'account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $metrics = $this->buildFallbackMetricsPayload($accountId, $userId);
+                }
 
-            // 1. Main metrics from DashboardService
-            $metrics = $this->dashboardService->getMetrics($accountId);
+                // 3. Growth Stats (Real Data)
+                try {
+                    $cloneMetrics = $this->getCloneService()->getCloneMetrics();
+                } catch (\Throwable $e) {
+                    log_warning('DashboardController: falha ao carregar clone metrics', [
+                        'account_id' => $accountId,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $cloneMetrics = ['today' => 0, 'total' => 0];
+                }
+                $avgHealth = $this->calculateAvgHealth($accountId);
 
-            // 2. System Health - Moved out of cache? No, some parts are slow (file checks)
-            // Actually, file checks are fast. But let's keep it here for now.
-            // Wait, I want Real-Time to be FRESH.
-            // So System Health should probably be OUTSIDE cache if it's critical.
-            // But Competitor Alerts and Growth are heavy.
+                $metrics['growth'] = [
+                    'seo_score_avg' => round($avgHealth * 100),
+                    'cloned_items_today' => $cloneMetrics['today'] ?? 0,
+                    'cloned_items_total' => $cloneMetrics['total'] ?? 0
+                ];
 
-            // 3. Growth Stats (Real Data)
-            try {
-                $cloneMetrics = $this->getCloneService()->getCloneMetrics();
-            } catch (\Throwable $e) {
-                log_warning('DashboardController: falha ao carregar clone metrics', [
-                    'account_id' => $accountId,
-                    'error' => $e->getMessage(),
-                ]);
-                $cloneMetrics = ['today' => 0, 'total' => 0];
-            }
-            $avgHealth = $this->calculateAvgHealth($accountId);
+                // Compat: alinhar com docs/front antigo
+                $metrics['recent_orders'] = $metrics['recent_orders'] ?? ($metrics['recent_orders_count'] ?? 0);
+                $metrics['active_accounts'] = $userId !== null ? $this->countActiveAccounts($userId) : 0;
 
-            $metrics['growth'] = [
-                'seo_score_avg' => round($avgHealth * 100),
-                'cloned_items_today' => $cloneMetrics['today'] ?? 0,
-                'cloned_items_total' => $cloneMetrics['total'] ?? 0
-            ];
+                return $metrics;
+            }, 300);
+        } catch (\Throwable $e) {
+            log_warning('DashboardController: falha no cache de métricas, usando fallback em memória', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+            $metrics = $this->buildFallbackMetricsPayload($accountId, $userId);
+        }
 
-            // 4. Competitor Alerts (moved to real-time section outside cache)
-
-            // Compat: alinhar com docs/front antigo
-            $metrics['recent_orders'] = $metrics['recent_orders'] ?? ($metrics['recent_orders_count'] ?? 0);
-            $metrics['active_accounts'] = $this->countActiveAccounts($userId);
-
-            return $metrics;
-        }, 300);
+        if (!is_array($metrics)) {
+            $metrics = $this->buildFallbackMetricsPayload($accountId, $userId);
+        }
 
         // Ensure aliases even quando vierem do cache antigo
         $metrics['recent_orders'] = $metrics['recent_orders'] ?? ($metrics['recent_orders_count'] ?? 0);
-        $metrics['active_accounts'] = $metrics['active_accounts'] ?? $this->countActiveAccounts($userId);
+        $metrics['active_accounts'] = $metrics['active_accounts'] ?? ($userId !== null ? $this->countActiveAccounts($userId) : 0);
 
         // --- REAL-TIME DATA (Always Fresh) ---
 
         // 1. Unread Notifications
-        try {
-            $metrics['notifications'] = [
-                'unread_count' => $this->getNotificationService()->getUnreadCount($userId),
-                'recent' => $this->getNotificationService()->getUserNotifications($userId, 5)
-            ];
-        } catch (\Throwable $e) {
-            log_warning('DashboardController: falha ao carregar notificações', [
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-            ]);
+        if ($userId !== null) {
+            try {
+                $metrics['notifications'] = [
+                    'unread_count' => $this->getNotificationService()->getUnreadCount($userId),
+                    'recent' => $this->getNotificationService()->getUserNotifications($userId, 5)
+                ];
+            } catch (\Throwable $e) {
+                log_warning('DashboardController: falha ao carregar notificações', [
+                    'user_id' => $userId,
+                    'error' => $e->getMessage(),
+                ]);
+                $metrics['notifications'] = ['unread_count' => 0, 'recent' => []];
+            }
+        } else {
             $metrics['notifications'] = ['unread_count' => 0, 'recent' => []];
         }
 
         // 2. Open Claims (API Fetch - Fast)
-        try {
-            $claimsService = new \App\Services\ClaimsService($accountId);
-            $claimsData = $claimsService->getClaims('to_seller', 50, 0);
+        if ($accountId !== null) {
+            try {
+                $claimsService = new \App\Services\ClaimsService($accountId);
+                $claimsData = $claimsService->getClaims('to_seller', 50, 0);
 
-            // Count claims requiring action based on status
-            $actionRequiredStatuses = ['opened', 'waiting_resolution', 'waiting_response', 'pending'];
-            $actionRequired = 0;
+                // Count claims requiring action based on status
+                $actionRequiredStatuses = ['opened', 'waiting_resolution', 'waiting_response', 'pending'];
+                $actionRequired = 0;
 
-            if (isset($claimsData['results']) && is_array($claimsData['results'])) {
-                foreach ($claimsData['results'] as $claim) {
-                    if (in_array($claim['status'] ?? '', $actionRequiredStatuses, true)) {
-                        $actionRequired++;
+                if (isset($claimsData['results']) && is_array($claimsData['results'])) {
+                    foreach ($claimsData['results'] as $claim) {
+                        if (in_array($claim['status'] ?? '', $actionRequiredStatuses, true)) {
+                            $actionRequired++;
+                        }
                     }
                 }
-            }
 
+                $metrics['claims'] = [
+                    'total_open' => $claimsData['paging']['total'] ?? 0,
+                    'action_required' => $actionRequired
+                ];
+            } catch (\Throwable $e) {
+                log_warning('DashboardController: falha ao carregar claims', [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+                $metrics['claims'] = [
+                    'total_open' => 0,
+                    'action_required' => 0
+                ];
+            }
+        } else {
             $metrics['claims'] = [
-                'total_open' => $claimsData['paging']['total'] ?? 0,
-                'action_required' => $actionRequired
+                'total_open' => 0,
+                'action_required' => 0
             ];
-        } catch (\Exception $e) {
-            $metrics['claims'] = ['error' => $e->getMessage()];
         }
 
         // 3. System Health (Local Check)
@@ -257,6 +306,29 @@ class DashboardController extends BaseController
         ];
 
         echo json_encode($metrics);
+    }
+
+    private function buildFallbackMetricsPayload(?int $accountId, ?int $userId): array
+    {
+        return [
+            'recent_orders_count' => 0,
+            'recent_orders' => 0,
+            'total_revenue' => 0.0,
+            'net_profit' => 0.0,
+            'orders_by_status' => [],
+            'sales_over_time' => [],
+            'total_items' => 0,
+            'active_items' => 0,
+            'pending_questions' => 0,
+            'expiring_tokens' => 0,
+            'reputation_metrics' => null,
+            'growth' => [
+                'seo_score_avg' => round($this->calculateAvgHealth($accountId) * 100),
+                'cloned_items_today' => 0,
+                'cloned_items_total' => 0
+            ],
+            'active_accounts' => $userId !== null ? $this->countActiveAccounts($userId) : 0,
+        ];
     }
 
     /**
@@ -394,7 +466,7 @@ class DashboardController extends BaseController
             $stmt = $db->prepare("SELECT COUNT(*) FROM ml_accounts WHERE user_id = :user_id");
             $stmt->execute(['user_id' => $userId]);
             return (int) $stmt->fetchColumn();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_warning('DashboardController: falha ao contar contas ativas', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -420,7 +492,7 @@ class DashboardController extends BaseController
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             return (float) $stmt->fetchColumn() ?: 0.0;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_warning('DashboardController: falha ao calcular avg health', [
                 'account_id' => $accountId,
                 'error' => $e->getMessage(),
@@ -459,7 +531,7 @@ class DashboardController extends BaseController
 
             // Se último foi há menos de 1 hora, OK
             return (strtotime($last) > strtotime('-1 hour')) ? 'healthy' : 'warning';
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_warning('DashboardController: falha ao verificar saude de webhooks', [
                 'error' => $e->getMessage(),
             ]);

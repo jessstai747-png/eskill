@@ -6,6 +6,32 @@
 
 ---
 
+## Sessão 2026-03-01 (Codex) — Hotfix API `/api/dashboard/metrics` (evitar 500 em modo degradado)
+
+### Contexto
+Console no dashboard indicando `GET /api/dashboard/metrics 500`, bloqueando carregamento das métricas e impactando reconexão/estado visual das contas.
+
+### O que foi feito
+- Fortalecido `app/Controllers/DashboardController.php` no fluxo `buildAndSendMetrics()`:
+  - validação segura de `account_id` (request/sessão) e `user_id`;
+  - fallback robusto quando `DashboardService::getMetrics()` falha;
+  - proteção do bloco de cache (`CacheService::remember`) com fallback em memória;
+  - `claims` e `notifications` com retorno degradado (sem lançar erro fatal);
+  - troca de `catch (\Exception)` para `catch (\Throwable)` em pontos críticos;
+  - novo helper `buildFallbackMetricsPayload()` para resposta consistente mesmo com falhas parciais.
+
+### Validação
+- `php -l app/Controllers/DashboardController.php` ✅
+- `php vendor/bin/phpunit` ✅
+  - Tests: 2923
+  - Assertions: 6829
+  - Skipped: 26
+
+### Arquivos modificados
+- `app/Controllers/DashboardController.php`
+
+---
+
 ## Sessão 2026-03-01 (Codex) — Hotfix reconexão /accounts (CSP persistente + cache SW)
 
 ### Contexto
