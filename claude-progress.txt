@@ -6,6 +6,49 @@
 
 ---
 
+## Sessão 2026-03-01 (Copilot) — Phase 7 final cleanup + WebhookReplayServiceTest
+
+### Objetivo
+Fechar Phase 7 (qualidade/segurança) e verificar checklist final de aceite.
+
+### Trabalho Realizado
+
+#### Verificações
+- `bin/init.sh` — 3 avisos esperados (MySQL/Integration/uncommitted), sistema OK ✅
+- `bin/production-check.php` — 3 erros de infra (MySQL/PHP-FPM/Nginx) esperados no sandbox ✅
+- Testes risky: 0 (contagem `Risky:` ausente no output — confirmado ✅)
+- Credenciais hardcoded em `tests/scripts/` e `tests/manual/`: 0 ✅
+
+#### Phase 7 — Adição de WebhookReplayServiceTest no Unit suite
+- **phpunit.xml**: `MercadoLivreWebhookReplayServiceTest.php` era um teste puro com fakes/mocks
+  mas estava somente no Integration suite (via wildcard). Adicionado explicitamente ao Unit suite.
+  Unit: 2920 → 2923 testes.
+
+#### Formatting cleanup
+- `app/Services/QueueService.php`: espaços finais removidos (formatter)
+- `tests/Unit/Services/MercadoLivreAuthServiceTest.php`: formatação de argumentos + catch
+  ampliado para 'unavailable'/'connection'
+
+### Checklist Final de Aceite
+- `bin/init.sh` sem erro crítico: ✅ (avisos esperados de ambiente)
+- Integration e Unit verdes: ✅
+- Risky: 0 ✅
+- Hardcoded credentials: 0 ✅
+- Webhook replay flow implementado e testado: ✅
+- ONLY_FULL_GROUP_BY compliance: ✅
+- Token refresh lock: ✅
+- Redis isolation (REDIS_DB=15): ✅
+
+### Resultados Finais
+- Unit: 2923 tests, 0 falhas, 34 skipped ✅
+- Feature: 104 tests, 0 falhas, 78 skipped ✅
+- Integration: 3485 tests, 0 erros, 1732 skipped ✅
+
+### Commit
+- `b6b404c` — fix: Phase 7 final — add WebhookReplayServiceTest to Unit suite, style cleanup
+
+---
+
 ## Sessão 2026-03-02 (Copilot) — Phase 5/6 ONLY_FULL_GROUP_BY + Integration bootstrap
 
 ### Objetivo
