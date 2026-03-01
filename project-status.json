@@ -3,7 +3,7 @@
     "project": "eskill.com.br — SEO Optimizer para Mercado Livre",
     "company": "AWA Motos — Distribuidora de peças para motos",
     "stack": "PHP 8.0+ | MySQL/PDO | Guzzle 7 | Monolog 3 | Redis",
-    "last_updated": "2026-02-20",
+    "last_updated": "2026-03-01",
     "updated_by": "copilot-implementador",
     "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps."
   },

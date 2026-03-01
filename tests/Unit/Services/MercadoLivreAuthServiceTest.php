@@ -92,8 +92,11 @@ class MercadoLivreAuthServiceTest extends TestCase
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/MercadoLivreAuthService.php');
 
-        $this->assertStringContainsString('random_bytes(', $source,
-            'Deve usar random_bytes para gerar state seguro');
+        $this->assertStringContainsString(
+            'random_bytes(',
+            $source,
+            'Deve usar random_bytes para gerar state seguro'
+        );
     }
 
     public function test_cleans_session_after_exchange(): void
@@ -140,8 +143,11 @@ class MercadoLivreAuthServiceTest extends TestCase
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/MercadoLivreAuthService.php');
 
-        $this->assertStringContainsString('CURLOPT_TIMEOUT', $source,
-            'Deve ter timeout nas chamadas HTTP');
+        $this->assertStringContainsString(
+            'CURLOPT_TIMEOUT',
+            $source,
+            'Deve ter timeout nas chamadas HTTP'
+        );
     }
 
     public function test_uses_user_agent(): void
@@ -178,8 +184,11 @@ class MercadoLivreAuthServiceTest extends TestCase
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/MercadoLivreAuthService.php');
 
-        $this->assertStringContainsString('invalid_grant', $source,
-            'Deve tratar invalid_grant como falha irrecuperável');
+        $this->assertStringContainsString(
+            'invalid_grant',
+            $source,
+            'Deve tratar invalid_grant como falha irrecuperável'
+        );
     }
 
     // ===========================

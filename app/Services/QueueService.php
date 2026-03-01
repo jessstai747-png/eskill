@@ -30,7 +30,7 @@ class QueueService
         $host = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
         $port = (int)($_ENV['REDIS_PORT'] ?? 6379);
         $this->database = (int)($_ENV['REDIS_DB'] ?? 0);
-        
+
         try {
             $this->redis->connect($host, $port);
             if (!empty($_ENV['REDIS_PASSWORD'])) {
@@ -72,7 +72,7 @@ class QueueService
 
     /**
      * Pop job from queue (Blocking)
-     * @param int $timeout 
+     * @param int $timeout
      */
     public function pop(string $queue = 'default', int $timeout = 10): ?array
     {
@@ -80,7 +80,7 @@ class QueueService
 
         // blPop returns [key, value]
         $result = $this->redis->blPop(['queue:' . $queue], $timeout);
-        
+
         if ($result && isset($result[1])) {
             return json_decode($result[1], true);
         }
