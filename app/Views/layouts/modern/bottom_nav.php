@@ -29,18 +29,3 @@
         <div style="font-size: 0.7rem;">Menu</div>
     </button>
 </div>
-
-<script nonce="<?= $cspNonce ?>">
-    document.getElementById('mobileMenuBtn').addEventListener('click', function() {
-        document.querySelector('.sidebar').classList.toggle('open');
-        // Also add overlay if needed, or close on outside click logic
-    });
-    // Close sidebar when clicking a link on mobile
-    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth < 768) {
-                document.querySelector('.sidebar').classList.remove('open');
-            }
-        });
-    });
-</script>

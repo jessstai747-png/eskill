@@ -23,33 +23,14 @@ $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?
     <link href="/css/theme.css?v=<?= @filemtime(__DIR__ . '/../../../../public/css/theme.css') ?: time() ?>" rel="stylesheet">
     <link href="/css/components.css?v=<?= @filemtime(__DIR__ . '/../../../../public/css/components.css') ?: time() ?>" rel="stylesheet">
 
-    <!-- Chart.js (with CSP-compliant fallback via nonce'd inline script) -->
+    <!-- Chart.js -->
     <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script nonce="<?= $cspNonce ?>">
-        if (typeof Chart === 'undefined') {
-            (function() {
-                var s = document.createElement('script');
-                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js';
-                document.head.appendChild(s);
-            })();
-        }
-    </script>
 
     <!-- API Client (loaded early so view scripts can use requestJson) -->
     <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
     <script nonce="<?= $cspNonce ?>" src="/js/api-client.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/api-client.js') ?: time() ?>"></script>
     <script nonce="<?= $cspNonce ?>" src="/js/ml-integration-preflight.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ml-integration-preflight.js') ?: time() ?>"></script>
-    <script nonce="<?= $cspNonce ?>">
-        async function requestJson(url, options = {}) {
-            if (window.ApiClient) return window.ApiClient.request(url, options);
-            const resp = await fetch(url, {
-                credentials: 'include',
-                ...options
-            });
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            return resp.json();
-        }
-    </script>
+    <script nonce="<?= $cspNonce ?>" src="/js/layout-modern-init.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/layout-modern-init.js') ?: time() ?>"></script>
 
     <!-- Global Styles -->
     <style>
@@ -932,14 +913,10 @@ $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?
                 <?php
                 if (session_status() === PHP_SESSION_NONE) session_start();
                 $flashMessages = \App\Core\Flash::get();
-                if (!empty($flashMessages)): ?>
-                    <script nonce="<?= $cspNonce ?>">
-                        document.addEventListener('DOMContentLoaded', function() {
-                            <?php foreach ($flashMessages as $msg): ?>
-                                Toast.<?= $msg['type'] === 'danger' ? 'error' : htmlspecialchars($msg['type'], ENT_QUOTES, 'UTF-8') ?>(<?= json_encode($msg['message'], JSON_HEX_TAG | JSON_HEX_APOS) ?>);
-                            <?php endforeach; ?>
-                        });
-                    </script>
+                if (!empty($flashMessages)):
+                    $flashMessagesJson = htmlspecialchars(json_encode($flashMessages, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8');
+                ?>
+                    <div id="flash-messages-data" data-flash="<?= $flashMessagesJson ?>" hidden></div>
                 <?php endif; ?>
 
                 <!-- Main Content -->
@@ -951,247 +928,6 @@ $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?
     <!-- Scripts -->
     <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script nonce="<?= $cspNonce ?>" src="/js/dashboard-modern.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/dashboard-modern.js') ?: time() ?>"></script>
-
-    <!-- Global Toast Manager -->
-    <script nonce="<?= $cspNonce ?>">
-        window.Toast = {
-            notify: function(message, type = 'info') {
-                const container = document.querySelector('.toast-container');
-                const id = 'toast_' + Date.now();
-
-                const config = {
-                    success: {
-                        icon: 'bi-check-circle-fill',
-                        bg: 'bg-success',
-                        title: 'Sucesso'
-                    },
-                    error: {
-                        icon: 'bi-x-circle-fill',
-                        bg: 'bg-danger',
-                        title: 'Erro'
-                    },
-                    warning: {
-                        icon: 'bi-exclamation-triangle-fill',
-                        bg: 'bg-warning',
-                        title: 'Atenção'
-                    },
-                    info: {
-                        icon: 'bi-info-circle-fill',
-                        bg: 'bg-primary',
-                        title: 'Info'
-                    }
-                } [type] || {
-                    icon: 'bi-info-circle-fill',
-                    bg: 'bg-primary',
-                    title: 'Info'
-                };
-
-                const html = `
-                <div id="${id}" class="toast align-items-center text-white ${config.bg} border-0" role="alert">
-                    <div class="d-flex">
-                        <div class="toast-body d-flex align-items-center gap-2">
-                            <i class="bi ${config.icon}"></i>
-                            <span>${message}</span>
-                        </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                    </div>
-                </div>
-            `;
-
-                container.insertAdjacentHTML('beforeend', html);
-                const toastEl = document.getElementById(id);
-                const toast = new bootstrap.Toast(toastEl, {
-                    delay: 4000
-                });
-                toast.show();
-                toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-            },
-            success: (msg) => Toast.notify(msg, 'success'),
-            error: (msg) => Toast.notify(msg, 'error'),
-            warning: (msg) => Toast.notify(msg, 'warning'),
-            info: (msg) => Toast.notify(msg, 'info')
-        };
-    </script>
-
-    <!-- Theme & Navigation Scripts -->
-    <script nonce="<?= $cspNonce ?>">
-        document.addEventListener('DOMContentLoaded', function() {
-            // Theme Toggle
-            const setTheme = (theme) => {
-                document.body.setAttribute('data-theme', theme);
-                document.cookie = `theme=${theme};path=/;max-age=31536000`;
-                document.getElementById('themeLight').classList.toggle('active', theme === 'light');
-                document.getElementById('themeDark').classList.toggle('active', theme === 'dark');
-            };
-
-            document.getElementById('themeLight')?.addEventListener('click', () => setTheme('light'));
-            document.getElementById('themeDark')?.addEventListener('click', () => setTheme('dark'));
-
-            // Sidebar Toggle (Mobile)
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-
-            sidebarToggle?.addEventListener('click', () => {
-                sidebar?.classList.toggle('active');
-                overlay?.classList.toggle('active');
-            });
-
-            // Global Search Shortcut
-            document.addEventListener('keydown', (e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                    e.preventDefault();
-                    document.getElementById('sidebarSearch')?.focus();
-                }
-            });
-
-            document.getElementById('globalSearch')?.addEventListener('click', () => {
-                document.getElementById('sidebarSearch')?.focus();
-            });
-        });
-
-        // Global Loading Manager
-        window.Loading = {
-            // Show page loader
-            show: function(text = 'Carregando...') {
-                const loader = document.getElementById('pageLoader');
-                const loaderText = loader?.querySelector('.loader-text');
-                if (loaderText) loaderText.textContent = text;
-                loader?.classList.add('active');
-            },
-
-            // Hide page loader
-            hide: function() {
-                document.getElementById('pageLoader')?.classList.remove('active');
-            },
-
-            // Show loading bar
-            bar: function(show = true) {
-                const bar = document.getElementById('loadingBar');
-                if (show) {
-                    bar?.classList.add('active');
-                } else {
-                    bar?.classList.remove('active');
-                    bar.style.width = '0';
-                }
-            },
-
-            // Set loading bar progress (0-100)
-            progress: function(percent) {
-                const bar = document.getElementById('loadingBar');
-                if (bar) {
-                    bar.classList.remove('active');
-                    bar.style.width = percent + '%';
-                }
-            },
-
-            // Add loading state to button
-            button: function(btn, loading = true) {
-                if (typeof btn === 'string') btn = document.querySelector(btn);
-                if (!btn) return;
-
-                if (loading) {
-                    btn.classList.add('loading');
-                    btn.disabled = true;
-                } else {
-                    btn.classList.remove('loading');
-                    btn.disabled = false;
-                }
-            },
-
-            // Add loading state to card
-            card: function(card, loading = true) {
-                if (typeof card === 'string') card = document.querySelector(card);
-                if (!card) return;
-
-                if (loading) {
-                    card.classList.add('card-loading');
-                } else {
-                    card.classList.remove('card-loading');
-                }
-            },
-
-            // Inline loader HTML
-            inline: function() {
-                return '<span class="inline-loader"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
-            }
-        };
-
-        // Auto-show loading on form submit
-        document.addEventListener('submit', function(e) {
-            const form = e.target;
-            const submitBtn = form.querySelector('[type="submit"]');
-            if (submitBtn && !submitBtn.classList.contains('no-loading')) {
-                Loading.button(submitBtn, true);
-            }
-        });
-
-        // Auto-show loading bar on link clicks (for non-ajax navigation)
-        document.addEventListener('click', function(e) {
-            const link = e.target.closest('a[href]:not([target="_blank"]):not([href^="#"]):not([href^="javascript"])');
-            if (link && !link.classList.contains('no-loading')) {
-                Loading.bar(true);
-            }
-        });
-
-        // Account Switcher
-        async function requestJson(url, options = {}) {
-            if (window.ApiClient) return window.ApiClient.request(url, options);
-            const resp = await fetch(url, {
-                credentials: 'include',
-                ...options
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return resp.json();
-        }
-        async function switchAccount(accountId) {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-            try {
-                Loading.bar(true);
-                const data = await requestJson('/api/dashboard/switch-account', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    body: JSON.stringify({
-                        account_id: accountId
-                    })
-                });
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    Loading.bar(false);
-                    if (typeof Toast !== 'undefined') {
-                        Toast.error(data.message || data.error || 'Erro ao trocar de conta');
-                    } else {
-                        alert(data.message || data.error || 'Erro ao trocar de conta');
-                    }
-                }
-            } catch (error) {
-                Loading.bar(false);
-                console.error('Erro ao trocar conta:', error);
-                if (typeof Toast !== 'undefined') {
-                    Toast.error('Erro de conexão ao trocar conta');
-                } else {
-                    alert('Erro de conexão ao trocar conta');
-                }
-            }
-        }
-
-        document.addEventListener('click', function(e) {
-            const button = e.target.closest('[data-switch-account-id]');
-            if (!button || button.disabled) {
-                return;
-            }
-
-            e.preventDefault();
-            const accountId = Number(button.getAttribute('data-switch-account-id'));
-            if (Number.isInteger(accountId) && accountId > 0) {
-                switchAccount(accountId);
-            }
-        });
-    </script>
 
     <!-- Mobile Bottom Navigation -->
     <?php if (file_exists(__DIR__ . '/bottom_nav.php')): ?>

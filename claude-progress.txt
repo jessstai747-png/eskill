@@ -6,6 +6,41 @@
 
 ---
 
+## Sessão 2026-03-01 (Codex) — Hotfix CSP `/dashboard` (remoção de inline scripts)
+
+### Contexto
+Após reconexão OAuth, o console ainda mostrava múltiplos bloqueios CSP em `/dashboard` (`Executing inline script violates ... script-src-elem`), impedindo execução da lógica da tela.
+
+### O que foi feito
+- Eliminados scripts inline da tela principal e layout moderno do dashboard:
+  - `app/Views/dashboard/index.php` agora carrega `/js/dashboard-index.js` externo.
+  - script grande da view movido para `public/js/dashboard-index.js`.
+  - scripts inline do layout modern (`requestJson`, Toast, Loading, tema/navegação, switch account e fallback Chart) movidos para `public/js/layout-modern-init.js`.
+  - scripts inline de `app/Views/layouts/modern/sidebar.php` e `app/Views/layouts/modern/bottom_nav.php` removidos e comportamentos incorporados em `layout-modern-init.js`.
+  - flash messages agora são serializadas em `data-flash` (sem inline JS) e consumidas pelo JS externo.
+
+### Validação
+- `php -l app/Views/layouts/modern/app.php` ✅
+- `php -l app/Views/layouts/modern/sidebar.php` ✅
+- `php -l app/Views/layouts/modern/bottom_nav.php` ✅
+- `php -l app/Views/dashboard/index.php` ✅
+- `node --check public/js/layout-modern-init.js` ✅
+- `node --check public/js/dashboard-index.js` ✅
+- `php vendor/bin/phpunit` ✅
+  - Tests: 2923
+  - Assertions: 6829
+  - Skipped: 26
+
+### Arquivos modificados
+- `app/Views/dashboard/index.php`
+- `app/Views/layouts/modern/app.php`
+- `app/Views/layouts/modern/sidebar.php`
+- `app/Views/layouts/modern/bottom_nav.php`
+- `public/js/dashboard-index.js`
+- `public/js/layout-modern-init.js`
+
+---
+
 ## Sessão 2026-03-01 (Codex) — Hotfix API `/api/dashboard/metrics` (evitar 500 em modo degradado)
 
 ### Contexto
