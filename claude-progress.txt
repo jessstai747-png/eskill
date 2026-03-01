@@ -6,6 +6,31 @@
 
 ---
 
+## Sessão 2026-03-01 (Codex) — Padronização do smoke UI em script versionado
+
+### Contexto
+Após estabilizar as 12 rotas core com smoke 12/12, foi necessário transformar o runner temporário (`.tmp`) em fluxo reexecutável no repositório para próximas sessões.
+
+### O que foi feito
+- Promovido runner Playwright de produção para arquivo versionado:
+  - novo `scripts/playwright_prod_smoke.js`.
+- Adicionado comando de execução no `package.json`:
+  - `npm run smoke:prod:ui`
+- Removido script temporário local em `.tmp/playwright_prod_smoke.js` (substituído pela versão em `scripts/`).
+
+### Validação
+- `node --check scripts/playwright_prod_smoke.js` ✅
+- `php vendor/bin/phpunit` ✅
+  - Tests: 2923
+  - Assertions: 6829
+  - Skipped: 26
+
+### Arquivos modificados
+- `scripts/playwright_prod_smoke.js`
+- `package.json`
+
+---
+
 ## Sessão 2026-03-01 (Codex) — Estabilização final de UI + Smoke Playwright 12/12 (produção)
 
 ### Contexto
