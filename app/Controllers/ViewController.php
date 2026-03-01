@@ -49,8 +49,9 @@ class ViewController
         $pageTitle = null;
         $activePage = null;
         $useModernLayout = null;
-        // Make CSP nonce available in all view files (prevents undefined variable fallback to session)
-        $cspNonce = $GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '';
+        // Make CSP nonce available in all view files (prevents undefined variable fallback to session).
+        // Use ?: (Elvis) so an empty-string value from $GLOBALS also falls back to session.
+        $cspNonce = ($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? '');
 
         ob_start();
         require $viewPath;

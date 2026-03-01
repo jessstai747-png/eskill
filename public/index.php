@@ -122,8 +122,10 @@ if (
     $_SESSION['csrf_token_time'] = time();
 }
 
-// Generate CSP nonce for inline scripts (used by SecurityMiddleware and views)
-$cspNonce = base64_encode(random_bytes(16));
+// Generate CSP nonce for inline scripts (used by SecurityMiddleware and views).
+// Use URL-safe base64 (RFC 4648 §5) without padding: avoids '+', '/', '=' chars
+// that may be mangled by URL decoding in proxies or misconfigured web servers.
+$cspNonce = rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '=');
 $_SESSION['csp_nonce'] = $cspNonce;
 $GLOBALS['cspNonce'] = $cspNonce;
 
