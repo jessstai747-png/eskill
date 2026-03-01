@@ -6,6 +6,79 @@
 
 ---
 
+## Sessão 2026-03-01 (Copilot) — Validação Final: Migration + production-check + PHPUnit
+
+### Contexto
+Execução do plano de validação pós-estabilização ML API documentado em `docs/integrations/mercado_livre_real_api_fases.md`. Todos os itens de código já estavam implementados desde sessões anteriores.
+
+### O que foi feito
+
+**Passo 1 — Tentativa de aplicar migration `2026_02_26_000001_stabilize_production_schema.sql`:**
+- MySQL inacessível no ambiente sandbox do Copilot (seccomp bloqueia `socket()` syscall; `/tmp` é read-only, impedindo clientes MySQL de criar temporários)
+- Comando tentado: `mysql -h 127.0.0.1 -P 3306 -u root -pTr1unf0@ meli < database/migrations/...sql` → `ERROR 2003: Can't connect to MySQL server on '127.0.0.1:3306' (111)`
+- PHP PDO também falha com `SQLSTATE[HY000] [2002] Connection refused` / `Failed to create unix socket`
+- **Diagnóstico**: MySQL está rodando (socket em `/run/mysqld/mysqld.sock`, PID ativo), mas o sandbox bloqueia toda comunicação de socket — tanto TCP (porta não bind) quanto UNIX socket (syscall restrito)
+- **Ação necessária em produção**: executar `php bin/migrate.php` ou `mysql -S /run/mysqld/mysqld.sock -u root -p meli < database/migrations/2026_02_26_000001_stabilize_production_schema.sql`
+
+**Passo 2 — Verificação de tabelas críticas:**
+- Não foi possível verificar via SQL devido ao ambiente sandbox (mesmo motivo acima)
+- A migration é idempotente (`CREATE TABLE IF NOT EXISTS`), pode ser reaplicada sem risco
+- Tabelas a criar: `worker_execution_logs`, `clone_health_logs`, `clone_duplicate_registry`, `clone_sync_logs`
+
+**Passo 3 — production-check.php:**
+```
+── MySQL ──       ❌ SQLSTATE[HY000] [2002] Connection refused (sandbox)
+── Redis ──       ⚠️ Connection refused (sandbox)
+── PHP-FPM ──     ❌ não detectado (esperado: sandbox, não web server)
+── Nginx ──       ❌ não rodando (esperado: sandbox)
+── PHP Extensions ✅ pdo, pdo_mysql, curl, json, mbstring, openssl, redis, gd, imagick, zip
+── ML API ──      ✅ ML credentials configuradas / Redirect URI: https://eskill.com.br/auth/callback
+── OpenAI ──      ✅ OPENAI_API_KEY configurada (164 chars)
+── Telegram ──    ✅ configurado e habilitado
+── Disco ──       ✅ 148.84 GB livre
+── Resultado ──   ❌ 3 erros, 2 avisos (todos esperados no sandbox)
+```
+
+**Passo 4 — init.sh:**
+- `✅ PHP 8.4, Composer autoload, ext-redis, ext-pdo_mysql, .env presente`
+- `✅ Toda estrutura de pastas OK`
+- `✅ Todos os arquivos PHP críticos com sintaxe OK`
+- `⚠️ MySQL: Connection refused (sandbox)`
+- `✅ PHPUnit(Unit): 2923 testes, 6797 asserções, 34 skipped, 0 falhas`
+- `⚠️ PHPUnit(Integration): pulado (MySQL indisponível neste ambiente)`
+- `✅ projeto-status.json: 85/85 features passando (100%)`
+- `✅ Sistema pronto — 2 avisos`
+
+**Passo 5 — PHPUnit explícito:**
+- Unit: `Tests: 2923, Assertions: 6797, Skipped: 34` — **OK** ✅
+- Integration: `Tests: 3485, Assertions: 3981, Skipped: 1732` — **OK** (1732 skipped esperados: testes DB aguardam MySQL real) ✅
+
+### Arquivos modificados
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `storage/db_test.php` | ✨ Criado (temp) | Script de diagnóstico de conectividade MySQL — pode ser removido |
+
+### Validação
+- Unit: 2923 tests, 0 falhas, 34 skipped ✅
+- Integration: 3485 tests, 0 falhas, 1732 skipped ✅
+- project-status.json: **85/85** features passando, 0 falhando ✅
+- init.sh: `✅ Sistema pronto — 2 avisos`
+
+### Estado ao final
+- **Código**: Tudo implementado (85/85 features)
+- **Migration pendente**: `2026_02_26_000001_stabilize_production_schema.sql` precisa ser aplicada no servidor de produção (CloudWays) via acesso SSH direto ou painel
+- **Tabelas críticas**: depende da migration acima para existir em produção
+- **Contas disconnected**: verificação também depende de MySQL real
+
+### Próximas ações (PRODUÇÃO — fora do sandbox)
+1. SSH no servidor CloudWays → `php bin/migrate.php` (aplica todas as migrations pendentes)
+2. Verificar: `mysql -e "SHOW TABLES LIKE 'worker_execution_logs'; SHOW TABLES LIKE 'clone_sync_logs';" meli`
+3. Verificar: `mysql -e "SELECT nickname, status FROM ml_accounts WHERE status='disconnected';" meli`
+4. Se houver contas disconnected → reconectar via OAuth: `https://eskill.com.br/auth/authorize`
+5. Opcional: trocar `DB_USERNAME=root` por usuário de readonly/grants mínimos
+
+---
+
 ## Sessão 2026-03-01 (Copilot) — ML API Stabilization: Continuação (ML-007, ML-008, Fase 4, Fase 6, Fase 7)
 
 ### O que foi feito
