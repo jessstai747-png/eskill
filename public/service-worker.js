@@ -2,20 +2,15 @@
  * Service Worker - Mercado Livre Manager PWA
  * Implementa cache, modo offline e push notifications
  * 
- * @version 1.0.0
+ * @version 1.1.0
  */
 
-const CACHE_NAME = 'ml-manager-v1';
-const DYNAMIC_CACHE = 'ml-manager-dynamic-v1';
-const API_CACHE = 'ml-manager-api-v1';
+const CACHE_NAME = 'ml-manager-v2';
+const DYNAMIC_CACHE = 'ml-manager-dynamic-v2';
+const API_CACHE = 'ml-manager-api-v2';
 
 // Assets estáticos para cache imediato
 const STATIC_ASSETS = [
-    '/',
-    '/dashboard',
-    '/dashboard/orders',
-    '/dashboard/analysis',
-    '/dashboard/categories',
     '/offline.html',
     '/css/pwa.css',
     '/js/pwa.js',
@@ -103,21 +98,32 @@ self.addEventListener('fetch', (event) => {
     }
 
     // Estratégias diferentes para diferentes tipos de requisição
-    if (request.method === 'GET') {
-        if (isApiRequest(url)) {
-            // API: Network First com fallback para cache
-            event.respondWith(networkFirstStrategy(request, API_CACHE));
-        } else if (isStaticAsset(url)) {
-            // Assets estáticos: Cache First
-            event.respondWith(cacheFirstStrategy(request, CACHE_NAME));
-        } else {
-            // Páginas HTML: Stale While Revalidate
-            event.respondWith(staleWhileRevalidateStrategy(request, DYNAMIC_CACHE));
-        }
-    } else {
+    if (request.method !== 'GET') {
         // POST, PUT, DELETE: Tentar rede, se offline, enfileirar
         event.respondWith(handleMutationRequest(request));
+        return;
     }
+
+    // Nunca cachear HTML dinâmico com nonce CSP (evita mismatch de nonce em scripts inline).
+    if (isHtmlRequest(request)) {
+        event.respondWith(networkOnlyHtmlStrategy(request));
+        return;
+    }
+
+    if (isApiRequest(url)) {
+        // API: Network First com fallback para cache
+        event.respondWith(networkFirstStrategy(request, API_CACHE));
+        return;
+    }
+
+    if (isStaticAsset(url)) {
+        // Assets estáticos: Cache First
+        event.respondWith(cacheFirstStrategy(request, CACHE_NAME));
+        return;
+    }
+
+    // Demais GET: preferir rede
+    event.respondWith(fetch(request));
 });
 
 /**
@@ -137,6 +143,14 @@ function isStaticAsset(url) {
 }
 
 /**
+ * Verifica se é uma requisição de documento HTML/navegação
+ */
+function isHtmlRequest(request) {
+    const accept = request.headers.get('accept') || '';
+    return request.mode === 'navigate' || accept.includes('text/html');
+}
+
+/**
  * Estratégia: Cache First
  * Bom para assets estáticos
  */
@@ -149,8 +163,9 @@ async function cacheFirstStrategy(request, cacheName) {
 
     try {
         const response = await fetch(request);
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
 
-        if (response.ok) {
+        if (response.ok && !contentType.includes('text/html')) {
             const cache = await caches.open(cacheName);
             cache.put(request, response.clone());
         }
@@ -159,6 +174,26 @@ async function cacheFirstStrategy(request, cacheName) {
     } catch (error) {
         console.log('[SW] Network failed for:', request.url);
         return caches.match('/offline.html');
+    }
+}
+
+/**
+ * Estratégia: Network Only para HTML
+ * Evita servir páginas com nonce CSP antigo de qualquer cache local.
+ */
+async function networkOnlyHtmlStrategy(request) {
+    try {
+        return await fetch(request, { cache: 'no-store' });
+    } catch (error) {
+        const offline = await caches.match('/offline.html');
+        if (offline) {
+            return offline;
+        }
+
+        return new Response('Offline', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
     }
 }
 

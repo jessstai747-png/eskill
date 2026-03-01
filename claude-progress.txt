@@ -6,6 +6,35 @@
 
 ---
 
+## Sessão 2026-03-01 (Codex) — Hotfix reconexão /accounts (CSP persistente + cache SW)
+
+### Contexto
+Após correção inicial de nonce CSP, ainda havia erro de scripts inline no `/dashboard/accounts` e reconexão via card não funcionava em cenários com JS bloqueado.
+
+### O que foi feito
+- Atualizado `public/service-worker.js` para **não cachear HTML/navegação** (network-only para documentos), evitando servir páginas antigas com nonce CSP inválido.
+- Bump de versão dos caches SW:
+  - `ml-manager-v1` → `ml-manager-v2`
+  - `ml-manager-dynamic-v1` → `ml-manager-dynamic-v2`
+  - `ml-manager-api-v1` → `ml-manager-api-v2`
+- Removido pré-cache de rotas HTML dinâmicas (`/dashboard*`) no install do SW.
+- Adicionado fallback sem JS em `app/Views/dashboard/accounts.php`:
+  - ação de reconexão no menu e botão do card agora têm `href="/auth/authorize"` para funcionar mesmo com JS bloqueado.
+
+### Validação
+- `node --check public/service-worker.js` ✅
+- `php -l app/Views/dashboard/accounts.php` ✅
+- `php vendor/bin/phpunit` ✅
+  - Tests: 2923
+  - Assertions: 6829
+  - Skipped: 26
+
+### Arquivos modificados
+- `public/service-worker.js`
+- `app/Views/dashboard/accounts.php`
+
+---
+
 ## Sessão 2026-03-01 (Codex) — Correção CSP no /dashboard/accounts (inline scripts bloqueados)
 
 ### Contexto

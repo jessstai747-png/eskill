@@ -106,7 +106,7 @@ $userId = $_SESSION['user_id'] ?? 0;
                             <i class="bi bi-three-dots-vertical fs-5"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item action-reconnect" href="#" data-action="reconnect-account">
+                            <li><a class="dropdown-item action-reconnect" href="/auth/authorize" data-action="reconnect-account">
                                     <i class="bi bi-arrow-repeat me-2"></i>Reconectar
                                 </a></li>
                             <li><a class="dropdown-item action-sync" href="#" data-action="sync-account">
@@ -167,9 +167,9 @@ $userId = $_SESSION['user_id'] ?? 0;
                     <button class="btn btn-outline-success btn-sm flex-fill btn-sync" data-action="sync-account">
                         <i class="bi bi-cloud-download me-1"></i>Sincronizar
                     </button>
-                    <button class="btn btn-primary btn-sm flex-fill btn-reconnect" data-action="reconnect-account">
+                    <a class="btn btn-primary btn-sm flex-fill btn-reconnect" data-action="reconnect-account" href="/auth/authorize">
                         <i class="bi bi-arrow-repeat me-1"></i>Reconectar
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
