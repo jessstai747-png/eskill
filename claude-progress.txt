@@ -6,6 +6,43 @@
 
 ---
 
+## Sessão 2026-05-XX (Copilot) — TitleAnalyzerService bugfix + 4 Feature tests + Phase 2.5 análise
+
+### O que foi feito
+- **Bugfix `TitleAnalyzerService::analyzeKeywords`**: passava array `['product_name'=>$title,'limit'=>10]`
+  como `?string $baseKeyword` para `researchKeywords()` — causava `TypeError` em PHP 8 strict mode com
+  `categoryId` não-vazio. Corrigido para `researchKeywords($categoryId, $title)`.
+- **Regression test**: `SEORealOptimizationTest::testAnalyzeTitleWithCategoryIdDoesNotThrow` agora usa
+  categoryId não-vazio `'MLB73419'` para cobrir o caminho corrigido.
+- **4 Feature tests criados** (Feature suite: 205 → 266 tests, 0 falhas):
+  - `tests/Feature/ShippingTest.php` — ShippingService: 6 testes puros `validateDimensions()` +
+    estrutura; usa `skipDbAutoConnect=true`
+  - `tests/Feature/QuestionTest.php` — QuestionService: estrutura + 10 métodos via `@dataProvider` +
+    DB-skip funcionais; usa `skipDbAutoConnect=true` (8º param)
+  - `tests/Feature/WhatsAppNotificationTest.php` — WhatsAppService: reflexão de métodos + DB-skip +
+    `sendMessage()` tipo-retorno assertado
+  - `tests/Feature/TelegramNotificationTest.php` — TelegramService: totalmente testável sem DB;
+    `isEnabled()`=false sem env vars, `sendMessage()`=false quando desabilitado
+- **Phase 2.5 análise de deduplicação**: pares `TitleOptimizerService`×2, `KeywordResearchService`×2,
+  etc. têm namespaces DIFERENTES e servem consumidores DISTINTOS — NÃO são duplicatas verdadeiras.
+  Consolidação destruiria integrações de produção. `App\Services\SEO\TitleOptimizerService` (595L) mantido
+  porque `tests/Unit/Services/TitleOptimizerServiceTest.php` e `tests/Unit/SEO/SEOServicesTest.php`
+  o referenciam com `newInstanceWithoutConstructor()`.
+
+### Descobertas técnicas
+- `App\Services\TitleOptimizerService` (864L) usado por `SEOToolsController`; `App\Services\SEO\TitleOptimizerService`
+  (595L) usado apenas por testes Unit
+- `WhatsAppService` chama `Database::getInstance()` no construtor — sem parâmetro skip; testes usam
+  DB-skip pattern via `try/catch`
+- `TelegramService` zero dependências de DB — lê só env vars; seguro instanciar sempre
+
+### Estado do projeto
+- 81 features no project-status.json, todas passes=true
+- PHPUnit: Feature 266/0/93 (skips=DB ausente), Unit e Integration inalterados
+- Commit: `11793e9` — 7 arquivos, 669 inserções
+
+---
+
 ## Sessão 2026-03-XX (Copilot) — Phase 0 cleanup + 7 Feature tests
 
 ### O que foi feito
