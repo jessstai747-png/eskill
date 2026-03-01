@@ -10,11 +10,20 @@ class MonitoringControllerCompatibilityTest extends TestCase
 {
     public function testMonitoringRoutesExposeLegacyAliases(): void
     {
-        $source = file_get_contents(dirname(__DIR__, 3) . '/app/Routes/api.php');
-        $this->assertIsString($source);
+        // Routes were modularized in Fase 8: api.php now delegates to sub-files.
+        // Monitoring routes live in app/Routes/api/ai.php.
+        $routeDir = dirname(__DIR__, 3) . '/app/Routes/api';
+        $sources = '';
+        foreach (glob($routeDir . '/*.php') ?: [] as $file) {
+            $content = file_get_contents($file);
+            if ($content !== false) {
+                $sources .= $content;
+            }
+        }
+        $this->assertNotEmpty($sources, 'Route sub-files must exist in app/Routes/api/');
 
-        $this->assertStringContainsString("api/monitoring/system-logs", $source);
-        $this->assertStringContainsString("api/monitoring/job-stats", $source);
+        $this->assertStringContainsString("api/monitoring/system-logs", $sources);
+        $this->assertStringContainsString("api/monitoring/job-stats", $sources);
     }
 
     public function testControllerHasCompatibilityShapesForLegacyDashboard(): void

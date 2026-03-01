@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+// Escreve o thin-loader final em app/Routes/api.php
+
+$loader = <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
 /**
  * API Route Loader — Fase 8 refactoring
  *
@@ -40,3 +47,10 @@ require __DIR__ . '/api/pricing.php';
 // AI Optimization, Error Monitoring, AI Insights, Competitor Monitor,
 //    SEO API, Token Management, Automation, Monitoring, Stock Sync
 require __DIR__ . '/api/ai.php';
+PHP;
+
+$target = __DIR__ . '/../app/Routes/api.php';
+$bytes = file_put_contents($target, $loader . "\n");
+echo "Written api.php loader ({$bytes} bytes)\n";
+echo 'Lines: ' . substr_count($loader, "\n") . "\n";
+passthru('php -l ' . escapeshellarg($target));

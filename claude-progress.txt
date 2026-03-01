@@ -6,6 +6,49 @@
 
 ---
 
+## Sessão 2026-03-01 (Copilot) — ML API Stabilization: Continuação (ML-007, ML-008, Fase 4, Fase 6, Fase 7)
+
+### O que foi feito
+
+**Deep Analysis:**
+- Verificados `CloneAlertNotificationServiceTest` e `CloneDuplicateDetectionServiceTest`: ambos têm asserções completas e 0 testes risky (ML-007 ✅)
+- Verificados `tests/scripts/` e `tests/manual/`: sem credenciais reais hardcoded; `MercadoLivreAuthServiceUnitTest` usa strings placeholder corretas (ML-008 ✅)
+- Verificado `MercadoLivreClient::diagnose()`: não classifica como critical sem token; usa `probePublicSiteWithoutClientId` fallback; log flood usa `log_debug`/`log_warning` com flag `missingTokenLogged` (Fase 4 ✅)
+- Verificado `MercadoLivreAuthService`: implementado MySQL advisory lock `GET_LOCK` em `acquireRefreshTokenLock`/`releaseRefreshTokenLock` (Fase 6 ✅)
+- **BUG ENCONTRADO**: `MonitoringControllerCompatibilityTest` falhava porque buscava rotas `api/monitoring/system-logs` e `api/monitoring/job-stats` em `app/Routes/api.php` (monolítico), mas após Fase 8 as rotas estão em `app/Routes/api/ai.php`
+
+**Implementado:**
+
+1. **Fix MonitoringControllerCompatibilityTest** — teste atualizado para iterar sobre todos os arquivos em `app/Routes/api/*.php` ao invés de buscar apenas em `api.php`. Agora encontra as rotas no sub-arquivo correto (`ai.php`).
+
+### Arquivos criados/modificados
+
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php` | ✏️ Editado | Busca rotas em app/Routes/api/*.php após modularização (Fase 8) |
+| `project-status.json` | ✏️ Editado | ML-STAB-004 (ML-007) e ML-STAB-005 (ML-008/Fases 4,6) adicionados como passes:true |
+
+### Validação
+- `php -l tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php` — sem erros ✅
+- `php vendor/bin/phpunit --testsuite Unit --no-coverage` — 2923 testes, 0 falhas, 34 skipped ✅
+- `php vendor/bin/phpunit --testsuite Integration --no-coverage` — 3485 testes, 0 falhas, 1732 skipped ✅
+- 0 testes risky em ambas as suites ✅
+
+### Estado ao final
+- ML-007: testes risky — 0 testes risky; ambos os test files têm asserções completas ✅
+- ML-008: credenciais hardcoded — NENHUMA credencial real encontrada; placeholders corretos ✅
+- Fase 4: ML Client hardening — JÁ IMPLEMENTADO (diagnose, probePublicSiteWithoutClientId, log flood) ✅
+- Fase 6: Workers com lock — JÁ IMPLEMENTADO via MySQL GET_LOCK advisory lock ✅
+- **BONUS**: MonitoringControllerCompatibilityTest — CORRIGIDO para Fase 8 route modularization ✅
+
+### Próximos passos relacionados
+1. Aplicar migration `2026_02_26_000001_stabilize_production_schema.sql` em produção: `php bin/apply-migrations.php`
+2. `bash bin/pre-deploy-backup.sh` antes de qualquer deploy em produção
+3. Reconectar contas `status=disconnected` via fluxo OAuth `/auth/authorize`
+4. Trocar `DB_USERNAME=root` por usuário de app MySQL com grants mínimos
+
+---
+
 ## Sessão 2026-03-01 (Copilot) — ML API Stabilization: Fases 0–7 (8 erros ML-001→ML-008)
 
 ### O que foi feito

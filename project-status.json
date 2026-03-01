@@ -931,6 +931,29 @@
       ],
       "passes": true,
       "last_tested": "2026-03-01"
+    },
+    {
+      "id": "ML-STAB-004",
+      "category": "mercadolivre_stability",
+      "description": "ML-007: Testes sem assert — CloneAlertNotificationServiceTest e CloneDuplicateDetectionServiceTest têm asserções completas e são corretamente skipped (markTestSkipped) em sandbox sem DB. 0 testes risky no Unit suite (2923 testes).",
+      "files": [
+        "tests/Unit/CloneAlertNotificationServiceTest.php",
+        "tests/Unit/CloneDuplicateDetectionServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-01"
+    },
+    {
+      "id": "ML-STAB-005",
+      "category": "mercadolivre_stability",
+      "description": "ML-008: Credenciais hardcoded em testes — nenhum token/secret real em tests/scripts/ ou tests/manual/. Arquivo MercadoLivreAuthServiceUnitTest.php usa strings placeholder 'CLIENT_ID'/'CLIENT_SECRET' (mock correto para unit tests). Fase 4 (MercadoLivreClient diagnose, probePublicSiteWithoutClientId, log flood=debug/once) e Fase 6 (MySQL advisory lock GET_LOCK em acquireRefreshTokenLock/releaseRefreshTokenLock) verificados como já implementados. Fix: MonitoringControllerCompatibilityTest atualizado para buscar em app/Routes/api/*.php após modularização (Fase 8).",
+      "files": [
+        "app/Services/MercadoLivreClient.php",
+        "app/Services/MercadoLivreAuthService.php",
+        "tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-01"
     }
   ]
 }
