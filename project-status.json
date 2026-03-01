@@ -898,6 +898,39 @@
       ],
       "passes": true,
       "last_tested": "2026-02-23"
+    },
+    {
+      "id": "ML-STAB-001",
+      "category": "mercadolivre_stability",
+      "description": "Schema reconciliation: tabelas de monitoramento (worker_execution_logs, clone_health_logs, clone_duplicate_registry, clone_sync_logs) + enums disconnected/refresh_disconnected (ML-004)",
+      "files": [
+        "database/migrations/2026_02_26_000001_stabilize_production_schema.sql"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-01"
+    },
+    {
+      "id": "ML-STAB-002",
+      "category": "mercadolivre_stability",
+      "description": "OAuth hardening: invalid_grant -> status=disconnected, bloquear sync para contas desconectadas, audit action refresh_disconnected (ML-001)",
+      "files": [
+        "app/Services/MercadoLivreAuthService.php",
+        "app/Services/MercadoLivreClient.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-01"
+    },
+    {
+      "id": "ML-STAB-003",
+      "category": "mercadolivre_stability",
+      "description": "Infra: pre-deploy-backup.sh (Fase 0), fix-infrastructure.sh com check de user root (ML-005) e tabelas de monitoramento (ML-004), production-check.php com check de contas desconectadas e tabelas de observabilidade",
+      "files": [
+        "bin/pre-deploy-backup.sh",
+        "bin/fix-infrastructure.sh",
+        "bin/production-check.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-01"
     }
   ]
 }

@@ -40,6 +40,21 @@ CREATE TABLE IF NOT EXISTS clone_duplicate_registry (
     INDEX idx_account_created (account_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Clone sync event log (fallback usado por CloneHealthMonitorService via checkApiConnectivityViaLogs).
+-- Idempotente: usa CREATE TABLE IF NOT EXISTS para compatibilidade com 2025_06_clone_sync_tables.php.
+CREATE TABLE IF NOT EXISTS clone_sync_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    account_id INT NOT NULL,
+    item_id VARCHAR(50) NOT NULL,
+    sync_type VARCHAR(50) NOT NULL,
+    sync_data JSON NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_clone_sync_logs_account (account_id),
+    INDEX idx_clone_sync_logs_item (item_id),
+    INDEX idx_clone_sync_logs_type (sync_type),
+    INDEX idx_clone_sync_logs_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Ensure ml_accounts.status supports disconnected state used by refresh flow.
 SET @db_name := DATABASE();
 SET @ml_status_data_type := (

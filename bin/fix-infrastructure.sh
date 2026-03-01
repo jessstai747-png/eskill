@@ -189,6 +189,18 @@ function check_mysql() {
         return
     fi
 
+    # ML-005: Warn about root usage in production
+    if [[ "$db_user" == "root" ]]; then
+        warn "DB_USERNAME=root — em produção use um usuário de aplicação com grants mínimos (ML-005)"
+        if try_fix; then
+            info "Para criar usuário de aplicação substituto:"
+            info "  mysql -u root -p -e \"CREATE USER IF NOT EXISTS 'meli_app'@'localhost' IDENTIFIED BY 'SENHA_FORTE';\""
+            info "  mysql -u root -p -e \"GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,INDEX,ALTER ON \\\`${db_name}\\\`.* TO 'meli_app'@'localhost';\""
+            info "  mysql -u root -p -e \"FLUSH PRIVILEGES;\""
+            info "Depois atualize DB_USERNAME e DB_PASSWORD em .env e reinicie os workers."
+        fi
+    fi
+
     # Test connection with .env credentials
     if command -v mysql >/dev/null 2>&1; then
         if mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" -e "SELECT 1" >/dev/null 2>&1; then
@@ -212,9 +224,45 @@ function check_mysql() {
                 local acc_count
                 acc_count=$(mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" "$db_name" -N -e "SELECT COUNT(*) FROM ml_accounts" 2>/dev/null)
                 ok "ml_accounts: $acc_count conta(s) cadastrada(s)"
+
+                # Check for disconnected accounts (ML-001)
+                local disconnected_count
+                disconnected_count=$(mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" "$db_name" -N -e "SELECT COUNT(*) FROM ml_accounts WHERE status='disconnected'" 2>/dev/null || echo "0")
+                if [[ "$disconnected_count" -gt 0 ]]; then
+                    warn "${disconnected_count} conta(s) com status=disconnected — reautorização OAuth necessária (ML-001)"
+                    info "Acesse /auth/authorize para reconectar as contas desconectadas"
+                fi
             else
                 warn "Tabela ml_accounts não encontrada — rode as migrations"
                 info "  php bin/apply-migrations.php"
+            fi
+
+            # Check for observability/monitoring tables (ML-004)
+            local monitor_tables="worker_execution_logs clone_health_logs clone_duplicate_registry clone_sync_logs"
+            local missing_monitor=""
+            for tbl in $monitor_tables; do
+                if ! mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" "$db_name" -N -e "SELECT 1 FROM \`${tbl}\` LIMIT 1" >/dev/null 2>&1; then
+                    missing_monitor="${missing_monitor} ${tbl}"
+                fi
+            done
+            if [[ -n "$missing_monitor" ]]; then
+                warn "Tabelas de monitoramento ausentes:${missing_monitor} (ML-004)"
+                info "Aplique: mysql -u \$DB_USERNAME -p\$DB_PASSWORD \$DB_DATABASE < database/migrations/2026_02_26_000001_stabilize_production_schema.sql"
+                if try_fix; then
+                    info "Tentando aplicar migration de estabilização..."
+                    local migration_file="${PROJECT_DIR}/database/migrations/2026_02_26_000001_stabilize_production_schema.sql"
+                    if [[ -f "$migration_file" ]]; then
+                        if mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" "$db_name" < "$migration_file" 2>/dev/null; then
+                            fixed "Migration 2026_02_26_000001 aplicada com sucesso"
+                        else
+                            fail "Falha ao aplicar migration — verifique permissões e SQL"
+                        fi
+                    else
+                        fail "Migration não encontrada: $migration_file"
+                    fi
+                fi
+            else
+                ok "Tabelas de monitoramento presentes (ML-004 OK)"
             fi
         else
             fail "Database '$db_name' NÃO existe"

@@ -66,6 +66,15 @@ try {
         ok("Tabelas críticas presentes");
     }
 
+    // Check observability/monitoring tables (ML-004)
+    $monitoring = ['worker_execution_logs', 'clone_health_logs', 'clone_duplicate_registry', 'clone_sync_logs'];
+    $missingMonitor = array_diff($monitoring, $tables);
+    if (!empty($missingMonitor)) {
+        warn("Tabelas de monitoramento ausentes: " . implode(', ', $missingMonitor) . " — rode: mysql -u \$DB_USERNAME -p\$DB_PASSWORD \$DB_DATABASE < database/migrations/2026_02_26_000001_stabilize_production_schema.sql");
+    } else {
+        ok("Tabelas de monitoramento presentes");
+    }
+
     // Check ML accounts
     try {
         $stmt = $pdo->query(
@@ -76,12 +85,20 @@ try {
             warn("Nenhuma conta ML vinculada — acesse /auth/authorize para vincular");
         } else {
             ok(count($accounts) . " conta(s) ML vinculada(s):");
+            $disconnectedCount = 0;
             foreach ($accounts as $a) {
                 $tokenStatus = $a['has_token'] ? 'token=yes' : 'token=NO';
                 if ($a['token_expires_at'] && strtotime($a['token_expires_at']) < time()) {
                     $tokenStatus .= ' EXPIRED';
                 }
+                if ($a['status'] === 'disconnected') {
+                    $tokenStatus .= ' *** DISCONNECTED — reauth required ***';
+                    $disconnectedCount++;
+                }
                 echo "     [{$a['id']}] {$a['nickname']} status={$a['status']} {$tokenStatus}\n";
+            }
+            if ($disconnectedCount > 0) {
+                warn("{$disconnectedCount} conta(s) com status=disconnected — acesse /auth/authorize para reconectar (ML-001)");
             }
         }
     } catch (Throwable $e) {

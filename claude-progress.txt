@@ -2,7 +2,98 @@
 
 > Este arquivo é atualizado automaticamente por agentes IA ao final de cada sessão.
 > NUNCA delete entradas anteriores. Apenas adicione novas no topo.
-> Formato: mais recente primeiro (ordem cronológica reversa).
+> Formato: mais recente primeiro (ordem cronológica inversa).
+
+---
+
+## Sessão 2026-03-01 (Copilot) — ML API Stabilization: Fases 0–7 (8 erros ML-001→ML-008)
+
+### O que foi feito
+
+**Deep Analysis:**
+- Lidos todos os arquivos chave: `MercadoLivreClient.php`, `MercadoLivreAuthService.php`, `CloneHealthMonitorService.php`, `OrderController.php`, `OrderService.php`, e todos os binários/scripts.
+- Constatado que ML-001 (invalid_grant→disconnected), ML-002 (Sem token flood), ML-003 (403/sites/MLB), ML-006 (422 sem seller) já estavam implementados em versões anteriores.
+- Identificados os gaps reais: ML-004 (clone_sync_logs ausente do migration), ML-005 (sem aviso root no fix-infra), ML-007/ML-008 (testes/scripts já OK).
+
+**Implementado:**
+
+1. **ML-004 (Fase 3)** — Migration `2026_02_26_000001_stabilize_production_schema.sql`: adicionada `clone_sync_logs` (CREATE TABLE IF NOT EXISTS idempotente), que estava presente em `2025_06_clone_sync_tables.php` mas ausente da migration de estabilização 2026.
+
+2. **Fase 0** — Criado `bin/pre-deploy-backup.sh`: script completo para backup pré-deploy com dump MySQL (gzip), backup de `.env`, snapshot de crontab, git status e snapshot de `ml_accounts`.
+
+3. **ML-005 + Fase 1** — `bin/fix-infrastructure.sh`: adicionado aviso warnings para `DB_USERNAME=root` (orienta criação de usuário de app com grants mínimos), adicionado check de tabelas de monitoramento com auto-fix via migration.
+
+4. **Fase 5** — `bin/production-check.php`: adicionado check de tabelas de observabilidade (`worker_execution_logs`, `clone_health_logs`, `clone_duplicate_registry`, `clone_sync_logs`) e aviso de contas `status=disconnected` com mensagem acionável.
+
+5. **ML-007 (Fase 7)** — Verificados `CloneAlertNotificationServiceTest` e `CloneDuplicateDetectionServiceTest`: ambos já possuem asserções completas, são skipped (não risky) em sandbox sem DB.
+
+6. **ML-008 (Fase 7)** — Verificados tests/scripts/ e tests/manual/: nenhum com token/credential hardcoded real. Todos lêem de `.env` ou DB.
+
+### Arquivos criados/modificados
+
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `database/migrations/2026_02_26_000001_stabilize_production_schema.sql` | ✏️ Editado | Adicionada `clone_sync_logs` (ML-004) |
+| `bin/pre-deploy-backup.sh` | ✨ Criado | Backup pré-deploy (Fase 0) |
+| `bin/fix-infrastructure.sh` | ✏️ Editado | Check root user (ML-005) + tables monitor (ML-004) |
+| `bin/production-check.php` | ✏️ Editado | Check monitoring tables + disconnected accounts |
+| `project-status.json` | ✏️ Editado | ML-STAB-001, ML-STAB-002, ML-STAB-003 adicionados |
+
+### Validação
+- `php -l bin/production-check.php` — sem erros de sintaxe ✅
+- `bash -n bin/fix-infrastructure.sh` — sintaxe bash OK ✅
+- `bash -n bin/pre-deploy-backup.sh` — sintaxe bash OK ✅
+- `php vendor/bin/phpunit --testsuite Unit --no-coverage` — 2923 testes, 0 falhas, 34 skipped ✅
+- `bash bin/init.sh` — Sistema pronto, 3 avisos (esperados) ✅
+
+### Estado ao final
+- ML-001: `invalid_grant` → `status=disconnected` — JÁ IMPLEMENTADO em MercadoLivreAuthService ✅
+- ML-002: `Sem token` flood — JÁ IMPLEMENTADO (debug em contexto não-HTTP) ✅
+- ML-003: `403 /sites/MLB` — JÁ IMPLEMENTADO (probePublicSiteWithoutClientId fallback) ✅
+- ML-004: `clone_sync_logs doesn't exist` — CORRIGIDO: adicionado ao migration ✅
+- ML-005: `root` MySQL — CORRIGIDO: aviso em fix-infrastructure.sh ✅
+- ML-006: `422` sem seller — JÁ IMPLEMENTADO (missing_seller_id fallback) ✅
+- ML-007: testes risky — JÁ CORRIGIDOS (ambos têm asserções, são skipped no sandbox) ✅
+- ML-008: credenciais hardcoded — NÃO ENCONTRADAS em tests/scripts ou tests/manual ✅
+
+### Próximos passos relacionados
+1. Aplicar `database/migrations/2026_02_26_000001_stabilize_production_schema.sql` em produção
+2. Executar `bash bin/pre-deploy-backup.sh` antes de qualquer deploy
+3. Reconectar contas com `status=disconnected` via `/auth/authorize`
+4. Trocar `DB_USERNAME=root` por usuário de app com grants mínimos
+
+---
+
+## Sessão 2025-07-17 (Copilot) — Fase 8: Route Modularization (api.php split)
+
+### O que foi feito
+- **Fase 8 iniciada**: Modularização do arquivo monolítico `app/Routes/api.php` (1858 linhas, 1253 rotas)
+- **7 sub-arquivos criados** em `app/Routes/api/`:
+  - `auth.php` — Auth Monitor, Dashboard API, Auth, User, Onboarding, Render, Settings (36 rotas)
+  - `integrations.php` — Brevo, Clawdbot, Assistant Connector, OpenClaw (40 rotas)
+  - `seo.php` — SEO Killer, ML-AI Pipeline, Market Data, TechSheet, Quality, Shipping, ListingBuilder, TitleGenerator, AIML, SEO Intelligence (419 rotas)
+  - `clone.php` — Catalog Clone FASE 1-12, Notifications, AB Testing, Automation, ROI, Compliance, Analytics, Scheduler, Event Triggers (242 rotas)
+  - `items.php` — Categories, Search, Items, Orders, Analytics, Reports, Security, Performance, Export, EAN, Brand, Push, Health, Notifications, etc. (267 rotas)
+  - `pricing.php` — Pricing Intelligence (FASE 1-3), Dynamic Pricing, AI Predictions, Chatbot (171 rotas)
+  - `ai.php` — AI Optimization Engine, Error Monitoring, AI Insights, Competitor Monitor, SEO API, Token Management, Automation, Monitoring, Stock Sync (78 rotas)
+- **`api.php` convertido** em thin loader (42 linhas, 7 `require` statements)
+- **Todos os 71 `use` statements** distribuídos em cada sub-arquivo
+- **Verificação**: 1253 rotas no original = 1253 rotas nos sub-arquivos ✅
+- **Testes**: 2923/2923 Unit + 266/266 Feature — todos passando ✅
+
+### Arquivos modificados/criados
+- `app/Routes/api.php` — Convertido para thin loader
+- `app/Routes/api/auth.php` — CRIADO
+- `app/Routes/api/integrations.php` — CRIADO
+- `app/Routes/api/seo.php` — CRIADO
+- `app/Routes/api/clone.php` — CRIADO
+- `app/Routes/api/items.php` — CRIADO
+- `app/Routes/api/pricing.php` — CRIADO
+- `app/Routes/api/ai.php` — CRIADO
+
+### Estado ao final
+- Fase 8 route modularization: ✅ COMPLETO
+- Próxima ação sugerida: God class split em `MercadoLivreClient.php` (3000+ linhas)
 
 ---
 
