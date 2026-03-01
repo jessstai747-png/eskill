@@ -250,7 +250,7 @@ $userId = $_SESSION['user_id'] ?? 0;
     }
 </style>
 
-<script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
+<script nonce="<?= $cspNonce ?>">
     function normalizeExternalUrl(url) {
         if (!url || typeof url !== 'string') return '';
         const trimmed = url.trim();

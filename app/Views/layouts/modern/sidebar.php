@@ -752,7 +752,7 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
     }
 </style>
 
-<script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
+<script nonce="<?= $cspNonce ?>">
     document.addEventListener('DOMContentLoaded', function() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');

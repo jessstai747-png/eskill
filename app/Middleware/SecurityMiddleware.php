@@ -181,10 +181,9 @@ class SecurityMiddleware
         }
 
         // Content Security Policy
-        // Nonces são gerados em public/index.php e usados nas views via <script nonce="...">
-        // 'strict-dynamic' permite que scripts com nonce carreguem outros scripts
-        // Use ?: so that an empty-string $GLOBALS value also falls back to the session value
-        $cspNonce = ($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? '');
+        // Nonces são gerados em public/index.php e armazenados como constante CSP_NONCE,
+        // acessível de qualquer escopo sem depender de $GLOBALS ou sessão.
+        $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? ''));
         $csp = "default-src 'self'; " .
             "script-src 'self' 'nonce-{$cspNonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
             "script-src-elem 'self' 'nonce-{$cspNonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; " .

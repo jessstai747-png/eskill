@@ -30,7 +30,7 @@
     </button>
 </div>
 
-<script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
+<script nonce="<?= $cspNonce ?>">
     document.getElementById('mobileMenuBtn').addEventListener('click', function() {
         document.querySelector('.sidebar').classList.toggle('open');
         // Also add overlay if needed, or close on outside click logic
