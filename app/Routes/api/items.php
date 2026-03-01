@@ -157,6 +157,7 @@ $router->get('api/compatibility/attributes/{categoryId}', CompatibilityControlle
 
 // Rotas de Perguntas e Respostas (Q&A)
 $router->get('api/questions', QuestionController::class, 'index');
+$router->get('api/questions/stats', QuestionController::class, 'stats');
 $router->get('api/questions/unanswered/count', QuestionController::class, 'countUnanswered');
 $router->get('api/questions/{id}', QuestionController::class, 'show');
 $router->post('api/questions/{id}/answer', QuestionController::class, 'answer');

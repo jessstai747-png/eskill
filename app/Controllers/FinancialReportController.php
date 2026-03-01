@@ -55,7 +55,10 @@ class FinancialReportController extends BaseController
      */
     public function index(): void
     {
-        require __DIR__ . '/../Views/dashboard/financials.php';
+        $this->renderView('dashboard/financials', [
+            'pageTitle' => 'Relatórios Financeiros',
+            'activePage' => 'financials',
+        ]);
     }
 
     /**

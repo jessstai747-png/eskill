@@ -2571,7 +2571,8 @@ $accountId = SessionHelper::getActiveAccountId();
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
 
     const ACCOUNT_ID = <?= json_encode($accountId) ?>;
-    const API_BASE = `/api/pricing-intelligence/${ACCOUNT_ID}`;
+    const HAS_ACCOUNT_ID = Number.isInteger(Number(ACCOUNT_ID)) && Number(ACCOUNT_ID) > 0;
+    const API_BASE = HAS_ACCOUNT_ID ? `/api/pricing-intelligence/${ACCOUNT_ID}` : null;
 
     let currentPage = 1;
     let totalPages = 1;
@@ -2582,6 +2583,11 @@ $accountId = SessionHelper::getActiveAccountId();
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', async function() {
+        if (!HAS_ACCOUNT_ID) {
+            showToast('Selecione uma conta Mercado Livre para usar o módulo de precificação.', 'warning');
+            return;
+        }
+
         // Verificar status da conexão ML
         await checkConnectionStatus();
 
@@ -2608,6 +2614,10 @@ $accountId = SessionHelper::getActiveAccountId();
 
     // Verificar status da conexão
     async function checkConnectionStatus() {
+        if (!API_BASE) {
+            return;
+        }
+
         try {
             const response = await fetch(`${API_BASE}/status`);
             const data = await response.json();

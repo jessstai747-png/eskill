@@ -109,9 +109,15 @@ function insertVar(text) {
 
 async function loadTemplates() {
     try {
-        const data = await requestJson('/api/messages/templates?account_id=' + (getAccountId() || ''));
-        
+        const accountId = Number(getAccountId() || 0);
         const list = document.getElementById('templatesList');
+        if (!Number.isInteger(accountId) || accountId <= 0) {
+            list.innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">Selecione uma conta ML para listar templates.</td></tr>';
+            return;
+        }
+
+        const data = await requestJson('/api/messages/templates?account_id=' + accountId);
+        
         if (!data.success || !data.templates.length) {
             list.innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">Nenhum template encontrado. Crie o primeiro ao lado!</td></tr>';
             return;

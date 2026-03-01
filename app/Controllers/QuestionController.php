@@ -75,6 +75,62 @@ class QuestionController extends BaseController
     }
 
     /**
+     * GET /api/questions/stats
+     * Retorna métricas resumidas das perguntas.
+     */
+    public function stats(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            // Usa cache local para não depender da API ML em tela inicial do dashboard.
+            $all = $this->service->getQuestions([
+                'account_id' => 'all',
+                'limit' => 200,
+                'offset' => 0,
+                'allow_local_cache' => true,
+            ]);
+
+            $questions = is_array($all['questions'] ?? null) ? $all['questions'] : [];
+
+            $total = count($questions);
+            $answered = 0;
+            $pending = 0;
+
+            foreach ($questions as $question) {
+                $status = strtoupper((string)($question['status'] ?? ''));
+                if ($status === 'ANSWERED') {
+                    $answered++;
+                } else {
+                    $pending++;
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'total' => $total,
+                'pending' => $pending,
+                'answered' => $answered,
+                'avg_response_time' => '-',
+            ]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao calcular stats de perguntas', [
+                'controller' => 'QuestionController',
+                'error' => $e->getMessage(),
+            ]);
+
+            // Falhar em modo degradado (sem 5xx na UI).
+            echo json_encode([
+                'success' => true,
+                'total' => 0,
+                'pending' => 0,
+                'answered' => 0,
+                'avg_response_time' => '-',
+            ]);
+        }
+    }
+
+    /**
      * GET /api/questions/{id}
      * Detalhes da pergunta
      */

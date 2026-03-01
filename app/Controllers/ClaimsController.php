@@ -12,7 +12,7 @@ class ClaimsController extends BaseController
 
     public function __construct()
     {
-        // parent::__construct(); 
+        parent::__construct();
         $this->claimsService = new ClaimsService();
     }
 
@@ -21,7 +21,10 @@ class ClaimsController extends BaseController
      */
     public function index(): void
     {
-        require __DIR__ . '/../Views/dashboard/claims/index.php';
+        $this->renderView('dashboard/claims/index', [
+            'pageTitle' => 'Reclamações',
+            'activePage' => 'claims',
+        ]);
     }
 
     /**

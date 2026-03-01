@@ -75,7 +75,10 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                 const data = await requestJson('/api/claims/list');
                 
                 if (data.success) {
-                    this.render(data.claims);
+                    const claims = Array.isArray(data.claims)
+                        ? data.claims
+                        : (data.claims && typeof data.claims === 'object' ? Object.values(data.claims) : []);
+                    this.render(claims);
                 }
             } catch (e) {
                 console.error(e);

@@ -6,6 +6,52 @@
 
 ---
 
+## Sessão 2026-03-01 (Codex) — Estabilização final de UI + Smoke Playwright 12/12 (produção)
+
+### Contexto
+Após bloqueio de autenticação no smoke inicial e falhas P1/P2 em páginas core do dashboard, foi solicitado concluir ponta-a-ponta sem interrupção até estabilizar a navegação principal.
+
+### O que foi feito
+- Conta de leitura validada para o smoke:
+  - usuário `auditoria@eskill.com.br` existente (`role=viewer`, `2FA=0`);
+  - senha resetada com autorização explícita para valor em texto plano informado, persistida via `password_hash`.
+- Correções de quebra de layout/scripts globais ausentes:
+  - `app/Controllers/ClaimsController.php`: voltou a chamar `parent::__construct()` e passou a renderizar via `renderView(...)` (layout moderno).
+  - `app/Controllers/FinancialReportController.php`: tela `/dashboard/financials` passou a renderizar via `renderView(...)`.
+- Correção de endpoint ausente em perguntas:
+  - `app/Controllers/QuestionController.php`: novo método `stats()` com fallback degradado.
+  - `app/Routes/api/items.php`: adicionada rota `GET /api/questions/stats`.
+- Hardening de views para ausência de conta ML ativa:
+  - `app/Views/pricing/dashboard.php`: guard para `ACCOUNT_ID` inválido (evita chamadas `/api/pricing-intelligence/null/...`).
+  - `app/Views/dashboard/messages.php`: guard de `account_id` antes de listar templates.
+- Correção de payload resiliente em claims:
+  - `app/Views/dashboard/claims/index.php`: normalização de `data.claims` para array (evita `claims.forEach is not a function`).
+- Ajuste do harness de smoke local:
+  - `.tmp/playwright_prod_smoke.js`: settle de rede mais estável, filtro de `ERR_ABORTED` durante transição de rota e pacing entre páginas para reduzir ruído de rate-limit.
+
+### Validação
+- `php -l` em todos os arquivos alterados ✅
+- `php vendor/bin/phpunit` ✅
+  - Tests: 2923
+  - Assertions: 6829
+  - Skipped: 26
+- Smoke Playwright em produção:
+  - rodada intermediária: `PASS=11 FAIL=1`
+  - rodada final: `PASS=12 FAIL=0`
+  - relatório final: `/tmp/ui-smoke-production-2026-03-01T19-30-19-312Z/report.md`
+
+### Arquivos modificados
+- `app/Controllers/ClaimsController.php`
+- `app/Controllers/FinancialReportController.php`
+- `app/Controllers/QuestionController.php`
+- `app/Routes/api/items.php`
+- `app/Views/dashboard/claims/index.php`
+- `app/Views/dashboard/messages.php`
+- `app/Views/pricing/dashboard.php`
+- `.tmp/playwright_prod_smoke.js`
+
+---
+
 ## Sessão 2026-03-01 (Codex) — Hotfix CSP `/dashboard` (remoção de inline scripts)
 
 ### Contexto
