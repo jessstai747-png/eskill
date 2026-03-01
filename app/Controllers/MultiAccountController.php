@@ -430,7 +430,20 @@ class MultiAccountController
             ];
 
             foreach ($accounts as $account) {
-                $success = $authService->refreshToken($account['id']);
+                try {
+                    $success = $authService->refreshToken($account['id']);
+                } catch (\Throwable $e) {
+                    $success = false;
+                    try {
+                        (new \App\Services\StructuredLogService())->error('Exceção ao renovar token de conta ML', [
+                            'account_id' => $account['id'],
+                            'nickname'   => $account['nickname'],
+                            'error'      => $e->getMessage(),
+                        ]);
+                    } catch (\Throwable $ignored) {
+                        // best-effort
+                    }
+                }
                 if ($success) {
                     $results['refreshed'][] = $account['nickname'];
                 } else {

@@ -741,13 +741,22 @@ class MercadoLivreAuthService
             $tokensEncrypted = 1;
         } catch (\Throwable $e) {
             $appEnv = $_ENV['APP_ENV'] ?? 'production';
+            $logger = new StructuredLogService();
+            $logger->critical('Falha ao criptografar tokens no refresh', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
             if ($appEnv === 'production' || $appEnv === 'staging') {
-                $logger = new StructuredLogService();
-                $logger->critical('Falha ao criptografar tokens no refresh', [
-                    'account_id' => $accountId,
-                    'error' => $e->getMessage()
-                ]);
-                throw new \RuntimeException('Impossível renovar tokens sem criptografia em produção. Configure APP_KEY.');
+                $executionTime = (int)((microtime(true) - $startTime) * 1000);
+                $this->markAccountDisconnected(
+                    $accountId,
+                    'encryption_failed: ' . substr($e->getMessage(), 0, 200),
+                    null,
+                    null,
+                    $expiresAtBefore,
+                    $executionTime
+                );
+                return false;
             }
         }
 
