@@ -135,7 +135,42 @@ class SyncController
                 ]);
                 return;
             }
-            
+
+            // ML-001: block sync for disconnected accounts (invalid_grant / reauth required)
+            try {
+                $stmt = $this->db->prepare(
+                    "SELECT status, last_refresh_error FROM ml_accounts WHERE id = :id LIMIT 1"
+                );
+                $stmt->execute(['id' => $accountId]);
+                $account = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+                if ($account !== false) {
+                    $acctStatus = strtolower(trim((string)($account['status'] ?? '')));
+                    $refreshErr  = strtolower(trim((string)($account['last_refresh_error'] ?? '')));
+                    $isDisconnected = $acctStatus === 'disconnected'
+                        || str_contains($refreshErr, 'invalid_grant');
+
+                    if ($isDisconnected) {
+                        http_response_code(422);
+                        echo json_encode([
+                            'success'       => false,
+                            'error'         => 'Conta desconectada — reautorização OAuth necessária antes de sincronizar.',
+                            'error_code'    => 'account_disconnected',
+                            'needs_reconnect' => true,
+                            'reconnect_url' => '/auth/authorize?reconnect=' . (int)$accountId,
+                            'action'        => 'reconnect_account',
+                        ]);
+                        return;
+                    }
+                }
+            } catch (\Exception $e) {
+                // Non-fatal: proceed even if status-check query fails (table may not exist on fresh install)
+                log_warning('SyncController::trigger — failed to verify account status', [
+                    'account_id' => $accountId,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
+
             $jobTypeMap = [
                 'orders' => 'sync_orders',
                 'items' => 'sync_items',

@@ -55,3 +55,55 @@ CREATE TABLE IF NOT EXISTS sync_logs (
     INDEX idx_status (status),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Worker execution audit (used by monitoring workers)
+CREATE TABLE IF NOT EXISTS worker_execution_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    worker_name VARCHAR(120) NOT NULL,
+    stats JSON NULL,
+    executed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_worker_execution_logs_name (worker_name),
+    INDEX idx_worker_execution_logs_executed_at (executed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Clone health check results (used by clone-health-monitor)
+CREATE TABLE IF NOT EXISTS clone_health_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    status ENUM('healthy', 'warning', 'critical') NOT NULL DEFAULT 'healthy',
+    issues_count INT UNSIGNED NOT NULL DEFAULT 0,
+    check_data JSON NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_clone_health_logs_created_at (created_at),
+    INDEX idx_clone_health_logs_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Clone item duplicate tracking (used by CloneDuplicateDetectionService)
+CREATE TABLE IF NOT EXISTS clone_duplicate_registry (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    source_item_id VARCHAR(50) NOT NULL,
+    target_item_id VARCHAR(50) NOT NULL,
+    account_id INT UNSIGNED NOT NULL,
+    job_id VARCHAR(64) NULL,
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    metadata JSON NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_source_account_status (source_item_id, account_id, status),
+    INDEX idx_target_status (target_item_id, status),
+    INDEX idx_account_created (account_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Clone sync event log (used by clone-sync-worker)
+CREATE TABLE IF NOT EXISTS clone_sync_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    account_id INT NOT NULL,
+    item_id VARCHAR(50) NOT NULL,
+    sync_type VARCHAR(50) NOT NULL,
+    sync_data JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_account (account_id),
+    INDEX idx_item (item_id),
+    INDEX idx_type (sync_type),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
