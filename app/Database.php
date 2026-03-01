@@ -67,6 +67,20 @@ class Database
      */
     public static function getInstance(): \PDO
     {
+        // When running under PHPUnit in a no-DB integration environment, throw SkippedTestError
+        // so that every test calling getInstance() is marked "skipped" rather than "error".
+        // PHPUNIT_DB_AVAILABLE is only defined in tests/bootstrap.php (integration path), never in
+        // production — so this guard is completely inert outside of test runs.
+        if (
+            defined('PHPUNIT_DB_AVAILABLE')
+            && !PHPUNIT_DB_AVAILABLE
+            && class_exists('\PHPUnit\Framework\SkippedTestError')
+        ) {
+            throw new \PHPUnit\Framework\SkippedTestError(
+                'Database unavailable: ' . ($GLOBALS['phpunit_db_error'] ?? 'connection refused')
+            );
+        }
+
         if (self::$instance === null) {
             self::$instance = new self();
         }

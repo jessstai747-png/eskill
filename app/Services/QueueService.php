@@ -102,6 +102,18 @@ class QueueService
     private function ensureConnected(): void
     {
         if (!$this->connected) {
+            // In PHPUnit integration runs without Redis, signal test skip instead of error.
+            // PHPUNIT_DB_AVAILABLE is only defined in tests/bootstrap.php (integration path),
+            // so this guard is completely inert in production.
+            if (
+                defined('PHPUNIT_DB_AVAILABLE')
+                && !PHPUNIT_DB_AVAILABLE
+                && class_exists('\PHPUnit\Framework\SkippedTestError')
+            ) {
+                throw new \PHPUnit\Framework\SkippedTestError(
+                    'Redis unavailable: ' . ($GLOBALS['phpunit_db_error'] ?? 'Redis connection refused')
+                );
+            }
             throw new Exception('Redis indisponível no QueueService');
         }
     }

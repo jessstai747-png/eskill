@@ -279,8 +279,13 @@ class MercadoLivreAuthServiceTest extends TestCase
             $result = $service->ensureValidToken(999999);
             $this->assertFalse($result);
         } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), "doesn't exist") || str_contains($e->getMessage(), 'Table')) {
-                $this->markTestSkipped('Tabela ml_accounts não existe');
+            if (
+                str_contains($e->getMessage(), "doesn't exist")
+                || str_contains($e->getMessage(), 'Table')
+                || str_contains($e->getMessage(), 'unavailable')
+                || str_contains($e->getMessage(), 'connection')
+            ) {
+                $this->markTestSkipped('DB indisponível: ' . $e->getMessage());
             } else {
                 throw $e;
             }

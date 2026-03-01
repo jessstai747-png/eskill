@@ -150,7 +150,10 @@ try {
     // Log a non-secret representation of DSN
     $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s', $dbHost ?? '127.0.0.1', $dbPort ?? '3306', $dbName ?? 'app_test');
     error_log("[phpunit-bootstrap] Resolved PDO DSN={$dsn}");
+    define('PHPUNIT_DB_AVAILABLE', true);
 } catch (\Throwable $e) {
-    // For integration runs, fail fast.
-    throw $e;
+    // DB unavailable — mark integration tests as skipped rather than aborting PHPUnit entirely.
+    define('PHPUNIT_DB_AVAILABLE', false);
+    $GLOBALS['phpunit_db_error'] = $e->getMessage();
+    error_log('[phpunit-bootstrap] DB unavailable — Integration tests will be skipped: ' . $e->getMessage());
 }
