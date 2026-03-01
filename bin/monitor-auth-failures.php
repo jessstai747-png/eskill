@@ -3,19 +3,19 @@
 
 /**
  * Auth Failure Monitor Script
- * 
+ *
  * Monitors log files for authentication failures, aggregates by IP address,
  * and automatically blocks IPs exceeding configurable thresholds.
  * Sends email alerts when total failures are high.
- * 
+ *
  * Usage:
  *   php bin/monitor-auth-failures.php [options]
- * 
+ *
  * Options:
  *   --dry-run   Simulate actions without blocking IPs or sending emails
  *   --verbose   Provide detailed console output
  *   --help      Show this help message
- * 
+ *
  * @package Eskill
  * @author SEO Team
  * @version 1.0.0
@@ -48,7 +48,7 @@ class Database
             $password = $_ENV['DB_PASSWORD'] ?? $_ENV['DB_PASS'] ?? '';
 
             $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
-            
+
             try {
                 self::$instance = new PDO($dsn, $username, $password, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -173,7 +173,7 @@ class EmailService
     private function buildEmailBody(int $totalFailures, array $blockedIps, array $topOffenders): string
     {
         $timestamp = date('Y-m-d H:i:s');
-        
+
         $html = "
         <!DOCTYPE html>
         <html>
@@ -271,7 +271,7 @@ class AuthFailureMonitor
     private GeoIPService $geoip;
     private bool $dryRun = false;
     private bool $verbose = false;
-    
+
     private int $blockThreshold;
     private int $alertThreshold;
     private int $blockDuration;
@@ -304,10 +304,10 @@ class AuthFailureMonitor
         $this->logDir = $_ENV['AUTH_LOG_DIR'] ?? __DIR__ . '/../storage/logs';
         $this->blockDuration = (int)($_ENV['AUTH_BLOCK_DURATION'] ?? 3600);
         $this->timeWindow = (int)($_ENV['AUTH_TIME_WINDOW'] ?? 3600); // 1 hour default
-        
+
         $whitelistStr = $_ENV['AUTH_IP_WHITELIST'] ?? '';
         $this->ipWhitelist = array_filter(array_map('trim', explode(',', $whitelistStr)));
-        
+
         $this->logDir = realpath(__DIR__ . '/../storage/logs');
     }
 
@@ -388,15 +388,15 @@ class AuthFailureMonitor
     {
         $failures = [];
         $cutoffTime = time() - $this->timeWindow;
-        
+
         $logFiles = glob($this->logDir . '/*.log*');
         $this->stats['logs_analyzed'] = count($logFiles);
-        
+
         $this->log("Analyzing {$this->stats['logs_analyzed']} log files", true);
 
         foreach ($logFiles as $logFile) {
             $this->log("  Processing: " . basename($logFile));
-            
+
             if (!is_readable($logFile)) {
                 $this->log("    WARNING: File not readable, skipping");
                 continue;
@@ -410,7 +410,7 @@ class AuthFailureMonitor
             $lineNumber = 0;
             while (($line = fgets($handle)) !== false) {
                 $lineNumber++;
-                
+
                 // Skip lines older than time window
                 $timestamp = $this->extractTimestamp($line);
                 if ($timestamp && $timestamp < $cutoffTime) {
@@ -497,7 +497,7 @@ class AuthFailureMonitor
 
         // Try to parse JSON
         $data = json_decode($line, true);
-        
+
         return [
             'ip_address' => $ipAddress,
             'user_agent' => $data['user_agent'] ?? $this->extractUserAgent($line),
@@ -562,7 +562,7 @@ class AuthFailureMonitor
 
         foreach ($failures as $failure) {
             $ip = $failure['ip_address'];
-            
+
             if (!isset($aggregated[$ip])) {
                 $aggregated[$ip] = [
                     'ip_address' => $ip,
@@ -596,7 +596,7 @@ class AuthFailureMonitor
 
         foreach ($aggregated as $data) {
             $ip = $data['ip_address'];
-            
+
             // Skip if below threshold
             if ($data['count'] < $this->blockThreshold) {
                 continue;
@@ -641,22 +641,22 @@ class AuthFailureMonitor
 
         if ($this->dryRun) {
             $this->log("[DRY RUN] Would block {$ip} (failures: {$count}, expires: {$expiresAt})", true);
-            
+
             // Still log failures in dry run
             foreach ($data['failures'] as $failure) {
                 $this->logFailure($failure);
             }
-            
+
             return true;
         }
 
         try {
             // Resolver geolocalização
             $geoData = $this->geoip->lookup($ip);
-            
+
             // Insert block record
             $stmt = $this->db->prepare("
-                INSERT INTO auth_blocked_ips 
+                INSERT INTO auth_blocked_ips
                 (ip_address, country_code, country_name, city, reason, failure_count, expires_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
@@ -697,10 +697,10 @@ class AuthFailureMonitor
         try {
             // Resolver geolocalização
             $geoData = $this->geoip->lookup($failure['ip_address']);
-            
+
             $stmt = $this->db->prepare("
-                INSERT INTO auth_failure_log 
-                (ip_address, country_code, country_name, city, latitude, longitude, 
+                INSERT INTO auth_failure_log
+                (ip_address, country_code, country_name, city, latitude, longitude,
                  user_agent, username, failure_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
@@ -731,7 +731,7 @@ class AuthFailureMonitor
         try {
             $topOffenders = array_slice($aggregated, 0, 20);
             $emailService = new EmailService($this->dryRun);
-            
+
             if ($emailService->sendAlert($this->stats['failures_detected'], $blockedIps, $topOffenders)) {
                 $this->stats['alerts_sent']++;
                 $this->log("Alert email sent successfully", true);
@@ -793,10 +793,10 @@ Environment Variables:
   AUTH_BLOCK_DURATION              Block duration in seconds (default: 3600)
   AUTH_TIME_WINDOW                 Time window to analyze in seconds (default: 3600)
   AUTH_IP_WHITELIST                Comma-separated list of IPs to never block
-  
+
   DB_HOST, DB_PORT, DB_NAME        Database connection settings
   DB_USER, DB_PASS
-  
+
   ADMIN_EMAIL                      Email address for alerts
   SMTP_HOST, SMTP_PORT             SMTP server settings
   SMTP_USER, SMTP_PASS
@@ -836,21 +836,21 @@ if ($appEnv !== 'production' && !$verbose) {
 // Run monitor
 try {
     $startTime = microtime(true);
-    
+
     $monitor = new AuthFailureMonitor($dryRun, $verbose);
     $monitor->run();
-    
+
     $executionTime = round(microtime(true) - $startTime, 2);
     $stats = $monitor->getStats();
     $stats['execution_time'] = $executionTime;
     $stats['timestamp'] = date('Y-m-d H:i:s');
-    
+
     // Output final report as JSON
     echo "\n" . str_repeat('=', 70) . "\n";
     echo "EXECUTION REPORT\n";
     echo str_repeat('=', 70) . "\n";
     echo json_encode($stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
-    
+
     exit(0);
 } catch (Exception $e) {
     echo "\nFATAL ERROR: " . $e->getMessage() . "\n";

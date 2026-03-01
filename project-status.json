@@ -1,938 +1,903 @@
 {
-    "_meta": {
-        "project": "eskill.com.br — SEO Optimizer para Mercado Livre",
-        "company": "AWA Motos — Distribuidora de peças para motos",
-        "stack": "PHP 8.0+ | MySQL/PDO | Guzzle 7 | Monolog 3 | Redis",
-        "last_updated": "2026-02-20",
-        "updated_by": "copilot-implementador",
-        "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps."
+  "_meta": {
+    "project": "eskill.com.br — SEO Optimizer para Mercado Livre",
+    "company": "AWA Motos — Distribuidora de peças para motos",
+    "stack": "PHP 8.0+ | MySQL/PDO | Guzzle 7 | Monolog 3 | Redis",
+    "last_updated": "2026-02-20",
+    "updated_by": "copilot-implementador",
+    "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps."
+  },
+  "features": [
+    {
+      "id": "AUTH-001",
+      "category": "authentication",
+      "description": "Login com email/senha e sessão PHP",
+      "files": [
+        "app/Controllers/AuthController.php",
+        "app/Services/AuthService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
     },
-    "features": [
-        {
-            "id": "AUTH-001",
-            "category": "authentication",
-            "description": "Login com email/senha e sessão PHP",
-            "files": [
-                "app/Controllers/AuthController.php",
-                "app/Services/AuthService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "AUTH-002",
-            "category": "authentication",
-            "description": "OAuth 2.0 com Mercado Livre (access_token + refresh_token)",
-            "files": [
-                "app/Services/MercadoLivreAuthService.php",
-                "app/Services/RefreshTokenService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "AUTH-003",
-            "category": "authentication",
-            "description": "Auto refresh de token quando access_token expira (worker background)",
-            "files": [
-                "bin/auto-token-refresh-worker.php",
-                "app/Services/UnifiedTokenRefreshService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "AUTH-004",
-            "category": "authentication",
-            "description": "Two-factor authentication (2FA)",
-            "files": [
-                "app/Services/TwoFactorService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "DASH-001",
-            "category": "dashboard",
-            "description": "Dashboard principal com métricas de vendas, anúncios e saúde da conta",
-            "files": [
-                "app/Controllers/DashboardController.php",
-                "app/Services/DashboardService.php",
-                "app/Views/dashboard/"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-26"
-        },
-        {
-            "id": "DASH-002",
-            "category": "dashboard",
-            "description": "Token Dashboard — monitoramento de tokens OAuth e saúde",
-            "files": [
-                "app/Controllers/TokenDashboardController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "SEO-001",
-            "category": "seo",
-            "description": "Otimização de títulos de anúncios com keywords relevantes (SEO Killer)",
-            "files": [
-                "app/Controllers/SEOKillerController.php",
-                "app/Services/SEO/"
-            ],
-            "passes": true,
-            "last_tested": "2025-07-25"
-        },
-        {
-            "id": "SEO-002",
-            "category": "seo",
-            "description": "Geração de títulos otimizados com IA (Claude/GPT)",
-            "files": [
-                "app/Services/TitleGenerator/",
-                "app/Controllers/TitleGeneratorController.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-07-25"
-        },
-        {
-            "id": "SEO-003",
-            "category": "seo",
-            "description": "Otimização de descrições de anúncios com IA",
-            "files": [
-                "app/Controllers/SeoDescriptionController.php",
-                "app/Services/AIContentGeneratorService.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-07-25"
-        },
-        {
-            "id": "SEO-004",
-            "category": "seo",
-            "description": "Pesquisa e mineração de keywords (keyword research)",
-            "files": [
-                "app/Services/KeywordResearchService.php",
-                "app/Services/KeywordMinerService.php",
-                "app/Controllers/SeoKeywordsController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "SEO-005",
-            "category": "seo",
-            "description": "Cobertura SEO — análise de gaps e oportunidades",
-            "files": [
-                "app/Controllers/SeoCoverageController.php",
-                "app/Services/GapHunterService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "SEO-006",
-            "category": "seo",
-            "description": "Sinônimos SEO automáticos para enrichment de títulos",
-            "files": [
-                "app/Controllers/SeoSynonymsController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "SEO-007",
-            "category": "seo",
-            "description": "Bulk SEO — otimização em lote de múltiplos anúncios",
-            "files": [
-                "app/Services/BulkSEOService.php",
-                "bin/bulk-seo-worker.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "SEO-008",
-            "category": "seo",
-            "description": "SEO Performance tracking — monitoramento de rankings e posições",
-            "files": [
-                "bin/seo-performance-worker.php",
-                "app/Controllers/SeoOptimizationController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "CLONE-001",
-            "category": "catalog_clone",
-            "description": "Clonagem de catálogo de uma conta ML para outra",
-            "files": [
-                "app/Services/CatalogCloneService.php",
-                "app/Controllers/CatalogCloneController.php",
-                "bin/catalog-clone-worker.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-24"
-        },
-        {
-            "id": "CLONE-002",
-            "category": "catalog_clone",
-            "description": "Clone avançado com templates e customização por categoria",
-            "files": [
-                "app/Controllers/CloneAdvancedController.php",
-                "app/Services/CloneTemplateService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "CLONE-003",
-            "category": "catalog_clone",
-            "description": "Clone A/B Testing — testar variações de anúncios clonados",
-            "files": [
-                "app/Controllers/CloneABTestingController.php",
-                "app/Services/CloneABTestingService.php",
-                "bin/clone-ab-testing-worker.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "CLONE-004",
-            "category": "catalog_clone",
-            "description": "Clone automação — scheduler e triggers para clonagem automática",
-            "files": [
-                "app/Controllers/CloneAutomationController.php",
-                "app/Services/CloneAutomationService.php",
-                "bin/clone-automation-worker.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "CLONE-005",
-            "category": "catalog_clone",
-            "description": "Clone ROI — análise de retorno sobre investimento dos clones",
-            "files": [
-                "app/Controllers/CloneROIAnalysisController.php",
-                "app/Services/CloneROIAnalysisService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "CLONE-006",
-            "category": "catalog_clone",
-            "description": "Clone analytics — métricas e dashboards de performance do clone",
-            "files": [
-                "app/Controllers/CloneAnalyticsController.php",
-                "app/Services/CloneAnalyticsService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-19"
-        },
-        {
-            "id": "CLONE-007",
-            "category": "catalog_clone",
-            "description": "Clone health monitor — saúde e status dos itens clonados",
-            "files": [
-                "bin/clone-health-monitor.php",
-                "app/Services/CloneHealthMonitorService.php",
-                "app/Controllers/CloneAdvancedController.php",
-                "tests/Unit/Services/CloneHealthMonitorServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-27"
-        },
-        {
-            "id": "CLONE-008",
-            "category": "catalog_clone",
-            "description": "Clone sync — sincronização contínua entre contas",
-            "files": [
-                "bin/clone-sync-worker.php",
-                "app/Services/CloneSyncService.php",
-                "tests/Unit/Services/CloneSyncServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "CLONE-009",
-            "category": "catalog_clone",
-            "description": "Wizard de Clonagem por Concorrente — fluxo 4 passos: busca vendedor ML (por ID, nickname ou URL), browser de anúncios com facets e select-all, configuração com guardrails e normalização de opções, validação pré-execução + execução com polling de progresso e resultados detalhados",
-            "files": [
-                "app/Controllers/CatalogCloneController.php",
-                "app/Controllers/DashboardController.php",
-                "app/Services/CatalogCloneService.php",
-                "app/Services/JobService.php",
-                "app/Routes/api.php",
-                "app/Routes/web.php",
-                "app/Views/dashboard/catalog_clone_wizard.php",
-                "tests/Unit/Services/CatalogCloneServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-24"
-        },
-        {
-            "id": "PRICE-001",
-            "category": "pricing",
-            "description": "Pricing dinâmico baseado em concorrência",
-            "files": [
-                "app/Controllers/DynamicPricingController.php",
-                "app/Services/DynamicPricingService.php",
-                "tests/Unit/Services/DynamicPricingServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "PRICE-002",
-            "category": "pricing",
-            "description": "Auto pricing optimizer — otimização automática de preços",
-            "files": [
-                "bin/auto-pricing-optimizer.php",
-                "app/Services/AutoPricingOptimizerService.php",
-                "tests/Unit/Services/AutoPricingOptimizerServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "PRICE-003",
-            "category": "pricing",
-            "description": "Rules engine — regras de precificação automatizadas",
-            "files": [
-                "app/Services/PriceRulesEngineService.php",
-                "bin/rules-engine-worker.php",
-                "tests/Unit/Services/PriceRulesEngineServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "PRICE-004",
-            "category": "pricing",
-            "description": "Price history e analytics — histórico e tendências de preços",
-            "files": [
-                "app/Services/PriceHistoryService.php",
-                "app/Services/PriceAnalyticsService.php",
-                "tests/Unit/Services/PriceHistoryServiceTest.php",
-                "tests/Unit/Services/PriceAnalyticsServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-21"
-        },
-        {
-            "id": "PRICE-006",
-            "category": "pricing",
-            "description": "Pricing intelligence — monitoramento de concorrentes via API do Mercado Livre",
-            "files": [
-                "app/Controllers/PricingIntelligenceController.php",
-                "app/Services/PricingCompetitorMonitorService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-21"
-        },
-        {
-            "id": "PRICE-005",
-            "category": "pricing",
-            "description": "Scheduled pricing — agendamento de mudanças de preço",
-            "files": [
-                "app/Services/ScheduledPriceService.php",
-                "bin/scheduled-price-worker.php",
-                "tests/Unit/Services/ScheduledPriceServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "AI-001",
-            "category": "ai_integration",
-            "description": "Integração com Claude (Anthropic) para geração de conteúdo",
-            "files": [
-                "app/Services/ClaudeClient.php",
-                "app/Services/AI/"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "AI-002",
-            "category": "ai_integration",
-            "description": "AI Center — dashboard centralizado de recursos IA",
-            "files": [
-                "app/Controllers/AICenterController.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "AI-003",
-            "category": "ai_integration",
-            "description": "AI Predictions — previsão de vendas e tendências",
-            "files": [
-                "app/Controllers/AIPredictionsController.php",
-                "app/Services/AIPredictionsService.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "AI-004",
-            "category": "ai_integration",
-            "description": "AI Queue — fila de processamento com workers em background",
-            "files": [
-                "bin/ai-worker.php",
-                "bin/ai-queue-monitor.php",
-                "app/Services/QueueService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-26"
-        },
-        {
-            "id": "AI-005",
-            "category": "ai_integration",
-            "description": "AI Image Analyzer — análise de imagens de produtos com IA",
-            "files": [
-                "app/Services/AIImageAnalyzerService.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "AI-006",
-            "category": "ai_integration",
-            "description": "Deep Research — pesquisa profunda de mercado com IA",
-            "files": [
-                "app/Controllers/DeepResearchController.php",
-                "app/Services/DeepResearchService.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "AI-007",
-            "category": "ai_integration",
-            "description": "Chatbot AI — assistente conversacional para e-commerce",
-            "files": [
-                "app/Controllers/ChatbotAIController.php",
-                "app/Services/ChatbotAIService.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "COMP-001",
-            "category": "competitor",
-            "description": "Análise de concorrentes — preços, posições, tendências",
-            "files": [
-                "app/Controllers/CompetitorAnalysisController.php",
-                "app/Services/CompetitorAnalysisService.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "COMP-002",
-            "category": "competitor",
-            "description": "Monitor de concorrentes — monitoramento contínuo em background",
-            "files": [
-                "app/Controllers/CompetitorMonitorController.php",
-                "bin/competitor-monitor-worker.php"
-            ],
-            "passes": true,
-            "last_tested": "2025-06-28"
-        },
-        {
-            "id": "ITEMS-001",
-            "category": "items",
-            "description": "CRUD de anúncios — listar, editar, pausar, ativar itens no ML",
-            "files": [
-                "app/Controllers/ItemController.php",
-                "app/Services/ItemService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-24"
-        },
-        {
-            "id": "ITEMS-002",
-            "category": "items",
-            "description": "Bulk editor — edição em lote de múltiplos anúncios",
-            "files": [
-                "app/Controllers/BulkEditorController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "ITEMS-003",
-            "category": "items",
-            "description": "Listing Builder — criação guiada de anúncios otimizados",
-            "files": [
-                "app/Controllers/ListingBuilderController.php",
-                "app/Services/ListingBuilderService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "ITEMS-004",
-            "category": "items",
-            "description": "Ficha técnica — otimização de atributos técnicos do produto",
-            "files": [
-                "app/Controllers/TechnicalSheetController.php",
-                "app/Services/TechSheetService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "ITEMS-005",
-            "category": "items",
-            "description": "EAN/GTIN — gerenciamento de códigos de barras",
-            "files": [
-                "app/Controllers/EanController.php",
-                "app/Services/EanService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "STOCK-001",
-            "category": "stock",
-            "description": "Stock Sync — sincronização de estoque entre sistema e ML",
-            "files": [
-                "app/Controllers/StockSyncController.php",
-                "bin/stock-sync-worker.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "ORDERS-001",
-            "category": "orders",
-            "description": "Gerenciamento de pedidos do Mercado Livre",
-            "files": [
-                "app/Controllers/OrderController.php",
-                "app/Controllers/OrdersController.php",
-                "app/Services/OrderService.php",
-                "tests/Unit/Services/OrderServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-26"
-        },
-        {
-            "id": "ORDERS-002",
-            "category": "orders",
-            "description": "Perguntas e respostas automáticas com IA",
-            "files": [
-                "app/Controllers/QuestionController.php",
-                "app/Services/QuestionService.php",
-                "tests/Unit/Services/QuestionServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "SHIP-001",
-            "category": "shipping",
-            "description": "Cálculo e gestão de frete (Mercado Envios)",
-            "files": [
-                "app/Controllers/ShippingController.php",
-                "app/Services/ShippingService.php",
-                "tests/Unit/Services/ShippingServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "REPORT-001",
-            "category": "reports",
-            "description": "Relatórios avançados — vendas, performance, financeiro",
-            "files": [
-                "app/Controllers/AdvancedReportController.php",
-                "app/Services/ReportService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "REPORT-002",
-            "category": "reports",
-            "description": "Relatórios financeiros — comissões, taxas, margem",
-            "files": [
-                "app/Controllers/FinancialReportController.php",
-                "app/Services/FinancialService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "REPORT-003",
-            "category": "reports",
-            "description": "Export de dados — PDF, CSV, Excel",
-            "files": [
-                "app/Controllers/ExportController.php",
-                "app/Services/ExportService.php",
-                "app/Services/PdfService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "REPORT-004",
-            "category": "reports",
-            "description": "Relatórios automáticos por email/push (weekly digest)",
-            "files": [
-                "bin/automated-reports-worker.php",
-                "bin/weekly-report.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "NOTIF-001",
-            "category": "notifications",
-            "description": "Push notifications (web-push via minishlink)",
-            "files": [
-                "app/Controllers/PushController.php",
-                "app/Services/PushNotificationService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "NOTIF-002",
-            "category": "notifications",
-            "description": "Real-time notifications via polling/SSE",
-            "files": [
-                "app/Controllers/RealTimeNotificationController.php",
-                "app/Services/RealTimeNotificationService.php",
-                "tests/Unit/Services/RealTimeNotificationServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-24"
-        },
-        {
-            "id": "NOTIF-003",
-            "category": "notifications",
-            "description": "Email notifications (PHPMailer)",
-            "files": [
-                "app/Services/EmailService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "NOTIF-004",
-            "category": "notifications",
-            "description": "WhatsApp/Telegram integration para alertas",
-            "files": [
-                "app/Controllers/WhatsAppController.php",
-                "app/Services/WhatsAppService.php",
-                "app/Services/TelegramService.php",
-                "tests/Unit/Services/WhatsAppServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-21"
-        },
-        {
-            "id": "HEALTH-001",
-            "category": "monitoring",
-            "description": "Account Health — monitoramento de saúde da conta ML",
-            "files": [
-                "app/Controllers/AccountHealthController.php",
-                "app/Services/AccountHealthService.php",
-                "app/Services/MercadoLivreAuthService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-26"
-        },
-        {
-            "id": "HEALTH-002",
-            "category": "monitoring",
-            "description": "Error monitoring — rastreamento de erros e alertas",
-            "files": [
-                "app/Controllers/ErrorMonitoringController.php",
-                "app/Services/ErrorMonitoringService.php",
-                "tests/Unit/Services/ErrorMonitoringServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "HEALTH-003",
-            "category": "monitoring",
-            "description": "Health endpoint — /health para verificação de status do sistema",
-            "files": [
-                "app/Controllers/HealthController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "SEC-001",
-            "category": "security",
-            "description": "Input validation e sanitização em todas as rotas",
-            "files": [
-                "app/Middleware/",
-                "app/Controllers/SecurityController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "SEC-002",
-            "category": "security",
-            "description": "Rate limiting para proteção contra abuse",
-            "files": [
-                "app/Services/RateLimitTrackerService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "SEC-003",
-            "category": "security",
-            "description": "Encryption service — dados sensíveis criptografados",
-            "files": [
-                "app/Services/EncryptionService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "SEC-004",
-            "category": "security",
-            "description": "Audit log — registro de ações sensíveis do usuário",
-            "files": [
-                "app/Services/AuditLogService.php",
-                "app/Services/AuditService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "WEBHOOK-001",
-            "category": "webhooks",
-            "description": "Webhooks do Mercado Livre — receber notificações de pedidos, perguntas, etc.",
-            "files": [
-                "app/Controllers/MercadoLivreWebhookController.php",
-                "app/Services/MercadoLivreWebhookService.php",
-                "tests/Unit/Services/MercadoLivreWebhookServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "WEBHOOK-002",
-            "category": "webhooks",
-            "description": "Integração CLAWDBOT — webhook assinado (HMAC) para disparo seguro de jobs (ex: run_agent)",
-            "files": [
-                "app/Controllers/ClawdbotWebhookController.php",
-                "app/Services/ClawdbotWebhookService.php",
-                "app/Routes/api.php",
-                "tests/Unit/Services/ClawdbotWebhookServiceTest.php",
-                "phpunit.xml",
-                ".env.example"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-22"
-        },
-        {
-            "id": "PROMO-001",
-            "category": "promotions",
-            "description": "Gestão de promoções e descontos no ML",
-            "files": [
-                "app/Controllers/PromotionController.php",
-                "app/Services/PromotionService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "BRAND-001",
-            "category": "brand",
-            "description": "Brand Central — gestão de marca e identidade no ML",
-            "files": [
-                "app/Controllers/BrandCentralController.php",
-                "app/Services/BrandCentralService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "BRAND-002",
-            "category": "brand",
-            "description": "Brand Analyzer — análise de posicionamento de marca",
-            "files": [
-                "app/Controllers/BrandAnalyzerController.php",
-                "app/Services/BrandAnalyzerService.php",
-                "tests/Unit/Services/BrandAnalyzerServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-21"
-        },
-        {
-            "id": "MULTI-001",
-            "category": "multi_account",
-            "description": "Gerenciamento de múltiplas contas ML",
-            "files": [
-                "app/Controllers/MultiAccountController.php",
-                "tests/Unit/Controllers/MultiAccountControllerTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-21"
-        },
-        {
-            "id": "TRENDS-001",
-            "category": "market",
-            "description": "Análise de tendências de mercado",
-            "files": [
-                "app/Controllers/TrendsController.php",
-                "app/Services/TrendsService.php",
-                "tests/Unit/Services/TrendsServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-21"
-        },
-        {
-            "id": "CLAIMS-001",
-            "category": "after_sale",
-            "description": "Gestão de reclamações e devoluções",
-            "files": [
-                "app/Controllers/ClaimsController.php",
-                "app/Services/ClaimsService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "SETTINGS-001",
-            "category": "settings",
-            "description": "Configurações do sistema — preferências, integrações, perfil",
-            "files": [
-                "app/Controllers/SettingsController.php",
-                "app/Services/SettingsService.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "CACHE-001",
-            "category": "infrastructure",
-            "description": "Cache Redis — invalidação, warmup, gestão",
-            "files": [
-                "app/Services/CacheService.php",
-                "app/Services/AdvancedRedisCacheService.php",
-                "app/Controllers/CacheController.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "SHOPEE-001",
-            "category": "marketplace",
-            "description": "Integração com Shopee (marketplace secundário)",
-            "files": [
-                "app/Controllers/ShopeeController.php",
-                "app/Services/ShopeeService.php",
-                "tests/Unit/Services/ShopeeServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "ADS-001",
-            "category": "advertising",
-            "description": "Gestão de Product Ads no Mercado Livre",
-            "files": [
-                "app/Controllers/AdsController.php",
-                "app/Services/AdsService.php",
-                "tests/Unit/Services/AdsServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-21"
-        },
-        {
-            "id": "AI-008",
-            "category": "ai_integration",
-            "description": "ML-AI Integration Pipeline — bridge entre API do Mercado Livre e provedores IA com circuit breaker, fallback template, e batch processing",
-            "files": [
-                "app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php",
-                "app/Controllers/MLAIIntegrationController.php",
-                "app/Services/AI/Core/AIProviderManager.php",
-                "app/Services/AI/Core/AIOptimizationEngine.php",
-                "app/Routes/api.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "AI-009",
-            "category": "ai_integration",
-            "description": "ML-AI Version Management — comparação de versões, tracking de impacto real, e limpeza de snapshots antigos via VersioningService",
-            "files": [
-                "app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php",
-                "app/Controllers/MLAIIntegrationController.php",
-                "app/Services/SEO/VersioningService.php",
-                "app/Routes/api.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "GOV-001",
-            "category": "governance",
-            "description": "AccountGovernanceService — Motor de Governança e Recuperação de Conta ML com item scoring, classificação 8 tipos, account status 5 estados, density risk, guardrails, recovery plan 3 fases, week plan 7 dias, actions com MOTIVO/IMPACTO/RISCO/JANELA/ROLLBACK, top 5 causes, executive summary",
-            "files": [
-                "app/Services/AccountGovernanceService.php",
-                "app/Controllers/AccountGovernanceController.php",
-                "app/Views/dashboard/account-governance.php",
-                "tests/Unit/AccountGovernanceServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "GOV-002",
-            "category": "governance",
-            "description": "AccountGovernanceIntegrationService — Integração com API do Mercado Livre para buscar dados reais (items, visitas, vendas, reputação) e alimentar o motor de governança",
-            "files": [
-                "app/Services/MercadoLivre/AccountGovernanceIntegrationService.php",
-                "tests/Unit/AccountGovernanceIntegrationServiceTest.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-20"
-        },
-        {
-            "id": "GOV-003",
-            "category": "governance",
-            "description": "Governance Diagnostic Worker — Worker background para diagnósticos periódicos de governança em todas as contas ML, com histórico e alertas",
-            "files": [
-                "bin/governance-diagnostic-worker.php",
-                "database/migrations/2026_02_20_create_governance_diagnostic_history.php",
-                "app/Views/dashboard/account-governance.php"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-23"
-        },
-        {
-            "id": "ASSIST-001",
-            "category": "assistant_connector",
-            "description": "Assistant Connector (Opção A) — API protegida por Bearer token + scopes para integração externa (multi-conta), com ingestão de eventos, enfileiramento de ações e idempotência",
-            "files": [
-                "app/Controllers/AssistantConnectorController.php",
-                "app/Services/AssistantConnectorService.php",
-                "app/Services/AssistantActionExecutorService.php",
-                "app/Services/JobService.php",
-                "app/Services/ApiTokenService.php",
-                "app/Routes/api.php",
-                "database/migrations/2026_02_23_create_assistant_connector_tables.sql",
-                "tests/Unit/Services/AssistantConnectorServiceTest.php",
-                "phpunit.xml"
-            ],
-            "passes": true,
-            "last_tested": "2026-02-23"
-        }
-    ]
+    {
+      "id": "AUTH-002",
+      "category": "authentication",
+      "description": "OAuth 2.0 com Mercado Livre (access_token + refresh_token)",
+      "files": [
+        "app/Services/MercadoLivreAuthService.php",
+        "app/Services/RefreshTokenService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-27"
+    },
+    {
+      "id": "AUTH-003",
+      "category": "authentication",
+      "description": "Auto refresh de token quando access_token expira (worker background)",
+      "files": [
+        "bin/auto-token-refresh-worker.php",
+        "app/Services/UnifiedTokenRefreshService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "AUTH-004",
+      "category": "authentication",
+      "description": "Two-factor authentication (2FA)",
+      "files": ["app/Services/TwoFactorService.php"],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "DASH-001",
+      "category": "dashboard",
+      "description": "Dashboard principal com métricas de vendas, anúncios e saúde da conta",
+      "files": [
+        "app/Controllers/DashboardController.php",
+        "app/Services/DashboardService.php",
+        "app/Views/dashboard/"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-26"
+    },
+    {
+      "id": "DASH-002",
+      "category": "dashboard",
+      "description": "Token Dashboard — monitoramento de tokens OAuth e saúde",
+      "files": ["app/Controllers/TokenDashboardController.php"],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "SEO-001",
+      "category": "seo",
+      "description": "Otimização de títulos de anúncios com keywords relevantes (SEO Killer)",
+      "files": ["app/Controllers/SEOKillerController.php", "app/Services/SEO/"],
+      "passes": true,
+      "last_tested": "2025-07-25"
+    },
+    {
+      "id": "SEO-002",
+      "category": "seo",
+      "description": "Geração de títulos otimizados com IA (Claude/GPT)",
+      "files": [
+        "app/Services/TitleGenerator/",
+        "app/Controllers/TitleGeneratorController.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-07-25"
+    },
+    {
+      "id": "SEO-003",
+      "category": "seo",
+      "description": "Otimização de descrições de anúncios com IA",
+      "files": [
+        "app/Controllers/SeoDescriptionController.php",
+        "app/Services/AIContentGeneratorService.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-07-25"
+    },
+    {
+      "id": "SEO-004",
+      "category": "seo",
+      "description": "Pesquisa e mineração de keywords (keyword research)",
+      "files": [
+        "app/Services/KeywordResearchService.php",
+        "app/Services/KeywordMinerService.php",
+        "app/Controllers/SeoKeywordsController.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "SEO-005",
+      "category": "seo",
+      "description": "Cobertura SEO — análise de gaps e oportunidades",
+      "files": [
+        "app/Controllers/SeoCoverageController.php",
+        "app/Services/GapHunterService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "SEO-006",
+      "category": "seo",
+      "description": "Sinônimos SEO automáticos para enrichment de títulos",
+      "files": ["app/Controllers/SeoSynonymsController.php"],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "SEO-007",
+      "category": "seo",
+      "description": "Bulk SEO — otimização em lote de múltiplos anúncios",
+      "files": ["app/Services/BulkSEOService.php", "bin/bulk-seo-worker.php"],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "SEO-008",
+      "category": "seo",
+      "description": "SEO Performance tracking — monitoramento de rankings e posições",
+      "files": [
+        "bin/seo-performance-worker.php",
+        "app/Controllers/SeoOptimizationController.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "CLONE-001",
+      "category": "catalog_clone",
+      "description": "Clonagem de catálogo de uma conta ML para outra",
+      "files": [
+        "app/Services/CatalogCloneService.php",
+        "app/Controllers/CatalogCloneController.php",
+        "bin/catalog-clone-worker.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-24"
+    },
+    {
+      "id": "CLONE-002",
+      "category": "catalog_clone",
+      "description": "Clone avançado com templates e customização por categoria",
+      "files": [
+        "app/Controllers/CloneAdvancedController.php",
+        "app/Services/CloneTemplateService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "CLONE-003",
+      "category": "catalog_clone",
+      "description": "Clone A/B Testing — testar variações de anúncios clonados",
+      "files": [
+        "app/Controllers/CloneABTestingController.php",
+        "app/Services/CloneABTestingService.php",
+        "bin/clone-ab-testing-worker.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "CLONE-004",
+      "category": "catalog_clone",
+      "description": "Clone automação — scheduler e triggers para clonagem automática",
+      "files": [
+        "app/Controllers/CloneAutomationController.php",
+        "app/Services/CloneAutomationService.php",
+        "bin/clone-automation-worker.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "CLONE-005",
+      "category": "catalog_clone",
+      "description": "Clone ROI — análise de retorno sobre investimento dos clones",
+      "files": [
+        "app/Controllers/CloneROIAnalysisController.php",
+        "app/Services/CloneROIAnalysisService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "CLONE-006",
+      "category": "catalog_clone",
+      "description": "Clone analytics — métricas e dashboards de performance do clone",
+      "files": [
+        "app/Controllers/CloneAnalyticsController.php",
+        "app/Services/CloneAnalyticsService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-19"
+    },
+    {
+      "id": "CLONE-007",
+      "category": "catalog_clone",
+      "description": "Clone health monitor — saúde e status dos itens clonados",
+      "files": [
+        "bin/clone-health-monitor.php",
+        "app/Services/CloneHealthMonitorService.php",
+        "app/Controllers/CloneAdvancedController.php",
+        "tests/Unit/Services/CloneHealthMonitorServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-27"
+    },
+    {
+      "id": "CLONE-008",
+      "category": "catalog_clone",
+      "description": "Clone sync — sincronização contínua entre contas",
+      "files": [
+        "bin/clone-sync-worker.php",
+        "app/Services/CloneSyncService.php",
+        "tests/Unit/Services/CloneSyncServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "CLONE-009",
+      "category": "catalog_clone",
+      "description": "Wizard de Clonagem por Concorrente — fluxo 4 passos: busca vendedor ML (por ID, nickname ou URL), browser de anúncios com facets e select-all, configuração com guardrails e normalização de opções, validação pré-execução + execução com polling de progresso e resultados detalhados",
+      "files": [
+        "app/Controllers/CatalogCloneController.php",
+        "app/Controllers/DashboardController.php",
+        "app/Services/CatalogCloneService.php",
+        "app/Services/JobService.php",
+        "app/Routes/api.php",
+        "app/Routes/web.php",
+        "app/Views/dashboard/catalog_clone_wizard.php",
+        "tests/Unit/Services/CatalogCloneServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-24"
+    },
+    {
+      "id": "PRICE-001",
+      "category": "pricing",
+      "description": "Pricing dinâmico baseado em concorrência",
+      "files": [
+        "app/Controllers/DynamicPricingController.php",
+        "app/Services/DynamicPricingService.php",
+        "tests/Unit/Services/DynamicPricingServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "PRICE-002",
+      "category": "pricing",
+      "description": "Auto pricing optimizer — otimização automática de preços",
+      "files": [
+        "bin/auto-pricing-optimizer.php",
+        "app/Services/AutoPricingOptimizerService.php",
+        "tests/Unit/Services/AutoPricingOptimizerServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "PRICE-003",
+      "category": "pricing",
+      "description": "Rules engine — regras de precificação automatizadas",
+      "files": [
+        "app/Services/PriceRulesEngineService.php",
+        "bin/rules-engine-worker.php",
+        "tests/Unit/Services/PriceRulesEngineServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "PRICE-004",
+      "category": "pricing",
+      "description": "Price history e analytics — histórico e tendências de preços",
+      "files": [
+        "app/Services/PriceHistoryService.php",
+        "app/Services/PriceAnalyticsService.php",
+        "tests/Unit/Services/PriceHistoryServiceTest.php",
+        "tests/Unit/Services/PriceAnalyticsServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-21"
+    },
+    {
+      "id": "PRICE-006",
+      "category": "pricing",
+      "description": "Pricing intelligence — monitoramento de concorrentes via API do Mercado Livre",
+      "files": [
+        "app/Controllers/PricingIntelligenceController.php",
+        "app/Services/PricingCompetitorMonitorService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-21"
+    },
+    {
+      "id": "PRICE-005",
+      "category": "pricing",
+      "description": "Scheduled pricing — agendamento de mudanças de preço",
+      "files": [
+        "app/Services/ScheduledPriceService.php",
+        "bin/scheduled-price-worker.php",
+        "tests/Unit/Services/ScheduledPriceServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "AI-001",
+      "category": "ai_integration",
+      "description": "Integração com Claude (Anthropic) para geração de conteúdo",
+      "files": ["app/Services/ClaudeClient.php", "app/Services/AI/"],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "AI-002",
+      "category": "ai_integration",
+      "description": "AI Center — dashboard centralizado de recursos IA",
+      "files": ["app/Controllers/AICenterController.php"],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "AI-003",
+      "category": "ai_integration",
+      "description": "AI Predictions — previsão de vendas e tendências",
+      "files": [
+        "app/Controllers/AIPredictionsController.php",
+        "app/Services/AIPredictionsService.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "AI-004",
+      "category": "ai_integration",
+      "description": "AI Queue — fila de processamento com workers em background",
+      "files": [
+        "bin/ai-worker.php",
+        "bin/ai-queue-monitor.php",
+        "app/Services/QueueService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-26"
+    },
+    {
+      "id": "AI-005",
+      "category": "ai_integration",
+      "description": "AI Image Analyzer — análise de imagens de produtos com IA",
+      "files": ["app/Services/AIImageAnalyzerService.php"],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "AI-006",
+      "category": "ai_integration",
+      "description": "Deep Research — pesquisa profunda de mercado com IA",
+      "files": [
+        "app/Controllers/DeepResearchController.php",
+        "app/Services/DeepResearchService.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "AI-007",
+      "category": "ai_integration",
+      "description": "Chatbot AI — assistente conversacional para e-commerce",
+      "files": [
+        "app/Controllers/ChatbotAIController.php",
+        "app/Services/ChatbotAIService.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "COMP-001",
+      "category": "competitor",
+      "description": "Análise de concorrentes — preços, posições, tendências",
+      "files": [
+        "app/Controllers/CompetitorAnalysisController.php",
+        "app/Services/CompetitorAnalysisService.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "COMP-002",
+      "category": "competitor",
+      "description": "Monitor de concorrentes — monitoramento contínuo em background",
+      "files": [
+        "app/Controllers/CompetitorMonitorController.php",
+        "bin/competitor-monitor-worker.php"
+      ],
+      "passes": true,
+      "last_tested": "2025-06-28"
+    },
+    {
+      "id": "ITEMS-001",
+      "category": "items",
+      "description": "CRUD de anúncios — listar, editar, pausar, ativar itens no ML",
+      "files": [
+        "app/Controllers/ItemController.php",
+        "app/Services/ItemService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-24"
+    },
+    {
+      "id": "ITEMS-002",
+      "category": "items",
+      "description": "Bulk editor — edição em lote de múltiplos anúncios",
+      "files": ["app/Controllers/BulkEditorController.php"],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "ITEMS-003",
+      "category": "items",
+      "description": "Listing Builder — criação guiada de anúncios otimizados",
+      "files": [
+        "app/Controllers/ListingBuilderController.php",
+        "app/Services/ListingBuilderService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "ITEMS-004",
+      "category": "items",
+      "description": "Ficha técnica — otimização de atributos técnicos do produto",
+      "files": [
+        "app/Controllers/TechnicalSheetController.php",
+        "app/Services/TechSheetService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "ITEMS-005",
+      "category": "items",
+      "description": "EAN/GTIN — gerenciamento de códigos de barras",
+      "files": [
+        "app/Controllers/EanController.php",
+        "app/Services/EanService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "STOCK-001",
+      "category": "stock",
+      "description": "Stock Sync — sincronização de estoque entre sistema e ML",
+      "files": [
+        "app/Controllers/StockSyncController.php",
+        "bin/stock-sync-worker.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "ORDERS-001",
+      "category": "orders",
+      "description": "Gerenciamento de pedidos do Mercado Livre",
+      "files": [
+        "app/Controllers/OrderController.php",
+        "app/Controllers/OrdersController.php",
+        "app/Services/OrderService.php",
+        "tests/Unit/Services/OrderServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-26"
+    },
+    {
+      "id": "ORDERS-002",
+      "category": "orders",
+      "description": "Perguntas e respostas automáticas com IA",
+      "files": [
+        "app/Controllers/QuestionController.php",
+        "app/Services/QuestionService.php",
+        "tests/Unit/Services/QuestionServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "SHIP-001",
+      "category": "shipping",
+      "description": "Cálculo e gestão de frete (Mercado Envios)",
+      "files": [
+        "app/Controllers/ShippingController.php",
+        "app/Services/ShippingService.php",
+        "tests/Unit/Services/ShippingServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "REPORT-001",
+      "category": "reports",
+      "description": "Relatórios avançados — vendas, performance, financeiro",
+      "files": [
+        "app/Controllers/AdvancedReportController.php",
+        "app/Services/ReportService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "REPORT-002",
+      "category": "reports",
+      "description": "Relatórios financeiros — comissões, taxas, margem",
+      "files": [
+        "app/Controllers/FinancialReportController.php",
+        "app/Services/FinancialService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "REPORT-003",
+      "category": "reports",
+      "description": "Export de dados — PDF, CSV, Excel",
+      "files": [
+        "app/Controllers/ExportController.php",
+        "app/Services/ExportService.php",
+        "app/Services/PdfService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "REPORT-004",
+      "category": "reports",
+      "description": "Relatórios automáticos por email/push (weekly digest)",
+      "files": ["bin/automated-reports-worker.php", "bin/weekly-report.php"],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "NOTIF-001",
+      "category": "notifications",
+      "description": "Push notifications (web-push via minishlink)",
+      "files": [
+        "app/Controllers/PushController.php",
+        "app/Services/PushNotificationService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "NOTIF-002",
+      "category": "notifications",
+      "description": "Real-time notifications via polling/SSE",
+      "files": [
+        "app/Controllers/RealTimeNotificationController.php",
+        "app/Services/RealTimeNotificationService.php",
+        "tests/Unit/Services/RealTimeNotificationServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-24"
+    },
+    {
+      "id": "NOTIF-003",
+      "category": "notifications",
+      "description": "Email notifications (PHPMailer)",
+      "files": ["app/Services/EmailService.php"],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "NOTIF-004",
+      "category": "notifications",
+      "description": "WhatsApp/Telegram integration para alertas",
+      "files": [
+        "app/Controllers/WhatsAppController.php",
+        "app/Services/WhatsAppService.php",
+        "app/Services/TelegramService.php",
+        "tests/Unit/Services/WhatsAppServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-21"
+    },
+    {
+      "id": "HEALTH-001",
+      "category": "monitoring",
+      "description": "Account Health — monitoramento de saúde da conta ML",
+      "files": [
+        "app/Controllers/AccountHealthController.php",
+        "app/Services/AccountHealthService.php",
+        "app/Services/MercadoLivreAuthService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-26"
+    },
+    {
+      "id": "HEALTH-002",
+      "category": "monitoring",
+      "description": "Error monitoring — rastreamento de erros e alertas",
+      "files": [
+        "app/Controllers/ErrorMonitoringController.php",
+        "app/Services/ErrorMonitoringService.php",
+        "tests/Unit/Services/ErrorMonitoringServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "HEALTH-003",
+      "category": "monitoring",
+      "description": "Health endpoint — /health para verificação de status do sistema",
+      "files": ["app/Controllers/HealthController.php"],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "SEC-001",
+      "category": "security",
+      "description": "Input validation e sanitização em todas as rotas",
+      "files": ["app/Middleware/", "app/Controllers/SecurityController.php"],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "SEC-002",
+      "category": "security",
+      "description": "Rate limiting para proteção contra abuse",
+      "files": ["app/Services/RateLimitTrackerService.php"],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "SEC-003",
+      "category": "security",
+      "description": "Encryption service — dados sensíveis criptografados",
+      "files": ["app/Services/EncryptionService.php"],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "SEC-004",
+      "category": "security",
+      "description": "Audit log — registro de ações sensíveis do usuário",
+      "files": [
+        "app/Services/AuditLogService.php",
+        "app/Services/AuditService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "WEBHOOK-001",
+      "category": "webhooks",
+      "description": "Webhooks do Mercado Livre — receber notificações de pedidos, perguntas, etc.",
+      "files": [
+        "app/Controllers/MercadoLivreWebhookController.php",
+        "app/Services/MercadoLivreWebhookService.php",
+        "tests/Unit/Services/MercadoLivreWebhookServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "WEBHOOK-002",
+      "category": "webhooks",
+      "description": "Integração CLAWDBOT — webhook assinado (HMAC) para disparo seguro de jobs (ex: run_agent)",
+      "files": [
+        "app/Controllers/ClawdbotWebhookController.php",
+        "app/Services/ClawdbotWebhookService.php",
+        "app/Routes/api.php",
+        "tests/Unit/Services/ClawdbotWebhookServiceTest.php",
+        "phpunit.xml",
+        ".env.example"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-22"
+    },
+    {
+      "id": "PROMO-001",
+      "category": "promotions",
+      "description": "Gestão de promoções e descontos no ML",
+      "files": [
+        "app/Controllers/PromotionController.php",
+        "app/Services/PromotionService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "BRAND-001",
+      "category": "brand",
+      "description": "Brand Central — gestão de marca e identidade no ML",
+      "files": [
+        "app/Controllers/BrandCentralController.php",
+        "app/Services/BrandCentralService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "BRAND-002",
+      "category": "brand",
+      "description": "Brand Analyzer — análise de posicionamento de marca",
+      "files": [
+        "app/Controllers/BrandAnalyzerController.php",
+        "app/Services/BrandAnalyzerService.php",
+        "tests/Unit/Services/BrandAnalyzerServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-21"
+    },
+    {
+      "id": "MULTI-001",
+      "category": "multi_account",
+      "description": "Gerenciamento de múltiplas contas ML",
+      "files": [
+        "app/Controllers/MultiAccountController.php",
+        "tests/Unit/Controllers/MultiAccountControllerTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-21"
+    },
+    {
+      "id": "TRENDS-001",
+      "category": "market",
+      "description": "Análise de tendências de mercado",
+      "files": [
+        "app/Controllers/TrendsController.php",
+        "app/Services/TrendsService.php",
+        "tests/Unit/Services/TrendsServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-21"
+    },
+    {
+      "id": "CLAIMS-001",
+      "category": "after_sale",
+      "description": "Gestão de reclamações e devoluções",
+      "files": [
+        "app/Controllers/ClaimsController.php",
+        "app/Services/ClaimsService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "SETTINGS-001",
+      "category": "settings",
+      "description": "Configurações do sistema — preferências, integrações, perfil",
+      "files": [
+        "app/Controllers/SettingsController.php",
+        "app/Services/SettingsService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "CACHE-001",
+      "category": "infrastructure",
+      "description": "Cache Redis — invalidação, warmup, gestão",
+      "files": [
+        "app/Services/CacheService.php",
+        "app/Services/AdvancedRedisCacheService.php",
+        "app/Controllers/CacheController.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "SHOPEE-001",
+      "category": "marketplace",
+      "description": "Integração com Shopee (marketplace secundário)",
+      "files": [
+        "app/Controllers/ShopeeController.php",
+        "app/Services/ShopeeService.php",
+        "tests/Unit/Services/ShopeeServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "ADS-001",
+      "category": "advertising",
+      "description": "Gestão de Product Ads no Mercado Livre",
+      "files": [
+        "app/Controllers/AdsController.php",
+        "app/Services/AdsService.php",
+        "tests/Unit/Services/AdsServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-21"
+    },
+    {
+      "id": "AI-008",
+      "category": "ai_integration",
+      "description": "ML-AI Integration Pipeline — bridge entre API do Mercado Livre e provedores IA com circuit breaker, fallback template, e batch processing",
+      "files": [
+        "app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php",
+        "app/Controllers/MLAIIntegrationController.php",
+        "app/Services/AI/Core/AIProviderManager.php",
+        "app/Services/AI/Core/AIOptimizationEngine.php",
+        "app/Routes/api.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "AI-009",
+      "category": "ai_integration",
+      "description": "ML-AI Version Management — comparação de versões, tracking de impacto real, e limpeza de snapshots antigos via VersioningService",
+      "files": [
+        "app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php",
+        "app/Controllers/MLAIIntegrationController.php",
+        "app/Services/SEO/VersioningService.php",
+        "app/Routes/api.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "GOV-001",
+      "category": "governance",
+      "description": "AccountGovernanceService — Motor de Governança e Recuperação de Conta ML com item scoring, classificação 8 tipos, account status 5 estados, density risk, guardrails, recovery plan 3 fases, week plan 7 dias, actions com MOTIVO/IMPACTO/RISCO/JANELA/ROLLBACK, top 5 causes, executive summary",
+      "files": [
+        "app/Services/AccountGovernanceService.php",
+        "app/Controllers/AccountGovernanceController.php",
+        "app/Views/dashboard/account-governance.php",
+        "tests/Unit/AccountGovernanceServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "GOV-002",
+      "category": "governance",
+      "description": "AccountGovernanceIntegrationService — Integração com API do Mercado Livre para buscar dados reais (items, visitas, vendas, reputação) e alimentar o motor de governança",
+      "files": [
+        "app/Services/MercadoLivre/AccountGovernanceIntegrationService.php",
+        "tests/Unit/AccountGovernanceIntegrationServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-20"
+    },
+    {
+      "id": "GOV-003",
+      "category": "governance",
+      "description": "Governance Diagnostic Worker — Worker background para diagnósticos periódicos de governança em todas as contas ML, com histórico e alertas",
+      "files": [
+        "bin/governance-diagnostic-worker.php",
+        "database/migrations/2026_02_20_create_governance_diagnostic_history.php",
+        "app/Views/dashboard/account-governance.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-23"
+    },
+    {
+      "id": "ASSIST-001",
+      "category": "assistant_connector",
+      "description": "Assistant Connector (Opção A) — API protegida por Bearer token + scopes para integração externa (multi-conta), com ingestão de eventos, enfileiramento de ações e idempotência",
+      "files": [
+        "app/Controllers/AssistantConnectorController.php",
+        "app/Services/AssistantConnectorService.php",
+        "app/Services/AssistantActionExecutorService.php",
+        "app/Services/JobService.php",
+        "app/Services/ApiTokenService.php",
+        "app/Routes/api.php",
+        "database/migrations/2026_02_23_create_assistant_connector_tables.sql",
+        "tests/Unit/Services/AssistantConnectorServiceTest.php",
+        "phpunit.xml"
+      ],
+      "passes": true,
+      "last_tested": "2026-02-23"
+    }
+  ]
 }

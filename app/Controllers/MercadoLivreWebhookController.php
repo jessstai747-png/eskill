@@ -15,6 +15,13 @@ use App\Services\WebhookInboxService;
  */
 class MercadoLivreWebhookController
 {
+    private const WEBHOOK_SIGNATURE_MAX_SKEW_SECONDS = 300;
+    private const WEBHOOK_SIGNATURE_REPLAY_WINDOW_SECONDS = 300;
+
+    /** @var array<string, string|int|null> */
+    private array $lastWebhookSignatureMetadata = [];
+    private ?string $lastWebhookSignatureError = null;
+
     /**
      * Endpoint público para receber notificações de webhook
      * URL: /webhook/mercadolivre
@@ -30,17 +37,26 @@ class MercadoLivreWebhookController
             // Ler payload
             $rawPayload = (string)file_get_contents('php://input', false, null, 0, 262144);
             $payload = json_decode($rawPayload, true);
+            $signatureMeta = [];
 
             // Validação opcional de assinatura do webhook (produção)
-            $webhookSecret = trim((string)($_ENV['ML_WEBHOOK_SECRET'] ?? ''));
+            $envWebhookSecret = getenv('ML_WEBHOOK_SECRET');
+            $webhookSecretRaw = $envWebhookSecret !== false
+                ? $envWebhookSecret
+                : ($_ENV['ML_WEBHOOK_SECRET'] ?? '');
+            $webhookSecret = trim((string)$webhookSecretRaw);
             if ($webhookSecret !== '' && !$this->validateWebhookSignature($rawPayload, $webhookSecret)) {
                 http_response_code(401);
                 $logger->warning('ML_WEBHOOK_INVALID_SIGNATURE', [
                     'message' => 'Invalid webhook signature',
                     'request_id' => $requestId,
+                    'reason' => $this->lastWebhookSignatureError,
                 ]);
                 echo json_encode(['success' => false, 'error' => 'Invalid signature', 'request_id' => $requestId]);
                 return;
+            }
+            if ($webhookSecret !== '') {
+                $signatureMeta = $this->lastWebhookSignatureMetadata;
             }
 
             if (!$payload || json_last_error() !== JSON_ERROR_NONE) {
@@ -83,15 +99,18 @@ class MercadoLivreWebhookController
 
             // Injetar ID da conta interna no payload para facilitar processamento
             $payload['internal_account_id'] = $accountId;
+            if (!empty($signatureMeta['delivery_id']) && empty($payload['delivery_id'])) {
+                $payload['delivery_id'] = (string)$signatureMeta['delivery_id'];
+            }
 
             // Deduplicação persistente de evento para evitar reprocessamento
             $eventHash = $this->generateEventHash($payload);
             $inbox = new WebhookInboxService();
-            $accepted = $inbox->registerIncoming('mercadolivre', $eventHash, $payload, [
+            $accepted = $inbox->registerIncoming('mercadolivre', $eventHash, $payload, array_merge([
                 'request_id' => $requestId,
                 'topic' => $payload['topic'] ?? null,
                 'resource' => $payload['resource'] ?? null,
-            ]);
+            ], $signatureMeta));
 
             if (!$accepted) {
                 $logger->info('ML_WEBHOOK_DUPLICATE_IGNORED', [
@@ -117,9 +136,10 @@ class MercadoLivreWebhookController
             $jobId = $jobService->dispatch('ml_webhook', $payload);
 
             if ($jobId) {
-                $inbox->markProcessed('mercadolivre', $eventHash, [
-                    'queued' => true,
-                    'job_id' => $jobId,
+                $inbox->markQueued('mercadolivre', $eventHash, $jobId, [
+                    'request_id' => $requestId,
+                    'topic' => $payload['topic'] ?? null,
+                    'resource' => $payload['resource'] ?? null,
                 ]);
                 http_response_code(202);
                 echo json_encode([
@@ -193,13 +213,14 @@ class MercadoLivreWebhookController
      */
     private function generateEventHash(array $payload): string
     {
+        $deliveryId = $payload['delivery_id'] ?? $payload['notification_id'] ?? $payload['id'] ?? null;
         $parts = [
             (string)($payload['topic'] ?? ''),
             (string)($payload['resource'] ?? ''),
             (string)($payload['user_id'] ?? ''),
             (string)($payload['application_id'] ?? ''),
+            (string)($deliveryId ?? ''),
             (string)($payload['sent'] ?? ''),
-            (string)($payload['attempts'] ?? ''),
         ];
 
         return hash('sha256', implode('|', $parts));
@@ -210,22 +231,177 @@ class MercadoLivreWebhookController
      */
     private function validateWebhookSignature(string $rawPayload, string $secret): bool
     {
+        $this->lastWebhookSignatureMetadata = [];
+        $this->lastWebhookSignatureError = null;
+
         $header = $this->getRequestHeader('X-Signature')
             ?? $this->getRequestHeader('X-Hub-Signature-256');
 
         if (!$header) {
+            $this->lastWebhookSignatureError = 'missing_signature_header';
             return false;
         }
 
-        $parts = explode('=', trim($header), 2);
-        $received = count($parts) === 2 ? trim($parts[1]) : trim($parts[0]);
+        $parsed = $this->parseWebhookSignatureHeader($header);
+        if ($parsed === null) {
+            $this->lastWebhookSignatureError = 'invalid_signature_header_format';
+            return false;
+        }
 
+        $received = (string)($parsed['digest'] ?? '');
         if ($received === '') {
+            $this->lastWebhookSignatureError = 'missing_signature_digest';
             return false;
         }
 
-        $calculated = hash_hmac('sha256', $rawPayload, $secret);
-        return hash_equals($calculated, $received);
+        $signatureTs = isset($parsed['ts']) ? (int)$parsed['ts'] : null;
+        if ($signatureTs !== null && !$this->isWebhookSignatureTimestampFresh($signatureTs)) {
+            $this->lastWebhookSignatureError = 'signature_timestamp_expired';
+            return false;
+        }
+
+        $deliveryId = $this->getRequestHeader('X-Delivery-Id')
+            ?? $this->getRequestHeader('X-Request-Id')
+            ?? $this->getRequestHeader('X-Webhook-Id')
+            ?? $this->getRequestHeader('X-Notification-Id');
+        $deliveryId = is_string($deliveryId) ? trim($deliveryId) : null;
+        if ($deliveryId === '') {
+            $deliveryId = null;
+        }
+
+        $signatureNonce = isset($parsed['nonce']) ? trim((string)$parsed['nonce']) : null;
+        if ($signatureNonce === '') {
+            $signatureNonce = null;
+        }
+
+        $candidates = [
+            hash_hmac('sha256', $rawPayload, $secret),
+        ];
+        if ($signatureTs !== null) {
+            $candidates[] = hash_hmac('sha256', $signatureTs . '.' . $rawPayload, $secret);
+        }
+
+        $valid = false;
+        foreach (array_unique($candidates) as $candidate) {
+            if (hash_equals($candidate, $received)) {
+                $valid = true;
+                break;
+            }
+        }
+
+        if (!$valid) {
+            $this->lastWebhookSignatureError = 'signature_mismatch';
+            return false;
+        }
+
+        if ($deliveryId !== null || $signatureNonce !== null || $signatureTs !== null) {
+            try {
+                $inbox = new WebhookInboxService();
+                if ($inbox->hasSignatureReplay(
+                    'mercadolivre',
+                    $deliveryId,
+                    $signatureNonce,
+                    $signatureTs,
+                    self::WEBHOOK_SIGNATURE_REPLAY_WINDOW_SECONDS
+                )) {
+                    $this->lastWebhookSignatureError = 'signature_replay_detected';
+                    return false;
+                }
+            } catch (\Throwable $e) {
+                $this->lastWebhookSignatureError = 'signature_replay_check_failed';
+                return false;
+            }
+        }
+
+        $this->lastWebhookSignatureMetadata = [
+            'delivery_id' => $deliveryId,
+            'signature_ts' => $signatureTs,
+            'signature_nonce' => $signatureNonce,
+        ];
+
+        return true;
+    }
+
+    /**
+     * @return array{digest: string, ts?: int, nonce?: string}|null
+     */
+    private function parseWebhookSignatureHeader(string $header): ?array
+    {
+        $header = trim($header);
+        if ($header === '') {
+            return null;
+        }
+
+        $map = [];
+        foreach (explode(',', $header) as $chunk) {
+            $chunk = trim($chunk);
+            if ($chunk === '' || !str_contains($chunk, '=')) {
+                continue;
+            }
+
+            [$key, $value] = array_map('trim', explode('=', $chunk, 2));
+            if ($key === '' || $value === '') {
+                continue;
+            }
+
+            $value = trim($value, "\"' ");
+            $map[strtolower($key)] = $value;
+        }
+
+        if (!empty($map)) {
+            $digest = $map['v1'] ?? $map['sha256'] ?? null;
+            $normalized = is_string($digest) ? $this->normalizeSignatureDigest($digest) : null;
+            if ($normalized === null) {
+                return null;
+            }
+
+            $parsed = ['digest' => $normalized];
+            if (isset($map['t']) || isset($map['ts'])) {
+                $tsRaw = $map['t'] ?? $map['ts'];
+                if (is_string($tsRaw) && ctype_digit($tsRaw)) {
+                    $parsed['ts'] = (int)$tsRaw;
+                } else {
+                    return null;
+                }
+            }
+
+            if (isset($map['nonce']) && $map['nonce'] !== '') {
+                $parsed['nonce'] = $map['nonce'];
+            } elseif (isset($map['n']) && $map['n'] !== '') {
+                $parsed['nonce'] = $map['n'];
+            }
+
+            return $parsed;
+        }
+
+        $normalized = $this->normalizeSignatureDigest($header);
+        if ($normalized === null) {
+            return null;
+        }
+
+        return ['digest' => $normalized];
+    }
+
+    private function normalizeSignatureDigest(string $value): ?string
+    {
+        $value = trim($value);
+        if (str_contains($value, '=')) {
+            $parts = explode('=', $value, 2);
+            $value = trim((string)($parts[1] ?? ''));
+        }
+
+        $value = strtolower($value);
+        if ($value === '' || preg_match('/^[a-f0-9]{64}$/', $value) !== 1) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private function isWebhookSignatureTimestampFresh(int $timestamp): bool
+    {
+        $now = time();
+        return abs($now - $timestamp) <= self::WEBHOOK_SIGNATURE_MAX_SKEW_SECONDS;
     }
 
     /**

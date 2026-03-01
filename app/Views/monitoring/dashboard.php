@@ -242,13 +242,21 @@
 
         function renderMetrics(metrics) {
             const container = document.getElementById('main-metrics');
-            const stats = metrics.basic_stats;
+            const stats = metrics.basic_stats || {};
+            const mlOps = metrics.ml_operations || {};
+            const pendingJobs = Number(stats.pending_jobs || 0);
+            const completedJobs = Number(stats.completed_jobs || 0);
+            const failedJobs = Number(stats.failed_jobs || 0);
+            const successRate = Number(
+                stats.success_rate ??
+                ((completedJobs / (completedJobs + failedJobs)) * 100 || 100)
+            ).toFixed(1);
             
             container.innerHTML = `
                 <div class="col-md-3 mb-3">
-                    <div class="card metric-card ${stats.pending_jobs > 50 ? 'warning' : 'success'}">
+                    <div class="card metric-card ${pendingJobs > 50 ? 'warning' : 'success'}">
                         <div class="card-body text-center">
-                            <h3 class="mb-0">${stats.pending_jobs || 0}</h3>
+                            <h3 class="mb-0">${pendingJobs}</h3>
                             <p class="mb-0">Jobs Pendentes</p>
                         </div>
                     </div>
@@ -256,15 +264,15 @@
                 <div class="col-md-3 mb-3">
                     <div class="card metric-card success">
                         <div class="card-body text-center">
-                            <h3 class="mb-0">${stats.completed_jobs || 0}</h3>
+                            <h3 class="mb-0">${completedJobs}</h3>
                             <p class="mb-0">Jobs Completos</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <div class="card metric-card ${stats.failed_jobs > 10 ? 'error' : 'success'}">
+                    <div class="card metric-card ${failedJobs > 10 ? 'error' : 'success'}">
                         <div class="card-body text-center">
-                            <h3 class="mb-0">${stats.failed_jobs || 0}</h3>
+                            <h3 class="mb-0">${failedJobs}</h3>
                             <p class="mb-0">Jobs Falhados</p>
                         </div>
                     </div>
@@ -272,8 +280,40 @@
                 <div class="col-md-3 mb-3">
                     <div class="card metric-card">
                         <div class="card-body text-center">
-                            <h3 class="mb-0">${((stats.completed_jobs / (stats.completed_jobs + stats.failed_jobs)) * 100 || 100).toFixed(1)}%</h3>
+                            <h3 class="mb-0">${successRate}%</h3>
                             <p class="mb-0">Taxa de Sucesso</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card metric-card ${(mlOps.failed_webhook_backlog || 0) > 0 ? 'warning' : 'success'}">
+                        <div class="card-body text-center">
+                            <h3 class="mb-0">${mlOps.failed_webhook_backlog || 0}</h3>
+                            <p class="mb-0">Webhooks ML Falhos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card metric-card ${(mlOps.oldest_failed_webhook_minutes || 0) >= 30 ? 'warning' : 'success'}">
+                        <div class="card-body text-center">
+                            <h3 class="mb-0">${mlOps.oldest_failed_webhook_minutes || 0}m</h3>
+                            <p class="mb-0">Falha ML Mais Antiga</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card metric-card ${(mlOps.jobs_retry_pending || 0) > 0 ? 'warning' : 'success'}">
+                        <div class="card-body text-center">
+                            <h3 class="mb-0">${mlOps.jobs_retry_pending || 0}</h3>
+                            <p class="mb-0">Jobs em Retry</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card metric-card ${(mlOps.jobs_processing_stale || 0) > 0 ? 'error' : 'success'}">
+                        <div class="card-body text-center">
+                            <h3 class="mb-0">${mlOps.jobs_processing_stale || 0}</h3>
+                            <p class="mb-0">Jobs Stale (processing)</p>
                         </div>
                     </div>
                 </div>
@@ -301,9 +341,9 @@
             }
             
             const alertsHtml = alerts.map(alert => {
-                const severity = alert.severity || 'WARNING';
-                const alertClass = severity === 'CRITICAL' ? 'alert-danger' : 
-                                  severity === 'HIGH' ? 'alert-warning' : 'alert-info';
+                const severity = String(alert.severity || 'WARNING').toUpperCase();
+                const alertClass = severity === 'CRITICAL' ? 'alert-danger' :
+                                  severity === 'HIGH' || severity === 'WARNING' ? 'alert-warning' : 'alert-info';
                 
                 return `
                     <div class="alert ${alertClass} alert-dismissible fade show alert-badge" role="alert">

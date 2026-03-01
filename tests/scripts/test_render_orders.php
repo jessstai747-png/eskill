@@ -32,25 +32,24 @@ require_once __DIR__ . '/app/Controllers/OrdersController.php';
 try {
     echo "Instantiating OrdersController...\n";
     $controller = new \App\Controllers\OrdersController();
-    
+
     // Capture Output
     ob_start();
     $controller->index();
     $output = ob_get_clean();
-    
+
     echo "Page Rendered Successfully. Length: " . strlen($output) . " bytes.\n";
     // Check for fatal errors in output just in case
     if (strpos($output, 'Fatal error') !== false) {
         echo "FOUND FATAL ERROR IN OUTPUT\n";
     }
-    
+
     // Check if key elements exist
     if (strpos($output, 'Pedidos') !== false) {
         echo "Found 'Pedidos' title.\n";
     } else {
         echo "WARNING: 'Pedidos' title not found.\n";
     }
-
 } catch (\Throwable $e) {
     echo "RENDER FAILED: " . $e->getMessage() . "\n";
     echo $e->getTraceAsString();

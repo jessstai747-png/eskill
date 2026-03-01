@@ -4,7 +4,7 @@ namespace App\Helpers;
 
 /**
  * Helper para renderização de views
- * 
+ *
  * Fornece a função global view() e métodos utilitários para renderizar
  * templates PHP com dados e layout.
  */
@@ -28,13 +28,16 @@ class ViewHelper
             return;
         }
 
+        // Make CSP nonce available in all views (using GLOBALS as authoritative source)
+        $cspNonce = $GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '';
+
         // Extrai dados como variáveis locais para a view
         extract($data, EXTR_SKIP);
 
         // Captura conteúdo da view
         ob_start();
         require $viewFile;
-        $pageContent = ob_get_clean();
+        $content = ob_get_clean();
 
         // Se há layout, renderiza dentro dele
         if ($layout) {
@@ -43,10 +46,10 @@ class ViewHelper
                 require $layoutFile;
             } else {
                 // Sem layout, apenas exibe o conteúdo
-                echo $pageContent;
+                echo $content;
             }
         } else {
-            echo $pageContent;
+            echo $content;
         }
     }
 

@@ -21,7 +21,7 @@ if ($isProduction && empty($dbUsername)) {
 
 return [
     'default' => 'mysql',
-    
+
     'connections' => [
         'mysql' => [
             'driver' => 'mysql',
@@ -40,4 +40,3 @@ return [
         ],
     ],
 ];
-

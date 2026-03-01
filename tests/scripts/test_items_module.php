@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Items Module Comprehensive Test Script
  * Tests view rendering, API endpoints, and data integrity
@@ -40,20 +41,20 @@ try {
     require_once __DIR__ . '/app/Services/UserService.php';
     require_once __DIR__ . '/app/Services/DashboardService.php';
     require_once __DIR__ . '/app/Services/CatalogCloneService.php';
-    
+
     $userService = new \App\Services\UserService();
     $dashboardService = new \App\Services\DashboardService();
     $cloneService = new \App\Services\CatalogCloneService();
-    
+
     $controller = new \App\Controllers\DashboardController($dashboardService, $userService, $cloneService);
-    
+
     ob_start();
     $controller->items();
     $output = ob_get_clean();
-    
+
     if (strlen($output) > 5000 && strpos($output, 'Meus Anúncios') !== false) {
         echo "✓ View rendered successfully (" . strlen($output) . " bytes)\n";
-        
+
         // Check for key elements
         $checks = [
             'loadItems()' => 'JavaScript loadItems function',
@@ -62,7 +63,7 @@ try {
             'itemsGrid' => 'Items grid container',
             '/api/items/stats' => 'Stats API endpoint call'
         ];
-        
+
         foreach ($checks as $needle => $description) {
             if (strpos($output, $needle) !== false) {
                 echo "  ✓ Found: $description\n";
@@ -86,7 +87,7 @@ echo "[2/7] Testing ItemController...\n";
 try {
     require_once __DIR__ . '/app/Services/ItemService.php';
     require_once __DIR__ . '/app/Controllers/ItemController.php';
-    
+
     $itemController = new \App\Controllers\ItemController();
     echo "✓ ItemController instantiated successfully\n\n";
 } catch (\Exception $e) {
@@ -101,22 +102,22 @@ try {
     $stmt = $db->query("SELECT COUNT(*) as count FROM items");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $count = $result['count'];
-    
+
     echo "✓ Items table exists with $count items\n";
-    
+
     // Check for important columns
     $stmt = $db->query("SHOW COLUMNS FROM items");
     $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
+
     $requiredColumns = ['id', 'ml_item_id', 'title', 'price', 'available_quantity', 'status', 'sku', 'cost_price', 'tax_rate'];
     $missingColumns = [];
-    
+
     foreach ($requiredColumns as $col) {
         if (!in_array($col, $columns)) {
             $missingColumns[] = $col;
         }
     }
-    
+
     if (empty($missingColumns)) {
         echo "✓ All required columns present\n";
     } else {
@@ -133,10 +134,10 @@ echo "\n";
 echo "[4/7] Testing Stats Calculation Logic...\n";
 try {
     $db = \App\Database::getInstance();
-    
+
     // Simulate stats query
     $stmt = $db->query("
-        SELECT 
+        SELECT
             status,
             COUNT(*) as count,
             SUM(COALESCE(visits, 0)) as total_visits,
@@ -145,24 +146,24 @@ try {
         WHERE ml_account_id IN (SELECT id FROM ml_accounts WHERE user_id = 1)
         GROUP BY status
     ");
-    
+
     $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     $active = 0;
     $paused = 0;
     $closed = 0;
     $totalViews = 0;
     $totalSold = 0;
-    
+
     foreach ($stats as $stat) {
         $totalViews += $stat['total_visits'];
         $totalSold += $stat['total_sold'];
-        
+
         if ($stat['status'] === 'active') $active = $stat['count'];
         elseif ($stat['status'] === 'paused') $paused = $stat['count'];
         elseif ($stat['status'] === 'closed') $closed = $stat['count'];
     }
-    
+
     echo "✓ Stats calculated:\n";
     echo "  - Active: $active\n";
     echo "  - Paused: $paused\n";
@@ -186,10 +187,10 @@ try {
         GROUP BY category_id, category_name
         LIMIT 10
     ");
-    
+
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo "✓ Found " . count($categories) . " categories\n";
-    
+
     if (count($categories) > 0) {
         echo "  Sample: " . $categories[0]['category_name'] . " (" . $categories[0]['count'] . " items)\n";
     }
@@ -203,22 +204,22 @@ echo "\n";
 echo "[6/7] Testing Item Update Capability...\n";
 try {
     $db = \App\Database::getInstance();
-    
+
     // Find a test item
     $stmt = $db->query("SELECT id, ml_item_id, title FROM items LIMIT 1");
     $testItem = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($testItem) {
         echo "✓ Found test item: " . $testItem['title'] . "\n";
         echo "  (ID: " . $testItem['ml_item_id'] . ")\n";
-        
+
         // Check if we can prepare an update (don't actually execute)
         $stmt = $db->prepare("
-            UPDATE items 
+            UPDATE items
             SET sku = :sku, cost_price = :cost, tax_rate = :tax
             WHERE id = :id
         ");
-        
+
         echo "✓ Update statement prepared successfully\n";
     } else {
         $warnings[] = "No items found to test update";

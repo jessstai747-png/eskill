@@ -7,6 +7,7 @@ use App\Services\FeatureFlagService;
 use App\Services\LoggingService;
 use App\Services\NotificationService;
 use App\Services\AdvancedMonitoringService;
+use App\Services\MonitoringAlertNotificationService;
 
 /**
  * Controller para Dashboard de Monitoramento do Sistema V8.1
@@ -19,6 +20,7 @@ class MonitoringController extends BaseController
     private LoggingService $logger;
     private NotificationService $notifications;
     private AdvancedMonitoringService $advancedMonitoring;
+    private MonitoringAlertNotificationService $monitoringAlertNotifier;
 
     public function __construct()
     {
@@ -29,6 +31,7 @@ class MonitoringController extends BaseController
         $this->logger = new LoggingService();
         $this->notifications = new NotificationService();
         $this->advancedMonitoring = new AdvancedMonitoringService();
+        $this->monitoringAlertNotifier = new MonitoringAlertNotificationService();
 
         // Verificar se usuário tem permissão de admin
         if (!$this->isAdmin()) {
@@ -80,6 +83,7 @@ class MonitoringController extends BaseController
         try {
             $alerts = $this->monitoring->checkAlerts();
             $logAlerts = $this->logger->checkLogAlerts();
+            $notificationDispatch = $this->monitoringAlertNotifier->dispatchMlOperationalAlerts($alerts);
 
             $allAlerts = array_merge($alerts, $logAlerts);
 
@@ -87,6 +91,7 @@ class MonitoringController extends BaseController
                 'success' => true,
                 'alerts' => $allAlerts,
                 'count' => count($allAlerts),
+                'notification_dispatch' => $notificationDispatch,
                 'timestamp' => time()
             ]);
         } catch (\Exception $e) {
@@ -111,9 +116,21 @@ class MonitoringController extends BaseController
             $startDate = date('Y-m-d', strtotime("-{$days} days"));
             $endDate = date('Y-m-d');
             $report = $this->monitoring->getPerformanceReport($startDate, $endDate);
+            $dailyStats = $report['daily_stats'] ?? [];
+            $hourlyStats = array_map(static function (array $day): array {
+                return [
+                    'hour_label' => $day['date'] ?? '',
+                    'completed_jobs' => (int)($day['completed'] ?? 0),
+                    'failed_jobs' => (int)($day['failed'] ?? 0),
+                ];
+            }, $dailyStats);
+
             echo json_encode([
                 'success' => true,
-                'data' => $report,
+                'data' => array_merge($report, [
+                    // Alias de compatibilidade para dashboard legado
+                    'hourly_stats' => $hourlyStats,
+                ]),
                 'period_days' => $days,
                 'timestamp' => time()
             ]);
@@ -311,7 +328,7 @@ class MonitoringController extends BaseController
     {
         try {
             $metrics = $this->monitoring->getRealTimeMetrics();
-            $pending = $metrics['basic_stats']['pending_jobs'] ?? 0;
+            $pending = (int)($metrics['basic_stats']['pending_jobs'] ?? $metrics['clone_jobs']['pending'] ?? 0);
 
             return [
                 'status' => $pending > 100 ? 'warning' : 'ok',
@@ -323,6 +340,47 @@ class MonitoringController extends BaseController
                 'status' => 'error',
                 'error' => $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * API: Estatísticas resumidas de jobs
+     */
+    public function jobStats(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $metrics = $this->monitoring->getRealTimeMetrics();
+            $basic = $metrics['basic_stats'] ?? [];
+
+            $pending = (int)($basic['pending_jobs'] ?? 0);
+            $completed = (int)($basic['completed_jobs'] ?? 0);
+            $failed = (int)($basic['failed_jobs'] ?? 0);
+            $total = (int)($basic['total_jobs'] ?? ($pending + $completed + $failed));
+            $successRate = (float)($basic['success_rate'] ?? ($completed + $failed > 0
+                ? round(($completed / ($completed + $failed)) * 100, 1)
+                : 100.0));
+
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'total_jobs' => $total,
+                    'pending_jobs' => $pending,
+                    'completed_jobs' => $completed,
+                    'failed_jobs' => $failed,
+                    'success_rate' => $successRate,
+                    'avg_processing_time' => 0,
+                    'jobs_per_hour' => 0,
+                ],
+                'timestamp' => time(),
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Erro ao obter estatísticas de jobs: ' . $e->getMessage(),
+            ]);
         }
     }
 

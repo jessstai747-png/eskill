@@ -415,7 +415,7 @@ foreach ($pending as $file) {
             // Desabilitar FK checks durante a migration
             $migPdo->exec('SET FOREIGN_KEY_CHECKS=0');
 
-            // Dividir em statements individuais  
+            // Dividir em statements individuais
             $statements = array_filter(
                 array_map('trim', preg_split('/;\s*$/m', $sql)),
                 fn($s) => $s !== ''

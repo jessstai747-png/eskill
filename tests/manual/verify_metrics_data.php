@@ -38,10 +38,10 @@ spl_autoload_register(function ($class) {
 try {
     echo "Instantiating DashboardService...\n";
     $service = new \App\Services\DashboardService();
-    
+
     echo "Fetching metrics...\n";
     $metrics = $service->getMetrics();
-    
+
     echo "Validating structure...\n";
     $requiredKeys = ['recent_orders_count', 'total_revenue', 'sales_over_time', 'orders_by_status'];
     foreach ($requiredKeys as $key) {
@@ -49,11 +49,10 @@ try {
             throw new Exception("Missing key: $key");
         }
     }
-    
+
     echo "Metrics JSON Structure:\n";
     echo json_encode($metrics, JSON_PRETTY_PRINT);
     echo "\n\nVERIFICATION PASSED\n";
-    
 } catch (\Throwable $e) {
     echo "VERIFICATION FAILED: " . $e->getMessage() . "\n";
     echo $e->getTraceAsString();

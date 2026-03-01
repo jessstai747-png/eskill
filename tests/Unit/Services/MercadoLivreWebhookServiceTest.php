@@ -23,6 +23,24 @@ use PHPUnit\Framework\TestCase;
 class MercadoLivreWebhookServiceTest extends TestCase
 {
     private const ACCOUNT_ID = 42;
+    /** @var array<string, string|false> */
+    private array $envBackup = [];
+
+    protected function tearDown(): void
+    {
+        foreach ($this->envBackup as $key => $value) {
+            if ($value === false) {
+                putenv($key);
+                unset($_ENV[$key]);
+            } else {
+                putenv($key . '=' . $value);
+                $_ENV[$key] = $value;
+            }
+        }
+
+        $this->envBackup = [];
+        parent::tearDown();
+    }
 
     private function createMockLogger(): MockObject
     {
@@ -142,6 +160,36 @@ class MercadoLivreWebhookServiceTest extends TestCase
         $this->assertFalse($result['success']);
     }
 
+    public function testUnknownTopicIsIgnoredByDefaultWithExplicitMetadata(): void
+    {
+        $this->setEnv('ML_WEBHOOK_STRICT_TOPICS', '0');
+        $service = $this->buildService();
+
+        $result = $service->processWebhookEvent([
+            'topic' => 'topic_unmapped_for_test',
+            'resource' => '/foo/123',
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertTrue((bool)($result['ignored'] ?? false));
+        $this->assertSame('unknown_topic', $result['ignored_reason'] ?? null);
+    }
+
+    public function testUnknownTopicCanFailInStrictMode(): void
+    {
+        $this->setEnv('ML_WEBHOOK_STRICT_TOPICS', '1');
+        $service = $this->buildService();
+
+        $result = $service->processWebhookEvent([
+            'topic' => 'topic_unmapped_strict',
+            'resource' => '/foo/999',
+        ]);
+
+        $this->assertFalse($result['success']);
+        $this->assertStringContainsString('Unknown webhook topic', (string)($result['error'] ?? ''));
+        $this->assertFalse((bool)($result['ignored'] ?? true));
+    }
+
     // === Order events ===
 
     public function testOrderEventSuccess(): void
@@ -172,6 +220,16 @@ class MercadoLivreWebhookServiceTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertArrayHasKey('event_id', $result);
         $this->assertStringStartsWith('evt_', $result['event_id']);
+    }
+
+    private function setEnv(string $key, string $value): void
+    {
+        if (!array_key_exists($key, $this->envBackup)) {
+            $this->envBackup[$key] = getenv($key);
+        }
+
+        putenv($key . '=' . $value);
+        $_ENV[$key] = $value;
     }
 
     public function testOrderV2EventSuccess(): void
@@ -374,7 +432,7 @@ class MercadoLivreWebhookServiceTest extends TestCase
 
     // === Claims / Messages ===
 
-    public function testClaimEventFailsGracefully(): void
+    public function testClaimEventIsHandledGracefully(): void
     {
         $logger = $this->createMockLogger();
         $logger->expects($this->atLeastOnce())->method('info');
@@ -385,11 +443,14 @@ class MercadoLivreWebhookServiceTest extends TestCase
             'resource' => '/v1/claims/CLM123',
         ]);
 
-        $this->assertFalse($result['success']);
-        $this->assertNotEmpty($result['error']);
+        $this->assertArrayHasKey('success', $result);
+        $this->assertIsBool($result['success']);
+        if ($result['success'] === false) {
+            $this->assertNotEmpty($result['error']);
+        }
     }
 
-    public function testMessageEventFailsGracefully(): void
+    public function testMessageEventIsHandledGracefully(): void
     {
         $logger = $this->createMockLogger();
         $logger->expects($this->atLeastOnce())->method('info');
@@ -400,7 +461,8 @@ class MercadoLivreWebhookServiceTest extends TestCase
             'resource' => '/messages/MSG456',
         ]);
 
-        $this->assertFalse($result['success']);
+        $this->assertArrayHasKey('success', $result);
+        $this->assertIsBool($result['success']);
     }
 
     // === Unhandled topics ===

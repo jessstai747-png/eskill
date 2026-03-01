@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -10,7 +12,7 @@ use App\Services\QuestionService;
 
 /**
  * Service para orquestrar sincronização de contas do Mercado Livre
- * 
+ *
  * Gerencia o fluxo de sincronização após conexão de conta,
  * incluindo validação de token, sync de itens e atualização de status.
  */
@@ -35,7 +37,7 @@ class AccountSyncService
 
     /**
      * Sincroniza uma conta recém-conectada ou existente
-     * 
+     *
      * @param int $accountId ID da conta no banco
      * @return array Resultado da sincronização com status e estatísticas
      */
@@ -48,7 +50,10 @@ class AccountSyncService
             'account_id' => $accountId,
             'steps' => [],
             'stats' => [],
-            'error' => null
+            'error' => null,
+            'error_code' => null,
+            'needs_reconnect' => false,
+            'reconnect_url' => null,
         ];
 
         try {
@@ -59,10 +64,54 @@ class AccountSyncService
             }
             $result['steps'][] = ['step' => 'validate_account', 'status' => 'success'];
 
+            // 1.1 Bloquear sync para contas não elegíveis (ex.: invalid_grant/disconnected)
+            $eligibilityBlock = $this->buildSyncEligibilityFromAccount($accountId, $account);
+            if ($eligibilityBlock !== null) {
+                $result['steps'][] = [
+                    'step' => 'validate_account_eligibility',
+                    'status' => 'error',
+                    'error' => $eligibilityBlock['error'],
+                    'error_code' => $eligibilityBlock['error_code'],
+                ];
+                $result['error'] = $eligibilityBlock['error'];
+                $result['error_code'] = $eligibilityBlock['error_code'];
+                $result['needs_reconnect'] = (bool)$eligibilityBlock['needs_reconnect'];
+                $result['reconnect_url'] = $eligibilityBlock['reconnect_url'];
+
+                $this->logger->warning('ACCOUNT_SYNC_BLOCKED_RECONNECT_REQUIRED', 'Sincronização bloqueada: conta requer reautorização OAuth', [
+                    'account_id' => $accountId,
+                    'status' => $account['status'] ?? null,
+                    'error_code' => $eligibilityBlock['error_code'],
+                ]);
+
+                return $result;
+            }
+
             // 2. Garantir token válido
             $tokenValid = $this->ensureValidToken($accountId);
             if (!$tokenValid) {
-                throw new \Exception("Token inválido ou expirado. Reconecte a conta.");
+                $tokenFailureContext = $this->buildTokenValidationFailureContext($accountId, $account);
+                if ($tokenFailureContext !== null) {
+                    $result['steps'][] = [
+                        'step' => 'validate_token',
+                        'status' => 'error',
+                        'error' => $tokenFailureContext['error'],
+                        'error_code' => $tokenFailureContext['error_code'],
+                    ];
+                    $result['error'] = $tokenFailureContext['error'];
+                    $result['error_code'] = $tokenFailureContext['error_code'];
+                    $result['needs_reconnect'] = (bool)$tokenFailureContext['needs_reconnect'];
+                    $result['reconnect_url'] = $tokenFailureContext['reconnect_url'];
+
+                    $this->logger->warning('ACCOUNT_SYNC_BLOCKED_TOKEN_INVALID', 'Sincronização bloqueada por token inválido/conta desconectada', [
+                        'account_id' => $accountId,
+                        'error_code' => $tokenFailureContext['error_code'],
+                    ]);
+
+                    return $result;
+                }
+
+                throw new \Exception('Token inválido ou expirado. Reconecte a conta.');
             }
             $result['steps'][] = ['step' => 'validate_token', 'status' => 'success'];
 
@@ -71,7 +120,7 @@ class AccountSyncService
             $result['steps'][] = [
                 'step' => 'refresh_user_info',
                 'status' => 'success',
-                'data' => ['nickname' => $userInfo['nickname'] ?? 'N/A']
+                'data' => ['nickname' => $userInfo['nickname'] ?? 'N/A'],
             ];
 
             // 4. Sincronizar itens
@@ -80,7 +129,7 @@ class AccountSyncService
             $result['steps'][] = [
                 'step' => 'sync_items',
                 'status' => 'success',
-                'data' => $syncStats
+                'data' => $syncStats,
             ];
 
             // 5. Sincronizar Pedidos (Recentes)
@@ -89,7 +138,7 @@ class AccountSyncService
                 $orderStats = $orderService->syncOrders($accountId, 50);
                 $result['steps'][] = ['step' => 'sync_orders', 'status' => 'success', 'data' => $orderStats];
             } catch (\Exception $e) {
-                $this->logger->warning('ACCOUNT_SYNC_ORDERS_WARNING', "Falha parcial ao sincronizar pedidos", ['error' => $e->getMessage()]);
+                $this->logger->warning('ACCOUNT_SYNC_ORDERS_WARNING', 'Falha parcial ao sincronizar pedidos', ['error' => $e->getMessage()]);
                 $result['steps'][] = ['step' => 'sync_orders', 'status' => 'warning', 'error' => $e->getMessage()];
             }
 
@@ -99,7 +148,7 @@ class AccountSyncService
                 $questionStats = $questionService->syncQuestions(50);
                 $result['steps'][] = ['step' => 'sync_questions', 'status' => 'success', 'data' => $questionStats];
             } catch (\Exception $e) {
-                $this->logger->warning('ACCOUNT_SYNC_QUESTIONS_WARNING', "Falha parcial ao sincronizar perguntas", ['error' => $e->getMessage()]);
+                $this->logger->warning('ACCOUNT_SYNC_QUESTIONS_WARNING', 'Falha parcial ao sincronizar perguntas', ['error' => $e->getMessage()]);
                 $result['steps'][] = ['step' => 'sync_questions', 'status' => 'warning', 'error' => $e->getMessage()];
             }
 
@@ -112,17 +161,16 @@ class AccountSyncService
 
             $result['success'] = true;
             $this->logger->info('ACCOUNT_SYNC_COMPLETE', "Sincronização da conta {$accountId} concluída", $result);
-
         } catch (\Exception $e) {
             $result['error'] = $e->getMessage();
             $result['steps'][] = [
                 'step' => $this->getCurrentStep($result['steps']),
                 'status' => 'error',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
             $this->logger->error('ACCOUNT_SYNC_ERROR', "Erro na sincronização da conta {$accountId}", [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
         }
 
@@ -131,7 +179,7 @@ class AccountSyncService
 
     /**
      * Sincroniza todas as contas de um usuário
-     * 
+     *
      * @param int $userId ID do usuário
      * @return array Resultados de cada conta
      */
@@ -148,20 +196,20 @@ class AccountSyncService
             'total' => count($accounts),
             'success' => count(array_filter($results, fn($r) => $r['success'])),
             'failed' => count(array_filter($results, fn($r) => !$r['success'])),
-            'details' => $results
+            'details' => $results,
         ];
     }
 
     /**
      * Verifica status de sincronização de uma conta
-     * 
+     *
      * @param int $accountId ID da conta
      * @return array Status detalhado
      */
     public function getSyncStatus(int $accountId): array
     {
         $account = $this->getAccount($accountId);
-        
+
         if (!$account) {
             return ['exists' => false];
         }
@@ -169,8 +217,13 @@ class AccountSyncService
         $itemCount = $this->getItemCount($accountId);
         $lastSync = $account['last_synced_at'] ?? null;
         $tokenExpires = $account['token_expires_at'] ?? null;
-        
+        $accountStatus = strtolower(trim((string)($account['status'] ?? 'unknown')));
+        $lastRefreshError = trim((string)($account['last_refresh_error'] ?? ''));
+
         $tokenStatus = $this->getTokenStatus($tokenExpires);
+        $needsReconnect = $accountStatus === 'disconnected'
+            || stripos($lastRefreshError, 'invalid_grant') !== false;
+        $canSync = $tokenStatus['valid'] && $accountStatus === 'active' && !$needsReconnect;
 
         return [
             'exists' => true,
@@ -182,7 +235,10 @@ class AccountSyncService
             'last_synced_at' => $lastSync,
             'items_count' => $itemCount,
             'needs_sync' => $this->needsSync($lastSync),
-            'can_sync' => $tokenStatus['valid']
+            'can_sync' => $canSync,
+            'needs_reconnect' => $needsReconnect,
+            'reconnect_url' => $needsReconnect ? '/auth/authorize?reconnect=' . $accountId : null,
+            'last_refresh_error' => $lastRefreshError !== '' ? mb_substr($lastRefreshError, 0, 255) : null,
         ];
     }
 
@@ -193,10 +249,9 @@ class AccountSyncService
     {
         $lastSyncedSelect = $this->mlAccountsHasLastSyncedAt ? 'last_synced_at' : 'NULL AS last_synced_at';
 
-        $stmt = $this->db->prepare("
-            SELECT id, user_id, ml_user_id, nickname, email, status, 
-                   token_expires_at, {$lastSyncedSelect}, created_at
-            FROM ml_accounts 
+        $stmt = $this->db->prepare("\n            SELECT id, user_id, ml_user_id, nickname, email, status,
+                   token_expires_at, last_refresh_error, {$lastSyncedSelect}, created_at
+            FROM ml_accounts
             WHERE id = ?
         ");
         $stmt->execute([$accountId]);
@@ -208,13 +263,83 @@ class AccountSyncService
      */
     private function getUserAccounts(int $userId): array
     {
-        $stmt = $this->db->prepare("
-            SELECT id, ml_user_id, nickname, status 
-            FROM ml_accounts 
+        $stmt = $this->db->prepare("\n            SELECT id, ml_user_id, nickname, status
+            FROM ml_accounts
             WHERE user_id = ?
         ");
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @param array<string, mixed> $account
+     * @return array{error: string, error_code: string, needs_reconnect: bool, reconnect_url: string}|null
+     */
+    private function buildSyncEligibilityFromAccount(int $accountId, array $account): ?array
+    {
+        $status = strtolower(trim((string)($account['status'] ?? 'unknown')));
+        $lastRefreshError = strtolower(trim((string)($account['last_refresh_error'] ?? '')));
+        $reconnectUrl = '/auth/authorize?reconnect=' . $accountId;
+
+        if ($status === 'disconnected' || str_contains($lastRefreshError, 'invalid_grant')) {
+            return [
+                'error' => 'Conta desconectada — reautorização OAuth necessária antes da sincronização.',
+                'error_code' => 'account_disconnected',
+                'needs_reconnect' => true,
+                'reconnect_url' => $reconnectUrl,
+            ];
+        }
+
+        if ($status !== 'active') {
+            return [
+                'error' => 'Conta não elegível para sincronização no status atual. Reautorize a conta para continuar.',
+                'error_code' => 'account_not_eligible',
+                'needs_reconnect' => true,
+                'reconnect_url' => $reconnectUrl,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $account
+     * @return array{error: string, error_code: string, needs_reconnect: bool, reconnect_url: string}|null
+     */
+    private function buildTokenValidationFailureContext(int $accountId, array $account): ?array
+    {
+        $reconnectUrl = '/auth/authorize?reconnect=' . $accountId;
+
+        try {
+            $status = $this->authService->getTokenStatus($accountId);
+            $accountStatus = strtolower(trim((string)($status['account_status'] ?? ($account['status'] ?? 'unknown'))));
+            $tokenStatus = strtolower(trim((string)($status['status'] ?? 'unknown')));
+
+            if ($accountStatus === 'disconnected') {
+                return [
+                    'error' => 'Conta desconectada — reautorização OAuth necessária antes da sincronização.',
+                    'error_code' => 'account_disconnected',
+                    'needs_reconnect' => true,
+                    'reconnect_url' => $reconnectUrl,
+                ];
+            }
+
+            if ($tokenStatus === 'expired' || $tokenStatus === 'unknown') {
+                return [
+                    'error' => 'Token inválido/expirado. Reautorize a conta para continuar a sincronização.',
+                    'error_code' => 'account_reauth_required',
+                    'needs_reconnect' => true,
+                    'reconnect_url' => $reconnectUrl,
+                ];
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('ACCOUNT_SYNC_TOKEN_CONTEXT_UNAVAILABLE', 'Não foi possível obter contexto detalhado do token', [
+                'account_id' => $accountId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     /**
@@ -226,7 +351,7 @@ class AccountSyncService
             return $this->authService->ensureValidToken($accountId, 5);
         } catch (\Exception $e) {
             $this->logger->warning('TOKEN_VALIDATION_FAILED', "Falha ao validar token da conta {$accountId}", [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             return false;
         }
@@ -241,15 +366,14 @@ class AccountSyncService
         $userInfo = $client->get('/users/me');
 
         if (isset($userInfo['id'])) {
-            $stmt = $this->db->prepare("
-                UPDATE ml_accounts 
+            $stmt = $this->db->prepare("\n                UPDATE ml_accounts
                 SET nickname = ?, email = ?, updated_at = NOW()
                 WHERE id = ?
             ");
             $stmt->execute([
                 $userInfo['nickname'] ?? null,
                 $userInfo['email'] ?? null,
-                $accountId
+                $accountId,
             ]);
         }
 
@@ -265,8 +389,7 @@ class AccountSyncService
             return;
         }
 
-        $stmt = $this->db->prepare("
-            UPDATE ml_accounts 
+        $stmt = $this->db->prepare("\n            UPDATE ml_accounts
             SET last_synced_at = NOW(), updated_at = NOW()
             WHERE id = ?
         ");
@@ -278,8 +401,7 @@ class AccountSyncService
      */
     private function updateAccountStatus(int $accountId, string $status): void
     {
-        $stmt = $this->db->prepare("
-            UPDATE ml_accounts 
+        $stmt = $this->db->prepare("\n            UPDATE ml_accounts
             SET status = ?, updated_at = NOW()
             WHERE id = ?
         ");
@@ -292,12 +414,12 @@ class AccountSyncService
     private function getItemCount(int $accountId): int
     {
         try {
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM ml_items WHERE account_id = ?");
+            $stmt = $this->db->prepare('SELECT COUNT(*) FROM ml_items WHERE account_id = ?');
             $stmt->execute([$accountId]);
             return (int)$stmt->fetchColumn();
         } catch (\Throwable $e) {
             $this->logger->warning('ITEM_COUNT_FAILED', "Falha ao contar itens da conta {$accountId}", [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             return 0;
         }
@@ -324,7 +446,7 @@ class AccountSyncService
             return ['valid' => false, 'status' => 'expired', 'message' => 'Token expirado'];
         }
 
-        if ($diff < 3600) { // Menos de 1 hora
+        if ($diff < 3600) {
             return ['valid' => true, 'status' => 'expiring_soon', 'message' => 'Token expirando em breve'];
         }
 
@@ -354,13 +476,13 @@ class AccountSyncService
     {
         $allSteps = ['validate_account', 'validate_token', 'refresh_user_info', 'sync_items', 'update_sync_time'];
         $completed = array_column($steps, 'step');
-        
+
         foreach ($allSteps as $step) {
-            if (!in_array($step, $completed)) {
+            if (!in_array($step, $completed, true)) {
                 return $step;
             }
         }
-        
+
         return 'unknown';
     }
 

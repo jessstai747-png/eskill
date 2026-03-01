@@ -1,45 +1,46 @@
 <?php
 
+declare(strict_types=1);
+
 /**
- * Script para processar jobs pendentes
- * Pode ser executado via cron ou manualmente
+ * Script legado para processar jobs pendentes.
+ * Delegado ao MercadoLivreOrchestratorService para consolidar o fluxo operacional.
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../autoload.php';
 
-// Defensive: ensure global helper functions exist even if the runtime is in a partial-deploy state
-// or composer autoload files were not regenerated.
 if (!function_exists('log_error')) {
     require_once __DIR__ . '/../app/Helpers/LogHelper.php';
 }
 
-use App\Services\JobService;
+use App\Services\MercadoLivreOrchestratorService;
 
-echo "[" . date('Y-m-d H:i:s') . "] Iniciando processamento de jobs...\n";
+echo "[" . date('Y-m-d H:i:s') . "] Iniciando processamento de jobs (orquestrador ML)...\n";
 
 try {
-    $jobService = new JobService();
+    $service = new MercadoLivreOrchestratorService(dirname(__DIR__));
+    $result = $service->runQueue(10, 1, false, 30, true);
 
-    // Processar até 10 jobs por execução
-    $results = $jobService->process(10);
+    if (!empty($result['skipped'])) {
+        echo "[" . date('Y-m-d H:i:s') . "] Execução ignorada: " . ($result['reason'] ?? 'skipped') . "\n";
+        exit(0);
+    }
 
-    $count = count($results);
-    echo "[" . date('Y-m-d H:i:s') . "] Processados {$count} jobs.\n";
+    $processed = (int)($result['jobs_processed'] ?? 0);
+    echo "[" . date('Y-m-d H:i:s') . "] Processados {$processed} jobs.\n";
 
-    foreach ($results as $result) {
-        $status = $result['status'] ?? 'unknown';
-        $id = $result['id'] ?? '?';
-        $type = $result['type'] ?? '?';
-
-        if ($status === 'completed') {
-            echo " - Job #{$id} ({$type}): Sucesso\n";
-        } else {
-            $error = $result['error'] ?? 'Erro desconhecido';
-            echo " - Job #{$id} ({$type}): Falha/Pendente - {$error}\n";
+    if (!empty($result['batches']) && is_array($result['batches'])) {
+        foreach ($result['batches'] as $batch) {
+            if (!is_array($batch)) {
+                continue;
+            }
+            $batchNo = (int)($batch['batch'] ?? 0);
+            $batchCount = (int)($batch['processed'] ?? 0);
+            echo " - Lote #{$batchNo}: {$batchCount} jobs\n";
         }
     }
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     echo "[" . date('Y-m-d H:i:s') . "] Erro fatal: " . $e->getMessage() . "\n";
     exit(1);
 }

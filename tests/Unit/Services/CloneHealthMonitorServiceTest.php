@@ -101,7 +101,7 @@ class CloneHealthMonitorServiceTest extends TestCase
      * Build a standard 9-stmt sequence for getSystemHealth (7 checks + 2 metrics).
      * Disk space (check 8) uses disk_free_space(), no DB call.
      *
-    * @param array<string, array|int|string|float|bool|null> $overrides  Keys: active_jobs, stuck_jobs, error_rate, queue_size,
+     * @param array<string, array|int|string|float|bool|null> $overrides  Keys: active_jobs, stuck_jobs, error_rate, queue_size,
      *                                           recent_activity, workers, api_connectivity, metrics_24h, metrics_1h
      * @return PDOStatement[]
      */
@@ -124,11 +124,15 @@ class CloneHealthMonitorServiceTest extends TestCase
             $this->createMockStmt(fetchColumnReturn: $overrides['api_connectivity'] ?? 0),
             // getQuickMetrics: 24h
             $this->createMockStmt(fetchReturn: $overrides['metrics_24h'] ?? [
-                'jobs_24h' => 10, 'items_24h' => 100, 'success_24h' => 100, 'failed_24h' => 0,
+                'jobs_24h' => 10,
+                'items_24h' => 100,
+                'success_24h' => 100,
+                'failed_24h' => 0,
             ]),
             // getQuickMetrics: 1h
             $this->createMockStmt(fetchReturn: $overrides['metrics_1h'] ?? [
-                'jobs_1h' => 1, 'items_1h' => 10,
+                'jobs_1h' => 1,
+                'items_1h' => 10,
             ]),
         ];
     }
@@ -376,8 +380,14 @@ class CloneHealthMonitorServiceTest extends TestCase
 
         // All 8 checks present
         $expectedChecks = [
-            'active_jobs', 'stuck_jobs', 'error_rate', 'queue_size',
-            'recent_activity', 'workers', 'api_connectivity', 'disk_space',
+            'active_jobs',
+            'stuck_jobs',
+            'error_rate',
+            'queue_size',
+            'recent_activity',
+            'workers',
+            'api_connectivity',
+            'disk_space',
         ];
         foreach ($expectedChecks as $check) {
             $this->assertArrayHasKey($check, $health['checks'], "Missing check: $check");
@@ -792,10 +802,14 @@ class CloneHealthMonitorServiceTest extends TestCase
     {
         $this->configurePrepareSequence($this->buildHealthStmts([
             'metrics_24h' => [
-                'jobs_24h' => 50, 'items_24h' => 500, 'success_24h' => 480, 'failed_24h' => 20,
+                'jobs_24h' => 50,
+                'items_24h' => 500,
+                'success_24h' => 480,
+                'failed_24h' => 20,
             ],
             'metrics_1h' => [
-                'jobs_1h' => 5, 'items_1h' => 50,
+                'jobs_1h' => 5,
+                'items_1h' => 50,
             ],
         ]));
 
@@ -934,9 +948,14 @@ class CloneHealthMonitorServiceTest extends TestCase
             );
 
         $recentStmt = $this->createMockStmt(fetchAllReturn: [
-            ['job_id' => 1, 'status' => 'completed', 'total_items' => 10,
-             'successful_items' => 10, 'failed_items' => 0,
-             'created_at' => date('Y-m-d H:i:s')],
+            [
+                'job_id' => 1,
+                'status' => 'completed',
+                'total_items' => 10,
+                'successful_items' => 10,
+                'failed_items' => 0,
+                'created_at' => date('Y-m-d H:i:s')
+            ],
         ]);
 
         $perfStmt = $this->createMockStmt(fetchReturn: [
@@ -946,8 +965,15 @@ class CloneHealthMonitorServiceTest extends TestCase
         ]);
 
         $this->mockPdo->method('query')
-            ->willReturn($tableStmt, $tableStmt, $tableStmt,
-                         $tableStmt, $tableStmt, $tableStmt, $perfStmt);
+            ->willReturn(
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $perfStmt
+            );
 
         $this->mockPdo->method('prepare')
             ->willReturnOnConsecutiveCalls($byStatusStmt, $recentStmt);
@@ -976,8 +1002,12 @@ class CloneHealthMonitorServiceTest extends TestCase
         $diagnostics = $svc->runDiagnostics();
 
         $requiredTables = [
-            'cloned_items', 'catalog_clone_jobs', 'catalog_clone_job_items',
-            'clone_templates', 'clone_item_metrics', 'clone_sync_logs',
+            'cloned_items',
+            'catalog_clone_jobs',
+            'catalog_clone_job_items',
+            'clone_templates',
+            'clone_item_metrics',
+            'clone_sync_logs',
         ];
 
         foreach ($requiredTables as $table) {
@@ -1018,8 +1048,15 @@ class CloneHealthMonitorServiceTest extends TestCase
         ]);
 
         $this->mockPdo->method('query')
-            ->willReturn($tableStmt, $tableStmt, $tableStmt,
-                         $tableStmt, $tableStmt, $tableStmt, $perfStmt);
+            ->willReturn(
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $tableStmt,
+                $perfStmt
+            );
 
         $this->mockPdo->method('prepare')->willReturn(
             $this->createMockStmt(fetchReturn: false),
@@ -1131,11 +1168,15 @@ class CloneHealthMonitorServiceTest extends TestCase
             // Check 7: api_connectivity — uses ML client, NO DB stmt
             // getQuickMetrics: 24h
             $this->createMockStmt(fetchReturn: $overrides['metrics_24h'] ?? [
-                'jobs_24h' => 10, 'items_24h' => 100, 'success_24h' => 100, 'failed_24h' => 0,
+                'jobs_24h' => 10,
+                'items_24h' => 100,
+                'success_24h' => 100,
+                'failed_24h' => 0,
             ]),
             // getQuickMetrics: 1h
             $this->createMockStmt(fetchReturn: $overrides['metrics_1h'] ?? [
-                'jobs_1h' => 1, 'items_1h' => 10,
+                'jobs_1h' => 1,
+                'items_1h' => 10,
             ]),
         ];
     }

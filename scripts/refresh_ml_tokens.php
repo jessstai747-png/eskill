@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * CLI para renovar tokens do Mercado Livre
  * 
@@ -15,15 +18,15 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
-$dotenv->load();
+$dotenv->safeLoad();
 
-use App\Jobs\TokenRefreshJob;
+use App\Services\MercadoLivreOrchestratorService;
 
 echo "===========================================\n";
 echo "   🔄 ML Token Refresh - " . date('Y-m-d H:i:s') . "\n";
 echo "===========================================\n\n";
 
-$job = new TokenRefreshJob();
+$orchestrator = new MercadoLivreOrchestratorService(dirname(__DIR__));
 
 // Parse argumentos
 $options = getopt('', ['all', 'account::', 'help']);
@@ -39,14 +42,27 @@ if (isset($options['help'])) {
 if (isset($options['account'])) {
     $accountId = (int)$options['account'];
     echo "Renovando token da conta #{$accountId}...\n";
-    
-    $success = $job->refreshAccount($accountId);
-    
+
+    $response = $orchestrator->runTokenRefresh(false, $accountId, true);
+    $success = (bool)($response['success'] ?? false);
+    $result = is_array($response['result'] ?? null) ? $response['result'] : [];
+
+    if (!empty($response['skipped'])) {
+        echo "⏭️ Execução ignorada: " . ($response['reason'] ?? 'lock_busy') . "\n";
+        exit(0);
+    }
+
     if ($success) {
         echo "✅ Token renovado com sucesso!\n";
+        if (!empty($result['message'])) {
+            echo "Mensagem: {$result['message']}\n";
+        }
         exit(0);
     } else {
         echo "❌ Falha ao renovar token. A conta pode precisar de reconexão manual.\n";
+        if (!empty($result['message'])) {
+            echo "Mensagem: {$result['message']}\n";
+        }
         exit(1);
     }
 }
@@ -58,7 +74,14 @@ if ($forceAll) {
 } else {
     echo "🔄 Modo: Renovar apenas tokens prestes a expirar (< 2h)\n\n";
 }
-$results = $job->run($forceAll);
+$response = $orchestrator->runTokenRefresh($forceAll, null, true);
+
+if (!empty($response['skipped'])) {
+    echo "⏭️ Execução ignorada: " . ($response['reason'] ?? 'lock_busy') . "\n";
+    exit(0);
+}
+
+$results = is_array($response['result'] ?? null) ? $response['result'] : [];
 
 echo "Contas verificadas: {$results['accounts_checked']}\n";
 echo "✅ Tokens renovados: {$results['tokens_refreshed']}\n";
@@ -85,4 +108,4 @@ if (!empty($results['details'])) {
 }
 
 echo "\n===========================================\n";
-echo "Finalizado em: {$results['finished_at']}\n";
+echo "Finalizado em: " . ($results['finished_at'] ?? date('Y-m-d H:i:s')) . "\n";

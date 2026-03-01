@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * CloneHealthMonitorService
- * 
+ *
  * Monitoramento de saúde do sistema de clonagem.
  * Métricas em tempo real, alertas e diagnósticos.
  */
@@ -289,7 +289,7 @@ class CloneHealthMonitorService
             }
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     SUM(successful_items) as success,
                     SUM(failed_items) as failed
                 FROM catalog_clone_jobs
@@ -771,7 +771,7 @@ class CloneHealthMonitorService
                 'status' => 'ok',
                 'value' => 'N/A',
                 'minutes_since_last_update' => null,
-                'message' => 'Sem atividade recente detectável (nenhum job)' 
+                'message' => 'Sem atividade recente detectável (nenhum job)'
             ];
         }
 
@@ -879,7 +879,7 @@ class CloneHealthMonitorService
         try {
             // Últimas 24h
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as jobs_24h,
                     SUM(total_items) as items_24h,
                     SUM(successful_items) as success_24h,
@@ -893,7 +893,7 @@ class CloneHealthMonitorService
 
             // Última hora
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as jobs_1h,
                     SUM(total_items) as items_1h
                 FROM catalog_clone_jobs
@@ -1035,7 +1035,7 @@ class CloneHealthMonitorService
             }
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     status,
                     COUNT(*) as count
                 FROM catalog_clone_jobs
@@ -1089,7 +1089,7 @@ class CloneHealthMonitorService
         try {
             // Tempo médio de processamento
             $stmt = $this->db->query("
-                SELECT 
+                SELECT
                     AVG(TIMESTAMPDIFF(SECOND, started_at, completed_at)) as avg_duration_seconds,
                     AVG(total_items) as avg_items_per_job,
                     AVG(total_items / NULLIF(TIMESTAMPDIFF(SECOND, started_at, completed_at), 0)) as items_per_second
@@ -1153,7 +1153,7 @@ class CloneHealthMonitorService
             $cutoff = $this->dateTimeToSql((new \DateTimeImmutable('now'))->modify('-' . $hoursClamped . ' hours'));
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') as hour,
                     COUNT(*) as checks,
                     AVG(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) * 100 as uptime_percent

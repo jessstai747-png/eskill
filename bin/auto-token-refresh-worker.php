@@ -1,6 +1,8 @@
 #!/usr/bin/env php
 <?php
 
+declare(strict_types=1);
+
 /**
  * Auto Token Refresh & Data Sync Worker
  *
@@ -27,6 +29,7 @@ use App\Services\MercadoLivreClient;
 use App\Services\ItemService;
 use App\Services\OrderService;
 use App\Services\QuestionService;
+use App\Services\MercadoLivreOrchestratorService;
 
 class AutoTokenRefreshWorker
 {
@@ -80,6 +83,26 @@ class AutoTokenRefreshWorker
         }
 
         $this->log("✅ Worker finalizado", 'info');
+    }
+
+    /**
+     * Executa apenas a fase legada de sync Mercado Pago (compatibilidade temporária).
+     */
+    public function runMercadoPagoOnly(): void
+    {
+        $this->log("🚀 Auto Token Refresh Worker - modo compatibilidade MP (apenas Mercado Pago)", 'info');
+
+        try {
+            if ($this->isMercadoPagoEnabled()) {
+                $this->syncMercadoPagoData();
+            } else {
+                $this->log("⏭️ Mercado Pago desabilitado; nada a fazer", 'info');
+            }
+            $this->printSummary();
+        } catch (\Throwable $e) {
+            $this->log("❌ Erro no modo compatibilidade MP: " . $e->getMessage(), 'error');
+            $this->stats['errors'][] = $e->getMessage();
+        }
     }
 
     /**
@@ -562,10 +585,68 @@ class AutoTokenRefreshWorker
 
 // Executar worker
 try {
-    $worker = new AutoTokenRefreshWorker();
-    $worker->run();
-    exit(0);
-} catch (\Exception $e) {
+    $args = $_SERVER['argv'] ?? [];
+    $runLegacy = in_array('--legacy', $args, true);
+    $runOnce = in_array('--once', $args, true);
+    $skipMercadoPago = in_array('--skip-mercadopago', $args, true) || in_array('--skip-mp', $args, true);
+    $forceAll = in_array('--all', $args, true) || in_array('--force-all', $args, true);
+    $compact = in_array('--compact', $args, true);
+    $accountId = null;
+    foreach ($args as $arg) {
+        if (is_string($arg) && str_starts_with($arg, '--account=')) {
+            $accountId = (int)substr($arg, strlen('--account='));
+            break;
+        }
+    }
+
+    if ($runOnce) {
+        echo "[auto-token-refresh-worker] Executando em modo --once\n";
+    }
+
+    if ($runLegacy) {
+        echo "[auto-token-refresh-worker] Modo legado habilitado via --legacy\n";
+        $worker = new AutoTokenRefreshWorker();
+        $worker->run();
+        exit(0);
+    }
+
+    echo "[auto-token-refresh-worker] Delegando ciclo ML ao MercadoLivreOrchestratorService (modo padrão)\n";
+    echo "[auto-token-refresh-worker] Use --legacy para executar o fluxo antigo completo\n";
+
+    $orchestrator = new MercadoLivreOrchestratorService(dirname(__DIR__));
+    $cycle = $orchestrator->runCycle([
+        'force_all' => $forceAll,
+        'account_id' => $accountId,
+        'orders_limit' => 100,
+        'items_limit' => 100,
+        'questions_limit' => 50,
+        'queue_batch_size' => 25,
+        'queue_max_batches' => 4,
+        'cleanup_old_jobs' => false,
+        'cleanup_days' => 30,
+    ], true);
+
+    echo json_encode(
+        $cycle,
+        $compact ? 0 : (JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+    ) . PHP_EOL;
+
+    if (!empty($cycle['skipped'])) {
+        exit(0);
+    }
+
+    // Compatibilidade temporária: preserva sync MP legado se habilitado no ambiente.
+    $mpEnabled = filter_var($_ENV['MERCADO_PAGO_ENABLED'] ?? getenv('MERCADO_PAGO_ENABLED') ?? false, FILTER_VALIDATE_BOOLEAN);
+    if ($mpEnabled && !$skipMercadoPago) {
+        echo "[auto-token-refresh-worker] Executando fase legada de Mercado Pago (compatibilidade temporária)\n";
+        $worker = new AutoTokenRefreshWorker();
+        $worker->runMercadoPagoOnly();
+    } elseif ($mpEnabled && $skipMercadoPago) {
+        echo "[auto-token-refresh-worker] Fase Mercado Pago ignorada via flag --skip-mercadopago\n";
+    }
+
+    exit((bool)($cycle['success'] ?? false) ? 0 : 1);
+} catch (\Throwable $e) {
     echo "FATAL ERROR: " . $e->getMessage() . "\n";
     exit(1);
 }

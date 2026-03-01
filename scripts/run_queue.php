@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 /**
- * Wrapper de cron para processamento de fila de jobs.
- * Compatível com entrada legada do crontab:
- * * * * * php scripts/run_queue.php
+ * Wrapper legado de cron para fila.
+ * Agora delega ao MercadoLivreOrchestratorService (sem shell exec encadeado).
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -13,22 +14,25 @@ if (!function_exists('log_error')) {
     require_once __DIR__ . '/../app/Helpers/LogHelper.php';
 }
 
+use App\Services\MercadoLivreOrchestratorService;
+
 $timestamp = date('Y-m-d H:i:s');
-echo "[{$timestamp}] run_queue iniciado\n";
+echo "[{$timestamp}] run_queue iniciado (orquestrador ML)\n";
 
-$processJobsScript = __DIR__ . '/process_jobs.php';
+try {
+    $service = new MercadoLivreOrchestratorService(dirname(__DIR__));
+    $result = $service->runQueue(10, 1, false, 30, true);
 
-if (!file_exists($processJobsScript)) {
-    fwrite(STDERR, "[{$timestamp}] process_jobs.php não encontrado\n");
+    if (!empty($result['skipped'])) {
+        echo '[' . date('Y-m-d H:i:s') . '] run_queue ignorado: ' . ($result['reason'] ?? 'skipped') . "\n";
+        exit(0);
+    }
+
+    $processed = (int)($result['jobs_processed'] ?? 0);
+    $batchesRun = (int)($result['batches_run'] ?? 0);
+    echo '[' . date('Y-m-d H:i:s') . "] run_queue finalizado: jobs_processed={$processed}, batches_run={$batchesRun}\n";
+    exit(0);
+} catch (\Throwable $e) {
+    fwrite(STDERR, '[' . date('Y-m-d H:i:s') . '] run_queue erro: ' . $e->getMessage() . PHP_EOL);
     exit(1);
 }
-
-$command = escapeshellcmd(PHP_BINARY) . ' ' . escapeshellarg($processJobsScript) . ' 2>&1';
-exec($command, $output, $exitCode);
-
-if (!empty($output)) {
-    echo implode(PHP_EOL, $output) . PHP_EOL;
-}
-
-echo '[' . date('Y-m-d H:i:s') . "] run_queue finalizado com código {$exitCode}\n";
-exit($exitCode);

@@ -83,6 +83,7 @@ class MercadoLivreWebhookService
         ]);
 
         try {
+            $handled = true;
             switch ($topic) {
                 case 'orders_v2':
                 case 'orders':
@@ -106,8 +107,36 @@ class MercadoLivreWebhookService
                     break;
 
                 default:
-                    $this->logger->info("Unhandled webhook topic: {$topic}", ['resource' => $resource]);
+                    $handled = false;
                     break;
+            }
+
+            if (!$handled) {
+                $strictMode = $this->isStrictUnknownTopicModeEnabled();
+                $this->logger->warning('Webhook topic desconhecido', [
+                    'topic' => $topic,
+                    'resource' => $resource,
+                    'account_id' => $this->accountId,
+                    'strict_mode' => $strictMode,
+                ]);
+
+                if ($strictMode) {
+                    return [
+                        'success' => false,
+                        'error' => 'Unknown webhook topic: ' . (string)$topic,
+                        'event_id' => $eventId,
+                        'ignored' => false,
+                        'strict_mode' => true,
+                    ];
+                }
+
+                return [
+                    'success' => true,
+                    'event_id' => $eventId,
+                    'ignored' => true,
+                    'ignored_reason' => 'unknown_topic',
+                    'topic' => (string)$topic,
+                ];
             }
 
             return ['success' => true, 'event_id' => $eventId];
@@ -120,6 +149,13 @@ class MercadoLivreWebhookService
             
             return ['success' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    private function isStrictUnknownTopicModeEnabled(): bool
+    {
+        $value = $_ENV['ML_WEBHOOK_STRICT_TOPICS'] ?? getenv('ML_WEBHOOK_STRICT_TOPICS') ?? '0';
+        $normalized = strtolower(trim((string)$value));
+        return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true);
     }
 
     private function handleOrderEvent(string $resource): void

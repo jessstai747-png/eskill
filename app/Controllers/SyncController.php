@@ -5,6 +5,8 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Database;
 use App\Helpers\SessionHelper;
+use App\Services\JobService;
+use App\Services\SyncStatusService;
 use PDO;
 
 /**
@@ -134,38 +136,47 @@ class SyncController
                 return;
             }
             
-            // Marcar como "running"
-            $this->updateSyncStatus($accountId, $resourceType, 'running');
-            
-            // Executar sincronização em background
-            $scriptMap = [
-                'orders' => 'cron_sync_orders.php',
-                'items' => 'cron_sync_items.php',
-                'questions' => 'cron_sync_questions.php'
+            $jobTypeMap = [
+                'orders' => 'sync_orders',
+                'items' => 'sync_items',
+                'questions' => 'sync_questions',
             ];
-            
-            $script = __DIR__ . '/../../scripts/' . $scriptMap[$resourceType];
-            
-            if (file_exists($script)) {
-                // Executar em background
-                // Security: use escapeshellarg to prevent path injection
-                $cmd = "php " . escapeshellarg($script) . " > /dev/null 2>&1 &";
-                exec($cmd);
-                
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Sincronização iniciada',
-                    'resource' => $resourceType
-                ]);
-            } else {
-                $this->updateSyncStatus($accountId, $resourceType, 'error', 'Script não encontrado');
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Script de sincronização não encontrado'
-                ]);
+            $defaultLimitMap = [
+                'orders' => 100,
+                'items' => 50,
+                'questions' => 50,
+            ];
+
+            $jobService = new JobService();
+            $jobPayload = [
+                'account_id' => (int)$accountId,
+                'limit' => $defaultLimitMap[$resourceType] ?? 50,
+                'source' => 'sync_controller_manual',
+                'triggered_by_user_id' => SessionHelper::getUserId(),
+            ];
+
+            if ($resourceType === 'orders') {
+                $jobPayload['page_limit'] = 20;
+                $jobPayload['persist_checkpoint'] = true;
             }
+
+            $jobId = $jobService->dispatch($jobTypeMap[$resourceType], $jobPayload);
+
+            // Marcar como "running" após enqueue bem sucedido
+            $this->updateSyncStatus($accountId, $resourceType, 'running');
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Sincronização enfileirada',
+                'resource' => $resourceType,
+                'job_id' => $jobId,
+                'job_type' => $jobTypeMap[$resourceType],
+            ]);
             
         } catch (\Exception $e) {
+            if (!empty($accountId) && !empty($resourceType) && in_array((string)$resourceType, ['orders', 'items', 'questions'], true)) {
+                $this->updateSyncStatus((int)$accountId, (string)$resourceType, 'error', $e->getMessage());
+            }
             http_response_code(500);
             echo json_encode([
                 'success' => false,
@@ -234,21 +245,23 @@ class SyncController
     private function updateSyncStatus(int $accountId, string $resourceType, string $status, ?string $error = null): void
     {
         try {
-            $stmt = $this->db->prepare("
-                INSERT INTO sync_status (resource_type, account_id, status, error_message, last_sync_at, created_at, updated_at)
-                VALUES (:resource, :account_id, :status, :error, NOW(), NOW(), NOW())
-                ON DUPLICATE KEY UPDATE
-                    status = :status,
-                    error_message = :error,
-                    updated_at = NOW()
-            ");
-            
-            $stmt->execute([
-                'resource' => $resourceType,
-                'account_id' => $accountId,
-                'status' => $status,
-                'error' => $error
-            ]);
+            $service = new SyncStatusService($this->db);
+            if ($status === 'running') {
+                $service->markRunning($resourceType, $accountId);
+                return;
+            }
+
+            if ($status === 'error') {
+                $service->markError($resourceType, $accountId, $error ?? 'Erro de sincronização');
+                return;
+            }
+
+            if ($status === 'success') {
+                $service->markSuccess($resourceType, $accountId);
+                return;
+            }
+
+            throw new \InvalidArgumentException('Status de sync inválido: ' . $status);
         } catch (\Exception $e) {
             log_error('Falha ao atualizar status de sincronização', [
                 'resource' => $resourceType,

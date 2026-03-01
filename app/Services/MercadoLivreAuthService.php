@@ -13,6 +13,7 @@ class MercadoLivreAuthService
 {
     private array $config;
     private ?\PDO $db;
+    private bool $compatSchemaEnsured = false;
 
     /**
      * Marca uma conta como desconectada (falha irrecuperável de refresh).
@@ -77,15 +78,176 @@ class MercadoLivreAuthService
     private function pdo(): \PDO
     {
         if ($this->db instanceof \PDO) {
+            $this->ensureCompatibilitySchema();
             return $this->db;
         }
 
         try {
             $this->db = Database::getInstance();
+            $this->ensureCompatibilitySchema();
             return $this->db;
         } catch (\Throwable $e) {
             throw new \RuntimeException('Database unavailable for MercadoLivreAuthService', 0, $e);
         }
+    }
+
+    /**
+     * Compatibilidade com instalações antigas: garante colunas/tabelas usadas pelo fluxo de tokens.
+     */
+    private function ensureCompatibilitySchema(): void
+    {
+        if ($this->compatSchemaEnsured || !($this->db instanceof \PDO)) {
+            return;
+        }
+
+        try {
+            $dbNameStmt = $this->db->query('SELECT DATABASE() AS db_name');
+            $dbName = $dbNameStmt ? (string)($dbNameStmt->fetch(\PDO::FETCH_ASSOC)['db_name'] ?? '') : '';
+            if ($dbName === '') {
+                $this->compatSchemaEnsured = true;
+                return;
+            }
+
+            $this->ensureMlAccountsCompatibilityColumns($dbName);
+            $this->ensureTokenRefreshAuditTableExists();
+        } catch (\Throwable $e) {
+            // best-effort: não bloquear o fluxo por migração incremental
+        } finally {
+            $this->compatSchemaEnsured = true;
+        }
+    }
+
+    private function ensureMlAccountsCompatibilityColumns(string $dbName): void
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COLUMN_NAME
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = :db
+               AND TABLE_NAME = 'ml_accounts'"
+        );
+        $stmt->execute([':db' => $dbName]);
+        $cols = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        $map = array_fill_keys(is_array($cols) ? $cols : [], true);
+
+        $alterStatements = [];
+        if (!isset($map['refresh_failure_count'])) {
+            $alterStatements[] = "ADD COLUMN refresh_failure_count INT NOT NULL DEFAULT 0";
+        }
+        if (!isset($map['last_refresh_error'])) {
+            $alterStatements[] = "ADD COLUMN last_refresh_error TEXT NULL";
+        }
+        if (!isset($map['last_refresh_at'])) {
+            $alterStatements[] = "ADD COLUMN last_refresh_at DATETIME NULL";
+        }
+        if (!isset($map['last_token_refresh'])) {
+            $alterStatements[] = "ADD COLUMN last_token_refresh DATETIME NULL";
+        }
+
+        if (!empty($alterStatements)) {
+            $this->db->exec('ALTER TABLE ml_accounts ' . implode(', ', $alterStatements));
+        }
+
+        $this->ensureMlAccountsStatusSupportsDisconnected($dbName);
+    }
+
+    private function ensureMlAccountsStatusSupportsDisconnected(string $dbName): void
+    {
+        $stmt = $this->db->prepare(
+            "SELECT DATA_TYPE, COLUMN_TYPE
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = :db
+               AND TABLE_NAME = 'ml_accounts'
+               AND COLUMN_NAME = 'status'
+             LIMIT 1"
+        );
+        $stmt->execute([':db' => $dbName]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!is_array($row)) {
+            return;
+        }
+
+        $dataType = strtolower((string)($row['DATA_TYPE'] ?? ''));
+        $columnType = strtolower((string)($row['COLUMN_TYPE'] ?? ''));
+
+        if ($dataType !== 'enum') {
+            return;
+        }
+
+        if (str_contains($columnType, "'disconnected'")) {
+            return;
+        }
+
+        $this->db->exec(
+            "ALTER TABLE ml_accounts
+             MODIFY COLUMN status ENUM('active','inactive','expired','disconnected')
+             DEFAULT 'active'"
+        );
+    }
+
+    private function ensureTokenRefreshAuditTableExists(): void
+    {
+        $this->db->exec(
+            "CREATE TABLE IF NOT EXISTS token_refresh_audit (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                account_id INT NOT NULL,
+                action VARCHAR(80) NOT NULL,
+                details JSON NULL,
+                http_code INT NULL,
+                error_message TEXT NULL,
+                expires_at_before DATETIME NULL,
+                expires_at_after DATETIME NULL,
+                execution_time_ms INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_token_refresh_audit_account_id (account_id),
+                INDEX idx_token_refresh_audit_action (action),
+                INDEX idx_token_refresh_audit_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+
+        $this->ensureTokenRefreshAuditActionSupportsDisconnected();
+    }
+
+    private function ensureTokenRefreshAuditActionSupportsDisconnected(): void
+    {
+        $stmt = $this->db->query(
+            "SELECT DATA_TYPE, COLUMN_TYPE
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'token_refresh_audit'
+               AND COLUMN_NAME = 'action'
+             LIMIT 1"
+        );
+        $row = $stmt ? $stmt->fetch(\PDO::FETCH_ASSOC) : null;
+
+        if (!is_array($row)) {
+            return;
+        }
+
+        $dataType = strtolower((string)($row['DATA_TYPE'] ?? ''));
+        $columnType = strtolower((string)($row['COLUMN_TYPE'] ?? ''));
+
+        if ($dataType !== 'enum') {
+            return;
+        }
+
+        if (str_contains($columnType, "'refresh_disconnected'")) {
+            return;
+        }
+
+        $this->db->exec(
+            "ALTER TABLE token_refresh_audit
+             MODIFY COLUMN action ENUM(
+                'refresh_attempt',
+                'refresh_success',
+                'refresh_failed',
+                'authorization_granted',
+                'token_expired',
+                'lock_acquired',
+                'lock_timeout',
+                'refresh_disconnected'
+             ) NOT NULL"
+        );
     }
 
     /**
@@ -359,26 +521,41 @@ class MercadoLivreAuthService
     {
         $startTime = microtime(true);
 
-        // Recuperar refresh token e expirar atual
-        $stmt = $this->pdo()->prepare('SELECT refresh_token, tokens_encrypted, token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
-        $stmt->execute(['id' => $accountId]);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $lockName = $this->buildRefreshLockName($accountId);
+        if (!$this->acquireRefreshTokenLock($lockName, 15)) {
+            try {
+                (new StructuredLogService())->warning('Refresh token ML ignorado por lock ativo', [
+                    'account_id' => $accountId,
+                    'lock' => $lockName,
+                ]);
+            } catch (\Throwable $ignored) {
+                // best-effort
+            }
 
-        if (!$row) {
             return false;
         }
 
-        $expiresAtBefore = $row['token_expires_at'];
+        try {
+            // Recuperar refresh token e expirar atual
+            $stmt = $this->pdo()->prepare('SELECT refresh_token, tokens_encrypted, token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $accountId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-        // Logar tentativa de refresh
-        $this->logAuditEvent(
-            $accountId,
-            'refresh_attempt',
-            ['max_retries' => $maxRetries],
-            null,
-            null,
-            $expiresAtBefore
-        );
+            if (!$row) {
+                return false;
+            }
+
+            $expiresAtBefore = $row['token_expires_at'];
+
+            // Logar tentativa de refresh
+            $this->logAuditEvent(
+                $accountId,
+                'refresh_attempt',
+                ['max_retries' => $maxRetries, 'lock' => $lockName],
+                null,
+                null,
+                $expiresAtBefore
+            );
 
         $refreshToken = $row['refresh_token'];
         if ($row['tokens_encrypted']) {
@@ -605,7 +782,56 @@ class MercadoLivreAuthService
             $executionTime
         );
 
-        return (bool)$upd->rowCount();
+            return (bool)$upd->rowCount();
+        } finally {
+            $this->releaseRefreshTokenLock($lockName);
+        }
+    }
+
+    private function buildRefreshLockName(int $accountId): string
+    {
+        return mb_substr('ml_refresh_account_' . $accountId, 0, 64);
+    }
+
+    private function acquireRefreshTokenLock(string $lockName, int $timeoutSeconds = 10): bool
+    {
+        try {
+            $stmt = $this->pdo()->prepare('SELECT GET_LOCK(:lock_name, :timeout_seconds) AS acquired');
+            $stmt->bindValue(':lock_name', $lockName);
+            $stmt->bindValue(':timeout_seconds', max(0, min(60, $timeoutSeconds)), \PDO::PARAM_INT);
+            $stmt->execute();
+            $value = $stmt->fetchColumn();
+
+            return (int)$value === 1;
+        } catch (\Throwable $e) {
+            try {
+                (new StructuredLogService())->warning('Falha ao adquirir advisory lock de refresh ML', [
+                    'lock' => $lockName,
+                    'error' => $e->getMessage(),
+                ]);
+            } catch (\Throwable $ignored) {
+                // best-effort
+            }
+
+            return false;
+        }
+    }
+
+    private function releaseRefreshTokenLock(string $lockName): void
+    {
+        try {
+            $stmt = $this->pdo()->prepare('SELECT RELEASE_LOCK(:lock_name)');
+            $stmt->execute([':lock_name' => $lockName]);
+        } catch (\Throwable $e) {
+            try {
+                (new StructuredLogService())->warning('Falha ao liberar advisory lock de refresh ML', [
+                    'lock' => $lockName,
+                    'error' => $e->getMessage(),
+                ]);
+            } catch (\Throwable $ignored) {
+                // best-effort
+            }
+        }
     }
 
     /**

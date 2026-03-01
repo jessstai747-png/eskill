@@ -1,57 +1,58 @@
 <?php
+
+declare(strict_types=1);
+
 /**
- * Script de polling automático para pedidos
- * 
- * Este script deve ser executado periodicamente via CRON
- * Exemplo de CRON (a cada 30 minutos):
- * 0,30 * * * * php /caminho/para/eskill/scripts/poll_orders.php
+ * Script legado de polling de pedidos (CRON).
+ * Delegado ao orquestrador oficial ML para enfileirar syncs e processar fila.
  */
 
-// Carregar autoload
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Carregar variáveis de ambiente
 if (file_exists(__DIR__ . '/../.env')) {
     $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-    $dotenv->load();
+    $dotenv->safeLoad();
 }
 
-use App\Services\PollingService;
-use App\Services\JobService;
+use App\Services\MercadoLivreOrchestratorService;
 
 try {
-    $pollingService = new PollingService();
-    $jobService = new JobService();
-    
-    // Verificar se polling está habilitado
-    if (!$pollingService->isPollingEnabled()) {
-        echo "Polling está desabilitado. Configure em config/app.php\n";
+    $service = new MercadoLivreOrchestratorService(dirname(__DIR__));
+
+    echo "[" . date('Y-m-d H:i:s') . "] Iniciando polling de pedidos (orquestrador ML)...\n";
+
+    $result = $service->runPolling(
+        ['orders'],
+        ['orders' => 100],
+        true,
+        50,
+        1,
+        true,
+        30,
+        true
+    );
+
+    if (!empty($result['skipped'])) {
+        echo "Execução ignorada: " . ($result['reason'] ?? 'skipped') . "\n";
         exit(0);
     }
-    
-    echo "[" . date('Y-m-d H:i:s') . "] Iniciando polling de pedidos...\n";
-    
-    // Executar polling
-    $result = $pollingService->pollOrders();
-    
-    echo "Contas processadas: {$result['total_accounts']}\n";
-    echo "Jobs criados: {$result['jobs_created']}\n";
-    
-    // Processar jobs pendentes
-    echo "Processando jobs...\n";
-    $processed = $jobService->process(50);
-    
-    echo "Jobs processados: " . count($processed) . "\n";
-    
-    // Limpar jobs antigos (mais de 30 dias)
-    $deleted = $jobService->cleanOldJobs(30);
-    if ($deleted > 0) {
-        echo "Jobs antigos removidos: {$deleted}\n";
+
+    $orders = $result['results']['orders'] ?? [];
+    $jobsCreated = (int)($orders['jobs_created'] ?? 0);
+    $totalAccounts = (int)($orders['total_accounts'] ?? 0);
+    $queue = is_array($result['queue'] ?? null) ? $result['queue'] : [];
+    $jobsProcessed = (int)($queue['jobs_processed'] ?? 0);
+    $deletedJobs = (int)($queue['deleted_jobs'] ?? 0);
+
+    echo "Contas processadas: {$totalAccounts}\n";
+    echo "Jobs criados: {$jobsCreated}\n";
+    echo "Jobs processados: {$jobsProcessed}\n";
+    if ($deletedJobs > 0) {
+        echo "Jobs antigos removidos: {$deletedJobs}\n";
     }
-    
+
     echo "[" . date('Y-m-d H:i:s') . "] Polling concluído com sucesso.\n";
-    
-} catch (\Exception $e) {
+} catch (\Throwable $e) {
     echo "[" . date('Y-m-d H:i:s') . "] ERRO: " . $e->getMessage() . "\n";
     echo $e->getTraceAsString() . "\n";
     exit(1);

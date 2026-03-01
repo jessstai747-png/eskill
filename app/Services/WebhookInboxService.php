@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -25,12 +27,26 @@ class WebhookInboxService
     public function registerIncoming(string $provider, string $eventKey, array $payload, array $metadata = []): bool
     {
         $requestId = isset($metadata['request_id']) ? (string)$metadata['request_id'] : null;
+        $deliveryId = isset($metadata['delivery_id']) ? trim((string)$metadata['delivery_id']) : null;
+        $signatureTs = isset($metadata['signature_ts']) ? (int)$metadata['signature_ts'] : null;
+        $signatureNonce = isset($metadata['signature_nonce']) ? trim((string)$metadata['signature_nonce']) : null;
+        if ($deliveryId === '') {
+            $deliveryId = null;
+        }
+        if ($signatureNonce === '') {
+            $signatureNonce = null;
+        }
+        if ($signatureTs !== null && $signatureTs <= 0) {
+            $signatureTs = null;
+        }
 
         $stmt = $this->db->prepare(
             "INSERT INTO webhook_event_inbox
-             (provider, event_key, request_id, payload_hash, payload_json, metadata_json, status, received_at)
+             (provider, event_key, request_id, delivery_id, signature_ts, signature_nonce,
+              payload_hash, payload_json, metadata_json, status, received_at)
              VALUES
-             (:provider, :event_key, :request_id, :payload_hash, :payload_json, :metadata_json, 'received', NOW())"
+             (:provider, :event_key, :request_id, :delivery_id, :signature_ts, :signature_nonce,
+              :payload_hash, :payload_json, :metadata_json, 'received', NOW())"
         );
 
         try {
@@ -38,6 +54,9 @@ class WebhookInboxService
                 ':provider' => $provider,
                 ':event_key' => $eventKey,
                 ':request_id' => $requestId,
+                ':delivery_id' => $deliveryId,
+                ':signature_ts' => $signatureTs,
+                ':signature_nonce' => $signatureNonce,
                 ':payload_hash' => hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)),
                 ':payload_json' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 ':metadata_json' => json_encode($metadata, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -87,7 +106,8 @@ class WebhookInboxService
 
         $stmt = $this->db->prepare(
             "UPDATE webhook_event_inbox
-             SET job_id = :job_id,
+             SET status = 'queued',
+                 job_id = :job_id,
                  result_json = :result_json,
                  updated_at = CURRENT_TIMESTAMP
              WHERE provider = :provider AND event_key = :event_key"
@@ -126,7 +146,7 @@ class WebhookInboxService
      */
     public function getFailedEvents(string $provider, int $limit = 100): array
     {
-                $limitSql = max(1, min(1000, (int)$limit));
+        $limitSql = max(1, min(1000, (int)$limit));
         $stmt = $this->db->prepare(
             "SELECT *
              FROM webhook_event_inbox
@@ -139,6 +159,100 @@ class WebhookInboxService
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Verifica replay de assinatura por delivery_id e/ou nonce em janela recente.
+     */
+    public function hasSignatureReplay(
+        string $provider,
+        ?string $deliveryId = null,
+        ?string $signatureNonce = null,
+        ?int $signatureTs = null,
+        int $windowSeconds = 300
+    ): bool {
+        $deliveryId = $deliveryId !== null ? trim($deliveryId) : null;
+        $signatureNonce = $signatureNonce !== null ? trim($signatureNonce) : null;
+
+        if ($deliveryId === '') {
+            $deliveryId = null;
+        }
+        if ($signatureNonce === '') {
+            $signatureNonce = null;
+        }
+
+        if ($deliveryId === null && $signatureNonce === null) {
+            return false;
+        }
+
+        $windowSeconds = max(60, min(86400, $windowSeconds));
+        $windowStart = date('Y-m-d H:i:s', time() - $windowSeconds);
+
+        $clauses = [];
+        $params = [
+            ':provider' => $provider,
+            ':window_start' => $windowStart,
+        ];
+
+        if ($deliveryId !== null) {
+            $clauses[] = 'delivery_id = :delivery_id';
+            $params[':delivery_id'] = $deliveryId;
+        }
+
+        if ($signatureNonce !== null) {
+            $clauses[] = 'signature_nonce = :signature_nonce';
+            $params[':signature_nonce'] = $signatureNonce;
+        }
+
+        if (empty($clauses)) {
+            return false;
+        }
+
+        $sql = "SELECT 1
+                FROM webhook_event_inbox
+                WHERE provider = :provider
+                  AND received_at >= :window_start
+                  AND (" . implode(' OR ', $clauses) . ")
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return (bool)$stmt->fetchColumn();
+    }
+
+    /**
+     * Remove eventos antigos do inbox por provider.
+     */
+    public function cleanupOldEvents(string $provider, int $days = 30, array $statuses = ['processed', 'failed']): int
+    {
+        $days = max(1, min(365, $days));
+        $statuses = array_values(array_filter(array_map('strval', $statuses)));
+        if (empty($statuses)) {
+            $statuses = ['processed', 'failed'];
+        }
+
+        $placeholders = [];
+        $params = [
+            ':provider' => $provider,
+            ':cutoff' => date('Y-m-d H:i:s', time() - ($days * 86400)),
+        ];
+
+        foreach ($statuses as $idx => $status) {
+            $key = ':status_' . $idx;
+            $placeholders[] = $key;
+            $params[$key] = $status;
+        }
+
+        $sql = "DELETE FROM webhook_event_inbox
+                WHERE provider = :provider
+                  AND status IN (" . implode(',', $placeholders) . ")
+                  AND received_at < :cutoff";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return (int)$stmt->rowCount();
     }
 
     /**
@@ -219,6 +333,7 @@ class WebhookInboxService
             "SELECT
                 COUNT(*) AS total,
                 SUM(CASE WHEN status = 'received' THEN 1 ELSE 0 END) AS received_count,
+                SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) AS queued_count,
                 SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) AS processed_count,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
                 AVG(CASE WHEN processed_at IS NOT NULL THEN TIMESTAMPDIFF(SECOND, received_at, processed_at) END) AS avg_processing_seconds,
@@ -298,6 +413,7 @@ class WebhookInboxService
             'summary' => [
                 'total' => $total,
                 'received_count' => (int)($summary['received_count'] ?? 0),
+                'queued_count' => (int)($summary['queued_count'] ?? 0),
                 'processed_count' => $processed,
                 'failed_count' => $failed,
                 'success_rate_percent' => $total > 0 ? round(($processed / $total) * 100, 2) : 0.0,
@@ -318,11 +434,14 @@ class WebhookInboxService
                 provider VARCHAR(60) NOT NULL,
                 event_key VARCHAR(255) NOT NULL,
                 request_id VARCHAR(64) NULL,
+                delivery_id VARCHAR(128) NULL,
+                signature_ts BIGINT NULL,
+                signature_nonce VARCHAR(128) NULL,
                 job_id INT NULL,
                 payload_hash CHAR(64) NOT NULL,
                 payload_json LONGTEXT NOT NULL,
                 metadata_json JSON NULL,
-                status ENUM('received','processed','failed') NOT NULL DEFAULT 'received',
+                status ENUM('received','queued','processed','failed') NOT NULL DEFAULT 'received',
                 error_message VARCHAR(1000) NULL,
                 result_json JSON NULL,
                 received_at DATETIME NOT NULL,
@@ -333,6 +452,9 @@ class WebhookInboxService
                 INDEX idx_webhook_event_provider_status (provider, status),
                 INDEX idx_webhook_event_received_at (received_at),
                 INDEX idx_webhook_event_request_id (provider, request_id),
+                INDEX idx_webhook_event_delivery_id (provider, delivery_id),
+                INDEX idx_webhook_event_signature_nonce (provider, signature_nonce),
+                INDEX idx_webhook_event_signature_ts (provider, signature_ts),
                 INDEX idx_webhook_event_job_id (job_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
@@ -365,6 +487,38 @@ class WebhookInboxService
             if (!isset($map['job_id'])) {
                 $this->db->exec("ALTER TABLE webhook_event_inbox ADD COLUMN job_id INT NULL AFTER request_id");
                 $this->db->exec("ALTER TABLE webhook_event_inbox ADD INDEX idx_webhook_event_job_id (job_id)");
+            }
+
+            if (!isset($map['delivery_id'])) {
+                $this->db->exec("ALTER TABLE webhook_event_inbox ADD COLUMN delivery_id VARCHAR(128) NULL AFTER request_id");
+                $this->db->exec("ALTER TABLE webhook_event_inbox ADD INDEX idx_webhook_event_delivery_id (provider, delivery_id)");
+            }
+
+            if (!isset($map['signature_ts'])) {
+                $this->db->exec("ALTER TABLE webhook_event_inbox ADD COLUMN signature_ts BIGINT NULL AFTER delivery_id");
+                $this->db->exec("ALTER TABLE webhook_event_inbox ADD INDEX idx_webhook_event_signature_ts (provider, signature_ts)");
+            }
+
+            if (!isset($map['signature_nonce'])) {
+                $this->db->exec("ALTER TABLE webhook_event_inbox ADD COLUMN signature_nonce VARCHAR(128) NULL AFTER signature_ts");
+                $this->db->exec("ALTER TABLE webhook_event_inbox ADD INDEX idx_webhook_event_signature_nonce (provider, signature_nonce)");
+            }
+
+            $statusColStmt = $this->db->prepare(
+                "SELECT COLUMN_TYPE
+                 FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = :db
+                   AND TABLE_NAME = 'webhook_event_inbox'
+                   AND COLUMN_NAME = 'status'
+                 LIMIT 1"
+            );
+            $statusColStmt->execute([':db' => $dbName]);
+            $statusCol = (string)($statusColStmt->fetch(PDO::FETCH_ASSOC)['COLUMN_TYPE'] ?? '');
+            if ($statusCol !== '' && stripos($statusCol, "'queued'") === false) {
+                $this->db->exec(
+                    "ALTER TABLE webhook_event_inbox
+                     MODIFY COLUMN status ENUM('received','queued','processed','failed') NOT NULL DEFAULT 'received'"
+                );
             }
         } catch (\Throwable $e) {
             // não interromper o fluxo de webhook por migração incremental

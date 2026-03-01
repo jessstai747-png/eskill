@@ -169,10 +169,76 @@ class PollingService
     {
         $orders = $this->pollOrders();
         $items = $this->pollItems();
+        $questions = $this->pollQuestions();
 
         return [
             'orders' => $orders,
             'items' => $items,
+            'questions' => $questions,
+        ];
+    }
+
+    /**
+     * Agenda sincronização de perguntas para todas as contas ativas.
+     */
+    public function pollQuestions(int $limitPerAccount = 50): array
+    {
+        if (!$this->isPollingEnabled()) {
+            return [
+                'success' => false,
+                'message' => 'Polling desabilitado nas configurações',
+                'total_accounts' => 0,
+                'jobs_created' => 0,
+                'errors' => [],
+            ];
+        }
+
+        $accounts = $this->fetchAccounts(['active']);
+        if (empty($accounts)) {
+            return [
+                'success' => true,
+                'message' => 'Nenhuma conta ativa encontrada',
+                'total_accounts' => 0,
+                'jobs_created' => 0,
+                'errors' => [],
+            ];
+        }
+
+        $jobsCreated = 0;
+        $errors = [];
+
+        foreach ($accounts as $account) {
+            $accountId = (int)$account['id'];
+
+            if (!$this->ensureFreshToken($accountId, $account['token_expires_at'] ?? null)) {
+                $errors[] = [
+                    'account_id' => $accountId,
+                    'nickname' => $account['nickname'] ?? null,
+                    'error' => 'token_invalid',
+                ];
+                continue;
+            }
+
+            try {
+                $this->jobs->dispatch('sync_questions', [
+                    'account_id' => $accountId,
+                    'limit' => $limitPerAccount,
+                ]);
+                $jobsCreated++;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'account_id' => $accountId,
+                    'nickname' => $account['nickname'] ?? null,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return [
+            'success' => empty($errors),
+            'total_accounts' => count($accounts),
+            'jobs_created' => $jobsCreated,
+            'errors' => $errors,
         ];
     }
 

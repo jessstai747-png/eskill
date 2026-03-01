@@ -81,6 +81,22 @@ class UnifiedTokenRefreshService
             }
         }
     }
+
+    /**
+     * Alias de compatibilidade para versões antigas/tests.
+     */
+    public function processRefreshQueue(int $bufferMinutes = self::DEFAULT_BUFFER_MINUTES, bool $useLock = true): array
+    {
+        return $this->refreshExpiring($bufferMinutes, $useLock);
+    }
+
+    /**
+     * Alias de compatibilidade para versões antigas/tests.
+     */
+    public function refreshTokensNearExpiry(int $bufferMinutes = self::DEFAULT_BUFFER_MINUTES, bool $useLock = true): array
+    {
+        return $this->refreshExpiring($bufferMinutes, $useLock);
+    }
     
     /**
      * Força renovação de TODAS as contas ativas

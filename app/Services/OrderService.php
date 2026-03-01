@@ -255,7 +255,7 @@ class OrderService
     /**
      * Sincroniza pedidos do Mercado Livre
      */
-    public function syncOrders(?int $accountId = null, int $limit = 50): array
+    public function syncOrders(?int $accountId = null, int $limit = 50, array $options = []): array
     {
         if ($accountId !== null && $accountId !== $this->accountId) {
             $this->accountId = $accountId;
@@ -268,44 +268,187 @@ class OrderService
             throw new \Exception('Seller ID não encontrado');
         }
 
-        // Buscar pedidos recentes (últimos 30 dias por padrão)
-        $params = [
-            'seller' => $sellerId,
-            'sort' => 'date_desc',
-            'limit' => max(1, min(50, $limit)),
-        ];
+        $pageSize = max(1, min(50, (int)$limit));
+        $pageLimit = max(1, min(1000, (int)($options['page_limit'] ?? 20)));
+        $fullBackfill = (bool)($options['full_backfill'] ?? false);
+        $persistCheckpoint = (bool)($options['persist_checkpoint'] ?? true);
+        $cursor = isset($options['cursor']) ? max(0, (int)$options['cursor']) : 0;
+        $overlapSeconds = max(0, min(86400, (int)($options['overlap_seconds'] ?? 300)));
+        $resourceType = (string)($options['resource_type'] ?? SyncStatusService::RESOURCE_ORDERS);
 
-        $response = $this->unwrapMlResponse($this->client->get('/orders/search', $params));
+        $syncStatusService = null;
+        $existingSyncStatus = null;
+        if ($this->db !== null && $this->accountId !== null) {
+            try {
+                $syncStatusService = new SyncStatusService($this->db);
+                $existingSyncStatus = $syncStatusService->getStatus($resourceType, $this->accountId);
+            } catch (Throwable $e) {
+                Log::warning('OrderService: SyncStatusService indisponível durante syncOrders', [
+                    'account_id' => $this->accountId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
-        if (isset($response['error'])) {
-            throw new \Exception($response['message'] ?? 'Erro ao sincronizar pedidos');
+        $since = isset($options['since']) ? (string)$options['since'] : null;
+        $until = isset($options['until']) ? (string)$options['until'] : null;
+
+        if (!$fullBackfill && $since === null && $existingSyncStatus !== null && !empty($existingSyncStatus['last_sync_at'])) {
+            $checkpointTs = strtotime((string)$existingSyncStatus['last_sync_at']);
+            if ($checkpointTs !== false) {
+                $since = date('c', max(0, $checkpointTs - $overlapSeconds));
+            }
+        }
+
+        if ($syncStatusService !== null && $persistCheckpoint && $this->accountId !== null) {
+            try {
+                $syncStatusService->markRunning($resourceType, $this->accountId);
+            } catch (Throwable $e) {
+                Log::warning('OrderService: falha ao marcar sync_status running', [
+                    'account_id' => $this->accountId,
+                    'resource_type' => $resourceType,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $synced = 0;
         $errors = [];
+        $pagesProcessed = 0;
+        $offset = $cursor;
+        $totalFromApi = null;
+        $hasMore = false;
+        $latestOrderId = null;
+        $latestOrderDate = null;
+        $latestOrderTs = null;
 
-        if (isset($response['results']) && is_array($response['results'])) {
-            foreach ($response['results'] as $order) {
-                try {
-                    if (!is_array($order)) {
-                        throw new \RuntimeException('Payload inválido de pedido');
-                    }
-                    $this->saveOrder($order);
-                    $synced++;
-                } catch (Throwable $e) {
-                    $errors[] = [
-                        'order_id' => $order['id'] ?? 'unknown',
-                        'error' => $e->getMessage()
-                    ];
+        try {
+            do {
+                $params = [
+                    'seller' => $sellerId,
+                    'sort' => 'date_desc',
+                    'limit' => $pageSize,
+                    'offset' => $offset,
+                ];
+
+                if ($since !== null && trim($since) !== '') {
+                    $params['order.date_created.from'] = $this->normalizeDateForMl($since);
                 }
+                if ($until !== null && trim($until) !== '') {
+                    $params['order.date_created.to'] = $this->normalizeDateForMl($until, true);
+                }
+
+                $response = $this->unwrapMlResponse($this->client->get('/orders/search', $params));
+                if (isset($response['error'])) {
+                    throw new \RuntimeException($response['message'] ?? 'Erro ao sincronizar pedidos');
+                }
+
+                $orders = isset($response['results']) && is_array($response['results'])
+                    ? $response['results']
+                    : [];
+
+                if ($totalFromApi === null && isset($response['paging']['total']) && is_numeric($response['paging']['total'])) {
+                    $totalFromApi = (int)$response['paging']['total'];
+                }
+
+                $pageCount = 0;
+                foreach ($orders as $order) {
+                    $pageCount++;
+                    try {
+                        if (!is_array($order)) {
+                            throw new \RuntimeException('Payload inválido de pedido');
+                        }
+
+                        $this->saveOrder($order);
+                        $synced++;
+
+                        $orderId = isset($order['id']) ? (string)$order['id'] : null;
+                        $orderDate = isset($order['date_created']) ? (string)$order['date_created'] : null;
+                        $orderTs = $orderDate !== null ? strtotime($orderDate) : false;
+
+                        if ($orderId !== null && $orderDate !== null && $orderTs !== false) {
+                            if ($latestOrderTs === null || $orderTs > $latestOrderTs) {
+                                $latestOrderTs = (int)$orderTs;
+                                $latestOrderDate = $orderDate;
+                                $latestOrderId = $orderId;
+                            }
+                        }
+                    } catch (Throwable $e) {
+                        $errors[] = [
+                            'order_id' => is_array($order) ? ($order['id'] ?? 'unknown') : 'unknown',
+                            'error' => $e->getMessage(),
+                        ];
+                    }
+                }
+
+                $pagesProcessed++;
+                $offset += $pageCount;
+
+                if ($pageCount === 0) {
+                    $hasMore = false;
+                    break;
+                }
+
+                if ($totalFromApi !== null) {
+                    $hasMore = $offset < $totalFromApi;
+                } else {
+                    $hasMore = $pageCount >= $pageSize;
+                }
+            } while ($hasMore && $pagesProcessed < $pageLimit);
+        } catch (Throwable $e) {
+            if ($syncStatusService !== null && $persistCheckpoint && $this->accountId !== null) {
+                try {
+                    $syncStatusService->markError($resourceType, $this->accountId, $e->getMessage());
+                } catch (Throwable $inner) {
+                    Log::warning('OrderService: falha ao marcar sync_status error', [
+                        'account_id' => $this->accountId,
+                        'resource_type' => $resourceType,
+                        'error' => $inner->getMessage(),
+                    ]);
+                }
+            }
+            throw $e;
+        }
+
+        if ($syncStatusService !== null && $persistCheckpoint && $this->accountId !== null) {
+            try {
+                $syncStatusService->markSuccess(
+                    $resourceType,
+                    $this->accountId,
+                    $synced,
+                    $this->buildOrderSyncCheckpointId($latestOrderId, $offset, $hasMore),
+                    $latestOrderDate !== null ? date('Y-m-d H:i:s', (int)strtotime($latestOrderDate)) : null
+                );
+            } catch (Throwable $e) {
+                Log::warning('OrderService: falha ao persistir checkpoint em sync_status', [
+                    'account_id' => $this->accountId,
+                    'resource_type' => $resourceType,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
         return [
             'success' => true,
             'synced' => $synced,
-            'total' => $response['paging']['total'] ?? $synced,
+            'total' => $totalFromApi ?? $synced,
             'errors' => $errors,
+            'error_count' => count($errors),
+            'pages_processed' => $pagesProcessed,
+            'page_size' => $pageSize,
+            'cursor' => $cursor,
+            'next_cursor' => $hasMore ? $offset : null,
+            'has_more' => $hasMore,
+            'filters' => [
+                'since' => $since,
+                'until' => $until,
+                'full_backfill' => $fullBackfill,
+                'page_limit' => $pageLimit,
+            ],
+            'checkpoint' => [
+                'last_sync_at' => $latestOrderDate,
+                'last_sync_id' => $latestOrderId,
+            ],
         ];
     }
 
@@ -654,5 +797,15 @@ class OrderService
             'payments' => $orderData['payments'] ?? [],
             'account_nickname' => $this->accountId ? $this->getAccountNickname($this->accountId) : null,
         ];
+    }
+
+    private function buildOrderSyncCheckpointId(?string $latestOrderId, int $nextOffset, bool $hasMore): ?string
+    {
+        if ($latestOrderId === null || $latestOrderId === '') {
+            return $hasMore ? ('offset:' . $nextOffset) : null;
+        }
+
+        $value = sprintf('order:%s|offset:%d|has_more:%d', $latestOrderId, $nextOffset, $hasMore ? 1 : 0);
+        return mb_substr($value, 0, 100);
     }
 }

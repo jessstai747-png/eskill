@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Comprehensive All-Modules Test Suite
  * Tests all major dashboard modules systematically
@@ -34,17 +35,18 @@ $warnings = [];
 echo "=== COMPREHENSIVE ALL-MODULES TEST ===\n\n";
 
 // Helper function to test view rendering
-function testView($name, $path, $expectedContent) {
+function testView($name, $path, $expectedContent)
+{
     global $results, $errors, $warnings;
-    
+
     echo "Testing $name...\n";
     $_SERVER['REQUEST_URI'] = $path;
-    
+
     try {
         ob_start();
         require __DIR__ . '/app/Views/dashboard/' . basename($path) . '.php';
         $output = ob_get_clean();
-        
+
         if (strlen($output) > 1000 && strpos($output, $expectedContent) !== false) {
             echo "  ✓ $name renders (" . strlen($output) . " bytes)\n";
             $results[$name] = 'OK';
@@ -59,11 +61,12 @@ function testView($name, $path, $expectedContent) {
 }
 
 // Helper function to test controller
-function testController($name, $className, $method = 'index') {
+function testController($name, $className, $method = 'index')
+{
     global $results, $errors;
-    
+
     echo "Testing $name Controller...\n";
-    
+
     try {
         $reflection = new ReflectionClass($className);
         if ($reflection->hasMethod($method)) {
@@ -85,7 +88,7 @@ echo "────────────────────────�
 try {
     require_once __DIR__ . '/app/Controllers/QuestionController.php';
     testController('Question', 'App\\Controllers\\QuestionController', 'index');
-    
+
     // Check questions table
     $db = \App\Database::getInstance();
     $stmt = $db->query("SELECT COUNT(*) as count FROM ml_questions");

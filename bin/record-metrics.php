@@ -17,9 +17,8 @@ echo "Starting performance metrics recording at " . date('Y-m-d H:i:s') . "\n";
 try {
     $metricsService = new PerformanceMetricsService();
     $metricsService->recordCurrentMetrics();
-    
-    echo "Successfully recorded current performance metrics.\n";
 
+    echo "Successfully recorded current performance metrics.\n";
 } catch (\Exception $e) {
     echo "Error recording performance metrics: " . $e->getMessage() . "\n";
     error_log("Cron job record-metrics.php failed: " . $e->getMessage());
@@ -28,4 +27,3 @@ try {
 
 echo "Finished performance metrics recording.\n";
 exit(0);
-

@@ -80,7 +80,11 @@ class MLOAuthFlowTest extends TestCase
 
         $url = $service->getAuthUrl($this->testUserId);
 
-        $this->assertStringStartsWith('https://auth.mercadolibre.com', $url);
+        $this->assertTrue(
+            str_starts_with($url, 'https://auth.mercadolibre.com')
+            || str_starts_with($url, 'https://auth.mercadolivre.com.br'),
+            'URL de autorização deve apontar para domínio oficial do Mercado Livre'
+        );
         $this->assertStringContainsString('state=', $url);
         $this->assertStringContainsString('code_challenge=', $url);
         $this->assertStringContainsString('client_id=', $url);

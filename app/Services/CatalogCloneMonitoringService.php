@@ -14,6 +14,11 @@ use PDO;
 class CatalogCloneMonitoringService
 {
     private PDO $db;
+    private const DEFAULT_WEBHOOK_FAILED_THRESHOLD = 20;
+    private const DEFAULT_WEBHOOK_OLDEST_FAILED_MINUTES_THRESHOLD = 30;
+    private const DEFAULT_JOB_RETRY_PENDING_THRESHOLD = 120;
+    private const DEFAULT_JOB_RECLAIMED_HOURLY_THRESHOLD = 10;
+    private const DEFAULT_JOB_STALE_PROCESSING_THRESHOLD = 5;
 
     public function __construct()
     {
@@ -25,9 +30,13 @@ class CatalogCloneMonitoringService
      */
     public function getRealTimeMetrics(): array
     {
+        $cloneJobMetrics = $this->getCloneJobMetrics();
+
         $metrics = [
             'system' => $this->getSystemMetrics(),
-            'clone_jobs' => $this->getCloneJobMetrics(),
+            'basic_stats' => $this->buildBasicStats($cloneJobMetrics),
+            'clone_jobs' => $cloneJobMetrics,
+            'ml_operations' => $this->getMlOperationalMetrics(),
             'errors' => $this->getRecentErrors(),
             'timestamp' => date('Y-m-d H:i:s'),
         ];
@@ -47,7 +56,7 @@ class CatalogCloneMonitoringService
         if ($errorRate > 10) {
             $alerts[] = [
                 'type' => 'error_rate',
-                'severity' => 'critical',
+                'severity' => 'CRITICAL',
                 'message' => "Taxa de erros alta: {$errorRate}%",
                 'value' => $errorRate,
             ];
@@ -58,7 +67,7 @@ class CatalogCloneMonitoringService
         if ($pendingJobs > 100) {
             $alerts[] = [
                 'type' => 'queue_backlog',
-                'severity' => 'warning',
+                'severity' => 'WARNING',
                 'message' => "{$pendingJobs} jobs pendentes na fila",
                 'value' => $pendingJobs,
             ];
@@ -69,9 +78,97 @@ class CatalogCloneMonitoringService
         if ($lastJob && strtotime($lastJob) < strtotime('-1 hour')) {
             $alerts[] = [
                 'type' => 'stale_jobs',
-                'severity' => 'warning',
+                'severity' => 'WARNING',
                 'message' => 'Nenhum job executado na última hora',
                 'last_run' => $lastJob,
+            ];
+        }
+
+        // Alertas operacionais de integração Mercado Livre (fila + webhook)
+        $mlOperational = $this->getMlOperationalMetrics();
+        $webhookFailedThreshold = $this->getIntEnv(
+            'ML_MONITOR_WEBHOOK_FAILED_THRESHOLD',
+            self::DEFAULT_WEBHOOK_FAILED_THRESHOLD,
+            1,
+            100000
+        );
+        $webhookOldestThresholdMinutes = $this->getIntEnv(
+            'ML_MONITOR_WEBHOOK_OLDEST_FAILED_MINUTES_THRESHOLD',
+            self::DEFAULT_WEBHOOK_OLDEST_FAILED_MINUTES_THRESHOLD,
+            1,
+            10080
+        );
+        $retryPendingThreshold = $this->getIntEnv(
+            'ML_MONITOR_JOB_RETRY_PENDING_THRESHOLD',
+            self::DEFAULT_JOB_RETRY_PENDING_THRESHOLD,
+            1,
+            100000
+        );
+        $reclaimedHourlyThreshold = $this->getIntEnv(
+            'ML_MONITOR_JOB_RECLAIMED_HOURLY_THRESHOLD',
+            self::DEFAULT_JOB_RECLAIMED_HOURLY_THRESHOLD,
+            1,
+            100000
+        );
+        $staleProcessingThreshold = $this->getIntEnv(
+            'ML_MONITOR_STALE_PROCESSING_THRESHOLD',
+            self::DEFAULT_JOB_STALE_PROCESSING_THRESHOLD,
+            1,
+            100000
+        );
+
+        $failedBacklog = (int)($mlOperational['failed_webhook_backlog'] ?? 0);
+        if ($failedBacklog >= $webhookFailedThreshold) {
+            $alerts[] = [
+                'type' => 'ml_webhook_failed_backlog',
+                'severity' => $failedBacklog >= ($webhookFailedThreshold * 2) ? 'CRITICAL' : 'HIGH',
+                'message' => "Backlog de webhooks ML falhos: {$failedBacklog}",
+                'value' => $failedBacklog,
+                'threshold' => $webhookFailedThreshold,
+            ];
+        }
+
+        $oldestFailedMinutes = (int)($mlOperational['oldest_failed_webhook_minutes'] ?? 0);
+        if ($oldestFailedMinutes >= $webhookOldestThresholdMinutes) {
+            $alerts[] = [
+                'type' => 'ml_webhook_failed_stale',
+                'severity' => $oldestFailedMinutes >= ($webhookOldestThresholdMinutes * 2) ? 'CRITICAL' : 'HIGH',
+                'message' => "Webhook ML falho mais antigo com {$oldestFailedMinutes} min",
+                'value' => $oldestFailedMinutes,
+                'threshold' => $webhookOldestThresholdMinutes,
+            ];
+        }
+
+        $retryPending = (int)($mlOperational['jobs_retry_pending'] ?? 0);
+        if ($retryPending >= $retryPendingThreshold) {
+            $alerts[] = [
+                'type' => 'ml_job_retry_backlog',
+                'severity' => $retryPending >= ($retryPendingThreshold * 2) ? 'HIGH' : 'WARNING',
+                'message' => "Jobs aguardando retry: {$retryPending}",
+                'value' => $retryPending,
+                'threshold' => $retryPendingThreshold,
+            ];
+        }
+
+        $reclaimedLastHour = (int)($mlOperational['jobs_reclaimed_last_hour'] ?? 0);
+        if ($reclaimedLastHour >= $reclaimedHourlyThreshold) {
+            $alerts[] = [
+                'type' => 'ml_job_reclaimed_spike',
+                'severity' => $reclaimedLastHour >= ($reclaimedHourlyThreshold * 2) ? 'HIGH' : 'WARNING',
+                'message' => "Reclaims de jobs na última hora: {$reclaimedLastHour}",
+                'value' => $reclaimedLastHour,
+                'threshold' => $reclaimedHourlyThreshold,
+            ];
+        }
+
+        $staleProcessing = (int)($mlOperational['jobs_processing_stale'] ?? 0);
+        if ($staleProcessing >= $staleProcessingThreshold) {
+            $alerts[] = [
+                'type' => 'ml_job_processing_stale',
+                'severity' => 'CRITICAL',
+                'message' => "Jobs presos em processing (stale): {$staleProcessing}",
+                'value' => $staleProcessing,
+                'threshold' => $staleProcessingThreshold,
             ];
         }
 
@@ -156,8 +253,7 @@ class CatalogCloneMonitoringService
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
                  FROM catalog_clone_jobs
-                 WHERE status = 'failed'
-                   AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)"
+                 WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)"
             );
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$row || $row['total'] == 0) {
@@ -203,5 +299,99 @@ class CatalogCloneMonitoringService
             return "{$days}d {$hours}h";
         }
         return 'N/A';
+    }
+
+    private function buildBasicStats(array $cloneJobMetrics): array
+    {
+        if (isset($cloneJobMetrics['error']) && count($cloneJobMetrics) === 1) {
+            return [
+                'pending_jobs' => 0,
+                'completed_jobs' => 0,
+                'failed_jobs' => 0,
+                'total_jobs' => 0,
+                'success_rate' => 0.0,
+                'error' => (string)$cloneJobMetrics['error'],
+            ];
+        }
+
+        $pending = (int)($cloneJobMetrics['pending'] ?? 0);
+        $completed = (int)($cloneJobMetrics['completed'] ?? 0);
+        $failed = (int)($cloneJobMetrics['failed'] ?? 0);
+        $total = 0;
+
+        foreach ($cloneJobMetrics as $count) {
+            if (is_numeric($count)) {
+                $total += (int)$count;
+            }
+        }
+
+        $finished = $completed + $failed;
+        $successRate = $finished > 0 ? round(($completed / $finished) * 100, 1) : 100.0;
+
+        return [
+            'pending_jobs' => $pending,
+            'completed_jobs' => $completed,
+            'failed_jobs' => $failed,
+            'total_jobs' => $total,
+            'success_rate' => $successRate,
+        ];
+    }
+
+    private function getMlOperationalMetrics(): array
+    {
+        $staleSeconds = $this->getIntEnv('JOB_STALE_PROCESSING_SECONDS', 900, 60, 86400);
+
+        return [
+            'failed_webhook_backlog' => $this->safeCount(
+                "SELECT COUNT(*) FROM webhook_event_inbox WHERE provider = 'mercadolivre' AND status = 'failed'"
+            ),
+            'oldest_failed_webhook_minutes' => $this->safeSingleInt(
+                "SELECT COALESCE(TIMESTAMPDIFF(MINUTE, MIN(received_at), NOW()), 0)
+                 FROM webhook_event_inbox
+                 WHERE provider = 'mercadolivre' AND status = 'failed'"
+            ),
+            'jobs_retry_pending' => $this->safeCount(
+                "SELECT COUNT(*) FROM jobs WHERE status = 'pending' AND next_attempt_at IS NOT NULL"
+            ),
+            'jobs_reclaimed_last_hour' => $this->safeCount(
+                "SELECT COUNT(*) FROM jobs
+                 WHERE status = 'pending'
+                   AND error_message LIKE 'Job reclaimado após timeout%'
+                   AND updated_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)"
+            ),
+            'jobs_processing_stale' => $this->safeCount(
+                "SELECT COUNT(*) FROM jobs
+                 WHERE status = 'processing'
+                   AND claimed_at IS NOT NULL
+                   AND claimed_at < DATE_SUB(NOW(), INTERVAL {$staleSeconds} SECOND)"
+            ),
+        ];
+    }
+
+    private function safeCount(string $sql): int
+    {
+        try {
+            $value = $this->db->query($sql)->fetchColumn();
+            return $value !== false ? (int)$value : 0;
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    private function safeSingleInt(string $sql): int
+    {
+        try {
+            $value = $this->db->query($sql)->fetchColumn();
+            return $value !== false ? (int)$value : 0;
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    private function getIntEnv(string $key, int $default, int $min, int $max): int
+    {
+        $raw = $_ENV[$key] ?? getenv($key);
+        $value = is_numeric($raw) ? (int)$raw : $default;
+        return max($min, min($max, $value));
     }
 }

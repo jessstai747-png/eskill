@@ -233,6 +233,19 @@ class MercadoLivreClientExtendedTest extends TestCase
         $this->assertStringContainsString('retry', strtolower($source));
     }
 
+    public function test_has_transient_retry_for_5xx_and_connection_errors(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 3) . '/app/Services/MercadoLivreClient.php'
+        );
+
+        $this->assertStringContainsString('shouldRetryTransientHttpFailure', $source);
+        $this->assertStringContainsString('calculateTransientRetryDelaySeconds', $source);
+        $this->assertStringContainsString('ML_TRANSIENT_RETRY_BASE_SECONDS', $source);
+        $this->assertStringContainsString('ML_TRANSIENT_RETRY_JITTER_SECONDS', $source);
+        $this->assertStringContainsString('connection error, retrying once', strtolower($source));
+    }
+
     public function test_has_cache_support(): void
     {
         $source = file_get_contents(

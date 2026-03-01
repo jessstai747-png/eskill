@@ -236,21 +236,13 @@ class MercadoLivreAuthServiceTest extends TestCase
             return;
         }
 
-        try {
-            $this->expectException(\Exception::class);
-            $this->expectExceptionMessage('Estado OAuth inválido');
-            $service->exchangeCodeForTokens('fake-code', 'invalid-state');
-        } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), 'session') || str_contains($e->getMessage(), 'headers')) {
-                $this->markTestSkipped('Session não disponível em contexto PHPUnit');
-            }
-            if (str_contains($e->getMessage(), 'Estado OAuth inválido')) {
-                // Comportamento esperado
-                $this->assertTrue(true);
-            } else {
-                throw $e;
-            }
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
         }
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Estado OAuth inválido');
+        $service->exchangeCodeForTokens('fake-code', 'invalid-state');
     }
 
     public function test_refreshToken_returns_false_for_nonexistent_account(): void

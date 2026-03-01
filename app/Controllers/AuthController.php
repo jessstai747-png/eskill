@@ -89,10 +89,10 @@ class AuthController extends BaseController
             // Preservar token CSRF antes de regenerar sessão
             $csrfToken = $_SESSION['csrf_token'] ?? null;
             $csrfTokenTime = $_SESSION['csrf_token_time'] ?? null;
-            
+
             // Prevenir fixation de sessão ao autenticar
             session_regenerate_id(true);
-            
+
             // Restaurar token CSRF após regeneração
             if ($csrfToken) {
                 $_SESSION['csrf_token'] = $csrfToken;
@@ -406,7 +406,7 @@ class AuthController extends BaseController
         }
 
         $userId = $_SESSION['user_id'];
-        
+
         // Verificar se é reconexão de conta existente
         $reconnectId = $this->request->get('reconnect');
         if ($reconnectId) {
@@ -417,7 +417,7 @@ class AuthController extends BaseController
                 $_SESSION['reconnect_account_id'] = (int)$reconnectId;
             }
         }
-        
+
         $authUrl = $this->authService->getAuthUrl($userId);
 
         header('Location: ' . $authUrl);
@@ -448,7 +448,7 @@ class AuthController extends BaseController
 
         try {
             $result = $this->authService->exchangeCodeForTokens($code, $state);
-            
+
             // Limpar flag de reconexão
             $wasReconnect = isset($_SESSION['reconnect_account_id']);
             unset($_SESSION['reconnect_account_id']);
@@ -525,9 +525,9 @@ class AuthController extends BaseController
 
         $db = Database::getInstance();
         $stmt = $db->prepare("
-            SELECT id, ml_user_id, nickname, email, status, token_expires_at, 
+            SELECT id, ml_user_id, nickname, email, status, token_expires_at,
                    tokens_encrypted, site_id, created_at, updated_at
-            FROM ml_accounts 
+            FROM ml_accounts
             WHERE user_id = :user_id
             ORDER BY created_at DESC
         ");
@@ -536,7 +536,7 @@ class AuthController extends BaseController
 
         // Add thumbnail URLs
         foreach ($accounts as &$account) {
-            $account['thumbnail'] = $account['ml_user_id'] 
+            $account['thumbnail'] = $account['ml_user_id']
                 ? "https://http2.mlstatic.com/D_Q_NP_2X_" . substr($account['ml_user_id'], -7) . "-V.webp"
                 : null;
         }
@@ -569,7 +569,7 @@ class AuthController extends BaseController
         $db = Database::getInstance();
         $stmt = $db->prepare("
             SELECT id, ml_user_id, nickname, status, token_expires_at, access_token
-            FROM ml_accounts 
+            FROM ml_accounts
             WHERE user_id = :user_id AND status = 'active'
             ORDER BY token_expires_at DESC
             LIMIT 1
@@ -668,10 +668,10 @@ class AuthController extends BaseController
             // Preservar token CSRF antes de regenerar sessão
             $csrfToken = $_SESSION['csrf_token'] ?? null;
             $csrfTokenTime = $_SESSION['csrf_token_time'] ?? null;
-            
+
             // Renovar ID da sessão ao concluir autenticação 2FA
             session_regenerate_id(true);
-            
+
             // Restaurar token CSRF após regeneração
             if ($csrfToken) {
                 $_SESSION['csrf_token'] = $csrfToken;
@@ -745,7 +745,7 @@ class AuthController extends BaseController
         } else {
             $_SESSION['error'] = 'Código inválido. Tente novamente.';
             // Pass secret back to view or regenerate? Ideally pass back.
-            // For simplicity, redirect to setup which regenerates. 
+            // For simplicity, redirect to setup which regenerates.
             // Better UX would be to keep secret.
             header('Location: /auth/2fa/setup');
         }
@@ -769,11 +769,10 @@ class AuthController extends BaseController
 
         try {
             $db = Database::getInstance();
-            
+
             // Verificar se a conta pertence ao usuário
-            $stmt = $db->prepare("
-                SELECT id, nickname, ml_user_id 
-                FROM ml_accounts 
+            $stmt = $db->prepare("\n                SELECT id, nickname, ml_user_id
+                FROM ml_accounts
                 WHERE id = :account_id AND user_id = :user_id
             ");
             $stmt->execute([
@@ -789,8 +788,7 @@ class AuthController extends BaseController
             }
 
             // Desativar a conta (soft delete)
-            $stmt = $db->prepare("
-                UPDATE ml_accounts 
+            $stmt = $db->prepare("\n                UPDATE ml_accounts
                 SET status = 'inactive',
                     access_token = NULL,
                     refresh_token = NULL,
@@ -834,7 +832,6 @@ class AuthController extends BaseController
                 'message' => 'Conta desconectada com sucesso'
             ]);
             exit;
-
         } catch (\Exception $e) {
             Log::error('Error disconnecting ML account', [
                 'user_id' => $userId,
@@ -869,10 +866,9 @@ class AuthController extends BaseController
 
         try {
             $db = Database::getInstance();
-            
+
             // Verificar propriedade da conta
-            $stmt = $db->prepare("
-                SELECT id, nickname FROM ml_accounts 
+            $stmt = $db->prepare("\n                SELECT id, nickname, status, last_refresh_error FROM ml_accounts
                 WHERE id = ? AND user_id = ?
             ");
             $stmt->execute([$accountId, $userId]);
@@ -884,15 +880,50 @@ class AuthController extends BaseController
                 exit;
             }
 
+            $accountStatus = strtolower(trim((string)($account['status'] ?? 'unknown')));
+            $lastRefreshError = strtolower(trim((string)($account['last_refresh_error'] ?? '')));
+            $reconnectUrl = '/auth/authorize?reconnect=' . (int)$accountId;
+
+            if ($accountStatus === 'disconnected' || str_contains($lastRefreshError, 'invalid_grant')) {
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Conta desconectada — reautorização OAuth necessária antes da sincronização.',
+                    'error_code' => 'account_disconnected',
+                    'needs_reconnect' => true,
+                    'reconnect_url' => $reconnectUrl,
+                ]);
+                exit;
+            }
+
+            if ($accountStatus !== 'active') {
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Conta não elegível para sincronização no status atual. Reautorize a conta para continuar.',
+                    'error_code' => 'account_not_eligible',
+                    'needs_reconnect' => true,
+                    'reconnect_url' => $reconnectUrl,
+                ]);
+                exit;
+            }
+
             $syncService = new \App\Services\AccountSyncService();
             $result = $syncService->syncAccount($accountId);
 
             if (($result['success'] ?? false) !== true) {
+                $errorCode = strtolower(trim((string)($result['error_code'] ?? '')));
+                $needsReconnect = (bool)($result['needs_reconnect'] ?? false);
                 $errorMessage = (string)($result['error'] ?? '');
-                if ($errorMessage !== '' && (stripos($errorMessage, 'Token inválido') !== false || stripos($errorMessage, 'Reconecte a conta') !== false)) {
+                if (
+                    $needsReconnect
+                    || in_array($errorCode, ['account_disconnected', 'account_not_eligible', 'account_reauth_required'], true)
+                    || ($errorMessage !== '' && (stripos($errorMessage, 'Token inválido') !== false || stripos($errorMessage, 'Reconecte a conta') !== false))
+                ) {
                     http_response_code(401);
                     $result['needs_reconnect'] = true;
-                    $result['reconnect_url'] = '/auth/authorize?reconnect=' . (int)$accountId;
+                    $result['error_code'] = $errorCode !== '' ? $errorCode : 'account_reauth_required';
+                    $result['reconnect_url'] = (string)($result['reconnect_url'] ?? $reconnectUrl);
                 }
             }
 
@@ -913,7 +944,6 @@ class AuthController extends BaseController
 
             echo json_encode($result);
             exit;
-
         } catch (\Exception $e) {
             Log::error('Error syncing account', [
                 'user_id' => $userId,
@@ -948,13 +978,12 @@ class AuthController extends BaseController
 
         try {
             $db = Database::getInstance();
-            
+
             // Verificar propriedade
-            $stmt = $db->prepare("
-                SELECT id FROM ml_accounts WHERE id = ? AND user_id = ?
+            $stmt = $db->prepare("\n                SELECT id FROM ml_accounts WHERE id = ? AND user_id = ?
             ");
             $stmt->execute([$accountId, $userId]);
-            
+
             if (!$stmt->fetch()) {
                 http_response_code(404);
                 echo json_encode(['success' => false, 'error' => 'Conta não encontrada']);
@@ -966,7 +995,6 @@ class AuthController extends BaseController
 
             echo json_encode(['success' => true, 'data' => $status]);
             exit;
-
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode([
@@ -1014,7 +1042,6 @@ class AuthController extends BaseController
 
             echo json_encode(['success' => true, 'data' => $result]);
             exit;
-
         } catch (\Exception $e) {
             Log::error('Error syncing all accounts', [
                 'user_id' => $userId,
@@ -1045,13 +1072,13 @@ class AuthController extends BaseController
 
         if ($result['success']) {
             $user = $result['user'];
-            
+
             // Check 2FA? For now, standard login.
             // Generate API Token
             $tokenService = new \App\Services\ApiTokenService();
             $tokenData = $tokenService->createToken(
-                $user['id'], 
-                "Mobile App - " . substr($deviceName, 0, 50), 
+                $user['id'],
+                "Mobile App - " . substr($deviceName, 0, 50),
                 ['*'], // Full scope for now
                 365 // 1 year expiration
             );
@@ -1106,11 +1133,10 @@ class AuthController extends BaseController
 
         try {
             $db = Database::getInstance();
-            
+
             // Verificar se a conta pertence ao usuário
-            $stmt = $db->prepare("
-                SELECT id, nickname, ml_user_id 
-                FROM ml_accounts 
+            $stmt = $db->prepare("\n                SELECT id, nickname, ml_user_id
+                FROM ml_accounts
                 WHERE id = :account_id AND user_id = :user_id
             ");
             $stmt->execute([
@@ -1138,7 +1164,7 @@ class AuthController extends BaseController
                     'promotion_simulations' => 'account_id',
                     'pricing_ranking_alerts' => 'account_id'
                 ];
-                
+
                 foreach ($tables as $table => $column) {
                     try {
                         $deleteStmt = $db->prepare("DELETE FROM {$table} WHERE {$column} = :account_id");
@@ -1151,7 +1177,7 @@ class AuthController extends BaseController
                         ]);
                     }
                 }
-                
+
                 // Deletar a conta permanentemente
                 $stmt = $db->prepare("DELETE FROM ml_accounts WHERE id = :account_id");
                 $stmt->execute(['account_id' => $accountId]);
@@ -1184,12 +1210,10 @@ class AuthController extends BaseController
                     'success' => true,
                     'message' => 'Conta excluída permanentemente com sucesso'
                 ]);
-
             } catch (\Exception $e) {
                 $db->rollBack();
                 throw $e;
             }
-
         } catch (\Exception $e) {
             Log::error('Error deleting ML account', [
                 'user_id' => $userId,
@@ -1206,4 +1230,3 @@ class AuthController extends BaseController
         exit;
     }
 }
-

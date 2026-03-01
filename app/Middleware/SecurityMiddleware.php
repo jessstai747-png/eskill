@@ -6,7 +6,7 @@ namespace App\Middleware;
 
 /**
  * SecurityMiddleware - Middleware de Segurança Avançada
- * 
+ *
  * Implementa verificações de segurança para todas as requisições:
  * - Headers de segurança
  * - Proteção contra ataques comuns
@@ -174,7 +174,8 @@ class SecurityMiddleware
         // Nonces são gerados em public/index.php e usados nas views via <script nonce="...">
         // 'strict-dynamic' permite que scripts com nonce carreguem outros scripts
         // 'unsafe-inline' é mantido como fallback para browsers CSP Level 1 (ignorado quando nonce presente)
-        $cspNonce = $_SESSION['csp_nonce'] ?? '';
+        // Use GLOBALS as authoritative source (set in public/index.php before session write, same value)
+        $cspNonce = $GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '';
         $csp = "default-src 'self'; " .
             "script-src 'self' 'nonce-{$cspNonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
             "script-src-elem 'self' 'nonce-{$cspNonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; " .
@@ -233,8 +234,8 @@ class SecurityMiddleware
         }
 
         try {
-            $sql = "SELECT id FROM blocked_ips 
-                    WHERE ip_address = :ip 
+            $sql = "SELECT id FROM blocked_ips
+                    WHERE ip_address = :ip
                     AND (blocked_until IS NULL OR blocked_until > NOW())";
             $stmt = $this->db->prepare($sql);
             $stmt->execute(['ip' => $ip]);
@@ -259,10 +260,10 @@ class SecurityMiddleware
                 ? date('Y-m-d H:i:s', time() + $durationSeconds)
                 : null;
 
-            $sql = "INSERT INTO blocked_ips (ip_address, reason, blocked_until, attempts) 
+            $sql = "INSERT INTO blocked_ips (ip_address, reason, blocked_until, attempts)
                     VALUES (:ip, :reason, :blocked_until, 1)
-                    ON DUPLICATE KEY UPDATE 
-                        reason = :reason2, 
+                    ON DUPLICATE KEY UPDATE
+                        reason = :reason2,
                         blocked_until = :blocked_until2,
                         attempts = attempts + 1,
                         updated_at = NOW()";
@@ -437,8 +438,8 @@ class SecurityMiddleware
         }
 
         try {
-            $sql = "INSERT INTO security_audit_log 
-                    (event_type, ip_address, user_agent, details, severity) 
+            $sql = "INSERT INTO security_audit_log
+                    (event_type, ip_address, user_agent, details, severity)
                     VALUES (:event_type, :ip, :user_agent, :details, :severity)";
 
             $stmt = $this->db->prepare($sql);
@@ -465,11 +466,11 @@ class SecurityMiddleware
         }
 
         try {
-            $sql = "SELECT 
+            $sql = "SELECT
                         event_type,
                         severity,
                         COUNT(*) as count
-                    FROM security_audit_log 
+                    FROM security_audit_log
                     WHERE created_at > DATE_SUB(NOW(), INTERVAL :hours HOUR)
                     GROUP BY event_type, severity";
 
