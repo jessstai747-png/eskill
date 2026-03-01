@@ -123,10 +123,10 @@ if (
 }
 
 // Generate CSP nonce for inline scripts (used by SecurityMiddleware and views).
-// URL-safe base64 (RFC 4648 §5) without padding: avoids '+', '/', '=' chars.
+// Use standard base64 (RFC 4648) for broad CSP parser compatibility across browsers.
 // A PHP constant is used so the nonce is accessible from any scope (class methods,
 // included files, etc.) without $GLOBALS or session lookups.
-$cspNonce = rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '=');
+$cspNonce = base64_encode(random_bytes(16));
 define('CSP_NONCE', $cspNonce);
 $_SESSION['csp_nonce'] = $cspNonce;
 $GLOBALS['cspNonce'] = $cspNonce;

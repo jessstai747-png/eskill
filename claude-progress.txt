@@ -6,6 +6,30 @@
 
 ---
 
+## Sessão 2026-03-01 (Codex) — Correção CSP no /dashboard/accounts (inline scripts bloqueados)
+
+### Contexto
+Console do navegador reportando múltiplos bloqueios de scripts inline em `/dashboard/accounts` por CSP (`script-src-elem`), mesmo com `nonce` no markup.
+
+### O que foi feito
+- Ajustada a geração do nonce CSP em `public/index.php` para **base64 padrão RFC 4648** (`base64_encode(random_bytes(16))`), removendo o formato URL-safe (`-_`) que causava rejeição do nonce em execução inline.
+- Atualizado `app/Views/dashboard/accounts.php` para usar fallback defensivo no atributo nonce:
+  `<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>`.
+
+### Validação
+- `php -l public/index.php` ✅
+- `php -l app/Views/dashboard/accounts.php` ✅
+- `php vendor/bin/phpunit` ✅
+  - Tests: 2923
+  - Assertions: 6829
+  - Skipped: 26
+
+### Arquivos modificados
+- `public/index.php`
+- `app/Views/dashboard/accounts.php`
+
+---
+
 ## Sessão 2026-03-01 (Copilot) — Validação Final: Migration + production-check + PHPUnit
 
 ### Contexto
