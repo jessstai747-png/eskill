@@ -88,7 +88,7 @@ class MLOAuthFlowTest extends TestCase
 
         $this->assertTrue(
             str_starts_with($url, 'https://auth.mercadolibre.com')
-            || str_starts_with($url, 'https://auth.mercadolivre.com.br'),
+                || str_starts_with($url, 'https://auth.mercadolivre.com.br'),
             'URL de autorização deve apontar para domínio oficial do Mercado Livre'
         );
         $this->assertStringContainsString('state=', $url);
@@ -160,8 +160,15 @@ class MLOAuthFlowTest extends TestCase
         $columns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 
         $requiredColumns = [
-            'id', 'user_id', 'ml_user_id', 'nickname', 'email',
-            'access_token', 'refresh_token', 'token_expires_at', 'status'
+            'id',
+            'user_id',
+            'ml_user_id',
+            'nickname',
+            'email',
+            'access_token',
+            'refresh_token',
+            'token_expires_at',
+            'status'
         ];
 
         foreach ($requiredColumns as $col) {

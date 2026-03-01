@@ -6,6 +6,71 @@
 
 ---
 
+## Sessão 2026-03-01 (Copilot) — ML-003/ML-007 fix + Phase 5/6/7 Feature tests
+
+### Objetivo
+Implementar próximas features do `mercado_livre_real_api_fases.md`:
+- Fechar ML-003 (health check 403 policy), ML-007 (risky tests), Phase 5/7 Feature tests.
+
+### Mudanças Realizadas
+
+#### Feature tests criados (Phase 5 + Phase 7)
+- **CRIADO** `tests/Feature/WebhookProcessTest.php` — 14 tests, WebhookProcess via DI + HTTP endpoints
+- **CRIADO** `tests/Feature/ClaimsFlowTest.php` — 10 tests, Claims CRUD sem DB + HTTP endpoints
+- **CRIADO** `tests/Feature/PushNotificationTest.php` — 15 tests, VAPID key gen + push send/save + HTTP
+
+#### ML-003 (403 health false-positive) — HealthController.php
+- HTTP 403 em `/sites/MLB` (policy com client_id) → agora retorna `status=ok` com contexto
+- Adicionado check `ml_active_accounts` (conta ativa com token válido)
+- `ignore_errors=true` para capturar HTTP status mesmo em 4xx
+
+#### ML-007 (risky tests sem assert)
+- `CloneAlertNotificationServiceTest.php` — `testAlertStructure()` tem asserts unconditional
+- `CloneDuplicateDetectionServiceTest.php` — `testCheckSkuDuplicate()` fixado, `testDuplicateResultHasOptions()` registra 3 clones para garantir asserções
+
+#### Phase 6 (workers — lock anti-concorrência)
+- `bin/clone-sync-worker.php` — adicionado flock exclusivo para prevenir execução concorrente
+
+### Resultado dos Testes
+- Feature suite: **104 tests**, 0 failures, 78 skipped (sandbox)
+- Unit suite: **2920 tests**, 0 failures, 34 skipped
+- Codacy: 0 issues em todos os arquivos alterados
+
+### Commits
+- `b799024` — Feature tests Phase 5/7 (WebhookProcess, ClaimsFlow, PushNotification)
+- (pendente) commit das mudanças ML-003/ML-007/Phase6
+
+---
+
+## Sessão 2026-03-02 — Phase 7 Notifications: TelegramServiceTest (Copilot)
+
+### Objetivo
+Criar testes unitários faltantes para Phase 7 (Notificações) conforme IMPLEMENTACAO_POR_FASES.md.
+
+### Mudanças Realizadas
+- **CRIADO** `tests/Unit/Services/TelegramServiceTest.php` — 16 testes unitários cobrindo:
+  - `isEnabled()` com/sem `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env vars (4 cenários)
+  - `sendMessage()` retorna bool, retorna false quando desabilitado
+  - `sendNewCompetitorNotification()`, `sendNewProductNotification()`, `sendTokenExpiringNotification()` — todos retornam false quando desabilitado; aceitam array vazio
+  - Sem dependência de DB — testes puramente unitários
+- **ATUALIZADO** `phpunit.xml` — adicionado `TelegramServiceTest.php` ao Unit testsuite
+
+### Resultado dos Testes
+- Unit suite: **2920 tests** (era 2904), **0 failures**, 34 skipped
+- Novos 16 TelegramServiceTest: todos passam em 33ms
+- Codacy: 0 issues encontrados
+
+### Observações Técnicas
+- `WhatsAppServiceTest.php` já existia (reflection-based, sem DB) — mantido sem alteração
+- `PushNotificationServiceTest.php` já existia (com mocks) — mantido sem alteração
+- Ambos já registrados em `phpunit.xml`
+- Ambos já incluídos via `<directory>tests/Unit/Services</directory>` no Integration suite
+
+### Commit
+- `46ae361` — `test: add TelegramServiceTest 16 unit tests, register in phpunit.xml`
+
+---
+
 ## Sessão 2026-03-01 (4) — Feature Session 6 (Copilot/Claude)
 
 ### Objetivo

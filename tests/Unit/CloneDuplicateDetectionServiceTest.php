@@ -108,16 +108,14 @@ class CloneDuplicateDetectionServiceTest extends TestCase
      */
     public function testCheckSkuDuplicate(): void
     {
+        // 'SKU-UNIQUE-999' is always new in a clean test DB → explicit non-duplicate assertions
         $result = $this->service->checkSkuDuplicate('SKU-UNIQUE-999', $this->testAccountId);
 
         $this->assertArrayHasKey('is_duplicate', $result);
         $this->assertArrayHasKey('recommendation', $result);
-
-        if ($result['is_duplicate']) {
-            $this->assertArrayHasKey('options', $result);
-            $this->assertArrayHasKey('skip', $result['options']);
-            $this->assertArrayHasKey('modify_sku', $result['options']);
-        }
+        $this->assertIsBool($result['is_duplicate']);
+        $this->assertIsString($result['recommendation']);
+        $this->assertFalse($result['is_duplicate'], 'SKU-UNIQUE-999 should not be a duplicate in a clean DB');
     }
 
     /**
@@ -208,24 +206,30 @@ class CloneDuplicateDetectionServiceTest extends TestCase
      */
     public function testDuplicateResultHasOptions(): void
     {
-        // Primeiro criar uma duplicata
-        $sourceId = 'MLB_TEST_OPTIONS_' . time();
-        $this->service->registerClone(
-            $sourceId,
-            'MLB_CLONE',
-            $this->testAccountId
-        );
+        // Register 3 clones for the same source to trigger severity='high' (requires count >= 3)
+        $t = time();
+        $sourceId = 'MLB_TEST_OPTIONS_' . $t;
+        $cloneIds = [
+            'MLB_CLONE_A_' . $t,
+            'MLB_CLONE_B_' . $t,
+            'MLB_CLONE_C_' . $t,
+        ];
+        foreach ($cloneIds as $cloneId) {
+            $this->service->registerClone($sourceId, $cloneId, $this->testAccountId);
+        }
 
         $result = $this->service->checkDuplicate($sourceId, $this->testAccountId);
 
-        if ($result['is_duplicate'] && $result['severity'] === 'high') {
-            $this->assertArrayHasKey('options', $result);
-            $this->assertArrayHasKey('skip', $result['options']);
-            $this->assertArrayHasKey('update', $result['options']);
-            $this->assertArrayHasKey('create_new', $result['options']);
-        } else {
-            $this->assertArrayHasKey('recommendation', $result);
-            $this->assertIsString($result['recommendation']);
+        $this->assertTrue($result['is_duplicate'], '3 registered clones must be detected as duplicate');
+        $this->assertEquals('high', $result['severity'], '3+ clones must set severity=high');
+        $this->assertArrayHasKey('options', $result);
+        $this->assertArrayHasKey('skip', $result['options']);
+        $this->assertArrayHasKey('update', $result['options']);
+        $this->assertArrayHasKey('create_new', $result['options']);
+
+        // Cleanup
+        foreach ($cloneIds as $cloneId) {
+            $this->service->markCloneInactive($cloneId);
         }
     }
 }

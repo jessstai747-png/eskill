@@ -18,6 +18,9 @@ use App\Database;
 
 $db = Database::getInstance();
 
+// Desabilitar FK checks para evitar problemas de ordem
+$db->exec("SET FOREIGN_KEY_CHECKS = 0");
+
 echo "=== Migration: Clone Event Trigger Tables ===\n\n";
 
 try {
@@ -30,7 +33,7 @@ try {
         CREATE TABLE IF NOT EXISTS clone_event_triggers (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             trigger_id VARCHAR(20) NOT NULL UNIQUE,
-            account_id INT UNSIGNED NOT NULL,
+            account_id INT NOT NULL,
             name VARCHAR(100) NOT NULL,
             description TEXT NULL,
             event_type ENUM('new_items', 'price_drop', 'stock_available', 'competitor_out') NOT NULL,
@@ -126,37 +129,43 @@ try {
     // 5. Atualizar tabela clone_schedules para suportar triggers
     echo "Atualizando tabela clone_schedules...\n";
 
-    // Verificar se colunas existem antes de adicionar
-    $stmt = $db->query("SHOW COLUMNS FROM clone_schedules LIKE 'trigger_id'");
-    $hasTrigId = $stmt->rowCount() > 0;
-    $stmt = $db->query("SHOW COLUMNS FROM clone_schedules LIKE 'trigger_type'");
-    $hasTrigType = $stmt->rowCount() > 0;
+    // Verificar se a tabela clone_schedules existe antes de tentar ALTERar
+    $schedStmt = $db->query("SHOW TABLES LIKE 'clone_schedules'");
+    if ($schedStmt->rowCount() === 0) {
+        echo "  - Tabela clone_schedules não existe ainda (será criada por outra migration)\n";
+    } else {
+        // Verificar se colunas existem antes de adicionar
+        $stmt = $db->query("SHOW COLUMNS FROM clone_schedules LIKE 'trigger_id'");
+        $hasTrigId = $stmt->rowCount() > 0;
+        $stmt = $db->query("SHOW COLUMNS FROM clone_schedules LIKE 'trigger_type'");
+        $hasTrigType = $stmt->rowCount() > 0;
 
-    if (!$hasTrigId && !$hasTrigType) {
-        $db->exec("
+        if (!$hasTrigId && !$hasTrigType) {
+            $db->exec("
             ALTER TABLE clone_schedules
             ADD COLUMN trigger_id VARCHAR(20) NULL AFTER template_id,
             ADD COLUMN trigger_type ENUM('scheduled', 'new_items', 'price_drop', 'stock_available', 'competitor_out') DEFAULT 'scheduled' AFTER trigger_id,
             ADD INDEX idx_trigger_id (trigger_id)
         ");
-        echo "  ✓ Colunas de trigger adicionadas\n";
-    } elseif (!$hasTrigId) {
-        try {
-            $db->exec("ALTER TABLE clone_schedules ADD COLUMN trigger_id VARCHAR(20) NULL AFTER template_id, ADD INDEX idx_trigger_id (trigger_id)");
-            echo "  ✓ trigger_id adicionada\n";
-        } catch (\PDOException $e) {
-            echo "  - trigger_id: " . $e->getMessage() . "\n";
+            echo "  ✓ Colunas de trigger adicionadas\n";
+        } elseif (!$hasTrigId) {
+            try {
+                $db->exec("ALTER TABLE clone_schedules ADD COLUMN trigger_id VARCHAR(20) NULL AFTER template_id, ADD INDEX idx_trigger_id (trigger_id)");
+                echo "  ✓ trigger_id adicionada\n";
+            } catch (\PDOException $e) {
+                echo "  - trigger_id: " . $e->getMessage() . "\n";
+            }
+        } else {
+            echo "  - Colunas já existem\n";
         }
-    } else {
-        echo "  - Colunas já existem\n";
-    }
+    } // end else (clone_schedules exists)
 
     // 6. Tabela de cache de trends para gráficos
     echo "Criando tabela clone_trend_cache...\n";
     $db->exec("
         CREATE TABLE IF NOT EXISTS clone_trend_cache (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            account_id INT UNSIGNED NOT NULL,
+            account_id INT NOT NULL,
             chart_type VARCHAR(50) NOT NULL,
             cache_key VARCHAR(100) NOT NULL,
             chart_data JSON NOT NULL,
@@ -194,4 +203,7 @@ try {
         throw $e;
     }
     throw $e;
+} finally {
+    // Reabilitar FK checks
+    $db->exec("SET FOREIGN_KEY_CHECKS = 1");
 }

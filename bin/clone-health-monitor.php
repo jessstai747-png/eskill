@@ -2,9 +2,9 @@
 <?php
 /**
  * Clone Health Monitor
- * 
+ *
  * Monitora saúde do sistema de clonagem e gera alertas
- * 
+ *
  * Uso:
  *   php bin/clone-health-monitor.php
  *   php bin/clone-health-monitor.php --alert
@@ -48,6 +48,23 @@ if (isset($options['account-id'])) {
     if ($accountId < 0) {
         $accountId = 0;
     }
+}
+
+// Acquire lock to prevent overlapping cron runs
+$_hmLockDir = __DIR__ . '/../storage/locks';
+if (!is_dir($_hmLockDir)) {
+    @mkdir($_hmLockDir, 0755, true);
+}
+$_hmLockFile = $_hmLockDir . '/clone-health-monitor.lock';
+$_hmLock = fopen($_hmLockFile, 'c');
+if ($_hmLock === false || !flock($_hmLock, LOCK_EX | LOCK_NB)) {
+    if (!$jsonOutput) {
+        echo "[clone-health-monitor] Já em execução (lock ocupado) — saindo\n";
+    }
+    if ($_hmLock !== false) {
+        fclose($_hmLock);
+    }
+    exit(0);
 }
 
 // Criar ML client para diagnóstico real da API (best-effort)
@@ -213,6 +230,9 @@ try {
 } catch (Exception $e) {
     echo "ERRO ao verificar saúde: " . $e->getMessage() . "\n";
     exit(1);
+} finally {
+    flock($_hmLock, LOCK_UN);
+    fclose($_hmLock);
 }
 
 /**

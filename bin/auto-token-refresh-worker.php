@@ -605,8 +605,26 @@ try {
 
     if ($runLegacy) {
         echo "[auto-token-refresh-worker] Modo legado habilitado via --legacy\n";
-        $worker = new AutoTokenRefreshWorker();
-        $worker->run();
+        $legacyLockDir = __DIR__ . '/../storage/locks';
+        if (!is_dir($legacyLockDir)) {
+            @mkdir($legacyLockDir, 0755, true);
+        }
+        $legacyLockFile = $legacyLockDir . '/auto-token-refresh-legacy.lock';
+        $legacyLock = fopen($legacyLockFile, 'c');
+        if ($legacyLock === false || !flock($legacyLock, LOCK_EX | LOCK_NB)) {
+            echo "[auto-token-refresh-worker] Modo legado já em execução (lock ocupado) — saindo\n";
+            if ($legacyLock !== false) {
+                fclose($legacyLock);
+            }
+            exit(0);
+        }
+        try {
+            $worker = new AutoTokenRefreshWorker();
+            $worker->run();
+        } finally {
+            flock($legacyLock, LOCK_UN);
+            fclose($legacyLock);
+        }
         exit(0);
     }
 

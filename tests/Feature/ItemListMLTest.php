@@ -242,7 +242,7 @@ class ItemListMLTest extends TestCase
         // Deve ter alguma indicação de falha ou items vazio
         $this->assertTrue(
             (isset($result['success']) && !$result['success']) ||
-            (isset($result['items']) && empty($result['items']))
+                (isset($result['items']) && empty($result['items']))
         );
     }
 

@@ -7,8 +7,13 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'manager', 'support', 'user', 'viewer') DEFAULT 'admin',
+    status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
+    two_factor_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    two_factor_secret VARCHAR(255) NULL,
     remember_token VARCHAR(100) NULL,
     email_verified_at TIMESTAMP NULL,
+    last_login_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email)
@@ -25,7 +30,7 @@ CREATE TABLE IF NOT EXISTS ml_accounts (
     access_token TEXT NOT NULL,
     refresh_token TEXT NOT NULL,
     token_expires_at DATETIME NOT NULL,
-    status ENUM('active', 'inactive', 'expired') DEFAULT 'active',
+    status ENUM('active', 'inactive', 'expired', 'disconnected') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -50,4 +55,3 @@ CREATE TABLE IF NOT EXISTS sync_logs (
     INDEX idx_status (status),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-

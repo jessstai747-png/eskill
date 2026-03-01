@@ -90,6 +90,7 @@ try {
             result ENUM('success', 'partial', 'failed') DEFAULT 'success',
             error_message TEXT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_account_item (account_id, item_id),
             INDEX idx_action (action),
             INDEX idx_created (created_at)

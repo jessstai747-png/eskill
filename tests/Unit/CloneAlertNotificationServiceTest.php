@@ -178,6 +178,16 @@ class CloneAlertNotificationServiceTest extends TestCase
     {
         $alerts = $this->service->runAllChecks();
 
+        // Assert top-level structure regardless of whether any alerts were triggered
+        $this->assertArrayHasKey('stuck_jobs', $alerts);
+        $this->assertArrayHasKey('high_failure_rate', $alerts);
+        $this->assertArrayHasKey('api_quota_issues', $alerts);
+        $this->assertArrayHasKey('timestamp', $alerts);
+        $this->assertIsArray($alerts['stuck_jobs']);
+        $this->assertIsArray($alerts['high_failure_rate']);
+        $this->assertIsArray($alerts['api_quota_issues']);
+        $this->assertIsString($alerts['timestamp']);
+
         $allAlerts = array_merge(
             $alerts['stuck_jobs'],
             $alerts['high_failure_rate'],

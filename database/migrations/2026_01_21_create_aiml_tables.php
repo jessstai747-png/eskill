@@ -2,7 +2,7 @@
 
 /**
  * Migration: Create AI/ML Tables
- * 
+ *
  * Tables:
  * - category_learning: Stores learned patterns by category
  * - keyword_classifications: Stores keyword classifications with cache
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS category_learning (
     items_analyzed INT DEFAULT 0,
     learned_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    
+
     INDEX idx_category_id (category_id),
     INDEX idx_updated_at (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS keyword_classifications (
     confidence DECIMAL(3,2) NOT NULL DEFAULT 0.50,
     reason VARCHAR(255) NULL,
     created_at DATETIME NOT NULL,
-    
+
     UNIQUE KEY uk_keyword_hash (keyword_hash),
     INDEX idx_keyword (keyword(100)),
     INDEX idx_type (type),
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS keyword_trends (
     trend_score DECIMAL(3,2) DEFAULT 0.50,
     trend_direction ENUM('up', 'down', 'stable', 'unknown') DEFAULT 'unknown',
     recorded_at DATETIME NOT NULL,
-    
+
     INDEX idx_keyword_hash (keyword_hash),
     INDEX idx_keyword (keyword(100)),
     INDEX idx_trend_score (trend_score),
@@ -85,20 +85,22 @@ echo "✅ Table 'keyword_trends' created successfully\n";
 // ========================================
 $db->exec("
 CREATE TABLE IF NOT EXISTS seo_analysis_cache (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    cache_key VARCHAR(64) NOT NULL,
-    item_id VARCHAR(50) NULL,
-    category_id VARCHAR(50) NULL,
-    analysis_type VARCHAR(50) NOT NULL,
-    result_json JSON NOT NULL,
+    item_id VARCHAR(64) NOT NULL,
+    account_id INT NOT NULL,
+    category_id VARCHAR(32) NULL,
+    overall_score DECIMAL(6,2) DEFAULT 0,
+    strategies_json LONGTEXT NULL,
+    suggestions_json LONGTEXT NULL,
+    title_analysis_json LONGTEXT NULL,
+    description_analysis_json LONGTEXT NULL,
+    item_title VARCHAR(255) NULL,
+    item_price DECIMAL(10,2) NULL,
+    analysis_version VARCHAR(20) NULL,
+    expires_at DATETIME NULL,
     created_at DATETIME NOT NULL,
-    expires_at DATETIME NOT NULL,
-    
-    UNIQUE KEY uk_cache_key (cache_key),
-    INDEX idx_item_id (item_id),
-    INDEX idx_category_id (category_id),
-    INDEX idx_analysis_type (analysis_type),
-    INDEX idx_expires_at (expires_at)
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (item_id, account_id),
+    INDEX idx_seo_cache_account (account_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
 

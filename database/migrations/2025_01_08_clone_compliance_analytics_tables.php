@@ -1,12 +1,13 @@
 <?php
+
 /**
  * Migration: Create Compliance and Analytics Tables for Clone Module
- * 
+ *
  * Creates the following tables:
  * - clone_audit_logs: Audit trail for all clone operations
  * - clone_policy_violations: Policy violation records
  * - clone_analytics_events: Analytics event tracking
- * 
+ *
  * @version 1.0.0
  * @date 2025-01-08
  */
@@ -14,6 +15,9 @@
 declare(strict_types=1);
 
 $db = App\Database::getInstance();
+
+// Desabilitar FK checks para evitar problemas de ordem
+$db->exec("SET FOREIGN_KEY_CHECKS = 0");
 
 echo "=== Migration: Clone Compliance & Analytics Tables ===\n\n";
 
@@ -25,7 +29,7 @@ echo "Creating table: clone_audit_logs...\n";
 $sql = <<<SQL
 CREATE TABLE IF NOT EXISTS clone_audit_logs (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    account_id INT UNSIGNED NOT NULL,
+    account_id INT NOT NULL,
     user_id INT UNSIGNED NULL,
     job_id INT UNSIGNED NULL,
     item_id VARCHAR(50) NULL,
@@ -48,7 +52,7 @@ CREATE TABLE IF NOT EXISTS clone_audit_logs (
     error_code VARCHAR(50) NULL,
     stack_trace TEXT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
+
     INDEX idx_account_id (account_id),
     INDEX idx_user_id (user_id),
     INDEX idx_job_id (job_id),
@@ -60,9 +64,9 @@ CREATE TABLE IF NOT EXISTS clone_audit_logs (
     INDEX idx_account_created (account_id, created_at),
     INDEX idx_job_created (job_id, created_at),
     INDEX idx_severity_created (severity, created_at),
-    
-    CONSTRAINT fk_audit_account FOREIGN KEY (account_id) 
-        REFERENCES contas(id) ON DELETE CASCADE
+
+    CONSTRAINT fk_audit_account FOREIGN KEY (account_id)
+        REFERENCES ml_accounts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Audit trail for clone operations - compliance and security tracking'
 SQL;
@@ -82,7 +86,7 @@ echo "\nCreating table: clone_policy_violations...\n";
 $sql = <<<SQL
 CREATE TABLE IF NOT EXISTS clone_policy_violations (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    account_id INT UNSIGNED NOT NULL,
+    account_id INT NOT NULL,
     job_id INT UNSIGNED NULL,
     item_id VARCHAR(50) NULL,
     audit_log_id BIGINT UNSIGNED NULL COMMENT 'Reference to audit log entry',
@@ -105,7 +109,7 @@ CREATE TABLE IF NOT EXISTS clone_policy_violations (
     acknowledged_by INT UNSIGNED NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
     INDEX idx_account_id (account_id),
     INDEX idx_job_id (job_id),
     INDEX idx_item_id (item_id),
@@ -115,10 +119,10 @@ CREATE TABLE IF NOT EXISTS clone_policy_violations (
     INDEX idx_created_at (created_at),
     INDEX idx_account_unresolved (account_id, auto_resolved, resolved_at),
     INDEX idx_severity_unresolved (severity, auto_resolved, resolved_at),
-    
-    CONSTRAINT fk_violation_account FOREIGN KEY (account_id) 
-        REFERENCES contas(id) ON DELETE CASCADE,
-    CONSTRAINT fk_violation_audit FOREIGN KEY (audit_log_id) 
+
+    CONSTRAINT fk_violation_account FOREIGN KEY (account_id)
+        REFERENCES ml_accounts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_violation_audit FOREIGN KEY (audit_log_id)
         REFERENCES clone_audit_logs(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Policy violation records for clone module compliance'
@@ -139,7 +143,7 @@ echo "\nCreating table: clone_analytics_events...\n";
 $sql = <<<SQL
 CREATE TABLE IF NOT EXISTS clone_analytics_events (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    account_id INT UNSIGNED NOT NULL,
+    account_id INT NOT NULL,
     user_id INT UNSIGNED NULL,
     job_id INT UNSIGNED NULL,
     event_name VARCHAR(100) NOT NULL COMMENT 'Name of the analytics event',
@@ -163,7 +167,7 @@ CREATE TABLE IF NOT EXISTS clone_analytics_events (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     event_date DATE GENERATED ALWAYS AS (DATE(created_at)) STORED,
     event_hour TINYINT GENERATED ALWAYS AS (HOUR(created_at)) STORED,
-    
+
     INDEX idx_account_id (account_id),
     INDEX idx_job_id (job_id),
     INDEX idx_event_name (event_name),
@@ -173,9 +177,9 @@ CREATE TABLE IF NOT EXISTS clone_analytics_events (
     INDEX idx_account_date (account_id, event_date),
     INDEX idx_account_category_date (account_id, event_category, event_date),
     INDEX idx_event_name_date (event_name, event_date),
-    
-    CONSTRAINT fk_analytics_account FOREIGN KEY (account_id) 
-        REFERENCES contas(id) ON DELETE CASCADE
+
+    CONSTRAINT fk_analytics_account FOREIGN KEY (account_id)
+        REFERENCES ml_accounts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Analytics event tracking for clone module - metrics and insights'
 SQL;
@@ -195,7 +199,7 @@ echo "\nCreating table: clone_compliance_reports...\n";
 $sql = <<<SQL
 CREATE TABLE IF NOT EXISTS clone_compliance_reports (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    account_id INT UNSIGNED NOT NULL,
+    account_id INT NOT NULL,
     report_type VARCHAR(50) NOT NULL COMMENT 'daily, weekly, monthly, custom, audit',
     report_name VARCHAR(200) NOT NULL,
     period_start DATE NOT NULL,
@@ -215,16 +219,16 @@ CREATE TABLE IF NOT EXISTS clone_compliance_reports (
     expires_at TIMESTAMP NULL COMMENT 'When the report file expires',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP NULL,
-    
+
     INDEX idx_account_id (account_id),
     INDEX idx_report_type (report_type),
     INDEX idx_period (period_start, period_end),
     INDEX idx_status (status),
     INDEX idx_created_at (created_at),
     INDEX idx_account_type_date (account_id, report_type, created_at),
-    
-    CONSTRAINT fk_report_account FOREIGN KEY (account_id) 
-        REFERENCES contas(id) ON DELETE CASCADE
+
+    CONSTRAINT fk_report_account FOREIGN KEY (account_id)
+        REFERENCES ml_accounts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Generated compliance reports storage'
 SQL;
@@ -244,14 +248,14 @@ echo "\nCreating table: clone_analytics_aggregates...\n";
 $sql = <<<SQL
 CREATE TABLE IF NOT EXISTS clone_analytics_aggregates (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    account_id INT UNSIGNED NOT NULL,
+    account_id INT NOT NULL,
     period_type VARCHAR(20) NOT NULL COMMENT 'hourly, daily, weekly, monthly',
     period_start DATETIME NOT NULL,
     period_end DATETIME NOT NULL,
     metric_name VARCHAR(100) NOT NULL,
     dimension_name VARCHAR(100) NULL COMMENT 'Optional dimension for breakdown',
     dimension_value VARCHAR(200) NULL,
-    
+
     -- Aggregate values
     count_value BIGINT UNSIGNED NOT NULL DEFAULT 0,
     sum_value DECIMAL(20,4) NULL,
@@ -262,19 +266,19 @@ CREATE TABLE IF NOT EXISTS clone_analytics_aggregates (
     p90_value DECIMAL(15,4) NULL,
     p99_value DECIMAL(15,4) NULL,
     stddev_value DECIMAL(15,4) NULL,
-    
+
     -- Additional metadata
     sample_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of samples used',
     is_complete TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Whether period is complete',
     computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
+
     UNIQUE KEY uk_aggregate (account_id, period_type, period_start, metric_name, dimension_name, dimension_value),
     INDEX idx_account_period (account_id, period_type, period_start),
     INDEX idx_metric_period (metric_name, period_type, period_start),
     INDEX idx_computed (computed_at),
-    
-    CONSTRAINT fk_aggregate_account FOREIGN KEY (account_id) 
-        REFERENCES contas(id) ON DELETE CASCADE
+
+    CONSTRAINT fk_aggregate_account FOREIGN KEY (account_id)
+        REFERENCES ml_accounts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Pre-aggregated analytics metrics for fast dashboard queries'
 SQL;
@@ -285,6 +289,9 @@ try {
 } catch (PDOException $e) {
     echo "  ✗ Error: " . $e->getMessage() . "\n";
 }
+
+// Reabilitar FK checks
+$db->exec("SET FOREIGN_KEY_CHECKS = 1");
 
 // -----------------------------------------------------------------------------
 // Summary

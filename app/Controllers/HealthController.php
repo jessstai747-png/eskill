@@ -59,7 +59,7 @@ class HealthController extends BaseController
         try {
             // This query requires permissions, might fail on some hosts
             $stmt = $this->db->query("
-                SELECT sum(data_length + index_length) / 1024 / 1024 
+                SELECT sum(data_length + index_length) / 1024 / 1024
                 FROM information_schema.TABLES
                 WHERE table_schema = DATABASE()
             ");
@@ -428,22 +428,75 @@ class HealthController extends BaseController
             'missing' => $missingTables,
         ];
 
-        // 5. ML API connectivity
+        // 5. Active ML accounts
+        $activeAccounts = 0;
+        if ($this->db) {
+            try {
+                $stmt = $this->db->query(
+                    "SELECT COUNT(*) FROM ml_accounts
+                    WHERE status = 'active'
+                      AND (token_expires_at IS NULL OR token_expires_at > NOW())"
+                );
+                $activeAccounts = (int)$stmt->fetchColumn();
+            } catch (\Throwable $e) {
+                // table may not exist yet on fresh install
+                $activeAccounts = -1;
+            }
+        }
+        $checks['ml_active_accounts'] = [
+            'status'  => $activeAccounts > 0 ? 'ok' : ($activeAccounts === -1 ? 'warning' : 'warning'),
+            'message' => $activeAccounts > 0
+                ? "{$activeAccounts} conta(s) ML ativa(s) com token válido"
+                : ($activeAccounts === -1
+                    ? 'Não foi possível verificar contas ML (tabela ausente)'
+                    : 'Nenhuma conta ML ativa — funcionalidades de marketplace indisponíveis'),
+            'count' => max($activeAccounts, 0),
+        ];
+
+        // 6. ML API connectivity
+        // Note: a 403 PA_UNAUTHORIZED_RESULT_FROM_POLICIES response still means the API is
+        // reachable — it is only blocked for requests that include a client_id not registered
+        // for the public-sites policy. We treat it as reachable (ok) not as an error.
         $mlApiStatus = 'skipped';
+        $mlApiMessage = 'ML API check skipped (api_url not configured)';
         try {
             $config = \App\Core\Config::getInstance()->all();
             $ml = $config['mercadolivre'] ?? [];
             if (!empty($ml['api_url'])) {
-                $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+                $ctx = stream_context_create(['http' => [
+                    'timeout' => 3,
+                    'ignore_errors' => true,  // read body even on 4xx so we can inspect the reason
+                ]]);
                 $resp = @file_get_contents($ml['api_url'] . '/sites/MLB', false, $ctx);
-                $mlApiStatus = $resp ? 'ok' : 'error';
+                $httpLine = $http_response_header[0] ?? '';
+                preg_match('/HTTP\/\S+\s+(\d+)/', $httpLine, $m);
+                $httpCode = (int)($m[1] ?? 0);
+
+                if ($resp !== false && $httpCode === 200) {
+                    $mlApiStatus = 'ok';
+                    $mlApiMessage = 'ML API reachable';
+                } elseif ($httpCode === 403) {
+                    // Policy blocks client_id, but connectivity is confirmed
+                    $mlApiStatus = 'ok';
+                    $mlApiMessage = 'ML API reachable (policy restricts client_id on public endpoint)';
+                } elseif ($resp === false || $httpCode === 0) {
+                    $mlApiStatus = 'error';
+                    $mlApiMessage = 'ML API unreachable (connection failed or timeout)';
+                } elseif ($httpCode >= 500) {
+                    $mlApiStatus = 'error';
+                    $mlApiMessage = "ML API server error (HTTP {$httpCode})";
+                } else {
+                    $mlApiStatus = 'warning';
+                    $mlApiMessage = "ML API returned HTTP {$httpCode}";
+                }
             }
         } catch (\Throwable $e) {
             $mlApiStatus = 'error';
+            $mlApiMessage = 'ML API check failed: ' . $e->getMessage();
         }
         $checks['ml_api'] = [
-            'status' => $mlApiStatus,
-            'message' => $mlApiStatus === 'ok' ? 'ML API reachable' : ($mlApiStatus === 'error' ? 'ML API unreachable' : 'ML API check skipped'),
+            'status'  => $mlApiStatus,
+            'message' => $mlApiMessage,
         ];
 
         // 6. Storage directories writable

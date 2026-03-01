@@ -52,6 +52,10 @@ class OrderController extends BaseController
                 $error = (string)$results['error'];
                 if (in_array($error, ['missing_seller_id', 'local_cache_required'], true)) {
                     http_response_code(422);
+                    if ($error === 'missing_seller_id' && empty($results['message'])) {
+                        $results['message'] = 'Nenhuma conta de vendedor ativa. Conecte uma conta do Mercado Livre para acessar seus pedidos.';
+                        $results['action'] = 'connect_account';
+                    }
                 } elseif (in_array($error, ['db_unavailable', 'network_disabled', 'circuit_breaker_open'], true)) {
                     http_response_code(503);
                 } elseif ($error === 'missing_token') {

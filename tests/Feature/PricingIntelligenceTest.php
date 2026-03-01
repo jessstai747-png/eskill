@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Testes de Integração para o Módulo de Precificação Inteligente
- * 
+ *
  * Testa os endpoints da API de pricing intelligence:
  * - Simulador de promoções
  * - Cenários de preço
@@ -46,20 +46,20 @@ class PricingIntelligenceTest extends TestCase
     private function request(string $method, string $endpoint, ?array $data = null): array
     {
         $url = "{$this->baseUrl}/api/pricing-intelligence/{$this->accountId}{$endpoint}";
-        
+
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        
+
         if ($data !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
+
         return [
             'status' => $httpCode,
             'body' => json_decode($response ?: '{}', true)
@@ -154,7 +154,7 @@ class PricingIntelligenceTest extends TestCase
         $response = $this->request('POST', '/promotion/simulate', $data);
 
         $this->assertEquals(200, $response['status']);
-        
+
         if (isset($response['body']['cenarios'])) {
             foreach ($response['body']['cenarios'] as $cenario) {
                 $this->assertArrayHasKey('desconto', $cenario);
@@ -184,7 +184,7 @@ class PricingIntelligenceTest extends TestCase
         $response = $this->request('POST', '/promotion/central-ofertas', $data);
 
         $this->assertContains($response['status'], [200, 404]);
-        
+
         if ($response['status'] === 200 && $response['body']['success']) {
             $this->assertArrayHasKey('desconto_recomendado', $response['body']);
             $this->assertArrayHasKey('preco_promocional', $response['body']);
@@ -205,7 +205,7 @@ class PricingIntelligenceTest extends TestCase
         $response = $this->request('POST', '/scenarios/strategies', $data);
 
         $this->assertContains($response['status'], [200, 404]);
-        
+
         if ($response['status'] === 200 && $response['body']['success']) {
             $this->assertArrayHasKey('estrategias', $response['body']);
         }
@@ -248,7 +248,7 @@ class PricingIntelligenceTest extends TestCase
         $response = $this->request('GET', '/rules');
 
         $this->assertContains($response['status'], [200, 404]);
-        
+
         if ($response['status'] === 200 && $response['body']['success']) {
             $this->assertArrayHasKey('regras', $response['body']);
         }
@@ -290,7 +290,7 @@ class PricingIntelligenceTest extends TestCase
         $response = $this->request('POST', '/ranking-impact', $data);
 
         $this->assertContains($response['status'], [200, 404]);
-        
+
         if ($response['status'] === 200 && $response['body']['success']) {
             $this->assertArrayHasKey('alerta', $response['body']);
         }
@@ -320,7 +320,7 @@ class PricingIntelligenceTest extends TestCase
         $response = $this->request('GET', '/dashboard');
 
         $this->assertContains($response['status'], [200, 404]);
-        
+
         if ($response['status'] === 200 && $response['body']['success']) {
             $this->assertArrayHasKey('estatisticas', $response['body']);
         }
@@ -331,7 +331,7 @@ class PricingIntelligenceTest extends TestCase
         $response = $this->request('GET', '/items?page=1&limit=10');
 
         $this->assertContains($response['status'], [200, 404]);
-        
+
         if ($response['status'] === 200 && $response['body']['success']) {
             $this->assertArrayHasKey('items', $response['body']);
             $this->assertArrayHasKey('total', $response['body']);

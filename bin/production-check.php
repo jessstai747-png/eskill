@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -217,6 +218,17 @@ if ($free) {
     }
 } else {
     info("Não foi possível verificar espaço em disco");
+}
+
+// 10. Process user
+echo "\n── Processo ──\n";
+if (function_exists('posix_getuid') && posix_getuid() === 0) {
+    warn("Processo rodando como root — use um usuário de aplicação com grants mínimos em produção");
+} elseif (function_exists('posix_getpwuid') && function_exists('posix_getuid')) {
+    $userInfo = posix_getpwuid(posix_getuid());
+    ok("Rodando como usuário: " . ($userInfo['name'] ?? 'desconhecido'));
+} else {
+    info("Não foi possível verificar usuário do processo");
 }
 
 // Summary
