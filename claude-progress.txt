@@ -6,7 +6,49 @@
 
 ---
 
-## Sessão 2026-03-01 (Copilot) — ML-003/ML-007 fix + Phase 5/6/7 Feature tests
+## Sessão 2026-03-01 (Copilot) — ML-001/ML-004/ML-006/ML-008 closing
+
+### Objetivo
+Fechar itens ML restantes do catálogo `mercado_livre_real_api_fases.md`.
+
+### Status da Investigação
+- **ML-001 (invalid_grant sync block)**: `AuthController::syncAccount()` já bloqueava contas
+  desconectadas (linha 887). **GAP ENCONTRADO**: `SyncController::trigger()` não verificava
+  status antes de enfileirar jobs. **CORRIGIDO**.
+- **ML-004 (tabelas ausentes)**: `000_install_all.sql` não incluía `worker_execution_logs`,
+  `clone_health_logs`, `clone_duplicate_registry`, `clone_sync_logs`. **CORRIGIDO**.
+- **ML-006 (422 sem seller)**: `OrderService::listOrders()` já retornava `missing_seller_id`
+  e fallback local via `shouldAllowLocalFallback()`. **CONFIRMADO RESOLVIDO** (sem mudança).
+- **ML-008 (secrets em testes)**: Nenhum secret hardcoded encontrado em `tests/`. **CONFIRMADO LIMPO**.
+
+### Mudanças Realizadas
+
+#### ML-001: SyncController::trigger() — desconectado antes de enfileirar job
+- **EDITADO** `app/Controllers/SyncController.php`
+  - Adicionado bloco `try` antes do dispatch: consulta `ml_accounts.status` e `last_refresh_error`
+  - Se `status=disconnected` ou `last_refresh_error LIKE %invalid_grant%` → 422 com
+    `error_code=account_disconnected`, `needs_reconnect=true`, `action=reconnect_account`
+  - Não-fatal se tabela ausente em fresh install (catch com `log_warning`)
+
+#### ML-004: 000_install_all.sql — 4 tabelas operacionais adicionadas
+- **EDITADO** `database/migrations/000_install_all.sql`
+  - + `worker_execution_logs` — auditoria de execução de workers
+  - + `clone_health_logs` — resultados de health check de clonagem
+  - + `clone_duplicate_registry` — rastreio de clones duplicados
+  - + `clone_sync_logs` — log de eventos de sincronização de clones
+  - Todos com `CREATE TABLE IF NOT EXISTS` para não colidir com migrations incrementais
+
+### Análise de Qualidade
+- `php -l app/Controllers/SyncController.php` → No syntax errors
+- Codacy CLI: ambos os arquivos → `result: []` (sem issues)
+- PHPUnit Unit: 2920 testes, 0 falhas
+
+### Commit
+- `da012c3` — fix: ML-001 and ML-004 sync disconnect guard and bootstrap missing tables
+
+---
+
+
 
 ### Objetivo
 Implementar próximas features do `mercado_livre_real_api_fases.md`:
