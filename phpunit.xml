@@ -143,6 +143,7 @@
             <file>tests/Unit/Services/ShopeeServiceTest.php</file>
             <file>tests/Unit/Services/AdsServiceTest.php</file>
             <file>tests/Unit/Services/WhatsAppServiceTest.php</file>
+            <file>tests/Unit/Services/TelegramServiceTest.php</file>
             <file>tests/Unit/Controllers/MultiAccountControllerTest.php</file>
         </testsuite>
         <testsuite name="Integration">
