@@ -158,9 +158,14 @@
             <file>tests/Unit/CloneDuplicateDetectionServiceTest.php</file>
             <file>tests/Unit/CloneRetryStrategyServiceTest.php</file>
         </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
     </testsuites>
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="DB_CONNECTION" value="mysql"/>
+        <!-- Use Redis DB 1 in tests to isolate from production data on DB 0 -->
+        <env name="REDIS_DB" value="1"/>
     </php>
 </phpunit>

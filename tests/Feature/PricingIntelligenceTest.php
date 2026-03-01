@@ -25,6 +25,19 @@ class PricingIntelligenceTest extends TestCase
         parent::setUp();
         $this->baseUrl = getenv('TEST_API_URL') ?: 'http://localhost:8000';
         $this->accountId = getenv('TEST_ACCOUNT_ID') ?: '1';
+
+        // Skip if API server is not reachable
+        $ch = curl_init($this->baseUrl . '/api/health');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_exec($ch);
+        $errno = curl_errno($ch);
+        curl_close($ch);
+
+        if ($errno !== 0) {
+            $this->markTestSkipped('API server not reachable at ' . $this->baseUrl);
+        }
     }
 
     /**

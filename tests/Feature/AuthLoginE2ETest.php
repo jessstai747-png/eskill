@@ -29,7 +29,13 @@ class AuthLoginE2ETest extends TestCase
     {
         parent::setUp();
 
-        $this->db = Database::getInstance();
+        try {
+            $this->db = Database::getInstance();
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('DB unavailable: ' . $e->getMessage());
+            return;
+        }
+
         $this->testEmail = 'e2e-auth-' . bin2hex(random_bytes(4)) . '@test.local';
         $this->createTestUser();
     }

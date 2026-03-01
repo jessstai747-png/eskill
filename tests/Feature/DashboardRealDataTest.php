@@ -25,7 +25,13 @@ class DashboardRealDataTest extends TestCase
     {
         parent::setUp();
 
-        $this->db = Database::getInstance();
+        try {
+            $this->db = Database::getInstance();
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('DB unavailable: ' . $e->getMessage());
+            return;
+        }
+
         $this->testUserId = $this->createTestUser();
         $this->testAccountId = $this->createTestMlAccount();
     }
