@@ -11,20 +11,20 @@ use PDO;
 
 /**
  * Controller de Status de Sincronização
- * 
+ *
  * Endpoints para monitorar sincronizações automáticas
  */
 class SyncController
 {
     private PDO $db;
     private Request $request;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
         $this->request = new Request();
     }
-    
+
     /**
      * Obtém status de sincronização de todos os recursos
      * GET /api/sync/status
@@ -36,12 +36,12 @@ class SyncController
             echo json_encode(['error' => 'Não autenticado']);
             return;
         }
-        
+
         header('Content-Type: application/json');
-        
+
         try {
             $accountId = SessionHelper::getActiveAccountId();
-            
+
             if (!$accountId) {
                 echo json_encode([
                     'success' => false,
@@ -49,11 +49,11 @@ class SyncController
                 ]);
                 return;
             }
-            
+
             // Buscar status de todos os recursos
             try {
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         resource_type,
                         last_sync_at,
                         status,
@@ -70,7 +70,7 @@ class SyncController
                 // Table might not exist, return empty status
                 $statuses = [];
             }
-            
+
             // Formatar resposta
             $response = [];
             foreach ($statuses as $status) {
@@ -83,13 +83,12 @@ class SyncController
                     'error' => $status['error_message']
                 ];
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'data' => $response,
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
-            
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode([
@@ -98,7 +97,7 @@ class SyncController
             ]);
         }
     }
-    
+
     /**
      * Força sincronização manual de um recurso
      * POST /api/sync/trigger
@@ -110,13 +109,13 @@ class SyncController
             echo json_encode(['error' => 'Não autenticado']);
             return;
         }
-        
+
         header('Content-Type: application/json');
-        
+
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $resourceType = $input['resource'] ?? null;
-            
+
             if (!in_array($resourceType, ['orders', 'items', 'questions'])) {
                 http_response_code(400);
                 echo json_encode([
@@ -125,9 +124,9 @@ class SyncController
                 ]);
                 return;
             }
-            
+
             $accountId = SessionHelper::getActiveAccountId();
-            
+
             if (!$accountId) {
                 echo json_encode([
                     'success' => false,
@@ -207,7 +206,6 @@ class SyncController
                 'job_id' => $jobId,
                 'job_type' => $jobTypeMap[$resourceType],
             ]);
-            
         } catch (\Exception $e) {
             if (!empty($accountId) && !empty($resourceType) && in_array((string)$resourceType, ['orders', 'items', 'questions'], true)) {
                 $this->updateSyncStatus((int)$accountId, (string)$resourceType, 'error', $e->getMessage());
@@ -219,7 +217,7 @@ class SyncController
             ]);
         }
     }
-    
+
     /**
      * Histórico de sincronizações
      * GET /api/sync/history?resource=orders
@@ -231,18 +229,18 @@ class SyncController
             echo json_encode(['error' => 'Não autenticado']);
             return;
         }
-        
+
         header('Content-Type: application/json');
-        
+
         try {
             $resourceType = $this->request->get('resource', 'orders') ?? 'orders';
             $accountId = SessionHelper::getActiveAccountId();
-            
+
             // Por enquanto, retorna apenas o último status
             // Futuramente, criar tabela de histórico
             try {
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         last_sync_at,
                         status,
                         items_count,
@@ -259,12 +257,11 @@ class SyncController
             } catch (\Exception $e) {
                 $history = [];
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'data' => $history
             ]);
-            
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode([
@@ -273,7 +270,7 @@ class SyncController
             ]);
         }
     }
-    
+
     /**
      * Atualiza status de sincronização
      */
@@ -307,7 +304,7 @@ class SyncController
         }
     }
 
-    
+
     /**
      * Formata tempo em formato legível
      */
