@@ -137,9 +137,10 @@ class SEORealOptimizationTest extends TestCase
 
     public function testAnalyzeTitleWithCategoryIdDoesNotThrow(): void
     {
-        // Usa categoryId vazio para evitar bug interno de keywordResearch
-        // onde categoryId nao vazio e passado como array para researchKeywords
-        $result = $this->analyzer->analyzeTitle('Bagageiro CG 160', '');
+        // Bug corrigido: categoryId nao-vazio agora passa $title (string) como baseKeyword
+        // em vez de array options para researchKeywords(). ML API indisponivel no sandbox
+        // — a excecao eh capturada pelo try/catch interno e retorna array graciosamente.
+        $result = $this->analyzer->analyzeTitle('Bagageiro CG 160 Titan AWA', 'MLB73419');
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('length', $result);

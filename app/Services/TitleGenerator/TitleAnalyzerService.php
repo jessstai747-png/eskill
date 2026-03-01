@@ -9,7 +9,7 @@ use App\Services\KeywordResearchService;
 
 /**
  * Title Analyzer Service - Análise Detalhada de Títulos
- * 
+ *
  * Analisa títulos de anúncios com múltiplas métricas:
  * - SEO score e otimização
  * - Análise competitiva
@@ -34,19 +34,44 @@ class TitleAnalyzerService
 
     // Termos proibidos
     private const FORBIDDEN_TERMS = [
-        'original', 'genuíno', 'autêntico', 'oficial',
-        'melhor', 'top', 'número 1', '#1', 'n°1',
-        'mais barato', 'menor preço', 'promoção', 'oferta',
-        'frete grátis', 'entrega grátis', 'desconto',
-        'perfeito', 'impecável', 'estado de novo',
-        'garantia vitalícia', 'nunca usado'
+        'original',
+        'genuíno',
+        'autêntico',
+        'oficial',
+        'melhor',
+        'top',
+        'número 1',
+        '#1',
+        'n°1',
+        'mais barato',
+        'menor preço',
+        'promoção',
+        'oferta',
+        'frete grátis',
+        'entrega grátis',
+        'desconto',
+        'perfeito',
+        'impecável',
+        'estado de novo',
+        'garantia vitalícia',
+        'nunca usado'
     ];
 
     // Palavras de alto impacto (positivas)
     private const HIGH_IMPACT_WORDS = [
-        'Pro', 'Max', 'Plus', 'Ultra', 'Premium', 
-        'Professional', 'Advanced', 'Special', 'Edition',
-        'Turbo', 'Super', 'Mega', 'Extra'
+        'Pro',
+        'Max',
+        'Plus',
+        'Ultra',
+        'Premium',
+        'Professional',
+        'Advanced',
+        'Special',
+        'Edition',
+        'Turbo',
+        'Super',
+        'Mega',
+        'Extra'
     ];
 
     public function __construct(?int $accountId = null)
@@ -153,10 +178,7 @@ class TitleAnalyzerService
         // Buscar keywords relevantes se temos categoria
         if (!empty($categoryId)) {
             try {
-                $keywordData = $this->keywordResearch->researchKeywords($categoryId, [
-                    'product_name' => $title,
-                    'limit' => 10
-                ]);
+                $keywordData = $this->keywordResearch->researchKeywords($categoryId, $title);
 
                 $relevantKeywords = $keywordData['keywords'] ?? [];
 
@@ -168,7 +190,7 @@ class TitleAnalyzerService
                     if ($pos !== false) {
                         $foundKeywords[] = $keyword;
                         $keywordPositions[$keyword] = $pos;
-                        
+
                         // Bonus se keyword está no início
                         if ($pos <= 10) {
                             $score += 15;
@@ -363,8 +385,8 @@ class TitleAnalyzerService
             'status' => $status,
             'found_forbidden' => $foundForbidden,
             'count' => count($foundForbidden),
-            'message' => empty($foundForbidden) 
-                ? 'Nenhum termo proibido detectado' 
+            'message' => empty($foundForbidden)
+                ? 'Nenhum termo proibido detectado'
                 : 'ATENÇÃO: Título contém termos proibidos pelo ML',
         ];
     }
@@ -480,7 +502,7 @@ class TitleAnalyzerService
         $clarityAnalysis = $this->analyzeClarity($title);
 
         // Média ponderada
-        $performanceScore = 
+        $performanceScore =
             ($lengthAnalysis['score'] * 0.20) +
             ($keywordAnalysis['score'] * 0.35) +
             ($clarityAnalysis['score'] * 0.25) +
@@ -618,10 +640,28 @@ class TitleAnalyzerService
     private function hasBrand(string $title): bool
     {
         $brands = [
-            'Samsung', 'Apple', 'LG', 'Sony', 'Xiaomi', 'Motorola',
-            'Nike', 'Adidas', 'Puma', 'Dell', 'HP', 'Lenovo',
-            'Asus', 'Acer', 'Microsoft', 'Logitech', 'Canon',
-            'Nikon', 'JBL', 'Philips', 'Panasonic', 'Brastemp'
+            'Samsung',
+            'Apple',
+            'LG',
+            'Sony',
+            'Xiaomi',
+            'Motorola',
+            'Nike',
+            'Adidas',
+            'Puma',
+            'Dell',
+            'HP',
+            'Lenovo',
+            'Asus',
+            'Acer',
+            'Microsoft',
+            'Logitech',
+            'Canon',
+            'Nikon',
+            'JBL',
+            'Philips',
+            'Panasonic',
+            'Brastemp'
         ];
 
         foreach ($brands as $brand) {
@@ -650,15 +690,15 @@ class TitleAnalyzerService
     {
         // Pattern esperado: Marca + Modelo/Produto + Specs
         $words = explode(' ', $title);
-        
+
         if (count($words) < 3) return false;
 
         // Primeira palavra capitalizada (marca)
         $hasBrand = preg_match('/^[A-Z]/', $words[0]);
-        
+
         // Segunda palavra é modelo ou produto
         $hasModel = strlen($words[1]) >= 2;
-        
+
         // Terceira+ palavras são especificações
         $hasSpecs = count($words) >= 3;
 

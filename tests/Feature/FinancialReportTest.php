@@ -58,7 +58,7 @@ class FinancialReportTest extends TestCase
             'getMetrics'                  => ['getMetrics'],
             'comparePeriods'              => ['comparePeriods'],
             'getDashboardSummary'         => ['getDashboardSummary'],
-            'generateReconciliationReport'=> ['generateReconciliationReport'],
+            'generateReconciliationReport' => ['generateReconciliationReport'],
         ];
     }
 
