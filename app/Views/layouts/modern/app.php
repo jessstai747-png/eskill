@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<?php $cspNonce = $GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? ''; ?>
+<?php
+// Prefer non-empty value: use ?: so an empty-string global falls back to session
+$cspNonce = ($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? '');
+?>
 <html lang="pt-BR">
 
 <head>
@@ -21,8 +24,8 @@
     <link href="/css/components.css?v=<?= @filemtime(__DIR__ . '/../../../../public/css/components.css') ?: time() ?>" rel="stylesheet">
 
     <!-- Chart.js (with CSP-compliant fallback via nonce'd inline script) -->
-    <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script nonce="<?= $cspNonce ?>">
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
         if (typeof Chart === 'undefined') {
             (function() {
                 var s = document.createElement('script');
@@ -33,10 +36,10 @@
     </script>
 
     <!-- API Client (loaded early so view scripts can use requestJson) -->
-    <script nonce="<?= $cspNonce ?>" src="/js/csrf-helper.js"></script>
-    <script nonce="<?= $cspNonce ?>" src="/js/api-client.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/api-client.js') ?: time() ?>"></script>
-    <script nonce="<?= $cspNonce ?>" src="/js/ml-integration-preflight.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ml-integration-preflight.js') ?: time() ?>"></script>
-    <script nonce="<?= $cspNonce ?>">
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>" src="/js/csrf-helper.js"></script>
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>" src="/js/api-client.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/api-client.js') ?: time() ?>"></script>
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>" src="/js/ml-integration-preflight.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ml-integration-preflight.js') ?: time() ?>"></script>
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
         async function requestJson(url, options = {}) {
             if (window.ApiClient) return window.ApiClient.request(url, options);
             const resp = await fetch(url, {
@@ -930,7 +933,7 @@
                 if (session_status() === PHP_SESSION_NONE) session_start();
                 $flashMessages = \App\Core\Flash::get();
                 if (!empty($flashMessages)): ?>
-                    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+                    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
                         document.addEventListener('DOMContentLoaded', function() {
                             <?php foreach ($flashMessages as $msg): ?>
                                 Toast.<?= $msg['type'] === 'danger' ? 'error' : htmlspecialchars($msg['type'], ENT_QUOTES, 'UTF-8') ?>(<?= json_encode($msg['message'], JSON_HEX_TAG | JSON_HEX_APOS) ?>);
@@ -946,11 +949,11 @@
     </div>
 
     <!-- Scripts -->
-    <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script nonce="<?= $cspNonce ?>" src="/js/dashboard-modern.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/dashboard-modern.js') ?: time() ?>"></script>
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>" src="/js/dashboard-modern.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/dashboard-modern.js') ?: time() ?>"></script>
 
     <!-- Global Toast Manager -->
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
         window.Toast = {
             notify: function(message, type = 'info') {
                 const container = document.querySelector('.toast-container');
@@ -1011,7 +1014,7 @@
     </script>
 
     <!-- Theme & Navigation Scripts -->
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
         document.addEventListener('DOMContentLoaded', function() {
             // Theme Toggle
             const setTheme = (theme) => {

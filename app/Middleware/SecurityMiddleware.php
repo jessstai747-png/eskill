@@ -170,15 +170,24 @@ class SecurityMiddleware
         header_remove('X-Powered-By');
         header_remove('Server');
 
+        // Cache-Control: prevent proxies/CDNs from caching HTML with per-request CSP nonces.
+        // Without this a cached response body could have an old nonce while the CSP header
+        // is regenerated fresh → every inline script would be blocked.
+        $requestPath = $_SERVER['REQUEST_URI'] ?? '/';
+        $isApiRequest = str_starts_with($requestPath, '/api/') || str_starts_with($requestPath, '/webhook/');
+        if (!$isApiRequest) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+        }
+
         // Content Security Policy
         // Nonces são gerados em public/index.php e usados nas views via <script nonce="...">
         // 'strict-dynamic' permite que scripts com nonce carreguem outros scripts
-        // 'unsafe-inline' é mantido como fallback para browsers CSP Level 1 (ignorado quando nonce presente)
-        // Use GLOBALS as authoritative source (set in public/index.php before session write, same value)
-        $cspNonce = $GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '';
+        // Use ?: so that an empty-string $GLOBALS value also falls back to the session value
+        $cspNonce = ($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? '');
         $csp = "default-src 'self'; " .
             "script-src 'self' 'nonce-{$cspNonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
-            "script-src-elem 'self' 'nonce-{$cspNonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; " .
+            "script-src-elem 'self' 'nonce-{$cspNonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; " .
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
             "img-src 'self' data: https:; " .
             "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .

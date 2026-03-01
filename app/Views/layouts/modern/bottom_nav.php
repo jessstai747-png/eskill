@@ -4,7 +4,7 @@
         <i class="bi bi-speedometer2 fs-4"></i>
         <div style="font-size: 0.7rem;">Início</div>
     </a>
-    
+
     <a href="/dashboard/questions" class="text-decoration-none text-center flex-grow-1 <?php echo str_contains($_SERVER['REQUEST_URI'] ?? '', '/questions') ? 'text-primary' : 'text-muted'; ?>">
         <div class="position-relative d-inline-block">
             <i class="bi bi-chat-dots fs-4"></i>
@@ -30,17 +30,17 @@
     </button>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-document.getElementById('mobileMenuBtn').addEventListener('click', function() {
-    document.querySelector('.sidebar').classList.toggle('open');
-    // Also add overlay if needed, or close on outside click logic
-});
-// Close sidebar when clicking a link on mobile
-document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-    link.addEventListener('click', () => {
-        if (window.innerWidth < 768) {
-            document.querySelector('.sidebar').classList.remove('open');
-        }
+<script nonce="<?= $cspNonce ?: ($GLOBALS['cspNonce'] ?? $_SESSION['csp_nonce'] ?? '') ?>">
+    document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.toggle('open');
+        // Also add overlay if needed, or close on outside click logic
     });
-});
+    // Close sidebar when clicking a link on mobile
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                document.querySelector('.sidebar').classList.remove('open');
+            }
+        });
+    });
 </script>
