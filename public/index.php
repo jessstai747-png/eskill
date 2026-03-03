@@ -268,6 +268,8 @@ $publicApiPaths = [
     '/api/public/',
     '/api/health',
     '/api/status',
+    // Render harness endpoints handle their own authentication internally
+    '/api/render',
 ];
 
 // Exact-match public paths (não usar strpos para evitar match parcial)

@@ -8,22 +8,26 @@ use App\Services\ApiTokenService;
 
 /**
  * ApiAuthMiddleware
- * 
+ *
  * Middleware para autenticação via API Token
  * Valida o token no header Authorization: Bearer {token}
  */
 class ApiAuthMiddleware
 {
-    private ApiTokenService $tokenService;
+    private ?ApiTokenService $tokenService = null;
 
     public function __construct()
     {
-        $this->tokenService = new ApiTokenService();
+        try {
+            $this->tokenService = new ApiTokenService();
+        } catch (\Exception $e) {
+            $this->tokenService = null;
+        }
     }
 
     /**
      * Executar middleware
-     * 
+     *
      * @param callable $next Próxima função na cadeia
      * @param array $requiredScopes Escopos necessários
      */
@@ -36,7 +40,7 @@ class ApiAuthMiddleware
             return;
         }
 
-        $tokenData = $this->tokenService->validateToken($token);
+        $tokenData = $this->tokenService !== null ? $this->tokenService->validateToken($token) : null;
 
         if (!$tokenData) {
             $this->unauthorizedResponse('Token inválido ou expirado');
@@ -47,7 +51,7 @@ class ApiAuthMiddleware
         if (!empty($requiredScopes)) {
             $hasPermission = false;
             foreach ($requiredScopes as $scope) {
-                if ($this->tokenService->hasScope($tokenData, $scope)) {
+                if ($this->tokenService !== null && $this->tokenService->hasScope($tokenData, $scope)) {
                     $hasPermission = true;
                     break;
                 }
