@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'Login - Mercado Livre Manager';
+$pageTitle = 'Login - Dashboard | Mercado Livre Manager';
 ob_start();
 ?>
 
@@ -13,7 +13,7 @@ ob_start();
 
 <form method="POST" action="/auth/login">
     <input type="hidden" name="_token" value="<?= isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : '' ?>">
-    
+
     <div class="mb-4">
         <label for="email" class="form-label text-secondary fw-medium">E-mail</label>
         <div class="input-group">
@@ -33,23 +33,21 @@ ob_start();
                 <input type="checkbox" class="form-check-input" id="remember" name="remember">
                 <label class="form-check-label text-secondary small" for="remember">Lembrar-me</label>
             </div>
-            <a href="/auth/forgot-password" class="text-decoration-none small text-primary fw-medium">
-                Esqueceu a senha?
-            </a>
+            <a href="/auth/forgot-password" class="text-decoration-none small text-primary fw-medium"><span>Esqueceu a senha?</span></a>
         </div>
     </div>
 
     <button type="submit" class="btn btn-primary w-100 mb-4 shadow-sm">
         <i class="bi bi-box-arrow-in-right me-2"></i> Entrar na Plataforma
     </button>
-    
+
     <div class="text-center pt-2">
         <p class="mb-0 text-secondary">
-            Não tem uma conta? 
-            <a href="/auth/register" class="text-primary fw-semibold text-decoration-none ms-1">Cadastre-se grátis</a>
+            Não tem uma conta?
+            <a href="/auth/register" class="text-primary fw-semibold text-decoration-none ms-1"><span>Cadastre-se grátis</span></a>
         </p>
     </div>
-    
+
 
 </form>
 

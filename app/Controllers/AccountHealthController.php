@@ -17,12 +17,16 @@ use App\Services\UserService;
  */
 class AccountHealthController
 {
-    private UserService $userService;
+    private ?UserService $userService = null;
     private Request $request;
 
     public function __construct()
     {
-        $this->userService = new UserService();
+        try {
+            $this->userService = new UserService();
+        } catch (\Throwable $e) {
+            $this->userService = null;
+        }
         $this->request = new Request();
     }
 
@@ -32,7 +36,7 @@ class AccountHealthController
      */
     public function index(): void
     {
-        if (!$this->userService->isAuthenticated()) {
+        if ($this->userService === null || !$this->userService->isAuthenticated()) {
             header('Location: /login');
             exit;
         }

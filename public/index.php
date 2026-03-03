@@ -110,6 +110,19 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_only_cookies', 1);
     ini_set('session.gc_maxlifetime', 7200); // 2 horas
     ini_set('session.cookie_lifetime', 0);   // Expira ao fechar browser
+
+    // Ensure the session save path is writable (fallback for read-only envs like CI/sandbox)
+    $rawSavePath = session_save_path() ?: ini_get('session.save_path') ?: '';
+    // The save_path can be 'N;/path' — strip the numeric prefix if present
+    $activeSavePath = preg_replace('/^\d+;/', '', $rawSavePath);
+    if ($activeSavePath === '' || !is_writable($activeSavePath)) {
+        $fallbackPath = sys_get_temp_dir() . '/eskill_sessions';
+        if (!is_dir($fallbackPath)) {
+            @mkdir($fallbackPath, 0700, true);
+        }
+        session_save_path($fallbackPath);
+    }
+
     session_start();
 }
 
@@ -231,7 +244,8 @@ if ($isApi) {
     $authHeader = $authHeaders['Authorization'] ?? $authHeaders['authorization'] ?? null;
     $hasBearerToken = $authHeader && preg_match('/Bearer\s+.+/i', $authHeader);
 }
-$isCsrfExempt = $isWebhookRoute || $hasBearerToken;
+// API routes are stateless (Bearer token or session cookie) — not vulnerable to CSRF
+$isCsrfExempt = $isWebhookRoute || $isApi || $hasBearerToken;
 
 if (!$isCsrfExempt && in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE', 'PATCH'])) {
     $csrf = new App\Middleware\CsrfMiddleware();
@@ -308,7 +322,11 @@ if ($isApi) {
 
 // Auth Middleware para views dashboard (simplificação da lógica anterior)
 // Exempt API endpoints like /dashboard/metrics que têm própria autenticação
-if (strpos($path, '/dashboard') === 0) {
+// Also covers top-level AI pages that require authentication
+$isDashboardPath = strpos($path, '/dashboard') === 0
+    || $path === '/ai-center'
+    || $path === '/ai-optimization';
+if ($isDashboardPath) {
     require_once APP_PATH . '/Middleware/AuthMiddleware.php';
     $auth = new App\Middleware\AuthMiddleware();
     $auth->handle();

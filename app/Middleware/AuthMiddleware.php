@@ -8,11 +8,15 @@ use App\Services\UserService;
 
 class AuthMiddleware
 {
-    private UserService $userService;
+    private ?UserService $userService = null;
 
     public function __construct()
     {
-        $this->userService = new UserService();
+        try {
+            $this->userService = new UserService();
+        } catch (\Throwable $e) {
+            $this->userService = null;
+        }
     }
 
     /**
@@ -22,7 +26,7 @@ class AuthMiddleware
     public function handle(): void
     {
         try {
-            if (!$this->userService->isAuthenticated()) {
+            if ($this->userService === null || !$this->userService->isAuthenticated()) {
                 if (session_status() === PHP_SESSION_NONE) {
                     session_start();
                 }
@@ -68,6 +72,6 @@ class AuthMiddleware
      */
     public function check(): bool
     {
-        return $this->userService->isAuthenticated();
+        return $this->userService !== null && $this->userService->isAuthenticated();
     }
 }

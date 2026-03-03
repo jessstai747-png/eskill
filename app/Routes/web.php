@@ -13,6 +13,8 @@ use App\Controllers\AccountGovernanceController;
 // Rotas protegidas (dashboard)
 $router->get('', DashboardController::class, 'index');
 $router->get('dashboard', DashboardController::class, 'index');
+$router->get('ai-center', AICenterController::class, 'index'); // Alias for /dashboard/ai-center
+$router->get('ai-optimization', AICenterController::class, 'index'); // AI Optimization page
 $router->get('dashboard/ai-center', AICenterController::class, 'index'); // NEW: AI Center
 $router->get('dashboard/metrics', DashboardController::class, 'metrics'); // API endpoint called by frontend
 
