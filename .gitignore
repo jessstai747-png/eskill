@@ -91,3 +91,11 @@ cookies.txt
 
 # Sandbox / environment artifacts
 host={}
+
+# Playwright / E2E test runtime artifacts (gerados automaticamente, nunca versionar)
+/.tmp/
+/playwright-report/
+/test-results/
+public/.tmp/
+root-body.html
+.org.chromium.*
