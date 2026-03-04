@@ -6,6 +6,29 @@
 
 ---
 
+## Sessão 2026-03-04b (GitHub Copilot) — project-status.json: +3 features ML-STAB-006/007/008, last_tested updates
+
+### Objetivo
+Finalizar audit trail: adicionar novas feature entries ao project-status.json e atualizar last_tested.
+
+### Resultado
+- CLONE-001 `last_tested` → 2026-03-04 (catalog-clone-worker hardened)
+- CLONE-008 `last_tested` → 2026-03-04 (clone-sync-worker hardened)
+- COMP-002 `last_tested` → 2026-03-04 (competitor-monitor-worker hardened)
+- HEALTH-003 `last_tested` → 2026-03-04 (HealthController getenv() fix)
+- SEC-002 adicionado `RateLimitMiddleware.php` aos files + `last_tested` → 2026-03-04
+- **ML-STAB-006** (novo): ml-health-check CLI + cron scheduling
+- **ML-STAB-007** (novo): Worker hardening — catalog-clone, clone-sync, competitor-monitor + crontab
+- **ML-STAB-008** (novo): E2E green baseline 81/0/3 — root cause Dotenv vs getenv() + RateLimitMiddleware loopback bypass incondicional
+
+### Estado Final
+- PHPUnit: ✅ 2923/0/34
+- Playwright: ✅ 81 passed / 0 failed / 3 skipped
+- project-status.json: 88 features, todas `passes: true`
+- JSON válido (verificado com jq)
+
+---
+
 ## Sessão 2026-03-04 (GitHub Copilot) — E2E 0 falhas: rate limit loopback fix + spec corrections
 
 ### Contexto

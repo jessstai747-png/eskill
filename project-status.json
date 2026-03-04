@@ -3,7 +3,7 @@
     "project": "eskill.com.br — SEO Optimizer para Mercado Livre",
     "company": "AWA Motos — Distribuidora de peças para motos",
     "stack": "PHP 8.0+ | MySQL/PDO | Guzzle 7 | Monolog 3 | Redis",
-    "last_updated": "2026-03-03",
+    "last_updated": "2026-03-04",
     "updated_by": "copilot-implementador",
     "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps."
   },
@@ -159,7 +159,7 @@
         "bin/catalog-clone-worker.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-24"
+      "last_tested": "2026-03-04"
     },
     {
       "id": "CLONE-002",
@@ -241,7 +241,7 @@
         "tests/Unit/Services/CloneSyncServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-04"
     },
     {
       "id": "CLONE-009",
@@ -421,7 +421,7 @@
         "bin/competitor-monitor-worker.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-04"
     },
     {
       "id": "ITEMS-001",
@@ -639,7 +639,7 @@
       "description": "Health endpoint — /health para verificação de status do sistema",
       "files": ["app/Controllers/HealthController.php"],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-04"
     },
     {
       "id": "SEC-001",
@@ -653,9 +653,12 @@
       "id": "SEC-002",
       "category": "security",
       "description": "Rate limiting para proteção contra abuse",
-      "files": ["app/Services/RateLimitTrackerService.php"],
+      "files": [
+        "app/Services/RateLimitTrackerService.php",
+        "app/Middleware/RateLimitMiddleware.php"
+      ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-04"
     },
     {
       "id": "SEC-003",
@@ -954,6 +957,40 @@
       ],
       "passes": true,
       "last_tested": "2026-03-01"
+    },
+    {
+      "id": "ML-STAB-006",
+      "category": "mercadolivre_stability",
+      "description": "ML health-check CLI (bin/ml-health-check.php) — verifica env vars, conexão MySQL, tabela ml_accounts, token OAuth e conectividade com api.mercadolibre.com. Suporte a --json para uso em cron. Agendado diariamente às 06h em current_crontab.",
+      "files": ["bin/ml-health-check.php", "current_crontab"],
+      "passes": true,
+      "last_tested": "2026-03-04"
+    },
+    {
+      "id": "ML-STAB-007",
+      "category": "mercadolivre_stability",
+      "description": "Worker hardening — catalog-clone-worker, clone-sync-worker e competitor-monitor-worker com vendor/autoload.php correto, flock para prevenção de overlap, StructuredLogService para logs estruturados e tratamento de exceções. Agendados em current_crontab.",
+      "files": [
+        "bin/catalog-clone-worker.php",
+        "bin/clone-sync-worker.php",
+        "bin/competitor-monitor-worker.php",
+        "current_crontab"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-04"
+    },
+    {
+      "id": "ML-STAB-008",
+      "category": "mercadolivre_stability",
+      "description": "E2E green baseline — 81 passed / 0 failed / 3 skipped. Fix raiz: Dotenv::createImmutable sobrescrevia APP_ENV=testing em $_ENV; solução: getenv() tem prioridade sobre $_ENV em RateLimitMiddleware e HealthController. Guard 3 do RateLimitMiddleware agora é bypass incondicional para loopback (127.x/::1). CI=1 força reinício do servidor PHP nos testes.",
+      "files": [
+        "app/Middleware/RateLimitMiddleware.php",
+        "app/Controllers/HealthController.php",
+        "tests/e2e/functional_ai_mcp.spec.ts",
+        "tests/e2e/render.spec.ts"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-04"
     }
   ]
 }
