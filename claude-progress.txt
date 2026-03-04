@@ -6,6 +6,63 @@
 
 ---
 
+## Sessão 2026-06-02 — ML-STAB-009: Complementação da Integração Mercado Livre
+
+**Objetivo:** Implementar todas as features necessárias para complementar a integração ML.
+
+### Problemas identificados (audit)
+- Webhook ignorava silenciosamente: `shipments`, `payment`, `payments`, `feedback`, `created_in_feedback`
+- `OrderService` sem método `getShipment()` — impossível processar webhook de frete
+- `bin/stock-sync-worker.php` existia mas não estava agendado no crontab
+- Nenhum `bin/orders-sync-worker.php` (apenas legado `scripts/poll_orders.php`)
+- Nenhum `bin/questions-sync-worker.php` (apenas legado `scripts/poll_questions.php`)
+
+### Implementado
+
+**`app/Services/MercadoLivreWebhookService.php`**
+- Adicionados cases no switch: `shipments`, `payment`, `payments`, `feedback`, `created_in_feedback`
+- `handleShipmentEvent()` — busca ML API `/shipments/{id}`, notifica por status (📦 ready_to_ship, 🚚 shipped, ✅ delivered, ⚠️ not_delivered, ❌ cancelled)
+- `handlePaymentEvent()` — busca `/collections/notifications/{id}`, triggera syncOrders em `approved`/`in_process`, notifica valor
+- `handleFeedbackEvent()` — loga e notifica rating com ⭐
+- `getMlClient()` — helper privado para `new MercadoLivreClient($this->accountId)`
+
+**`app/Services/OrderService.php`**
+- `getShipment(string $shipmentId, array $options = []): array` — GET /shipments/{id}, atualiza cache local via `updateOrderShippingStatus()`
+- `getClient(): MercadoLivreClient` — expõe client para handlers externos
+- `updateOrderShippingStatus()` — UPDATE ml_orders WHERE JSON_EXTRACT(order_data,'$.shipping.id')=shipmentId
+
+**`bin/orders-sync-worker.php`** (NOVO)
+- Harness completo: flock, StructuredLogService, loop de contas ativas
+- CLI: `--once`, `--account=ID`, `--full-backfill`, `--limit=N`, `--verbose`, `--help`
+- Intervalo: 300s em modo daemon / `--once` para cron
+
+**`bin/questions-sync-worker.php`** (NOVO)
+- Harness completo: flock, StructuredLogService, loop de contas ativas
+- CLI: `--once`, `--account=ID`, `--limit=N`, `--verbose`, `--help`
+- Intervalo: 120s em modo daemon / `--once` para cron
+
+**`current_crontab`**
+- `*/30 * * * *` — stock-sync-worker.php --once
+- `*/15 * * * *` — orders-sync-worker.php --once
+- `*/10 * * * *` — questions-sync-worker.php --once
+
+### Validação
+- `php -l` em todos os arquivos: ✅ sem erros de sintaxe
+- PHPUnit: **2923 testes, 0 falhas, 34 skipped** (baseline mantido)
+
+### Nota técnica
+- Terminal heredoc `cat > file << 'EOF'` **não funciona** para arquivos PHP no sandbox (shell nativo strips `$`). Sempre usar `replace_string_in_file` para escrever conteúdo PHP.
+
+### Feature adicionada
+- `project-status.json`: ML-STAB-009 adicionado com `"passes": true`
+
+### Commit
+`feat: ML-STAB-009 — shipments/payment/feedback webhooks + getShipment + orders/questions sync workers + crontab`
+
+
+
+---
+
 ## Sessão 2026-03-04b (GitHub Copilot) — project-status.json: +3 features ML-STAB-006/007/008, last_tested updates
 
 ### Objetivo

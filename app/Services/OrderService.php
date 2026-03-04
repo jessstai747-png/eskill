@@ -453,6 +453,119 @@ class OrderService
     }
 
     /**
+     * Busca dados de um envio (Mercado Envios) pelo shipment_id
+     *
+     * @param string $shipmentId ID do envio retornado pela API ML
+     * @return array{
+     *   success: bool,
+     *   source: string,
+     *   shipment_id?: string,
+     *   status?: string,
+     *   substatus?: string|null,
+     *   tracking_number?: string|null,
+     *   tracking_method?: string|null,
+     *   date_created?: string|null,
+     *   last_updated?: string|null,
+     *   shipping_items?: array<mixed>,
+     *   destination?: array<mixed>|null,
+     *   sender?: array<mixed>|null,
+     *   data?: array<mixed>,
+     *   error?: string,
+     *   message?: string
+     * }
+     */
+    public function getShipment(string $shipmentId, array $options = []): array
+    {
+        try {
+            $response = $this->unwrapMlResponse(
+                $this->client->get("/shipments/{$shipmentId}")
+            );
+
+            if (!isset($response['error'])) {
+                // Atualiza status do envio no cache local do pedido associado
+                try {
+                    $this->updateOrderShippingStatus($shipmentId, $response);
+                } catch (Throwable $e) {
+                    Log::warning('OrderService: falha ao atualizar status de envio no cache', [
+                        'shipment_id' => $shipmentId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                return [
+                    'success' => true,
+                    'source' => 'ml_api',
+                    'shipment_id' => isset($response['id']) ? (string)$response['id'] : $shipmentId,
+                    'status' => $response['status'] ?? null,
+                    'substatus' => $response['substatus'] ?? null,
+                    'tracking_number' => $response['tracking_number'] ?? null,
+                    'tracking_method' => $response['tracking_method'] ?? null,
+                    'date_created' => $response['date_created'] ?? null,
+                    'last_updated' => $response['last_updated'] ?? null,
+                    'shipping_items' => isset($response['shipping_items']) && is_array($response['shipping_items'])
+                        ? $response['shipping_items']
+                        : [],
+                    'destination' => $response['destination'] ?? null,
+                    'sender' => $response['sender'] ?? null,
+                    'data' => $response,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'source' => 'ml_api',
+                'error' => is_string($response['error']) ? $response['error'] : 'shipment_not_found',
+                'message' => $this->formatMlApiErrorMessage(
+                    $response,
+                    'Envio não encontrado na API do Mercado Livre'
+                ),
+                'data' => [],
+            ];
+        } catch (Throwable $e) {
+            Log::error('OrderService::getShipment falhou', [
+                'shipment_id' => $shipmentId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['success' => false, 'error' => 'exception', 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Expõe o MercadoLivreClient para uso em outros contextos (ex: webhook handlers)
+     */
+    public function getClient(): MercadoLivreClient
+    {
+        return $this->client;
+    }
+
+    /**
+     * Atualiza o shipping_status de pedidos associados ao shipment no cache local
+     */
+    private function updateOrderShippingStatus(string $shipmentId, array $shipmentData): void
+    {
+        if ($this->db === null || $this->accountId === null) {
+            return;
+        }
+
+        $status = $shipmentData['status'] ?? null;
+        if ($status === null || !is_string($status)) {
+            return;
+        }
+
+        // Tenta atualizar pedidos que tenham o shipping.id correspondente no JSON
+        $stmt = $this->db->prepare("
+            UPDATE ml_orders
+            SET synced_at = CURRENT_TIMESTAMP
+            WHERE ml_account_id = :account_id
+              AND JSON_UNQUOTE(JSON_EXTRACT(order_data, '\$.shipping.id')) = :shipment_id
+        ");
+        $stmt->execute([
+            'account_id' => $this->accountId,
+            'shipment_id' => $shipmentId,
+        ]);
+    }
+
+    /**
      * Salva ou atualiza um pedido no banco
      */
     private function saveOrder(array $orderData): void

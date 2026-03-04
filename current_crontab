@@ -189,3 +189,21 @@
 
 # Performance Tracker - Coleta métricas de itens otimizados (diário às 04:00)
 0 4 * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/seo-performance-worker.php >> storage/logs/seo-performance.log 2>&1
+
+# ============================================================================
+# STOCK SYNC WORKER: Sincroniza estoque entre contas ML
+# Frequência: A cada 30 minutos
+# ============================================================================
+*/30 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/stock-sync-worker.php --once >> storage/logs/stock-sync-worker.log 2>&1
+
+# ============================================================================
+# ORDERS SYNC WORKER: Sincroniza pedidos ML para banco local
+# Frequência: A cada 15 minutos
+# ============================================================================
+*/15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/orders-sync-worker.php --once >> storage/logs/orders-sync-worker.log 2>&1
+
+# ============================================================================
+# QUESTIONS SYNC WORKER: Sincroniza perguntas ML para banco local
+# Frequência: A cada 10 minutos (resposta rápida a clientes)
+# ============================================================================
+*/10 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/questions-sync-worker.php --once >> storage/logs/questions-sync-worker.log 2>&1

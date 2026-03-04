@@ -106,6 +106,20 @@ class MercadoLivreWebhookService
                     $this->handleMessageEvent($resource);
                     break;
 
+                case 'shipments':
+                    $this->handleShipmentEvent($resource);
+                    break;
+
+                case 'payment':
+                case 'payments':
+                    $this->handlePaymentEvent($resource);
+                    break;
+
+                case 'feedback':
+                case 'created_in_feedback':
+                    $this->handleFeedbackEvent($resource);
+                    break;
+
                 default:
                     $handled = false;
                     break;
@@ -273,6 +287,156 @@ class MercadoLivreWebhookService
         ]);
     }
 
+    private function handleShipmentEvent(string $resource): void
+    {
+        // Resource: /shipments/{shipmentId}
+        $parts = explode('/', $resource);
+        $shipmentId = end($parts);
+
+        if (!$shipmentId) {
+            throw new \Exception("Invalid shipment resource: {$resource}");
+        }
+
+        $orderService = $this->getOrderService();
+        $shipment = $orderService->getShipment($shipmentId);
+
+        if (!empty($shipment['error'])) {
+            $this->logger->warning('ML_WEBHOOK_SHIPMENT_FETCH_FAILED', [
+                'shipment_id' => $shipmentId,
+                'error' => $shipment['message'] ?? $shipment['error'],
+            ]);
+            return;
+        }
+
+        $status = $shipment['status'] ?? 'unknown';
+        $substatus = $shipment['substatus'] ?? null;
+        $trackingNumber = $shipment['tracking_number'] ?? null;
+
+        $this->logger->info('ML_WEBHOOK_SHIPMENT_UPDATED', [
+            'shipment_id' => $shipmentId,
+            'status' => $status,
+            'substatus' => $substatus,
+            'tracking_number' => $trackingNumber,
+            'account_id' => $this->accountId,
+        ]);
+
+        // Notify user only on significant status transitions
+        $notifyStatuses = ['ready_to_ship', 'shipped', 'delivered', 'not_delivered', 'cancelled'];
+        if (in_array($status, $notifyStatuses, true)) {
+            $userId = $this->getUserIdFromAccount();
+            if ($userId) {
+                $statusLabels = [
+                    'ready_to_ship' => '📦 Pronto para Envio',
+                    'shipped' => '🚚 Enviado',
+                    'delivered' => '✅ Entregue',
+                    'not_delivered' => '⚠️ Não Entregue',
+                    'cancelled' => '❌ Cancelado',
+                ];
+                $label = $statusLabels[$status] ?? ucfirst($status);
+                $detail = $trackingNumber ? "Rastreio: {$trackingNumber}" : "Envio #{$shipmentId}";
+                $this->getNotificationService()->create(
+                    $userId,
+                    'shipment_' . $status,
+                    "Envio {$label}",
+                    $detail,
+                    ['shipment_id' => $shipmentId, 'status' => $status, 'tracking_number' => $trackingNumber]
+                );
+            }
+        }
+    }
+
+    private function handlePaymentEvent(string $resource): void
+    {
+        // Resource: /collections/{paymentId} or /payments/{paymentId}
+        $parts = explode('/', $resource);
+        $paymentId = end($parts);
+
+        if (!$paymentId) {
+            $this->logger->warning('ML_WEBHOOK_PAYMENT_INVALID_RESOURCE', ['resource' => $resource]);
+            return;
+        }
+
+        // Fetch payment details from ML
+        $client = $this->getMlClient();
+        $paymentData = [];
+        try {
+            // The ML payments API endpoint
+            $response = $client->get("/collections/notifications/{$paymentId}");
+            if (!isset($response['error'])) {
+                $paymentData = $response['collection'] ?? $response;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('ML_WEBHOOK_PAYMENT_FETCH_FAILED', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $status = $paymentData['status'] ?? 'unknown';
+        $orderId = $paymentData['order_id'] ?? null;
+
+        $this->logger->info('ML_WEBHOOK_PAYMENT_RECEIVED', [
+            'payment_id' => $paymentId,
+            'status' => $status,
+            'order_id' => $orderId,
+            'account_id' => $this->accountId,
+        ]);
+
+        // For approved payments, trigger order sync to get latest state
+        if (in_array($status, ['approved', 'in_process'], true) && $orderId) {
+            try {
+                $this->getOrderService()->getOrder((string)$orderId);
+            } catch (\Throwable $e) {
+                $this->logger->warning('ML_WEBHOOK_PAYMENT_ORDER_SYNC_FAILED', [
+                    'order_id' => $orderId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Notify user on approved payment
+        if ($status === 'approved') {
+            $userId = $this->getUserIdFromAccount();
+            if ($userId) {
+                $amount = isset($paymentData['transaction_amount'])
+                    ? 'R$ ' . number_format((float)$paymentData['transaction_amount'], 2, ',', '.')
+                    : '---';
+                $this->getNotificationService()->create(
+                    $userId,
+                    'payment_approved',
+                    '💰 Pagamento Aprovado',
+                    "Valor: {$amount}" . ($orderId ? " | Pedido #{$orderId}" : ''),
+                    ['payment_id' => $paymentId, 'order_id' => $orderId, 'amount' => $paymentData['transaction_amount'] ?? null]
+                );
+            }
+        }
+    }
+
+    private function handleFeedbackEvent(string $resource): void
+    {
+        // Resource: /orders/{orderId}/feedbacks/{id} or /feedback/{id}
+        $parts = explode('/', ltrim($resource, '/'));
+        $feedbackId = end($parts);
+
+        $this->logger->info('ML_WEBHOOK_FEEDBACK_RECEIVED', [
+            'resource' => $resource,
+            'feedback_id' => $feedbackId,
+            'account_id' => $this->accountId,
+        ]);
+
+        // Notify user — feedbacks affect seller reputation
+        $userId = $this->getUserIdFromAccount();
+        if ($userId) {
+            $this->getNotificationService()->create(
+                $userId,
+                'feedback_new',
+                '⭐ Nova Avaliação Recebida',
+                'Verifique sua reputação no painel.',
+                ['resource' => $resource, 'feedback_id' => $feedbackId]
+            );
+        }
+    }
+
     private function handleClaimEvent(string $resource): void
     {
         // Resource: /v1/claims/{claimId}
@@ -335,6 +499,12 @@ class MercadoLivreWebhookService
             $this->orderService = new OrderService($this->accountId);
         }
         return $this->orderService;
+    }
+
+    /** Expõe o MercadoLivreClient para uso interno dos handlers */
+    private function getMlClient(): \App\Services\MercadoLivreClient
+    {
+        return new \App\Services\MercadoLivreClient($this->accountId);
     }
 
     private function getItemService(): ItemService

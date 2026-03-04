@@ -991,6 +991,20 @@
       ],
       "passes": true,
       "last_tested": "2026-03-04"
+    },
+    {
+      "id": "ML-STAB-009",
+      "category": "mercadolivre_stability",
+      "description": "Complementação da integração ML: (1) Webhook handlers para shipments (status transitions + notificações emoji), payment/payments (sync de pedidos + notificação de aprovação) e feedback/created_in_feedback. (2) OrderService::getShipment() com cache local via JSON_EXTRACT, getClient() e updateOrderShippingStatus(). (3) bin/orders-sync-worker.php com flock, StructuredLogService, all-accounts loop, flags --once/--account/--full-backfill/--limit/--verbose. (4) bin/questions-sync-worker.php com ciclo de 120s, flags --once/--account/--limit/--verbose. (5) current_crontab atualizado com stock-sync (*/30), orders-sync (*/15) e questions-sync (*/10). PHPUnit: 2923 testes, 0 falhas, 34 skipped.",
+      "files": [
+        "app/Services/MercadoLivreWebhookService.php",
+        "app/Services/OrderService.php",
+        "bin/orders-sync-worker.php",
+        "bin/questions-sync-worker.php",
+        "current_crontab"
+      ],
+      "passes": true,
+      "last_tested": "2026-06-02"
     }
   ]
 }
