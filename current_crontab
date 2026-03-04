@@ -164,6 +164,24 @@
 */10 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/clone-alert-monitor.php --once >> storage/logs/cron-alerts.log 2>&1
 
 # ============================================================================
+# COMPETITOR MONITOR WORKER: Monitora concorrentes e gera alertas de preço
+# Frequência: 3x ao dia (8h, 14h, 20h) para não sobrecarregar a API ML
+# ============================================================================
+0 8,14,20 * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/competitor-monitor-worker.php >> storage/logs/competitor-monitor-worker.log 2>&1
+
+# ============================================================================
+# CLONE SYNC WORKER: Sincroniza métricas e status de itens clonados
+# Frequência: A cada 15 minutos
+# ============================================================================
+*/15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/clone-sync-worker.php --once >> storage/logs/clone-sync-worker.log 2>&1
+
+# ============================================================================
+# ML HEALTH CHECK: Monitora saúde da integração com Mercado Livre
+# Frequência: Diariamente às 6h (alerta se env/tokens/API estiverem com problema)
+# ============================================================================
+0 6 * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/ml-health-check.php --json >> storage/logs/ml-health-check.log 2>&1
+
+# ============================================================================
 # SEO KILLER WORKERS: Workers do módulo SEO Killer
 # ============================================================================
 # A/B Test Updater - Rotaciona variantes e coleta métricas (diário às 02:00)

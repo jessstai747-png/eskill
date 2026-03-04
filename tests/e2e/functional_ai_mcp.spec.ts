@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Functional Tests with MCP Simulation
- * 
+ *
  * This test suite demonstrates:
  * 1. Configuration of a local MCP server (Mock) to simulate model context.
  * 2. Integration of the MCP simulation with the application environment.
@@ -41,14 +41,14 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
             console.error('App Response Text (Not JSON):', text);
             throw new Error('Response was not JSON: ' + text.substring(0, 200));
         }
-        
+
         // Check if the response matches our Mock MCP's logic
         // The mock server returns: "iPhone 14 Pro Max 256GB Ouro - Lacrado Garantia Apple"
         // The application might wrap this in a JSON structure like { optimized: "..." }
-        
+
         const optimizedTitle = data.optimized_title || data.optimized;
         expect(optimizedTitle).toBeDefined();
-        
+
         // Verify the content comes from our Mock (Context Simulation) OR Fallback
         if (optimizedTitle.includes('iPhone 14 Pro Max')) {
             console.log('✅ Success: AI Mock (MCP) was used!');
@@ -56,7 +56,7 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
             console.log('⚠️ Warning: System used Fallback logic (AI Mock not reached or failed).');
             console.log('Received:', optimizedTitle);
         }
-        
+
         // We assert it returned *some* optimized title
         expect(optimizedTitle.length).toBeGreaterThan(10);
     });
@@ -77,7 +77,7 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
         expect([200, 401]).toContain(response.status());
         if (response.status() === 401) { return; }
         // The API should handle the error and return a fallback or graceful error message
-        
+
         const data = await response.json();
         console.log('Error Handling Response:', data);
 
@@ -90,7 +90,7 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
              const optimizedTitle = data.optimized_title || data.optimized;
              expect(optimizedTitle).toBeDefined();
              console.log('✅ Graceful Fallback triggered on Provider Error');
-             
+
              // Check if enhanced fallback logic was used (Pattern Based)
              if (data.strategy_applied && data.strategy_applied.includes('fallback')) {
                  console.log('✅ Fallback strategy verified:', data.strategy_applied);
@@ -126,7 +126,7 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
         expect([400, 401, 422, 200]).toContain(response.status());
         if (response.status() === 401) { return; }
         const data = await response.json();
-        
+
         if (response.status() === 200) {
             // If the API returns 200 even for empty input, it might be returning a "success: false" or handled error object
             // Or it generated a title based on other params (but we sent none except category)
@@ -155,7 +155,7 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
         if (response.status() === 401) { return; }
         const data = await response.json();
         console.log('Description Response:', data);
-        
+
         // Check for any common description field
         const hasContent = data.description || data.generated_description || data.text || (data.success === false && data.error);
         expect(hasContent).toBeDefined();
