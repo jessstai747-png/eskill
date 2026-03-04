@@ -5,27 +5,23 @@ declare(strict_types=1);
 
 /**
  * Catalog Clone Worker
- * 
+ *
  * Processor especializado para jobs de clonagem (type='catalog_clone_item')
  * da tabela 'jobs'.
- * 
+ *
  * Uso:
  *   php bin/catalog-clone-worker.php
  *   php bin/catalog-clone-worker.php --once
  *   php bin/catalog-clone-worker.php --verbose
  */
 
-declare(strict_types=1);
-
 require_once __DIR__ . '/../vendor/autoload.php';
-
-// Load environment
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->safeLoad();
+require_once __DIR__ . '/../autoload.php';
 
 use App\Database;
-use App\Services\JobService;
 use App\Services\CloneNotificationService;
+use App\Services\JobService;
+use App\Services\StructuredLogService;
 
 // Setup
 define('WORKER_NAME', 'catalog-clone-worker');
@@ -50,18 +46,48 @@ if (isset($options['recover-stuck'])) {
 $runOnce = isset($options['once']);
 $specificJobId = $options['job'] ?? null;
 $verbose = isset($options['verbose']);
+$dryRun = isset($options['dry-run']);
 
-function logMessage($msg, $level='INFO') {
-    global $verbose;
-    $timestamp = date('Y-m-d H:i:s');
-    $formatted = "[$timestamp] [$level] $msg";
-    // Ensure directory exists
-    $dir = dirname(LOG_FILE);
-    if (!is_dir($dir)) mkdir($dir, 0777, true);
-    
-    file_put_contents(LOG_FILE, $formatted . PHP_EOL, FILE_APPEND);
-    if ($verbose || $level === 'ERROR') {
-        echo $formatted . PHP_EOL;
+// ─── Flock: prevenir execução concorrente ─────────────────────────────────────
+$lockDir = dirname(LOCK_FILE);
+if (!is_dir($lockDir)) {
+    @mkdir($lockDir, 0755, true);
+}
+$lockHandle = fopen(LOCK_FILE, 'c');
+if ($lockHandle === false || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    echo "[catalog-clone-worker] Outra instância já está em execução — saindo\n";
+    if ($lockHandle !== false) {
+        fclose($lockHandle);
+    }
+    exit(0);
+}
+
+// ─── Logging estruturado ─────────────────────────────────────────────────────
+// Mantém logs do worker separados.
+putenv('LOG_PATH=' . LOG_FILE);
+$logger = new StructuredLogService();
+
+function logMessage(string $msg, string $level = 'info', array $context = []): void
+{
+    global $verbose, $logger;
+
+    $level = strtolower($level);
+    $context = array_merge(['worker' => WORKER_NAME], $context);
+
+    try {
+        if (method_exists($logger, $level)) {
+            $logger->{$level}($msg, $context);
+        } else {
+            $logger->info($msg, $context);
+        }
+    } catch (Throwable $e) {
+        // Best-effort fallback
+        error_log("[" . WORKER_NAME . "] log failure: " . $e->getMessage());
+    }
+
+    if ($verbose || in_array($level, ['error', 'critical'], true)) {
+        $ts = date('Y-m-d H:i:s');
+        echo "[{$ts}] [" . strtoupper($level) . "] {$msg}\n";
     }
 }
 
@@ -69,41 +95,58 @@ try {
     $db = Database::getInstance();
     $jobService = new JobService();
 
-    logMessage("Worker Iniciado");
+    logMessage('Worker iniciado', 'info', ['dry_run' => $dryRun, 'once' => $runOnce, 'job' => $specificJobId]);
 
     while (true) {
         $job = null;
-        
+
         // 1. Fetch Job
         if ($specificJobId) {
-             $stmt = $db->prepare("SELECT * FROM jobs WHERE id = :id AND type = 'catalog_clone_item'");
-             $stmt->execute(['id' => $specificJobId]);
-             $job = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $db->prepare("SELECT * FROM jobs WHERE id = :id AND type = 'catalog_clone_item'");
+            $stmt->execute(['id' => $specificJobId]);
+            $job = $stmt->fetch(\PDO::FETCH_ASSOC);
         } else {
-             // Fetch pending catalog_clone_item
-             // Priority to older jobs
-             $stmt = $db->query("SELECT * FROM jobs WHERE type = 'catalog_clone_item' AND status = 'pending' AND (scheduled_at IS NULL OR scheduled_at <= NOW()) ORDER BY created_at ASC LIMIT 1");
-             $job = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Fetch pending catalog_clone_item
+            // Priority to older jobs
+            $stmt = $db->query("SELECT * FROM jobs WHERE type = 'catalog_clone_item' AND status = 'pending' AND (scheduled_at IS NULL OR scheduled_at <= NOW()) ORDER BY created_at ASC LIMIT 1");
+            $job = $stmt->fetch(\PDO::FETCH_ASSOC);
         }
 
         if (!$job) {
-             if ($runOnce) {
-                 logMessage("Nenhum job encontrado. Encerrando (--once).");
-                 break;
-             }
-             if ($verbose) echo ".";
-             sleep(5);
-             continue;
+            if ($runOnce) {
+                logMessage("Nenhum job encontrado. Encerrando (--once).");
+                break;
+            }
+            if ($verbose) echo ".";
+            sleep(5);
+            continue;
         }
-        
-        logMessage("Processando Job ID: {$job['id']}");
-        
+
+        logMessage('Job encontrado', 'info', ['job_id' => (int)$job['id'], 'type' => $job['type'] ?? null]);
+
+        if ($dryRun) {
+            $payloadPreview = $job['payload'] ?? '';
+            if (is_string($payloadPreview) && strlen($payloadPreview) > 500) {
+                $payloadPreview = substr($payloadPreview, 0, 500) . '...';
+            }
+            logMessage('Dry-run: não processando job', 'warning', [
+                'job_id' => (int)$job['id'],
+                'status' => $job['status'] ?? null,
+                'attempts' => $job['attempts'] ?? null,
+                'payload_preview' => $payloadPreview,
+            ]);
+            break;
+        }
+
         // Obter account_id do job
         $accountId = (int)($job['account_id'] ?? 0);
         $notifier = $accountId > 0 ? new CloneNotificationService($accountId) : null;
-        
+
         // Notificar início (apenas se houver notifier configurado)
         $jobPayload = json_decode($job['payload'] ?? '{}', true);
+        if (!is_array($jobPayload)) {
+            $jobPayload = [];
+        }
         if ($notifier) {
             try {
                 $notifier->notifyJobStarted((int)$job['id'], [
@@ -112,46 +155,46 @@ try {
                     'target_account' => $jobPayload['target_account_id'] ?? null,
                 ]);
             } catch (Exception $e) {
-                logMessage("Erro ao notificar início: " . $e->getMessage(), 'WARN');
+                logMessage('Erro ao notificar início', 'warning', ['job_id' => (int)$job['id'], 'error' => $e->getMessage()]);
             }
         }
-        
+
         // 2. Process via JobService
         try {
             // JobService handles status updates
             $result = $jobService->processJob($job);
-            
+
             if ($result['status'] === 'completed') {
-                 logMessage("Job {$job['id']} Sucesso!");
-                 
-                 // Notificar conclusão
-                 if ($notifier) {
-                     try {
-                         $notifier->notifyJobCompleted((int)$job['id'], [
-                             'total' => $result['total'] ?? count($jobPayload['item_ids'] ?? []),
-                             'success' => $result['success'] ?? $result['total'] ?? 0,
-                             'failed' => $result['failed'] ?? 0,
-                             'duration' => $result['duration'] ?? 'N/A',
-                         ]);
-                     } catch (Exception $e) {
-                         logMessage("Erro ao notificar conclusão: " . $e->getMessage(), 'WARN');
-                     }
-                 }
+                logMessage('Job concluído com sucesso', 'info', ['job_id' => (int)$job['id']]);
+
+                // Notificar conclusão
+                if ($notifier) {
+                    try {
+                        $notifier->notifyJobCompleted((int)$job['id'], [
+                            'total' => $result['total'] ?? count($jobPayload['item_ids'] ?? []),
+                            'success' => $result['success'] ?? $result['total'] ?? 0,
+                            'failed' => $result['failed'] ?? 0,
+                            'duration' => $result['duration'] ?? 'N/A',
+                        ]);
+                    } catch (Exception $e) {
+                        logMessage('Erro ao notificar conclusão', 'warning', ['job_id' => (int)$job['id'], 'error' => $e->getMessage()]);
+                    }
+                }
             } else {
-                 logMessage("Job {$job['id']} Falhou/Retry: " . ($result['error'] ?? 'Unknown'), 'ERROR');
-                 
-                 // Notificar falha
-                 if ($notifier) {
-                     try {
-                         $notifier->notifyJobFailed((int)$job['id'], $result['error'] ?? 'Unknown error');
-                     } catch (Exception $e) {
-                         logMessage("Erro ao notificar falha: " . $e->getMessage(), 'WARN');
-                     }
-                 }
+                logMessage('Job falhou/retentativa', 'error', ['job_id' => (int)$job['id'], 'error' => ($result['error'] ?? 'Unknown')]);
+
+                // Notificar falha
+                if ($notifier) {
+                    try {
+                        $notifier->notifyJobFailed((int)$job['id'], $result['error'] ?? 'Unknown error');
+                    } catch (Exception $e) {
+                        logMessage('Erro ao notificar falha', 'warning', ['job_id' => (int)$job['id'], 'error' => $e->getMessage()]);
+                    }
+                }
             }
         } catch (Exception $e) {
-            logMessage("Exception processando Job {$job['id']}: " . $e->getMessage(), 'ERROR');
-            
+            logMessage('Exception ao processar job', 'error', ['job_id' => (int)$job['id'], 'error' => $e->getMessage()]);
+
             // Notificar exceção
             if ($notifier) {
                 try {
@@ -161,14 +204,18 @@ try {
                 }
             }
         }
-        
+
         // Rate limit: 0.5s pause
         usleep(500000);
-        
+
         if ($runOnce) break;
     }
-
 } catch (Exception $e) {
-    logMessage("Fatal Error: " . $e->getMessage(), 'ERROR');
+    logMessage('Fatal error', 'critical', ['error' => $e->getMessage()]);
     exit(1);
+} finally {
+    if (isset($lockHandle) && is_resource($lockHandle)) {
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+    }
 }

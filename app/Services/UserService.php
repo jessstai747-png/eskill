@@ -13,7 +13,7 @@ use PDO;
 
 class UserService
 {
-    private PDO $db;
+    private ?PDO $db;
     private SecurityService $security;
     private AuditLogService $auditLog;
     private CacheService $cache;
@@ -21,11 +21,28 @@ class UserService
 
     public function __construct()
     {
-        $this->db = Database::getInstance();
+        // Lazy DB connection: this allows routes like GET /login to render even when
+        // the database is unavailable (e.g., sandbox / CI environments).
+        $this->db = null;
         $this->security = new SecurityService();
-        $this->auditLog = new AuditLogService();
+        // Avoid connecting to DB in constructor; will be re-bound when DB becomes available.
+        $this->auditLog = new AuditLogService(db: null, skipDbAutoConnect: true);
         $this->cache = new CacheService();
         $this->email = new EmailService();
+    }
+
+    private function db(): PDO
+    {
+        if ($this->db instanceof PDO) {
+            return $this->db;
+        }
+
+        $this->db = Database::getInstance();
+
+        // Ensure audit logs use the same PDO once DB is available.
+        $this->auditLog = new AuditLogService(db: $this->db, skipDbAutoConnect: true);
+
+        return $this->db;
     }
 
     /**
@@ -51,23 +68,23 @@ class UserService
             return ['success' => false, 'message' => 'A senha deve conter letras maiúsculas, minúsculas e números'];
         }
 
-        // Verificar se e-mail já existe
-        $stmt = $this->db->prepare("SELECT id FROM users WHERE email = :email");
-        $stmt->execute(['email' => $email]);
-        if ($stmt->fetch()) {
-            return ['success' => false, 'message' => 'E-mail já cadastrado'];
-        }
-
-        // Criar usuário
-        $hashedPassword = $this->security->hashPassword($password);
-        $verificationToken = bin2hex(random_bytes(32));
-
-        $stmt = $this->db->prepare("
-            INSERT INTO users (name, email, password, verification_token, created_at, updated_at)
-            VALUES (:name, :email, :password, :verification_token, NOW(), NOW())
-        ");
-
         try {
+            // Verificar se e-mail já existe
+            $stmt = $this->db()->prepare("SELECT id FROM users WHERE email = :email");
+            $stmt->execute(['email' => $email]);
+            if ($stmt->fetch()) {
+                return ['success' => false, 'message' => 'E-mail já cadastrado'];
+            }
+
+            // Criar usuário
+            $hashedPassword = $this->security->hashPassword($password);
+            $verificationToken = bin2hex(random_bytes(32));
+
+            $stmt = $this->db()->prepare("
+                INSERT INTO users (name, email, password, verification_token, created_at, updated_at)
+                VALUES (:name, :email, :password, :verification_token, NOW(), NOW())
+            ");
+
             $stmt->execute([
                 'name' => $name,
                 'email' => $email,
@@ -75,7 +92,7 @@ class UserService
                 'verification_token' => $verificationToken
             ]);
 
-            $userId = (int) $this->db->lastInsertId();
+            $userId = (int) $this->db()->lastInsertId();
             if ($userId <= 0) {
                 throw new \RuntimeException('Falha ao obter ID do usuário recém-criado');
             }
@@ -98,8 +115,9 @@ class UserService
                 'message' => 'Usuário registrado com sucesso. Verifique seu e-mail.',
                 'user_id' => $userId
             ];
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao registrar usuário: ' . $e->getMessage()];
+        } catch (\Throwable $e) {
+            log_warning('Erro ao registrar usuário', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Erro ao registrar usuário. Tente novamente em instantes.'];
         }
     }
 
@@ -108,21 +126,31 @@ class UserService
      */
     public function verifyEmail(string $token): bool
     {
-        $stmt = $this->db->prepare("SELECT id FROM users WHERE verification_token = :token");
-        $stmt->execute(['token' => $token]);
-        $user = $stmt->fetch();
+        try {
+            $stmt = $this->db()->prepare("SELECT id FROM users WHERE verification_token = :token");
+            $stmt->execute(['token' => $token]);
+            $user = $stmt->fetch();
+        } catch (\Throwable $e) {
+            log_warning('Erro ao verificar e-mail (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return false;
+        }
 
         if (!$user) {
             return false;
         }
 
-        $stmt = $this->db->prepare("
-            UPDATE users 
-            SET email_verified_at = NOW(), verification_token = NULL 
+        try {
+            $stmt = $this->db()->prepare("
+            UPDATE users
+            SET email_verified_at = NOW(), verification_token = NULL
             WHERE id = :id
-        ");
+            ");
 
-        $success = $stmt->execute(['id' => $user['id']]);
+            $success = $stmt->execute(['id' => $user['id']]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao atualizar verificação de e-mail', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return false;
+        }
 
         if ($success) {
             $this->auditLog->log('email_verified', $user['id'], null, ['description' => 'E-mail verificado com sucesso']);
@@ -136,10 +164,15 @@ class UserService
      */
     public function getUserById(int $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT id, name, email, password, email_verified_at, two_factor_enabled FROM users WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $user ?: null;
+        try {
+            $stmt = $this->db()->prepare("SELECT id, name, email, password, email_verified_at, two_factor_enabled FROM users WHERE id = :id");
+            $stmt->execute(['id' => $id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $user ?: null;
+        } catch (\Throwable $e) {
+            log_warning('Erro ao buscar usuário por ID (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return null;
+        }
     }
 
     /**
@@ -151,10 +184,15 @@ class UserService
             return ['success' => false, 'message' => 'E-mail e senha são obrigatórios'];
         }
 
-        // Buscar usuário
-        $stmt = $this->db->prepare("SELECT id, name, email, password, role, email_verified_at, two_factor_enabled FROM users WHERE email = :email");
-        $stmt->execute(['email' => $email]);
-        $user = $stmt->fetch();
+        try {
+            // Buscar usuário
+            $stmt = $this->db()->prepare("SELECT id, name, email, password, role, email_verified_at, two_factor_enabled FROM users WHERE email = :email");
+            $stmt->execute(['email' => $email]);
+            $user = $stmt->fetch();
+        } catch (\Throwable $e) {
+            log_warning('Erro ao autenticar (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Serviço temporariamente indisponível. Tente novamente em instantes.'];
+        }
 
         if (!$user) {
             return ['success' => false, 'message' => 'E-mail ou senha incorretos'];
@@ -245,11 +283,16 @@ class UserService
             return null;
         }
 
-        $stmt = $this->db->prepare("SELECT id, name, email, role, phone, created_at, two_factor_enabled FROM users WHERE id = :id");
-        $stmt->execute(['id' => $_SESSION['user_id']]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->db()->prepare("SELECT id, name, email, role, phone, created_at, two_factor_enabled FROM users WHERE id = :id");
+            $stmt->execute(['id' => $_SESSION['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $user ?: null;
+            return $user ?: null;
+        } catch (\Throwable $e) {
+            log_warning('Erro ao obter usuário atual (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return null;
+        }
     }
 
     /**
@@ -325,10 +368,15 @@ class UserService
 
         // Verificar se e-mail já existe (se estiver sendo alterado)
         if (isset($data['email'])) {
-            $stmt = $this->db->prepare("SELECT id FROM users WHERE email = :email AND id != :id");
-            $stmt->execute(['email' => $data['email'], 'id' => $userId]);
-            if ($stmt->fetch()) {
-                return ['success' => false, 'message' => 'E-mail já está em uso'];
+            try {
+                $stmt = $this->db()->prepare("SELECT id FROM users WHERE email = :email AND id != :id");
+                $stmt->execute(['email' => $data['email'], 'id' => $userId]);
+                if ($stmt->fetch()) {
+                    return ['success' => false, 'message' => 'E-mail já está em uso'];
+                }
+            } catch (\Throwable $e) {
+                log_warning('Erro ao validar e-mail (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+                return ['success' => false, 'message' => 'Serviço temporariamente indisponível. Tente novamente em instantes.'];
             }
         }
 
@@ -336,12 +384,13 @@ class UserService
         $sql = "UPDATE users SET " . implode(', ', $updateFields) . " WHERE id = :id";
 
         try {
-            $stmt = $this->db->prepare($sql);
+            $stmt = $this->db()->prepare($sql);
             $stmt->execute($params);
 
             return ['success' => true, 'message' => 'Perfil atualizado com sucesso'];
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao atualizar perfil: ' . $e->getMessage()];
+        } catch (\Throwable $e) {
+            log_warning('Erro ao atualizar perfil', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Erro ao atualizar perfil. Tente novamente em instantes.'];
         }
     }
 
@@ -354,10 +403,15 @@ class UserService
             return ['success' => false, 'message' => 'A nova senha deve ter no mínimo 6 caracteres'];
         }
 
-        // Verificar senha atual
-        $stmt = $this->db->prepare("SELECT password FROM users WHERE id = :id");
-        $stmt->execute(['id' => $userId]);
-        $user = $stmt->fetch();
+        try {
+            // Verificar senha atual
+            $stmt = $this->db()->prepare("SELECT password FROM users WHERE id = :id");
+            $stmt->execute(['id' => $userId]);
+            $user = $stmt->fetch();
+        } catch (\Throwable $e) {
+            log_warning('Erro ao alterar senha (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Serviço temporariamente indisponível. Tente novamente em instantes.'];
+        }
 
         if (!$user || !$this->security->verifyPassword($currentPassword, $user['password'])) {
             return ['success' => false, 'message' => 'Senha atual incorreta'];
@@ -365,7 +419,7 @@ class UserService
 
         // Atualizar senha
         $hashedPassword = $this->security->hashPassword($newPassword);
-        $stmt = $this->db->prepare("UPDATE users SET password = :password, updated_at = NOW() WHERE id = :id");
+        $stmt = $this->db()->prepare("UPDATE users SET password = :password, updated_at = NOW() WHERE id = :id");
 
         try {
             $stmt->execute([
@@ -374,8 +428,9 @@ class UserService
             ]);
 
             return ['success' => true, 'message' => 'Senha alterada com sucesso'];
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao alterar senha: ' . $e->getMessage()];
+        } catch (\Throwable $e) {
+            log_warning('Erro ao alterar senha', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Erro ao alterar senha. Tente novamente em instantes.'];
         }
     }
 
@@ -390,17 +445,22 @@ class UserService
         $hashedValidator = hash('sha256', $validator);
         $expiresAt = date('Y-m-d H:i:s', time() + (30 * 24 * 60 * 60)); // 30 dias
 
-        $stmt = $this->db->prepare("
-            INSERT INTO remember_tokens (user_id, selector, hashed_validator, expires_at)
-            VALUES (:user_id, :selector, :hashed_validator, :expires_at)
-        ");
+        try {
+            $stmt = $this->db()->prepare("
+                INSERT INTO remember_tokens (user_id, selector, hashed_validator, expires_at)
+                VALUES (:user_id, :selector, :hashed_validator, :expires_at)
+            ");
 
-        $stmt->execute([
-            'user_id' => $userId,
-            'selector' => $selector,
-            'hashed_validator' => $hashedValidator,
-            'expires_at' => $expiresAt
-        ]);
+            $stmt->execute([
+                'user_id' => $userId,
+                'selector' => $selector,
+                'hashed_validator' => $hashedValidator,
+                'expires_at' => $expiresAt
+            ]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao criar remember_token (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return '';
+        }
 
         return $token;
     }
@@ -417,15 +477,20 @@ class UserService
 
         [$selector, $validator] = $parts;
 
-        $stmt = $this->db->prepare("
-            SELECT t.*, u.email, u.name 
-            FROM remember_tokens t
-            JOIN users u ON t.user_id = u.id
-            WHERE t.selector = :selector AND t.expires_at > NOW()
-        ");
+        try {
+            $stmt = $this->db()->prepare("
+                SELECT t.*, u.email, u.name
+                FROM remember_tokens t
+                JOIN users u ON t.user_id = u.id
+                WHERE t.selector = :selector AND t.expires_at > NOW()
+            ");
 
-        $stmt->execute(['selector' => $selector]);
-        $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->execute(['selector' => $selector]);
+            $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao validar remember_token (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return null;
+        }
 
         if (!$tokenData) {
             return null;
@@ -454,8 +519,12 @@ class UserService
 
         [$selector] = $parts;
 
-        $stmt = $this->db->prepare("DELETE FROM remember_tokens WHERE selector = :selector");
-        $stmt->execute(['selector' => $selector]);
+        try {
+            $stmt = $this->db()->prepare("DELETE FROM remember_tokens WHERE selector = :selector");
+            $stmt->execute(['selector' => $selector]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao remover remember_token (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -463,8 +532,13 @@ class UserService
      */
     public function enableTwoFactor(int $userId, string $secret): bool
     {
-        $stmt = $this->db->prepare("UPDATE users SET two_factor_secret = :secret, two_factor_enabled = 1 WHERE id = :id");
-        return $stmt->execute(['secret' => $secret, 'id' => $userId]);
+        try {
+            $stmt = $this->db()->prepare("UPDATE users SET two_factor_secret = :secret, two_factor_enabled = 1 WHERE id = :id");
+            return $stmt->execute(['secret' => $secret, 'id' => $userId]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao ativar 2FA (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**
@@ -472,8 +546,13 @@ class UserService
      */
     public function disableTwoFactor(int $userId): bool
     {
-        $stmt = $this->db->prepare("UPDATE users SET two_factor_secret = NULL, two_factor_enabled = 0 WHERE id = :id");
-        return $stmt->execute(['id' => $userId]);
+        try {
+            $stmt = $this->db()->prepare("UPDATE users SET two_factor_secret = NULL, two_factor_enabled = 0 WHERE id = :id");
+            return $stmt->execute(['id' => $userId]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao desativar 2FA (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**
@@ -481,10 +560,15 @@ class UserService
      */
     public function getTwoFactorSecret(int $userId): ?string
     {
-        $stmt = $this->db->prepare("SELECT two_factor_secret FROM users WHERE id = :id");
-        $stmt->execute(['id' => $userId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? $result['two_factor_secret'] : null;
+        try {
+            $stmt = $this->db()->prepare("SELECT two_factor_secret FROM users WHERE id = :id");
+            $stmt->execute(['id' => $userId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result ? $result['two_factor_secret'] : null;
+        } catch (\Throwable $e) {
+            log_warning('Erro ao obter segredo 2FA (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return null;
+        }
     }
 
     /**
@@ -493,8 +577,13 @@ class UserService
     public function saveDashboardPreferences(int $userId, array $preferences): bool
     {
         $json = json_encode($preferences);
-        $stmt = $this->db->prepare("UPDATE users SET dashboard_preferences = :prefs WHERE id = :id");
-        return $stmt->execute(['prefs' => $json, 'id' => $userId]);
+        try {
+            $stmt = $this->db()->prepare("UPDATE users SET dashboard_preferences = :prefs WHERE id = :id");
+            return $stmt->execute(['prefs' => $json, 'id' => $userId]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao salvar preferências (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**
@@ -502,9 +591,14 @@ class UserService
      */
     public function getDashboardPreferences(int $userId): array
     {
-        $stmt = $this->db->prepare("SELECT dashboard_preferences FROM users WHERE id = :id");
-        $stmt->execute(['id' => $userId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->db()->prepare("SELECT dashboard_preferences FROM users WHERE id = :id");
+            $stmt->execute(['id' => $userId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao obter preferências (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return [];
+        }
 
         if ($result && !empty($result['dashboard_preferences'])) {
             return json_decode($result['dashboard_preferences'], true) ?: [];
@@ -518,8 +612,13 @@ class UserService
      */
     public function updateTheme(int $userId, string $theme): bool
     {
-        $stmt = $this->db->prepare("UPDATE users SET theme = :theme WHERE id = :id");
-        return $stmt->execute(['theme' => $theme, 'id' => $userId]);
+        try {
+            $stmt = $this->db()->prepare("UPDATE users SET theme = :theme WHERE id = :id");
+            return $stmt->execute(['theme' => $theme, 'id' => $userId]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao atualizar tema (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**
@@ -527,10 +626,15 @@ class UserService
      */
     public function getTheme(int $userId): string
     {
-        $stmt = $this->db->prepare("SELECT theme FROM users WHERE id = :id");
-        $stmt->execute(['id' => $userId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? ($result['theme'] ?? 'light') : 'light';
+        try {
+            $stmt = $this->db()->prepare("SELECT theme FROM users WHERE id = :id");
+            $stmt->execute(['id' => $userId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result ? ($result['theme'] ?? 'light') : 'light';
+        } catch (\Throwable $e) {
+            log_warning('Erro ao obter tema (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return 'light';
+        }
     }
 
     /**
@@ -538,20 +642,25 @@ class UserService
      */
     public function getUserDataForExport(int $userId): array
     {
-        // 1. Dados do Usuário
-        $stmt = $this->db->prepare("SELECT id, name, email, phone, created_at, updated_at, email_verified_at, two_factor_enabled, theme, dashboard_preferences FROM users WHERE id = :id");
-        $stmt->execute(['id' => $userId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            // 1. Dados do Usuário
+            $stmt = $this->db()->prepare("SELECT id, name, email, phone, created_at, updated_at, email_verified_at, two_factor_enabled, theme, dashboard_preferences FROM users WHERE id = :id");
+            $stmt->execute(['id' => $userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao exportar dados do usuário (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return [];
+        }
 
         if (!$user) return [];
 
         // 2. Contas Vinculadas
-        $stmt = $this->db->prepare("SELECT id, nickname, email, status, created_at FROM ml_accounts WHERE user_id = :id");
+        $stmt = $this->db()->prepare("SELECT id, nickname, email, status, created_at FROM ml_accounts WHERE user_id = :id");
         $stmt->execute(['id' => $userId]);
         $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // 3. Logs de Atividade
-        $stmt = $this->db->prepare("SELECT action, entity_type, entity_id, details, ip_address, created_at FROM activity_logs WHERE user_id = :id ORDER BY created_at DESC LIMIT 1000");
+        $stmt = $this->db()->prepare("SELECT action, entity_type, entity_id, details, ip_address, created_at FROM activity_logs WHERE user_id = :id ORDER BY created_at DESC LIMIT 1000");
         $stmt->execute(['id' => $userId]);
         $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -581,11 +690,16 @@ class UserService
         }
 
         // Tentar ler preferência salva no banco
-        $stmt = $this->db->prepare(
-            "SELECT active_ml_account_id FROM users WHERE id = :user_id LIMIT 1"
-        );
-        $stmt->execute(['user_id' => $userId]);
-        $savedId = $stmt->fetchColumn();
+        try {
+            $stmt = $this->db()->prepare(
+                "SELECT active_ml_account_id FROM users WHERE id = :user_id LIMIT 1"
+            );
+            $stmt->execute(['user_id' => $userId]);
+            $savedId = $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            log_warning('Erro ao obter active_ml_account_id (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return null;
+        }
 
         if ($savedId) {
             $_SESSION['active_ml_account_id'] = (int)$savedId;
@@ -593,14 +707,14 @@ class UserService
         }
 
         // Fallback: preferir contas com tokens válidos (status='active' primeiro)
-        $stmt = $this->db->prepare("
-            SELECT id 
-            FROM ml_accounts 
-            WHERE user_id = :user_id 
-            ORDER BY 
+        $stmt = $this->db()->prepare("
+            SELECT id
+            FROM ml_accounts
+            WHERE user_id = :user_id
+            ORDER BY
                 CASE WHEN access_token != '' AND access_token IS NOT NULL THEN 0 ELSE 1 END ASC,
                 CASE status WHEN 'active' THEN 0 WHEN 'inactive' THEN 1 ELSE 2 END ASC,
-                created_at ASC 
+                created_at ASC
             LIMIT 1
         ");
         $stmt->execute(['user_id' => $userId]);
@@ -633,23 +747,28 @@ class UserService
             return false;
         }
 
-        $stmt = $this->db->prepare("
-            SELECT id 
-            FROM ml_accounts 
-            WHERE id = :account_id 
+        try {
+            $stmt = $this->db()->prepare("
+            SELECT id
+            FROM ml_accounts
+            WHERE id = :account_id
             AND user_id = :user_id
-        ");
-        $stmt->execute([
-            'account_id' => $accountId,
-            'user_id' => $userId
-        ]);
+            ");
+            $stmt->execute([
+                'account_id' => $accountId,
+                'user_id' => $userId
+            ]);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao validar conta ativa (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return false;
+        }
 
         if ($stmt->fetch()) {
             $_SESSION['active_ml_account_id'] = $accountId;
 
             // Persistir a preferência no banco de dados
             try {
-                $update = $this->db->prepare(
+                $update = $this->db()->prepare(
                     "UPDATE users SET active_ml_account_id = :account_id WHERE id = :user_id"
                 );
                 $update->execute([
@@ -677,15 +796,20 @@ class UserService
             return [];
         }
 
-        $stmt = $this->db->prepare("
-            SELECT id, ml_user_id, nickname, email, site_id, status
-            FROM ml_accounts 
-            WHERE user_id = :user_id
-            ORDER BY created_at ASC
-        ");
-        $stmt->execute(['user_id' => $userId]);
+        try {
+            $stmt = $this->db()->prepare("
+                SELECT id, ml_user_id, nickname, email, site_id, status
+                FROM ml_accounts
+                WHERE user_id = :user_id
+                ORDER BY created_at ASC
+            ");
+            $stmt->execute(['user_id' => $userId]);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            log_warning('Erro ao obter contas do usuário (DB indisponível)', ['service' => 'UserService', 'error' => $e->getMessage()]);
+            return [];
+        }
     }
 
     // ==================== PERMISSION & ROLE METHODS ====================
@@ -709,7 +833,7 @@ class UserService
     /**
      * Check if user has a specific permission
      * Permission hierarchy: admin > manager > user
-     * 
+     *
      * @param string $permission Permission to check (admin, manager, user, audit, reports, settings)
      * @param int|null $userId Optional user ID (defaults to current user)
      * @return bool

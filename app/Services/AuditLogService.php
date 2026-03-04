@@ -18,7 +18,16 @@ class AuditLogService
         if ($db !== null) {
             $this->db = $db;
         } elseif (!$skipDbAutoConnect) {
-            $this->db = Database::getInstance();
+            try {
+                $this->db = Database::getInstance();
+            } catch (\Throwable $e) {
+                // Non-fatal in environments without DB (CI/sandbox). The service becomes a no-op.
+                log_warning('AuditLogService: DB indisponível, auditoria desativada', [
+                    'service' => 'AuditLogService',
+                    'error' => $e->getMessage(),
+                ]);
+                $this->db = null;
+            }
         } else {
             $this->db = null;
         }

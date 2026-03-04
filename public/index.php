@@ -116,11 +116,27 @@ if (session_status() === PHP_SESSION_NONE) {
     // The save_path can be 'N;/path' — strip the numeric prefix if present
     $activeSavePath = preg_replace('/^\d+;/', '', $rawSavePath);
     if ($activeSavePath === '' || !is_writable($activeSavePath)) {
-        $fallbackPath = sys_get_temp_dir() . '/eskill_sessions';
-        if (!is_dir($fallbackPath)) {
-            @mkdir($fallbackPath, 0700, true);
+        $candidates = [];
+
+        // Prefer project-controlled writable dirs before system temp.
+        $candidates[] = STORAGE_PATH . '/sessions';
+        $candidates[] = ROOT_PATH . '/.tmp/sessions';
+        $candidates[] = sys_get_temp_dir() . '/eskill_sessions';
+
+        foreach ($candidates as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
+
+            if (!is_dir($candidate)) {
+                @mkdir($candidate, 0700, true);
+            }
+
+            if (is_dir($candidate) && is_writable($candidate)) {
+                session_save_path($candidate);
+                break;
+            }
         }
-        session_save_path($fallbackPath);
     }
 
     session_start();
