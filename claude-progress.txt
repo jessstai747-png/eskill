@@ -6,6 +6,26 @@
 
 ---
 
+## Sessão 2026-03-06 (13) — ENV-AUTO-02: Automate setup kit provisioning
+
+### O que foi feito
+- Evoluídos os dois `setup-copilot.sh` para provisionar automaticamente `.vscode/` e `.devcontainer/`, além dos assets já existentes em `.github/`
+- Adicionadas cópias automáticas de `.vscode/settings.json`, `.vscode/extensions.json`, `.vscode/mcp.json`, `.vscode/MCP_CONFIG.md`, `.devcontainer/devcontainer.json` e `.devcontainer/post-create.sh`
+- Implementada substituição do caminho do projeto dentro do `mcp.json` gerado, evitando paths hardcoded do repositório-base
+- Atualizados `README.md` e `vscode-copilot-autonomo/README.md` com o novo fluxo de setup e uso do Dev Container
+- Validado o fluxo executando ambos os scripts em `storage/copilot-setup-validation/project`, confirmando criação dos arquivos esperados e permissão executável em `.devcontainer/post-create.sh`
+
+### Arquivos alterados
+1. **`setup-copilot.sh`** — setup raiz agora instala `.vscode/` e `.devcontainer/` completos
+2. **`vscode-copilot-autonomo/setup-copilot.sh`** — kit espelhado com a mesma automação de provisionamento
+3. **`README.md`** — documentação do setup ampliada com MCP, extensões e container
+4. **`vscode-copilot-autonomo/README.md`** — guia do kit atualizado com fluxo automático completo
+
+### Resultado
+- O kit agora entrega um workspace pronto para agents com menos configuração manual
+- O `mcp.json` gerado aponta para o projeto de destino em vez do repositório de origem
+- Shell check, diagnostics e análise local dos arquivos alterados: **sem issues**
+
 ## Sessão 2026-03-06 (12) — ENV-AUTO-01: Workspace autonomy and safe auto-approve container
 
 ### O que foi feito

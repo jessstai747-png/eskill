@@ -26,11 +26,53 @@ fi
 
 PROJECT_DIR="$1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ASSET_BASE="$SCRIPT_DIR"
+
+if [ ! -d "$ASSET_BASE/.github" ] && [ -d "$SCRIPT_DIR/../.github" ]; then
+    ASSET_BASE="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
+
+SETTINGS_SOURCE="$ASSET_BASE/vscode-copilot-autonomo/settings.json"
+if [ ! -f "$SETTINGS_SOURCE" ] && [ -f "$SCRIPT_DIR/settings.json" ]; then
+    SETTINGS_SOURCE="$SCRIPT_DIR/settings.json"
+fi
+
+MCP_SOURCE="$ASSET_BASE/.vscode/mcp.json"
+EXTENSIONS_SOURCE="$ASSET_BASE/.vscode/extensions.json"
+MCP_DOC_SOURCE="$ASSET_BASE/.vscode/MCP_CONFIG.md"
+DEVCONTAINER_SOURCE="$ASSET_BASE/.devcontainer/devcontainer.json"
+POST_CREATE_SOURCE="$ASSET_BASE/.devcontainer/post-create.sh"
 
 if [ ! -d "$PROJECT_DIR" ]; then
     echo -e "${RED}❌ Erro: Diretório '$PROJECT_DIR' não existe${NC}"
     exit 1
 fi
+
+if [ ! -d "$ASSET_BASE/.github" ]; then
+    echo -e "${RED}❌ Erro: assets do kit não encontrados (.github ausente)${NC}"
+    exit 1
+fi
+
+if [ ! -f "$SETTINGS_SOURCE" ]; then
+    echo -e "${RED}❌ Erro: settings.json do kit não encontrado${NC}"
+    exit 1
+fi
+
+PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
+
+copy_file() {
+    local source="$1"
+    local destination="$2"
+    mkdir -p "$(dirname "$destination")"
+    cp "$source" "$destination"
+}
+
+copy_project_template() {
+    local source="$1"
+    local destination="$2"
+    mkdir -p "$(dirname "$destination")"
+    sed "s|/home/eskill/htdocs/eskill.com.br|$PROJECT_DIR|g" "$source" > "$destination"
+}
 
 echo -e "${BLUE}🚀 Configurando Copilot Agent Autônomo${NC}"
 echo -e "${BLUE}   Projeto: $PROJECT_DIR${NC}"
@@ -41,26 +83,58 @@ echo -e "${YELLOW}📁 Criando estrutura de pastas...${NC}"
 mkdir -p "$PROJECT_DIR/.github/agents"
 mkdir -p "$PROJECT_DIR/.github/instructions"
 mkdir -p "$PROJECT_DIR/.github/prompts"
+mkdir -p "$PROJECT_DIR/.vscode"
+mkdir -p "$PROJECT_DIR/.devcontainer"
 
 # Copiar AGENTS.md
 echo -e "${GREEN}✅ AGENTS.md${NC}"
-cp "$SCRIPT_DIR/AGENTS.md" "$PROJECT_DIR/AGENTS.md"
+copy_file "$ASSET_BASE/AGENTS.md" "$PROJECT_DIR/AGENTS.md"
 
 # Copiar copilot-instructions.md
 echo -e "${GREEN}✅ .github/copilot-instructions.md${NC}"
-cp "$SCRIPT_DIR/.github/copilot-instructions.md" "$PROJECT_DIR/.github/copilot-instructions.md"
+copy_file "$ASSET_BASE/.github/copilot-instructions.md" "$PROJECT_DIR/.github/copilot-instructions.md"
 
 # Copiar agents
 echo -e "${GREEN}✅ .github/agents/ (5 agents)${NC}"
-cp "$SCRIPT_DIR/.github/agents/"*.agent.md "$PROJECT_DIR/.github/agents/"
+cp "$ASSET_BASE/.github/agents/"*.agent.md "$PROJECT_DIR/.github/agents/"
 
 # Copiar instructions
 echo -e "${GREEN}✅ .github/instructions/ (4 instruction files)${NC}"
-cp "$SCRIPT_DIR/.github/instructions/"*.instructions.md "$PROJECT_DIR/.github/instructions/"
+cp "$ASSET_BASE/.github/instructions/"*.instructions.md "$PROJECT_DIR/.github/instructions/"
 
 # Copiar prompts
 echo -e "${GREEN}✅ .github/prompts/ (6 prompt files)${NC}"
-cp "$SCRIPT_DIR/.github/prompts/"*.prompt.md "$PROJECT_DIR/.github/prompts/"
+cp "$ASSET_BASE/.github/prompts/"*.prompt.md "$PROJECT_DIR/.github/prompts/"
+
+# Copiar VS Code workspace settings
+echo -e "${GREEN}✅ .vscode/settings.json${NC}"
+copy_file "$SETTINGS_SOURCE" "$PROJECT_DIR/.vscode/settings.json"
+
+if [ -f "$EXTENSIONS_SOURCE" ]; then
+    echo -e "${GREEN}✅ .vscode/extensions.json${NC}"
+    copy_file "$EXTENSIONS_SOURCE" "$PROJECT_DIR/.vscode/extensions.json"
+fi
+
+if [ -f "$MCP_SOURCE" ]; then
+    echo -e "${GREEN}✅ .vscode/mcp.json${NC}"
+    copy_project_template "$MCP_SOURCE" "$PROJECT_DIR/.vscode/mcp.json"
+fi
+
+if [ -f "$MCP_DOC_SOURCE" ]; then
+    echo -e "${GREEN}✅ .vscode/MCP_CONFIG.md${NC}"
+    copy_file "$MCP_DOC_SOURCE" "$PROJECT_DIR/.vscode/MCP_CONFIG.md"
+fi
+
+if [ -f "$DEVCONTAINER_SOURCE" ]; then
+    echo -e "${GREEN}✅ .devcontainer/devcontainer.json${NC}"
+    copy_file "$DEVCONTAINER_SOURCE" "$PROJECT_DIR/.devcontainer/devcontainer.json"
+fi
+
+if [ -f "$POST_CREATE_SOURCE" ]; then
+    echo -e "${GREEN}✅ .devcontainer/post-create.sh${NC}"
+    copy_file "$POST_CREATE_SOURCE" "$PROJECT_DIR/.devcontainer/post-create.sh"
+    chmod +x "$PROJECT_DIR/.devcontainer/post-create.sh"
+fi
 
 echo ""
 echo -e "${BLUE}============================================================${NC}"
@@ -70,6 +144,9 @@ echo -e "${YELLOW}📋 Arquivos instalados:${NC}"
 echo ""
 echo "  AGENTS.md                              → Instruções universais para todos os agents"
 echo "  .github/copilot-instructions.md        → Instruções globais do Copilot"
+echo "  .vscode/settings.json                  → Settings do workspace com auto-approve"
+echo "  .vscode/mcp.json                       → MCPs configurados para o projeto"
+echo "  .devcontainer/devcontainer.json        → Ambiente isolado para máxima autonomia"
 echo ""
 echo "  .github/agents/implementador.agent.md  → Agent que implementa código real"
 echo "  .github/agents/revisor.agent.md        → Agent que revisa código"
@@ -92,15 +169,14 @@ echo "  .github/prompts/otimizar-anuncio-ml.md → /otimizar-anuncio-ml"
 echo ""
 echo -e "${YELLOW}⚠️  PRÓXIMOS PASSOS:${NC}"
 echo ""
-echo "  1. Copie as settings do arquivo settings.json para seu VS Code"
-echo "     (Ctrl+Shift+P → 'Open User Settings JSON')"
+echo "  1. Abra o projeto no VS Code e aceite as extensões recomendadas"
 echo ""
-echo "  2. Personalize o .github/copilot-instructions.md para seu projeto específico"
+echo "  2. Se quiser máxima autonomia, rode: Dev Containers: Reopen in Container"
 echo ""
-echo "  3. Recarregue o VS Code (Ctrl+Shift+P → 'Reload Window')"
+echo "  3. Configure os tokens pedidos pelo MCP (GitHub/Codacy) quando o VS Code solicitar"
 echo ""
-echo "  4. No Chat, use os slash commands: /implementar-api, /criar-crud, etc."
+echo "  4. Recarregue o VS Code (Ctrl+Shift+P → 'Reload Window') se necessário"
 echo ""
-echo "  5. Para alternar entre agents, use /agents no chat"
+echo "  5. No Chat, use /agents ou o modo Agent normalmente"
 echo ""
 echo -e "${BLUE}============================================================${NC}"

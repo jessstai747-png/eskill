@@ -16,6 +16,12 @@ Um kit completo de configuração para transformar o GitHub Copilot Agent no VS 
 ### settings.json
 Configuração completa do VS Code com todas as 50+ settings otimizadas para autonomia máxima. Inclui auto-approve de terminal com lista granular de comandos seguros/bloqueados.
 
+### .vscode/
+Workspace pronto para autonomia: `settings.json`, `extensions.json`, `mcp.json` e documentação de tokens MCP.
+
+### .devcontainer/
+Ambiente isolado para autonomia máxima com Dev Container e bootstrap pós-criação.
+
 ### AGENTS.md
 Arquivo universal de instruções reconhecido por múltiplos agents (Copilot, Claude Code, Cline, Cursor). Define ambiente, regras de código, e proibições.
 
@@ -62,15 +68,27 @@ Instruções globais específicas do Copilot. Define stack, padrões de código,
 bash setup-copilot.sh /caminho/do/seu/projeto
 ```
 
+O script agora instala automaticamente:
+- `AGENTS.md`
+- `.github/`
+- `.vscode/settings.json`
+- `.vscode/extensions.json`
+- `.vscode/mcp.json`
+- `.vscode/MCP_CONFIG.md`
+- `.devcontainer/devcontainer.json`
+- `.devcontainer/post-create.sh`
+
 ### Opção 2: Manual
 1. Copie a pasta `.github/` para a raiz do seu projeto
 2. Copie `AGENTS.md` para a raiz do seu projeto
-3. Copie o conteúdo de `settings.json` para suas settings do VS Code
+3. Copie `.vscode/settings.json`, `.vscode/extensions.json` e `.vscode/mcp.json`
+4. Copie `.devcontainer/` se quiser o modo isolado com autonomia máxima
 
 ### Settings do VS Code
-1. `Ctrl+Shift+P` → "Open User Settings (JSON)"
-2. Cole o conteúdo do `settings.json` (merge com suas settings existentes)
-3. `Ctrl+Shift+P` → "Reload Window"
+1. Abra o projeto no VS Code
+2. Aceite as extensões recomendadas
+3. Se necessário, `Ctrl+Shift+P` → `Reload Window`
+4. Para autonomia máxima: `Dev Containers: Reopen in Container`
 
 ---
 
@@ -93,6 +111,9 @@ bash setup-copilot.sh /caminho/do/seu/projeto
 ### Dica de Ouro
 Para máxima autonomia, use o agent dentro de um **Dev Container**. Isso permite ativar `chat.tools.autoApprove: true` com segurança total, pois tudo roda isolado.
 
+### MCPs e Tokens
+Depois do setup, o workspace já vem com `.vscode/mcp.json`. Na primeira utilização, configure os tokens solicitados pelo VS Code ou siga as instruções de `.vscode/MCP_CONFIG.md`.
+
 ---
 
 ## ⚠️ Personalização
@@ -111,7 +132,7 @@ Os agents e prompts são genéricos o suficiente para funcionar em qualquer proj
 ## 📝 Notas
 
 - Settings são para **VS Code Workspace** — aplicam apenas ao projeto atual
-- Se quiser aplicar globalmente, coloque em User Settings
+- Se quiser aplicar globalmente, copie o conteúdo de `.vscode/settings.json` para suas User Settings
 - Instruction files são lidos automaticamente pelo Copilot
 - AGENTS.md é reconhecido por Copilot, Claude Code, e Cursor
 - Prompts aparecem como slash commands no chat
