@@ -528,16 +528,46 @@ class AIPredictiveAnalyticsService
     }
 
     /**
-     * Rastreia precisão das previsões
+     * Calcula precisão real das previsões comparando predições passadas com resultados reais.
+     * Usa MAE normalizado: predição é "correta" se erro absoluto < 10% do valor real.
      */
     private function trackPredictionAccuracy(): void
     {
-        $this->predictionAccuracy = [
-            '7_day' => 0.89,
-            '30_day' => 0.82,
-            '90_day' => 0.75,
-            'overall' => 0.82
-        ];
+        $windows = ['7_day' => 7, '30_day' => 30, '90_day' => 90];
+        $accuracy = [];
+        $allAccuracies = [];
+
+        foreach ($windows as $key => $days) {
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT
+                        AVG(CASE WHEN actual_value > 0
+                            AND ABS(predicted_value - actual_value) / actual_value <= 0.10
+                            THEN 1.0 ELSE 0.0 END) AS accuracy
+                    FROM prediction_history
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+                      AND actual_value IS NOT NULL
+                ");
+                $stmt->execute([':days' => $days]);
+                $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+                $value = ($row && $row['accuracy'] !== null) ? (float) $row['accuracy'] : null;
+            } catch (\Exception $e) {
+                $value = null;
+            }
+
+            // Fallback conservador quando não há dados suficientes
+            $accuracy[$key] = $value ?? 0.0;
+            if ($value !== null) {
+                $allAccuracies[] = $value;
+            }
+        }
+
+        $accuracy['overall'] = !empty($allAccuracies)
+            ? round(array_sum($allAccuracies) / count($allAccuracies), 4)
+            : 0.0;
+
+        $accuracy['is_estimated'] = empty($allAccuracies);
+        $this->predictionAccuracy = $accuracy;
     }
 
     private function createErrorResponse(string $message): array

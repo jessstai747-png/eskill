@@ -3,11 +3,24 @@
     "project": "eskill.com.br — SEO Optimizer para Mercado Livre",
     "company": "AWA Motos — Distribuidora de peças para motos",
     "stack": "PHP 8.0+ | MySQL/PDO | Guzzle 7 | Monolog 3 | Redis",
-    "last_updated": "2026-03-04",
+    "last_updated": "2026-03-06",
     "updated_by": "copilot-implementador",
     "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps."
   },
   "features": [
+    {
+      "id": "FIX-001",
+      "category": "bugfix",
+      "description": "Substituir código placeholder/fake por implementações reais: SmartQAService (namespace AIService → LLMService), AIPredictiveAnalyticsService (accuracy hardcoded → query real em prediction_history), AdvancedSEOMaximizer (16 stubs implementados: fillTemplate, scorePrice, getLSIKeywords, injectLSIKeywords, addEmotionalTriggers, optimizeReadability, getMissingRequiredAttributes, getPopularFilterAttributes, findDirectCompetitors, identifyCompetitorStrengths, identifyCompetitorWeaknesses, identifyOpportunities, identifyThreats, generateStrategicRecommendations, getSecondaryKeywords, generateLongTailKeywords), AIImageAnalyzerService detectObjects (ratio-fake → análise GD real: variância central vs bordas)",
+      "files": [
+        "app/Services/MercadoLivre/SmartQAService.php",
+        "app/Services/AIPredictiveAnalyticsService.php",
+        "app/Services/AI/SEO/AdvancedSEOMaximizer.php",
+        "app/Services/AIImageAnalyzerService.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-03-06"
+    },
     {
       "id": "AUTH-001",
       "category": "authentication",

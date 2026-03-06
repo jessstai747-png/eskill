@@ -471,38 +471,155 @@ class AdvancedSEOMaximizer
     
     private function getLSIKeywords(array $itemData): array
     {
-        // Implementar análise LSI usando relacionamentos semânticos
-        return [];
+        $categoryId = $itemData['category_id'] ?? '';
+        if (empty($categoryId)) {
+            return [];
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                SELECT keyword
+                FROM market_keywords
+                WHERE category_id = ?
+                ORDER BY relevance DESC
+                LIMIT 15
+            ");
+            $stmt->execute([$categoryId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (!empty($rows)) {
+                return $rows;
+            }
+        } catch (\Exception $e) {
+            // Fallback para extração do título
+        }
+
+        // Fallback: palavras do título que não são stopwords
+        $stopwords = ['de', 'da', 'do', 'para', 'com', 'em', 'e', 'a', 'o', 'os', 'as'];
+        $words = preg_split('/\W+/', strtolower($itemData['title'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+        return array_values(array_filter($words, fn($w) => strlen($w) > 3 && !in_array($w, $stopwords)));
     }
     
     private function injectLSIKeywords(string $description, array $lsiKeywords): string
     {
-        // Implementar injeção natural de LSI keywords
-        return $description;
+        if (empty($lsiKeywords)) {
+            return $description;
+        }
+
+        // Filtrar keywords que já estão presentes
+        $missing = array_filter($lsiKeywords, fn($kw) => stripos($description, $kw) === false);
+        if (empty($missing)) {
+            return $description;
+        }
+
+        // Injetar até 3 keywords ausentes em uma frase natural ao final
+        $toInject = array_slice(array_values($missing), 0, 3);
+        $injected = implode(', ', $toInject);
+        $suffix = "\n\n🔍 Palavras-chave relacionadas: {$injected}.";
+
+        return rtrim($description) . $suffix;
     }
     
     private function addEmotionalTriggers(string $description, array $itemData): string
     {
-        // Adicionar gatilhos emocionais baseados no tipo de produto
-        return $description;
+        // Verificar se já tem CTAs/gatilhos emocionais comuns
+        $existingTriggers = ['compre agora', 'aproveite', 'oferta', 'garantia', 'satisfação garantida', 'frete grátis', 'envio imediato'];
+        foreach ($existingTriggers as $trigger) {
+            if (stripos($description, $trigger) !== false) {
+                return $description; // Já tem gatilho
+            }
+        }
+
+        $categoryId = $itemData['category_id'] ?? '';
+        $isMotoPart = str_contains(strtolower($itemData['title'] ?? ''), 'moto')
+            || str_starts_with(strtoupper($categoryId), 'MLB');
+
+        $trigger = $isMotoPart
+            ? "\n\n⚡ **Compre com confiança!** Produto testado, compatibilidade garantida. Dúvida sobre o modelo? Nos chame antes de comprar — respondemos rápido!"
+            : "\n\n⚡ **Compre agora com segurança!** Satisfação garantida ou seu dinheiro de volta. Atendimento ágil e envio imediato!";
+
+        return rtrim($description) . $trigger;
     }
     
     private function optimizeReadability(string $description): string
     {
-        // Melhorar legibilidade usando Flesch Reading Ease
-        return $description;
+        if (empty($description)) {
+            return $description;
+        }
+
+        // 1. Substituir ponto-e-vírgula por ponto final + nova linha para frases mais curtas
+        $result = preg_replace('/;\s+/', ".\n", $description);
+
+        // 2. Quebrar frases muito longas (> 200 chars sem quebra de linha)
+        if ($result !== null) {
+            $result = preg_replace_callback('/([^\n]{200,}?)([.!?])\s/', function ($m) {
+                return $m[1] . $m[2] . "\n";
+            }, $result);
+        }
+
+        $result = $result ?? $description;
+
+        // 3. Garantir que listas com vírgulas sejam convertidas em bullet points,
+        //    mas somente dentro de blocos que pareçam listas (3+ itens separados por vírgula)
+        $result = preg_replace_callback(
+            '/(?::\s*)([\w][^\n.]{0,60}(?:,\s*[\w][^,\n]{0,40}){2,})\.?/',
+            function ($m) {
+                $items = array_map('trim', explode(',', $m[1]));
+                if (count($items) < 3) {
+                    return $m[0];
+                }
+                return ":\n" . implode("\n", array_map(fn($i) => '• ' . $i, $items));
+            },
+            $result
+        ) ?? $result;
+
+        return $result;
     }
     
     private function getMissingRequiredAttributes(array $itemData): array
     {
-        // Identificar atributos obrigatórios faltantes
-        return [];
+        $categoryId = $itemData['category_id'] ?? '';
+        if (empty($categoryId)) {
+            return [];
+        }
+
+        $required = $this->getRequiredAttributes($categoryId);
+        if (empty($required)) {
+            return [];
+        }
+
+        // Mapear ids dos atributos existentes no item
+        $existingIds = array_map(
+            fn($a) => strtoupper($a['id'] ?? ''),
+            $itemData['attributes'] ?? []
+        );
+
+        // Retornar apenas os obrigatórios que não estão preenchidos
+        return array_values(array_filter($required, function ($req) use ($existingIds) {
+            return !in_array(strtoupper($req['id'] ?? ''), $existingIds, true);
+        }));
     }
     
     private function getPopularFilterAttributes(string $categoryId): array
     {
-        // Obter atributos de filtro populares da categoria
-        return [];
+        if (empty($categoryId)) {
+            return [];
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                SELECT id, name
+                FROM category_attributes
+                WHERE category_id = ?
+                  AND (is_filter = 1 OR tags LIKE '%filter%')
+                ORDER BY id ASC
+                LIMIT 10
+            ");
+            $stmt->execute([$categoryId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
     
     private function optimizeAttributeValues(array $attributes): array
@@ -635,8 +752,36 @@ class AdvancedSEOMaximizer
     
     private function scorePrice(float $price, string $categoryId): int
     {
-        // Implementar análise de preço competitivo
-        return 75; // Simplificado
+        if ($price <= 0 || empty($categoryId)) {
+            return 50;
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                SELECT AVG(price) AS avg_price, MIN(price) AS min_price
+                FROM competitor_items
+                WHERE category_id = ?
+                  AND status = 'active'
+                  AND price > 0
+            ");
+            $stmt->execute([$categoryId]);
+            $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$stats || (float)($stats['avg_price'] ?? 0) <= 0) {
+                return 50; // Sem dados de concorrência
+            }
+
+            $ratio = $price / (float)$stats['avg_price'];
+
+            if ($ratio <= 0.85) return 100;
+            if ($ratio <= 0.95) return 85;
+            if ($ratio <= 1.05) return 70;
+            if ($ratio <= 1.20) return 50;
+            if ($ratio <= 1.40) return 30;
+            return 15;
+        } catch (\Exception $e) {
+            return 50;
+        }
     }
     
     private function getRequiredAttributes(string $categoryId): array
@@ -656,12 +801,73 @@ class AdvancedSEOMaximizer
     
     private function getSecondaryKeywords(array $category): array
     {
-        return [];
+        $categoryId = $category['id'] ?? $category['category_id'] ?? '';
+        if (empty($categoryId)) {
+            return [];
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                SELECT keyword
+                FROM market_keywords
+                WHERE category_id = ?
+                ORDER BY relevance ASC
+                LIMIT 20
+            ");
+            $stmt->execute([$categoryId]);
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
-    
+
     private function generateLongTailKeywords(array $itemData): array
     {
-        return [];
+        $title = $itemData['title'] ?? '';
+        $categoryId = $itemData['category_id'] ?? '';
+
+        if (empty($title)) {
+            return [];
+        }
+
+        // Extrair palavras-base do título
+        $stopwords = ['de', 'da', 'do', 'para', 'com', 'em', 'e', 'a', 'o', 'os', 'as', 'um', 'uma'];
+        $words = array_filter(
+            preg_split('/\W+/', strtolower($title), -1, PREG_SPLIT_NO_EMPTY) ?? [],
+            fn($w) => strlen($w) > 3 && !in_array($w, $stopwords)
+        );
+        $baseWords = array_values($words);
+
+        // Contextos de long-tail para peças de moto (contexto do negócio)
+        $contexts = ['original', 'barato', 'melhor preço', 'promoção', 'comprar', 'frete grátis'];
+
+        $longTails = [];
+        foreach (array_slice($baseWords, 0, 3) as $word) {
+            foreach (array_slice($contexts, 0, 3) as $ctx) {
+                $longTails[] = $word . ' ' . $ctx;
+            }
+        }
+
+        // Buscar long-tails do banco para a categoria
+        if (!empty($categoryId)) {
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT keyword
+                    FROM market_keywords
+                    WHERE category_id = ?
+                      AND keyword LIKE '% %'
+                    ORDER BY relevance DESC
+                    LIMIT 10
+                ");
+                $stmt->execute([$categoryId]);
+                $dbLongTails = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                $longTails = array_unique(array_merge($longTails, $dbLongTails));
+            } catch (\Exception $e) {
+                // Usa apenas os gerados
+            }
+        }
+
+        return array_values(array_slice($longTails, 0, 20));
     }
     
     private function getConvertingKeywords(array $category): array
@@ -679,39 +885,219 @@ class AdvancedSEOMaximizer
     
     private function findDirectCompetitors(array $itemData): array
     {
-        // Implementar busca de competidores baseada em categoria e preço
-        return [];
+        $categoryId = $itemData['category_id'] ?? '';
+        $price = (float)($itemData['price'] ?? 0);
+
+        if (empty($categoryId)) {
+            return [];
+        }
+
+        try {
+            $params = ['category_id' => $categoryId];
+            $priceClause = '';
+            if ($price > 0) {
+                $priceClause = 'AND price BETWEEN :price_low AND :price_high';
+                $params['price_low']  = $price * 0.6;
+                $params['price_high'] = $price * 1.6;
+            }
+
+            $stmt = $this->db->prepare("
+                SELECT ml_item_id, seller_id, title, price, sold_quantity,
+                       available_quantity
+                FROM competitor_items
+                WHERE category_id = :category_id
+                  AND status = 'active'
+                  {$priceClause}
+                ORDER BY sold_quantity DESC
+                LIMIT 10
+            ");
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
     
     private function identifyCompetitorStrengths(array $competitor, array $itemData): array
     {
-        return [];
+        $strengths = [];
+        $myPrice = (float)($itemData['price'] ?? 0);
+        $compPrice = (float)($competitor['price'] ?? 0);
+
+        if ($compPrice > 0 && $myPrice > 0 && $compPrice < $myPrice * 0.9) {
+            $strengths[] = 'Preço ' . round((1 - $compPrice / $myPrice) * 100) . '% mais barato';
+        }
+        if ((int)($competitor['sold_quantity'] ?? 0) > 50) {
+            $strengths[] = 'Alto volume de vendas (' . $competitor['sold_quantity'] . ' vendidos)';
+        }
+        if (strlen($competitor['title'] ?? '') >= 45 && strlen($competitor['title'] ?? '') <= 60) {
+            $strengths[] = 'Título com comprimento ideal para SEO';
+        }
+
+        return $strengths;
     }
-    
+
     private function identifyCompetitorWeaknesses(array $competitor, array $itemData): array
     {
-        return [];
+        $weaknesses = [];
+        $myPrice = (float)($itemData['price'] ?? 0);
+        $compPrice = (float)($competitor['price'] ?? 0);
+
+        if ($compPrice > 0 && $myPrice > 0 && $compPrice > $myPrice * 1.1) {
+            $weaknesses[] = 'Preço ' . round(($compPrice / $myPrice - 1) * 100) . '% mais caro';
+        }
+        if (strlen($competitor['title'] ?? '') > 60) {
+            $weaknesses[] = 'Título muito longo (' . strlen($competitor['title']) . ' chars)';
+        }
+        if ((int)($competitor['available_quantity'] ?? 0) < 3) {
+            $weaknesses[] = 'Estoque reduzido';
+        }
+
+        return $weaknesses;
     }
-    
+
     private function identifyOpportunities(array $competitors, array $itemData): array
     {
-        return [];
+        $opportunities = [];
+        $myPrice = (float)($itemData['price'] ?? 0);
+
+        if (empty($competitors)) {
+            $opportunities[] = 'Poucos concorrentes nesta categoria — alta oportunidade de visibilidade';
+            return $opportunities;
+        }
+
+        $prices = array_filter(array_column($competitors, 'price'), fn($p) => $p > 0);
+        if (!empty($prices) && $myPrice > 0) {
+            $avgComp = array_sum($prices) / count($prices);
+            if ($myPrice <= $avgComp * 0.95) {
+                $opportunities[] = 'Seu preço está abaixo da média da concorrência — destaque no ranking';
+            }
+        }
+
+        $lowStock = array_filter($competitors, fn($c) => (int)($c['available_quantity'] ?? 99) < 3);
+        if (count($lowStock) >= count($competitors) * 0.5) {
+            $opportunities[] = 'Mais de 50% dos concorrentes com estoque baixo — manter estoque gera vantagem';
+        }
+
+        return $opportunities;
     }
-    
+
     private function identifyThreats(array $competitors, array $itemData): array
     {
-        return [];
+        $threats = [];
+        $myPrice = (float)($itemData['price'] ?? 0);
+
+        $prices = array_filter(array_column($competitors, 'price'), fn($p) => $p > 0);
+        if (!empty($prices) && $myPrice > 0) {
+            $minComp = min($prices);
+            if ($minComp < $myPrice * 0.75) {
+                $threats[] = 'Concorrente com preço ' . round((1 - $minComp / $myPrice) * 100) . '% abaixo — risco de perda de buybox';
+            }
+        }
+
+        $highSales = array_filter($competitors, fn($c) => (int)($c['sold_quantity'] ?? 0) > 200);
+        if (!empty($highSales)) {
+            $threats[] = count($highSales) . ' concorrente(s) com 200+ vendas — posição consolidada';
+        }
+
+        return $threats;
     }
-    
+
     private function generateStrategicRecommendations(array $analysis): array
     {
-        return [];
+        $recommendations = [];
+
+        if (!empty($analysis['opportunities'])) {
+            foreach ($analysis['opportunities'] as $opp) {
+                $recommendations[] = ['type' => 'opportunity', 'action' => $opp, 'priority' => 'high'];
+            }
+        }
+
+        if (!empty($analysis['threats'])) {
+            foreach ($analysis['threats'] as $threat) {
+                $recommendations[] = ['type' => 'threat', 'action' => 'Monitorar: ' . $threat, 'priority' => 'medium'];
+            }
+        }
+
+        if (!empty($analysis['weaknesses']) && is_array($analysis['weaknesses'])) {
+            $weaknesses = is_array(reset($analysis['weaknesses'])) ? $analysis['weaknesses'] : [$analysis['weaknesses']];
+            foreach (array_slice($weaknesses, 0, 2) as $wList) {
+                foreach ((array)$wList as $w) {
+                    $recommendations[] = ['type' => 'improvement', 'action' => 'Vantagem sobre concorrente: ' . $w, 'priority' => 'low'];
+                }
+            }
+        }
+
+        if (empty($recommendations)) {
+            $recommendations[] = ['type' => 'maintain', 'action' => 'Manter posicionamento atual e monitorar variações de preço semanalmente', 'priority' => 'low'];
+        }
+
+        return $recommendations;
     }
     
     private function fillTemplate(string $template, array $itemData): string
     {
-        // Implementar substituição de placeholders
-        return $template;
+        // Extrair marca e modelo dos attributos, se disponível
+        $brand = '';
+        $model = '';
+        foreach ($itemData['attributes'] ?? [] as $attr) {
+            $id = strtolower($attr['id'] ?? '');
+            if (in_array($id, ['brand', 'marca'])) {
+                $brand = $attr['value_name'] ?? '';
+            } elseif (in_array($id, ['model', 'modelo'])) {
+                $model = $attr['value_name'] ?? '';
+            }
+        }
+
+        $productName = trim(implode(' ', array_filter([$brand, $model])));
+        if (empty($productName)) {
+            $productName = $itemData['title'] ?? 'Produto';
+        }
+
+        // Montar bullet points das características
+        $bulletLines = [];
+        foreach ($itemData['attributes'] ?? [] as $attr) {
+            if (!empty($attr['value_name'])) {
+                $bulletLines[] = '• ' . ($attr['name'] ?? $attr['id']) . ': ' . $attr['value_name'];
+            }
+        }
+        $bullets = !empty($bulletLines)
+            ? implode("\n", array_slice($bulletLines, 0, 8))
+            : '• Confirma compatibilidade antes de comprar';
+
+        // Benefícios
+        $benefits = implode("\n", [
+            '• Produto de alta qualidade com acabamento premium',
+            '• Fácil instalação, encaixe perfeito',
+            '• Compatibilidade verificada — informe o modelo da sua moto',
+            '• Atendimento ágil e pós-venda garantido',
+        ]);
+
+        // Garantia
+        $warrantyAttr = '';
+        foreach ($itemData['attributes'] ?? [] as $attr) {
+            if (in_array(strtolower($attr['id'] ?? ''), ['warranty_time', 'garantia', 'warranty'])) {
+                $warrantyAttr = $attr['value_name'] ?? '';
+                break;
+            }
+        }
+        $warranty = !empty($warrantyAttr)
+            ? 'Garantia do fabricante: ' . $warrantyAttr
+            : 'Garantia de fábrica contra defeitos de fabricação. Consulte condições na descrição.';
+
+        $replacements = [
+            '{PRODUCT_NAME}' => $productName,
+            '{BULLET_POINTS}' => $bullets,
+            '{BENEFITS}'     => $benefits,
+            '{WARRANTY}'     => $warranty,
+            '{BRAND}'        => $brand ?: 'Não informado',
+            '{MODEL}'        => $model ?: 'Consulte compatibilidade',
+            '{TITLE}'        => $itemData['title'] ?? '',
+            '{CATEGORY}'     => $itemData['category_id'] ?? '',
+            '{PRICE}'        => isset($itemData['price']) ? 'R$ ' . number_format((float)$itemData['price'], 2, ',', '.') : '',
+        ];
+
+        return strtr($template, $replacements);
     }
     
     private function generateImprovements(array $results): array

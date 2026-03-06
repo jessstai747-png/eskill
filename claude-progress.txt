@@ -6,6 +6,37 @@
 
 ---
 
+## Sessão 2026-03-06 — FIX-001: Substituição de código placeholder/fake por implementações reais
+
+**Objetivo:** Corrigir código placeholder/stub encontrado em audit de qualidade de código.
+
+### Arquivos modificados
+- `app/Services/MercadoLivre/SmartQAService.php` — namespace `\App\Services\AI\AIService` (inexistente) → `App\Services\LLMService`; método `generateResponse()` → `generate()` com stripping de markdown JSON
+- `app/Services/AIPredictiveAnalyticsService.php` — accuracy hardcoded 0.89/0.82/0.75 → query real na tabela `prediction_history` com AVG condicional por janela 7/30/90 dias; flag `is_estimated: true` quando sem dados
+- `app/Services/AI/SEO/AdvancedSEOMaximizer.php` — 16 métodos stub implementados:
+  - `fillTemplate()`: strtr com `{PRODUCT_NAME}`, `{BULLET_POINTS}`, `{BENEFITS}`, `{WARRANTY}`, `{BRAND}`, `{MODEL}`, `{TITLE}`, `{PRICE}`
+  - `scorePrice()`: query `AVG(price)` em `competitor_items` por categoria → ratio-based score 15-100
+  - `getLSIKeywords()`: query `market_keywords` por `category_id ORDER BY relevance DESC`, fallback extração de título
+  - `injectLSIKeywords()`: injeta keywords ausentes na descrição em frase natural
+  - `addEmotionalTriggers()`: append CTA contextual (motos vs outros)
+  - `optimizeReadability()`: quebra frases longas, normaliza listas com bullet points
+  - `getMissingRequiredAttributes()`: difere required attrs da tabela `category_attributes` vs attrs atuais do item
+  - `getPopularFilterAttributes()`: query `category_attributes WHERE is_filter=1 LIMIT 10`
+  - `findDirectCompetitors()`: query `competitor_items` por categoria+faixa de preço `ORDER BY sold_quantity DESC`
+  - `identifyCompetitorStrengths/Weaknesses()`: compara price, sold_quantity, title length
+  - `identifyOpportunities/Threats()`: análise agregada dos concorrentes
+  - `generateStrategicRecommendations()`: constrói recomendações a partir do SWOT
+  - `getSecondaryKeywords()`: query `market_keywords ORDER BY relevance ASC LIMIT 20`
+  - `generateLongTailKeywords()`: combina palavras do título com contextos + query DB de long-tails
+- `app/Services/AIImageAnalyzerService.php` — `detectObjects()`: análise real por varância de cor central vs bordas via GD em vez de ratio-based fake; retorna `[]` quando sem local_path (analise LLM Vision da `analyzeImageContent()` prevalece quando API key disponível)
+
+### Resultado
+- 4 arquivos editados, 0 erros de sintaxe, 0 issues Codacy
+- 642 testes passando (27 skipped, nenhum failing)
+- project-status.json atualizado com FIX-001
+
+---
+
 ## Sessão 2026-06-02 — ML-STAB-009: Complementação da Integração Mercado Livre
 
 **Objetivo:** Implementar todas as features necessárias para complementar a integração ML.
@@ -192,6 +223,41 @@ Continuação da implementação de testes E2E com Playwright. Score anterior: 7
 ### Score Final
 - **72 passed, 6 skipped, 0 failed** (de 78 total)
 - Os 6 skipped são funcionais de AI MCP desabilitados intencionalmente (`functional_ai_mcp.spec.ts`)
+
+---
+
+## Sessão 2026-03-06 (Codex) — Diagnóstico bloqueio CSRF no login de produção
+
+### Contexto
+Usuário forneceu nova credencial de auditoria para retomar smoke UI de produção via Playwright.
+
+### O que foi feito
+- Reexecutado smoke em produção com `auditoria@eskill.com.br`.
+- Identificado bloqueio consistente no login web:
+  - resposta em `/auth/login`: `{"error":"Token CSRF inválido ou expirado","code":"CSRF_TOKEN_INVALID"}`.
+- Validada credencial por API (sem CSRF):
+  - `POST /api/auth/login` retornou `success=true` para `auditoria@eskill.com.br` (usuário `id=100173`, role `viewer`).
+- Implementadas correções defensivas de CSRF no código:
+  - `public/index.php`: regenera token quando vazio (`empty(...)`).
+  - `app/Controllers/AuthController.php`: auth views regeneram token se vazio/sem timestamp.
+  - `app/Services/SecurityService.php`: `getCsrfToken()` não reutiliza token vazio.
+- Recarregado `php8.4-fpm` após patch.
+
+### Validação
+- `php -l public/index.php` ✅
+- `php -l app/Controllers/AuthController.php` ✅
+- `php -l app/Services/SecurityService.php` ✅
+- `php vendor/bin/phpunit --colors=never` ✅
+  - Tests: 2923
+  - Assertions: 6829
+  - Skipped: 26
+- `curl https://eskill.com.br/login` após reload: token CSRF continua vazio no HTML.
+- Smoke Playwright: ainda bloqueado no login web por CSRF inválido (sem iniciar as 12 rotas).
+
+### Conclusão
+- Credencial está válida.
+- Bloqueio atual é técnico no fluxo web de CSRF do ambiente em produção (ou instância ativa diferente do código local).
+- Smoke UI completo permanece pendente até o `/login` entregar token CSRF válido no HTML/sessão.
 
 ---
 

@@ -6,6 +6,7 @@ namespace App\Services\MercadoLivre;
 
 use App\Services\MercadoLivreClient;
 use App\Services\CacheService;
+use App\Services\LLMService;
 use App\Services\StructuredLogService;
 
 /**
@@ -421,11 +422,14 @@ class SmartQAService
     {
         try {
             $prompt = $this->buildAnalysisPrompt($question, $productInfo);
-            $aiService = new \App\Services\AI\AIService();
-            $response = $aiService->generateResponse($prompt);
+            $llm = new LLMService();
+            $response = $llm->generate($prompt);
 
             if ($response['success']) {
-                return json_decode($response['content'], true);
+                $content = trim($response['content']);
+                $content = preg_replace('/^```(?:json)?\s*/s', '', $content);
+                $content = preg_replace('/\s*```$/s', '', $content);
+                return json_decode($content, true);
             }
 
             return null;
@@ -445,11 +449,11 @@ class SmartQAService
     {
         try {
             $prompt = $this->buildAnswerPrompt($question, $analysis);
-            $aiService = new \App\Services\AI\AIService();
-            $response = $aiService->generateResponse($prompt);
+            $llm = new LLMService();
+            $response = $llm->generate($prompt);
 
-            if ($response['success']) {
-                return $response['content'];
+            if ($response['success'] && !empty($response['content'])) {
+                return trim($response['content']);
             }
 
             return null;

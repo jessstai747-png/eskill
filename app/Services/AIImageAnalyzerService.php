@@ -1081,20 +1081,74 @@ class AIImageAnalyzerService
         return max(0, $brightness - 10);
     }
     
-    private function detectObjects($imageInfo): array 
-    { 
-        // Análise básica via dimensões e proporção da imagem
-        $ratio = $imageInfo['width'] / max(1, $imageInfo['height']);
-        $objects = [];
-        
-        if ($ratio >= 0.8 && $ratio <= 1.2) {
-            $objects[] = ['name' => 'product_photo_square', 'confidence' => 0.85];
-        } elseif ($ratio > 1.2) {
-            $objects[] = ['name' => 'product_photo_landscape', 'confidence' => 0.75];
-        } else {
-            $objects[] = ['name' => 'product_photo_portrait', 'confidence' => 0.75];
+    private function detectObjects($imageInfo): array
+    {
+        // Se não há arquivo local, não há como analisar objetos via heurística
+        if (empty($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
+            return [];
         }
-        
+
+        $img = $this->loadGdImage($imageInfo);
+        if (!$img) {
+            return [];
+        }
+
+        $width  = imagesx($img);
+        $height = imagesy($img);
+        if ($width <= 0 || $height <= 0) {
+            return [];
+        }
+
+        // Comparar variância de cor entre região central e bordas
+        // Alta variância central + baixa variância nas bordas → produto sobre fundo limpo
+        $centerX = (int)($width * 0.3);
+        $centerY = (int)($height * 0.3);
+        $margin  = (int)(min($width, $height) * 0.08);
+
+        $centerSamples = [];
+        $borderSamples = [];
+
+        $step = max(1, (int)(min($width, $height) / 30));
+        for ($y = $centerY; $y < $centerY + (int)($height * 0.4); $y += $step) {
+            for ($x = $centerX; $x < $centerX + (int)($width * 0.4); $x += $step) {
+                $rgb = imagecolorat($img, min($x, $width - 1), min($y, $height - 1));
+                $centerSamples[] = ($rgb >> 16 & 0xFF) * 0.299
+                    + ($rgb >> 8 & 0xFF)  * 0.587
+                    + ($rgb & 0xFF)       * 0.114;
+            }
+        }
+
+        for ($m = 0; $m < $margin; $m += $step) {
+            for ($i = 0; $i < $width; $i += $step) {
+                $rgb = imagecolorat($img, min($i, $width - 1), $m);
+                $borderSamples[] = ($rgb >> 16 & 0xFF) * 0.299 + ($rgb >> 8 & 0xFF) * 0.587 + ($rgb & 0xFF) * 0.114;
+                $rgb = imagecolorat($img, min($i, $width - 1), max(0, $height - 1 - $m));
+                $borderSamples[] = ($rgb >> 16 & 0xFF) * 0.299 + ($rgb >> 8 & 0xFF) * 0.587 + ($rgb & 0xFF) * 0.114;
+            }
+        }
+
+        $calcVariance = function (array $samples): float {
+            if (count($samples) < 2) {
+                return 0.0;
+            }
+            $mean = array_sum($samples) / count($samples);
+            $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $samples)) / count($samples);
+            return $variance;
+        };
+
+        $centerVariance = $calcVariance($centerSamples);
+        $borderVariance = $calcVariance($borderSamples);
+
+        $objects = [];
+        // Produto detectado quando há variância central > bordas (objeto sobre fundo)
+        if ($centerVariance > 200 && $centerVariance > $borderVariance * 1.5) {
+            $confidence = min(0.90, 0.60 + ($centerVariance / 10000));
+            $objects[] = ['name' => 'product', 'confidence' => round($confidence, 2)];
+        } elseif ($borderVariance < 100) {
+            // Fundo muito uniforme mas centro sem objeto claro
+            $objects[] = ['name' => 'product', 'confidence' => 0.55];
+        }
+
         return $objects;
     }
     
