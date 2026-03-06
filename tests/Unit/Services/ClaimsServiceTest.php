@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 use App\Services\ClaimsService;
 use App\Services\MercadoLivreClient;
 use PDO;
@@ -16,8 +17,11 @@ use PDOStatement;
 class ClaimsServiceTest extends TestCase
 {
     private ClaimsService $service;
+    /** @var MercadoLivreClient&MockObject */
     private MercadoLivreClient $mockClient;
+    /** @var PDO&MockObject */
     private PDO $mockDb;
+    /** @var PDOStatement&MockObject */
     private PDOStatement $mockStmt;
 
     protected function setUp(): void

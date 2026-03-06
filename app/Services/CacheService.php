@@ -196,6 +196,7 @@ class CacheService
         }
 
         $data = [
+            'key' => $key,
             'value' => $value,
             'expires_at' => time() + $ttl,
             'created_at' => time(),
@@ -415,6 +416,36 @@ class CacheService
     public function getDriver(): string
     {
         return $this->driver;
+    }
+
+    /**
+     * Remove chaves que correspondem a um padrão glob (ex: "sales_data_123_*")
+     */
+    public function deletePattern(string $pattern): bool
+    {
+        if ($this->driver === 'redis' && $this->redis) {
+            $keys = $this->redis->keys($pattern);
+            if (!empty($keys)) {
+                $this->redis->del(...$keys);
+            }
+            return true;
+        }
+
+        // Para file cache, escanear todos os arquivos e verificar a chave armazenada
+        $files = array_merge(
+            glob($this->cacheDir . '/*/*.json') ?: [],
+            glob($this->cacheDir . '/*/*/*.json') ?: []
+        );
+
+        $regex = '/^' . str_replace('\*', '.*', preg_quote($pattern, '/')) . '$/';
+        foreach ($files as $file) {
+            $data = @json_decode((string) @file_get_contents($file), true);
+            if (isset($data['key']) && preg_match($regex, $data['key'])) {
+                @unlink($file);
+            }
+        }
+
+        return true;
     }
 
     /**
