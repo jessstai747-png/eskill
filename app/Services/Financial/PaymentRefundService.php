@@ -24,7 +24,17 @@ class PaymentRefundService
     public function getPaymentDetails(string $paymentId): array
     {
         $client = $this->getClient();
-        $response = $client->get("/payments/{$paymentId}");
+
+        try {
+            $response = $client->get("/payments/{$paymentId}");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar detalhes do pagamento', [
+                'service' => 'PaymentRefundService',
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['error' => $e->getMessage()];
+        }
 
         if (isset($response['error'])) {
             return ['error' => $response['message'] ?? 'Pagamento não encontrado'];
@@ -59,10 +69,23 @@ class PaymentRefundService
     {
         $client = $this->getClient();
 
-        $response = $client->get('/currency_conversions/search', [
-            'from' => $from,
-            'to' => $to,
-        ]);
+        try {
+            $response = $client->get('/currency_conversions/search', [
+                'from' => $from,
+                'to' => $to,
+            ]);
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar conversão de moeda', [
+                'service' => 'PaymentRefundService',
+                'from' => $from,
+                'to' => $to,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'ratio' => null,
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
@@ -92,7 +115,16 @@ class PaymentRefundService
     {
         $client = $this->getClient();
 
-        $data = $client->get("/v1/chargebacks/{$chargebackId}");
+        try {
+            $data = $client->get("/v1/chargebacks/{$chargebackId}");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar detalhes da contestação', [
+                'service' => 'PaymentRefundService',
+                'chargeback_id' => $chargebackId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['error' => $e->getMessage()];
+        }
 
         if (isset($data['error'])) {
             return ['error' => $data['message'] ?? 'Erro ao buscar contestação'];

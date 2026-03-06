@@ -59,7 +59,19 @@ class QualityScoreService
      */
     public function calculateQualityScore(string $itemId): array
     {
-        $item = $this->client->get("/items/{$itemId}");
+        try {
+            $item = $this->client->get("/items/{$itemId}");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar item para quality score', [
+                'service' => 'QualityScoreService',
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
 
         if (isset($item['error'])) {
             return [
@@ -69,7 +81,16 @@ class QualityScoreService
         }
 
         // Obter descrição completa
-        $description = $this->client->get("/items/{$itemId}/description");
+        try {
+            $description = $this->client->get("/items/{$itemId}/description");
+        } catch (\Exception $e) {
+            log_warning('Falha ao buscar descrição do item para quality score', [
+                'service' => 'QualityScoreService',
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            $description = [];
+        }
 
         // Calcular cada componente
         $contentScore = $this->calculateContentScore($item, $description);

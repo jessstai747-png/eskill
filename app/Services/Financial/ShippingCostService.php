@@ -25,7 +25,19 @@ class ShippingCostService
     {
         $client = $this->getClient();
 
-        $response = $client->get("/shipments/{$shipmentId}");
+        try {
+            $response = $client->get("/shipments/{$shipmentId}");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar custos de envio', [
+                'service' => 'ShippingCostService',
+                'shipment_id' => $shipmentId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'data' => null,
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
@@ -81,7 +93,19 @@ class ShippingCostService
     {
         $client = $this->getClient();
 
-        $response = $client->get("/orders/{$orderId}/shipments");
+        try {
+            $response = $client->get("/orders/{$orderId}/shipments");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar envios da ordem', [
+                'service' => 'ShippingCostService',
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'results' => [],
+            ];
+        }
 
         if (isset($response['error'])) {
             return [

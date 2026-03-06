@@ -6,6 +6,31 @@
 
 ---
 
+## Sessão 2026-03-06 (10) — FIX-010: Wrap unprotected ML API calls with try/catch
+
+### O que foi feito
+- Identificou 5 services com chamadas ML API sem try/catch (apenas `isset($response['error'])`)
+- Verificou 3 falsos positivos reportados (InventoryService, ValidationService, ListingBuilderService já protegidos)
+
+### Services corrigidos (5 arquivos)
+1. **HealthCheckService** — `checkItemHealth()` wrapped com `log_error()` + return error
+2. **QualityScoreService** — `calculateQualityScore()` 2 chamadas: item (`log_error`, fatal) + description (`log_warning`, graceful degradation)
+3. **ClaimDisputeService** — 6 métodos wrapped: `getClaims`, `getClaimDetails`, `getClaimReputationImpact`, `getReturnDetails`, `getReturnShippingCost`, `getClaimActionsHistory`
+4. **PaymentRefundService** — 3 métodos: `getPaymentDetails`, `getCurrencyConversion`, `getChargebackDetails`
+5. **ShippingCostService** — 2 métodos: `getShipmentCosts`, `getOrderShipments`
+
+### Testes criados (5 arquivos, 32 testes)
+- `ClaimDisputeServiceTest.php` — 13 testes (6 métodos, cenários success/error/exception)
+- `PaymentRefundServiceTest.php` — 9 testes (3 métodos × 3 cenários)
+- `ShippingCostServiceTest.php` — 6 testes (2 métodos × 3 cenários)
+- `HealthCheckServiceTest.php` — 3 testes (success/API error/exception)
+- `QualityScoreServiceTest.php` — 4 testes (success/API error/exception + graceful degradation)
+
+### Resultado
+- Total testes: **2990** (era 2958), 0 failures, 34 skipped
+- Todos 32 novos testes passando
+- phpunit.xml atualizado com 5 novos <file> entries
+
 ## Sessão 2026-03-06 (9) — FIX-009: Fix silent error handling across ML services
 
 **Testes:** PHPUnit completo 2958 pass, 0 fail, 34 skipped (+5 novos)

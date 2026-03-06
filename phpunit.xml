@@ -150,6 +150,12 @@
             <file>tests/Unit/Services/SalesAnalyticsServiceTest.php</file>
             <file>tests/Unit/Services/Financial/SellerReputationServiceTest.php</file>
             <file>tests/Unit/Services/Financial/OrderFinancialServiceTest.php</file>
+            <!-- FIX-010: Unprotected ML API calls -->
+            <file>tests/Unit/Services/Financial/ClaimDisputeServiceTest.php</file>
+            <file>tests/Unit/Services/Financial/PaymentRefundServiceTest.php</file>
+            <file>tests/Unit/Services/Financial/ShippingCostServiceTest.php</file>
+            <file>tests/Unit/Services/Quality/HealthCheckServiceTest.php</file>
+            <file>tests/Unit/Services/Quality/QualityScoreServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

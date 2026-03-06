@@ -63,7 +63,19 @@ class HealthCheckService
      */
     public function checkItemHealth(string $itemId): array
     {
-        $item = $this->client->get("/items/{$itemId}");
+        try {
+            $item = $this->client->get("/items/{$itemId}");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar item para health check', [
+                'service' => 'HealthCheckService',
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
 
         if (isset($item['error'])) {
             return [

@@ -35,7 +35,19 @@ class ClaimDisputeService
             $params['stage'] = $stage;
         }
 
+        try {
         $response = $client->get('/post-purchase/v1/claims/search', $params);
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar reclamações', [
+                'service' => 'ClaimDisputeService',
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'results' => [],
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
@@ -92,7 +104,19 @@ class ClaimDisputeService
     {
         $client = $this->getClient();
 
-        $response = $client->get("/post-purchase/v1/claims/{$claimId}");
+        try {
+            $response = $client->get("/post-purchase/v1/claims/{$claimId}");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar detalhes da reclamação', [
+                'service' => 'ClaimDisputeService',
+                'claim_id' => $claimId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'data' => null,
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
@@ -159,7 +183,19 @@ class ClaimDisputeService
     {
         $client = $this->getClient();
 
-        $response = $client->get("/post-purchase/v1/claims/{$claimId}/affects-reputation");
+        try {
+            $response = $client->get("/post-purchase/v1/claims/{$claimId}/affects-reputation");
+        } catch (\Exception $e) {
+            log_error('Falha ao verificar impacto de reclamação na reputação', [
+                'service' => 'ClaimDisputeService',
+                'claim_id' => $claimId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'data' => null,
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
@@ -203,7 +239,19 @@ class ClaimDisputeService
     {
         $client = $this->getClient();
 
-        $response = $client->get("/post-purchase/v2/claims/{$claimId}/returns");
+        try {
+            $response = $client->get("/post-purchase/v2/claims/{$claimId}/returns");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar detalhes de devolução', [
+                'service' => 'ClaimDisputeService',
+                'claim_id' => $claimId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'data' => null,
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
@@ -279,10 +327,22 @@ class ClaimDisputeService
             $params['calculate_amount_usd'] = 'true';
         }
 
-        $response = $client->get(
-            "/post-purchase/v1/claims/{$claimId}/charges/return-cost",
-            $params
-        );
+        try {
+            $response = $client->get(
+                "/post-purchase/v1/claims/{$claimId}/charges/return-cost",
+                $params
+            );
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar custo de devolução', [
+                'service' => 'ClaimDisputeService',
+                'claim_id' => $claimId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'data' => null,
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
@@ -393,7 +453,19 @@ class ClaimDisputeService
     {
         $client = $this->getClient();
 
-        $response = $client->get("/post-purchase/v1/claims/{$claimId}/actions-history");
+        try {
+            $response = $client->get("/post-purchase/v1/claims/{$claimId}/actions-history");
+        } catch (\Exception $e) {
+            log_error('Falha ao buscar histórico de ações da reclamação', [
+                'service' => 'ClaimDisputeService',
+                'claim_id' => $claimId,
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'error' => $e->getMessage(),
+                'results' => [],
+            ];
+        }
 
         if (isset($response['error'])) {
             return [
