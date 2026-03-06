@@ -394,16 +394,23 @@ class AIPredictiveAnalyticsService
 
         $currentVal = $baseValue;
 
+        // Confidence base: mais fatores = mais confiável
+        $factorCount = count($factors);
+        $baseConfidence = min(0.9, 0.5 + ($factorCount * 0.1));
+
         for ($i = 1; $i <= $horizon; $i++) {
             // Apply regression factor
             // Logic: Base Trend + Factor Impact * Step
             $currentVal = $currentVal * (1 + 0.001); // minimal organic trend
             $currentVal += $currentVal * ($stepImpact * ($i / $horizon)); // ramping impact
 
+            // Confidence decai com o horizonte (predições mais distantes são menos confiáveis)
+            $horizonDecay = max(0.3, $baseConfidence - ($i * 0.01));
+
             $predictions[] = [
                 'date' => date('Y-m-d', strtotime("+{$i} days")),
                 'value' => round($currentVal, 2),
-                'confidence' => 0.8 // Fixed confidence for regression model
+                'confidence' => round($horizonDecay, 3)
             ];
         }
 
@@ -459,19 +466,37 @@ class AIPredictiveAnalyticsService
             $weightedSum = 0;
             $totalWeight = 0;
             $date = '';
+            $values = [];
 
             foreach ($weights as $model => $weight) {
                 if (isset($models[$model][$i])) {
-                    $weightedSum += $models[$model][$i]['value'] * $weight;
+                    $value = $models[$model][$i]['value'];
+                    $weightedSum += $value * $weight;
                     $totalWeight += $weight;
                     $date = $models[$model][$i]['date'];
+                    $values[] = $value;
                 }
+            }
+
+            // Confidence baseada no acordo entre modelos (baixa variância = alta confiança)
+            $confidence = 0.5;
+            if (count($values) >= 2 && $totalWeight > 0) {
+                $mean = array_sum($values) / count($values);
+                $variance = 0;
+                foreach ($values as $v) {
+                    $variance += ($v - $mean) ** 2;
+                }
+                $variance /= count($values);
+                // Coeficiente de variação normalizado
+                $cv = $mean > 0 ? sqrt($variance) / abs($mean) : 1.0;
+                // CV baixo (modelos concordam) = alta confiança
+                $confidence = min(0.95, max(0.4, 1.0 - $cv));
             }
 
             $ensemble[] = [
                 'date' => $date,
-                'value' => round($weightedSum / $totalWeight, 2),
-                'confidence' => min(0.95, $totalWeight)
+                'value' => round($weightedSum / max($totalWeight, 0.001), 2),
+                'confidence' => round($confidence, 3)
             ];
         }
 

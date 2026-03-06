@@ -390,22 +390,117 @@ class AdvancedSEOMaximizer
 
     private function extractKeywords(string $text): array
     {
-        // Implementar extração de keywords usando NLP básico
-        $words = preg_split('/[\s,.!?;:]+/', strtolower($text));
-        $keywords = array_filter($words, function ($word) {
-            return strlen($word) > 3 && !in_array($word, ['para', 'com', 'que', 'dos', 'das', 'nem', 'mas']);
+        $stopWords = [
+            'para',
+            'com',
+            'que',
+            'dos',
+            'das',
+            'nem',
+            'mas',
+            'por',
+            'como',
+            'mais',
+            'este',
+            'esta',
+            'esse',
+            'essa',
+            'pelo',
+            'pela',
+            'seus',
+            'suas',
+            'qual',
+            'cada',
+            'todo',
+            'toda',
+            'todos',
+            'todas',
+            'muito',
+            'muita',
+            'quando',
+            'onde',
+            'aqui',
+            'sobre',
+            'entre',
+            'depois',
+            'antes',
+            'desde',
+            'ainda',
+            'foram',
+            'sido',
+            'pode',
+            'será',
+            'tipo',
+            'unid',
+            'pçs',
+            'jogo',
+            'peca',
+            'peça',
+        ];
+
+        $words = preg_split('/[\s,.!?;:()\[\]\/\-]+/', mb_strtolower($text, 'UTF-8'));
+        $words = array_filter($words, function (string $word) use ($stopWords): bool {
+            return mb_strlen($word) > 2
+                && !in_array($word, $stopWords, true)
+                && !is_numeric($word);
         });
-        return array_unique($keywords);
+
+        // Gerar bigrams para termos compostos
+        $wordList = array_values($words);
+        $bigrams = [];
+        for ($i = 0, $len = count($wordList) - 1; $i < $len; $i++) {
+            $bigrams[] = $wordList[$i] . ' ' . $wordList[$i + 1];
+        }
+
+        return array_values(array_unique(array_merge($wordList, $bigrams)));
     }
 
     private function optimizeTitleStructure(string $title, array $itemData): string
     {
         // Estrutura ideal: [Marca] + [Modelo] + [Característica Principal] + [Benefício]
-        $keywords = $this->extractKeywords($title);
+        $attributes = $itemData['attributes'] ?? [];
 
-        // Implementar lógica de reestruturação
-        // Por enquanto, retorna o título original
-        return $title;
+        $brand = '';
+        $model = '';
+        foreach ($attributes as $attr) {
+            $id = $attr['id'] ?? '';
+            $value = $attr['value_name'] ?? '';
+            if ($id === 'BRAND' && $value !== '') {
+                $brand = $value;
+            }
+            if (in_array($id, ['MODEL', 'VEHICLE_MODEL'], true) && $value !== '') {
+                $model = $value;
+            }
+        }
+
+        // Se não há marca/modelo extraíveis, não reestruturar
+        if ($brand === '' && $model === '') {
+            return $title;
+        }
+
+        // Remover marca e modelo existentes do título para evitar duplicação
+        $cleanTitle = $title;
+        if ($brand !== '' && stripos($cleanTitle, $brand) !== false) {
+            $cleanTitle = trim(str_ireplace($brand, '', $cleanTitle));
+        }
+        if ($model !== '' && stripos($cleanTitle, $model) !== false) {
+            $cleanTitle = trim(str_ireplace($model, '', $cleanTitle));
+        }
+
+        // Limpar espaços/separadores múltiplos
+        $cleanTitle = trim(preg_replace('/\s{2,}/', ' ', $cleanTitle));
+        $cleanTitle = trim($cleanTitle, ' -–/');
+
+        // Reconstruir: [Marca] [Modelo] [Resto do título]
+        $parts = array_filter([$brand, $model, $cleanTitle]);
+        $newTitle = implode(' ', $parts);
+
+        // Respeitar limite de 60 caracteres do ML
+        if (mb_strlen($newTitle) > 60) {
+            $newTitle = mb_substr($newTitle, 0, 57) . '...';
+        }
+
+        return $newTitle;
     }
 
     private function addPowerWords(string $title, array $category): string
@@ -435,8 +530,37 @@ class AdvancedSEOMaximizer
 
     private function isPowerWordRelevant(string $word, string $category): bool
     {
-        // Implementar lógica de relevância baseada na categoria
-        return true; // Simplificado
+        $categoryLower = mb_strtolower($category, 'UTF-8');
+
+        // Mapeamento de relevância: tipo de power word → categorias onde se aplica
+        $categoryMap = [
+            'premium'  => ['eletrônic', 'celular', 'informátic', 'acessório', 'relógi'],
+            'luxo'     => ['moda', 'jóia', 'relógi', 'perfum', 'acessório'],
+            'profissional' => ['ferramenta', 'esporte', 'fitness', 'instrument', 'equip'],
+            'resistente' => ['esporte', 'outdoor', 'moto', 'auto', 'ferramenta', 'peça'],
+            'original' => ['peça', 'auto', 'moto', 'celular', 'eletrônic'],
+            'garantia' => ['eletrônic', 'celular', 'informátic', 'eletrodoméstic'],
+            'confortável' => ['moda', 'calçado', 'móve', 'colchã'],
+            'moderno'  => ['decoraç', 'móve', 'moda', 'eletrônic'],
+            'testado'  => ['esporte', 'auto', 'moto', 'saúde'],
+            'certificado' => ['eletrônic', 'saúde', 'aliment', 'cosmético'],
+        ];
+
+        $wordLower = mb_strtolower($word, 'UTF-8');
+        $relevantCategories = $categoryMap[$wordLower] ?? null;
+
+        // Se não temos mapeamento específico, considerar relevante
+        if ($relevantCategories === null) {
+            return true;
+        }
+
+        foreach ($relevantCategories as $fragment) {
+            if (mb_strpos($categoryLower, $fragment) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function optimizeForMobile(string $title): string

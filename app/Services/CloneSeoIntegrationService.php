@@ -9,16 +9,16 @@ use PDO;
 
 /**
  * Service para integração SEO no sistema de clonagem
- * 
+ *
  * Aplica otimizações SEO automáticas aos anúncios clonados:
  * - Análise e otimização de título
  * - Otimização de descrição
  * - Validação de atributos obrigatórios
  * - Recomendações de imagens
  * - Análise de keywords
- * 
+ *
  * Integra com o SeoAnalyzerService existente
- * 
+ *
  * @package App\Services
  */
 class CloneSeoIntegrationService
@@ -45,7 +45,7 @@ class CloneSeoIntegrationService
 
     /**
      * Analisar item antes da clonagem
-     * 
+     *
      * @param string $itemId ID do item original
      * @param string $optimizationLevel Nível de otimização
      * @return array{
@@ -75,7 +75,7 @@ class CloneSeoIntegrationService
 
         $score = $analysis['score'] ?? 0;
         $grade = $analysis['grade'] ?? 'F';
-        
+
         // Decidir se deve clonar baseado no score
         $shouldClone = $score >= self::MIN_SCORE_THRESHOLD;
 
@@ -104,7 +104,7 @@ class CloneSeoIntegrationService
 
     /**
      * Aplicar otimizações SEO a dados de item
-     * 
+     *
      * @param array $itemData Dados do item a clonar
      * @param string $optimizationLevel Nível de otimização
      * @param array $options Opções adicionais
@@ -148,7 +148,7 @@ class CloneSeoIntegrationService
 
     /**
      * Otimizações básicas
-     * 
+     *
      * @param array $item
      * @param array $options
      * @return array
@@ -178,7 +178,7 @@ class CloneSeoIntegrationService
 
     /**
      * Otimizações avançadas
-     * 
+     *
      * @param array $item
      * @param array $options
      * @return array
@@ -216,7 +216,7 @@ class CloneSeoIntegrationService
 
     /**
      * Otimizações agressivas
-     * 
+     *
      * @param array $item
      * @param array $options
      * @return array
@@ -244,7 +244,7 @@ class CloneSeoIntegrationService
 
     /**
      * Otimizar título
-     * 
+     *
      * @param string $title Título original
      * @param string $level 'basic' ou 'advanced'
      * @param array $context Contexto adicional
@@ -264,9 +264,18 @@ class CloneSeoIntegrationService
 
         // Remover termos proibidos
         $forbiddenWords = [
-            'promoção', 'oferta', 'desconto', 'barato', 'liquidação',
-            'imperdível', 'oportunidade', 'aproveite', 'compre já',
-            'melhor preço', 'menor preço', 'frete grátis',
+            'promoção',
+            'oferta',
+            'desconto',
+            'barato',
+            'liquidação',
+            'imperdível',
+            'oportunidade',
+            'aproveite',
+            'compre já',
+            'melhor preço',
+            'menor preço',
+            'frete grátis',
         ];
 
         foreach ($forbiddenWords as $word) {
@@ -298,7 +307,7 @@ class CloneSeoIntegrationService
 
     /**
      * Adicionar keywords estratégicas ao título
-     * 
+     *
      * @param string $title
      * @param string $categoryId
      * @return string
@@ -307,7 +316,7 @@ class CloneSeoIntegrationService
     {
         // Keywords de alto impacto
         $highImpactWords = ['Original', 'Novo', 'Lacrado', 'Garantia', 'Nota Fiscal'];
-        
+
         // Verificar se já tem alguma
         $hasKeyword = false;
         foreach ($highImpactWords as $word) {
@@ -327,7 +336,7 @@ class CloneSeoIntegrationService
 
     /**
      * Limpar descrição de termos proibidos
-     * 
+     *
      * @param string $description
      * @return string
      */
@@ -350,7 +359,7 @@ class CloneSeoIntegrationService
 
     /**
      * Enriquecer descrição com informações SEO
-     * 
+     *
      * @param string $description
      * @param array $item
      * @return string
@@ -360,7 +369,7 @@ class CloneSeoIntegrationService
         // Se descrição muito curta, adicionar seção de especificações
         if (mb_strlen($description) < 500 && !empty($item['attributes'])) {
             $description .= "\n\n📋 ESPECIFICAÇÕES TÉCNICAS:\n";
-            
+
             foreach ($item['attributes'] as $attr) {
                 if (!empty($attr['value_name'])) {
                     $description .= "\n• {$attr['name']}: {$attr['value_name']}";
@@ -378,7 +387,7 @@ class CloneSeoIntegrationService
 
     /**
      * Reescrever título completamente
-     * 
+     *
      * @param string $originalTitle
      * @param array $item
      * @return string
@@ -388,7 +397,7 @@ class CloneSeoIntegrationService
         // Extrair informações chave
         $brand = '';
         $model = '';
-        
+
         if (!empty($item['attributes'])) {
             foreach ($item['attributes'] as $attr) {
                 if ($attr['id'] === 'BRAND') {
@@ -401,14 +410,14 @@ class CloneSeoIntegrationService
 
         // Construir título otimizado
         $parts = array_filter([$brand, $model]);
-        
+
         if (empty($parts)) {
             // Usar título original otimizado
             return $this->optimizeTitle($originalTitle, 'advanced', ['category_id' => $item['category_id'] ?? '']);
         }
 
         $newTitle = implode(' ', $parts);
-        
+
         // Adicionar keyword de impacto
         $newTitle .= ' - Original Novo com Garantia';
 
@@ -422,7 +431,7 @@ class CloneSeoIntegrationService
 
     /**
      * Reescrever descrição com template SEO
-     * 
+     *
      * @param string $originalDescription
      * @param array $item
      * @return string
@@ -443,7 +452,7 @@ class CloneSeoIntegrationService
         if (!empty($item['attributes'])) {
             $sections[] = "📋 ESPECIFICAÇÕES TÉCNICAS:";
             $sections[] = "";
-            
+
             foreach ($item['attributes'] as $attr) {
                 if (!empty($attr['value_name'])) {
                     $sections[] = "• {$attr['name']}: {$attr['value_name']}";
@@ -468,7 +477,7 @@ class CloneSeoIntegrationService
 
     /**
      * Garantir atributos obrigatórios
-     * 
+     *
      * @param array $attributes
      * @param string $categoryId
      * @return array
@@ -477,10 +486,10 @@ class CloneSeoIntegrationService
     {
         // Obter atributos obrigatórios da categoria
         $categoryAttrs = $this->getCategoryRequiredAttributes($categoryId);
-        
+
         // Verificar quais faltam
         $existingIds = array_column($attributes, 'id');
-        
+
         foreach ($categoryAttrs as $required) {
             if (!in_array($required['id'], $existingIds)) {
                 // Adicionar com valor padrão se possível
@@ -496,7 +505,7 @@ class CloneSeoIntegrationService
 
     /**
      * Adicionar atributos recomendados
-     * 
+     *
      * @param array $attributes
      * @param string $categoryId
      * @param array $item
@@ -506,9 +515,9 @@ class CloneSeoIntegrationService
     {
         // Atributos SEO importantes
         $seoAttributes = ['BRAND', 'MODEL', 'GTIN', 'MPN'];
-        
+
         $existingIds = array_column($attributes, 'id');
-        
+
         foreach ($seoAttributes as $attrId) {
             if (!in_array($attrId, $existingIds)) {
                 // Tentar inferir do título
@@ -527,7 +536,7 @@ class CloneSeoIntegrationService
 
     /**
      * Inferir atributos faltantes
-     * 
+     *
      * @param array $attributes
      * @param array $item
      * @return array
@@ -535,7 +544,7 @@ class CloneSeoIntegrationService
     private function inferMissingAttributes(array $attributes, array $item): array
     {
         $title = $item['title'] ?? '';
-        
+
         // Inferir BRAND
         if (!$this->hasAttribute($attributes, 'BRAND')) {
             $brand = $this->inferBrand($title);
@@ -549,22 +558,40 @@ class CloneSeoIntegrationService
 
     /**
      * Otimizar ordem das imagens
-     * 
+     *
      * @param array $pictures
      * @return array
      */
     private function optimizeImageOrder(array $pictures): array
     {
-        // Priorizar imagens com fundo branco
-        // Priorizar imagens de alta resolução
-        // (Implementação simplificada)
-        
+        if (count($pictures) <= 1) {
+            return $pictures;
+        }
+
+        // Classificar imagens por qualidade (maior resolução primeiro)
+        usort($pictures, function (array $a, array $b): int {
+            $aSize = ($a['max_size'] ?? $a['size'] ?? '0x0');
+            $bSize = ($b['max_size'] ?? $b['size'] ?? '0x0');
+
+            // Extrair resolução (ex: "1200x1200")
+            $aPixels = 0;
+            $bPixels = 0;
+            if (preg_match('/(\d+)x(\d+)/', (string)$aSize, $m)) {
+                $aPixels = (int)$m[1] * (int)$m[2];
+            }
+            if (preg_match('/(\d+)x(\d+)/', (string)$bSize, $m)) {
+                $bPixels = (int)$m[1] * (int)$m[2];
+            }
+
+            return $bPixels <=> $aPixels;
+        });
+
         return $pictures;
     }
 
     /**
      * Detectar mudanças aplicadas
-     * 
+     *
      * @param array $original
      * @param array $optimized
      * @return array
@@ -601,7 +628,7 @@ class CloneSeoIntegrationService
 
     /**
      * Gerar sugestões de otimização
-     * 
+     *
      * @param array $analysis
      * @param string $level
      * @return array
@@ -643,7 +670,7 @@ class CloneSeoIntegrationService
 
     /**
      * Obter atributos obrigatórios da categoria
-     * 
+     *
      * @param string $categoryId
      * @return array
      */
@@ -652,7 +679,7 @@ class CloneSeoIntegrationService
         // Cache de 24h
         $cacheKey = "category_required_attrs_{$categoryId}";
         $cached = $this->getFromCache($cacheKey);
-        
+
         if ($cached !== null) {
             return $cached;
         }
@@ -672,15 +699,15 @@ class CloneSeoIntegrationService
         } catch (\Exception $e) {
             $required = [];
         }
-        
+
         $this->saveToCache($cacheKey, $required, 86400);
-        
+
         return $required;
     }
 
     /**
      * Inferir atributo do título
-     * 
+     *
      * @param string $attrId
      * @param string $title
      * @return string|null
@@ -696,7 +723,7 @@ class CloneSeoIntegrationService
 
     /**
      * Inferir marca do título
-     * 
+     *
      * @param string $title
      * @return string|null
      */
@@ -704,7 +731,7 @@ class CloneSeoIntegrationService
     {
         // Lista de marcas conhecidas
         $knownBrands = ['Samsung', 'Apple', 'LG', 'Sony', 'Xiaomi', 'Motorola', 'Nokia'];
-        
+
         foreach ($knownBrands as $brand) {
             if (stripos($title, $brand) !== false) {
                 return $brand;
@@ -716,7 +743,7 @@ class CloneSeoIntegrationService
 
     /**
      * Verificar se atributo existe
-     * 
+     *
      * @param array $attributes
      * @param string $attrId
      * @return bool
@@ -733,19 +760,23 @@ class CloneSeoIntegrationService
 
     /**
      * Obter do cache
-     * 
+     *
      * @param string $key
      * @return mixed|null
      */
     private function getFromCache(string $key)
     {
-        // Implementação simplificada
-        return null;
+        try {
+            $cache = new CacheService();
+            return $cache->get($key);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
      * Salvar no cache
-     * 
+     *
      * @param string $key
      * @param mixed $value
      * @param int $ttl
@@ -753,12 +784,17 @@ class CloneSeoIntegrationService
      */
     private function saveToCache(string $key, $value, int $ttl): void
     {
-        // Implementação simplificada
+        try {
+            $cache = new CacheService();
+            $cache->set($key, $value, $ttl);
+        } catch (\Exception $e) {
+            // Cache indisponível, continuar sem cache
+        }
     }
 
     /**
      * Registrar otimização SEO no banco
-     * 
+     *
      * @param int $jobId
      * @param string $itemId
      * @param array $before
