@@ -1,0 +1,41 @@
+{
+  "name": "eskill-copilot-autonomy",
+  "image": "mcr.microsoft.com/devcontainers/php:1-8.2-bookworm",
+  "remoteUser": "vscode",
+  "runArgs": [
+    "--init"
+  ],
+  "forwardPorts": [
+    80,
+    3307
+  ],
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "chat.tools.autoApprove": true,
+        "chat.tools.terminal.autoApprove": true,
+        "chat.tools.terminal.autoApproveWorkspaceNpmScripts": true,
+        "github.copilot.chat.claudeAgent.allowDangerouslySkipPermissions": true,
+        "github.copilot.chat.backgroundAgent.enabled": true,
+        "github.copilot.chat.cloudAgent.enabled": true,
+        "github.copilot.chat.githubMcpServer.enabled": true,
+        "github.copilot.chat.codeGeneration.useInstructionFiles": true
+      },
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "bmewburn.vscode-intelephense-client",
+        "eamodio.gitlens",
+        "codacy.codacy",
+        "upstash.context7-mcp"
+      ]
+    }
+  }
+}

@@ -6,6 +6,23 @@
 
 ---
 
+## Sessão 2026-03-06 (12) — ENV-AUTO-01: Workspace autonomy and safe auto-approve container
+
+### O que foi feito
+- Verificada a configuração atual do workspace: `.vscode/settings.json` já estava com `chat.tools.autoApprove=true` e `chat.tools.terminal.autoApprove=true`
+- Implementado um **Dev Container** dedicado para rodar agents com autonomia agressiva em ambiente isolado
+- Adicionada recomendação da extensão **Remote - Containers** para facilitar adoção do modo isolado
+
+### Arquivos alterados
+1. **`.vscode/extensions.json`** — recomendação de `ms-vscode-remote.remote-containers`
+2. **`.devcontainer/devcontainer.json`** — novo container com PHP 8.2 + Node 20, auto-approve, cloud/background agent e `allowDangerouslySkipPermissions` no contexto isolado
+3. **`.devcontainer/post-create.sh`** — bootstrap leve: `safe.directory`, diretórios `storage/*` e permissões básicas
+
+### Resultado
+- O workspace continua com auto-approve agressivo no host
+- Agora existe uma opção segura para máxima autonomia dentro de container isolado
+- Codacy local nos 3 arquivos novos/alterados: **sem issues**
+
 ## Sessão 2026-03-06 (11) — AUDIT-ML-01: Harden auth/client config and retry foundations
 
 ### O que foi feito

@@ -1,0 +1,22 @@
+{
+    "recommendations": [
+        // Dev Container / isolamento seguro para autonomia máxima
+        "ms-vscode-remote.remote-containers",
+        // PHP
+        "bmewburn.vscode-intelephense-client",
+        "xdebug.php-debug",
+        "neilbrayfield.php-docblocker",
+        // Copilot
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        // Git
+        "eamodio.gitlens",
+        // Codacy
+        "codacy.codacy",
+        // Context7 MCP
+        "upstash.context7-mcp",
+        // Code quality
+        "EditorConfig.EditorConfig",
+        "esbenp.prettier-vscode"
+    ]
+}
