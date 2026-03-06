@@ -146,6 +146,10 @@
             <file>tests/Unit/Services/WhatsAppServiceTest.php</file>
             <file>tests/Unit/Services/TelegramServiceTest.php</file>
             <file>tests/Unit/Controllers/MultiAccountControllerTest.php</file>
+            <!-- FIX-008: ML order capability hardening -->
+            <file>tests/Unit/Services/SalesAnalyticsServiceTest.php</file>
+            <file>tests/Unit/Services/Financial/SellerReputationServiceTest.php</file>
+            <file>tests/Unit/Services/Financial/OrderFinancialServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

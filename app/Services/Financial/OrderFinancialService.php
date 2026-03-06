@@ -66,6 +66,15 @@ class OrderFinancialService
 
         $response = $client->get('/orders/search', $params);
 
+        if ($this->isOrdersCapabilityUnavailable($response)) {
+            return [
+                'error' => 'orders_access_unavailable',
+                'feature_unavailable' => true,
+                'results' => [],
+                'paging' => ['total' => 0, 'offset' => $offset, 'limit' => $limit],
+            ];
+        }
+
         if (isset($response['error'])) {
             return [
                 'error' => $response['message'] ?? 'Erro ao buscar pedidos',
@@ -183,6 +192,16 @@ class OrderFinancialService
 
         while ($hasMore) {
             $response = $this->getOrdersFromApi($startDate, $endDate, $limit, $offset);
+
+            if (!empty($response['feature_unavailable'])) {
+                return [
+                    'success' => false,
+                    'error' => $response['error'],
+                    'feature_unavailable' => true,
+                    'synced' => $synced,
+                    'period' => ['start' => $startDate, 'end' => $endDate],
+                ];
+            }
 
             if (isset($response['error'])) {
                 $errors[] = $response['error'];
@@ -851,6 +870,15 @@ class OrderFinancialService
         $query = http_build_query($params);
         $data = $client->get("/merchant_orders/search?{$query}");
 
+        if ($this->isMerchantOrdersCapabilityUnavailable($data)) {
+            return [
+                'error' => 'merchant_orders_unavailable',
+                'feature_unavailable' => true,
+                'total' => 0,
+                'elements' => [],
+            ];
+        }
+
         if (isset($data['error'])) {
             return ['error' => $data['message'] ?? 'Erro ao buscar merchant orders'];
         }
@@ -880,5 +908,27 @@ class OrderFinancialService
                 ];
             }, $data['elements'] ?? []),
         ];
+    }
+
+    /**
+     * Verifica se a resposta da API indica que a capability de orders não está disponível
+     */
+    private function isOrdersCapabilityUnavailable(array $response): bool
+    {
+        return isset($response['error'])
+            && $response['error'] === 'orders_access_unavailable'
+            && ($response['feature'] ?? null) === 'orders'
+            && ($response['optional_feature'] ?? false) === true;
+    }
+
+    /**
+     * Verifica se a resposta da API indica que a capability de merchant_orders não está disponível
+     */
+    private function isMerchantOrdersCapabilityUnavailable(array $response): bool
+    {
+        return isset($response['error'])
+            && $response['error'] === 'merchant_orders_unavailable'
+            && ($response['feature'] ?? null) === 'merchant_orders'
+            && ($response['optional_feature'] ?? false) === true;
     }
 }

@@ -176,7 +176,7 @@ class AccountHealthService
 
         // Verificar se os dados são reais ou mock
         $dataQuality = $this->assessDataQuality($pillars);
-        
+
         $result = [
             'overall_score'      => $overallScore,
             'overall_level'      => $this->getScoreLevel($overallScore),
@@ -460,7 +460,6 @@ class AccountHealthService
                 'cancellations' => ['score' => $cancelScore, 'max' => 15, 'label' => 'Cancelamentos'],
                 'delays'        => ['score' => $delayScore, 'max' => 10, 'label' => 'Atrasos no Despacho'],
             ];
-
         } catch (\Exception $e) {
             log_error('Erro no pilar Reputação', [
                 'account_id' => $this->accountId,
@@ -773,7 +772,6 @@ class AccountHealthService
                     }
                 }
             }
-
         } catch (\Exception $e) {
             log_error('Erro no pilar SEO Quality', [
                 'account_id' => $this->accountId,
@@ -997,7 +995,7 @@ class AccountHealthService
         // ======== TOTAL (0-100) ========
         // Título 20 + Imagens 20 + Atributos 20 + Descrição 10 + Envio 20 + ML Bônus 10
         $totalScore = $titleScore + $imagesScore + $attributesScore
-                    + $descriptionScore + $shippingScore + $mlBonus;
+            + $descriptionScore + $shippingScore + $mlBonus;
         $totalScore = max(0, min(100, $totalScore));
 
         return [
@@ -1268,7 +1266,6 @@ class AccountHealthService
                     'count'    => count($lowSales),
                 ];
             }
-
         } catch (\Exception $e) {
             log_error('Erro no pilar Competitividade', [
                 'account_id' => $this->accountId,
@@ -1550,7 +1547,6 @@ class AccountHealthService
 
                 $details['fulfillment_enabled'] = $fullEnabled;
                 $details['shipping_modes'] = $modes;
-
             } catch (\Exception $e) {
                 $fullEnabled = false;
                 $details['fulfillment_enabled'] = false;
@@ -1578,22 +1574,36 @@ class AccountHealthService
                     'order.date_created.from' => $since30d,
                     'limit' => 1,
                 ]);
-                $totalOrders = (int)($recentOrders['paging']['total'] ?? 0);
 
-                $cancelledOrders = 0;
-                try {
-                    $cancelledResult = $this->client->get('/orders/search', [
-                        'seller' => $sellerId,
-                        'order.status' => 'cancelled',
-                        'order.date_created.from' => $since30d,
-                        'limit' => 1,
-                    ]);
-                    $cancelledOrders = (int)($cancelledResult['paging']['total'] ?? 0);
-                } catch (\Exception $e) {
-                    log_warning('Falha ao buscar pedidos cancelados', [
+                if (isset($recentOrders['error'])
+                    && $recentOrders['error'] === 'orders_access_unavailable'
+                    && ($recentOrders['feature'] ?? null) === 'orders'
+                    && ($recentOrders['optional_feature'] ?? false) === true
+                ) {
+                    log_info('AccountHealthService: orders capability unavailable — skipping order metrics', [
                         'account_id' => $this->accountId,
-                        'error' => $e->getMessage(),
+                        'seller_id' => $sellerId,
                     ]);
+                    $totalOrders = 0;
+                    $cancelledOrders = 0;
+                } else {
+                    $totalOrders = (int)($recentOrders['paging']['total'] ?? 0);
+
+                    $cancelledOrders = 0;
+                    try {
+                        $cancelledResult = $this->client->get('/orders/search', [
+                            'seller' => $sellerId,
+                            'order.status' => 'cancelled',
+                            'order.date_created.from' => $since30d,
+                            'limit' => 1,
+                        ]);
+                        $cancelledOrders = (int)($cancelledResult['paging']['total'] ?? 0);
+                    } catch (\Exception $e) {
+                        log_warning('Falha ao buscar pedidos cancelados', [
+                            'account_id' => $this->accountId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
 
                 $details['orders_30d'] = $totalOrders;
@@ -1606,7 +1616,6 @@ class AccountHealthService
                     $cancelPct <= 0.10 => 6,
                     default            => 0,
                 };
-
             } catch (\Exception $e) {
                 $ordersScore = 8;
                 $details['orders_30d'] = 0;
@@ -1688,7 +1697,6 @@ class AccountHealthService
                     $details['top_claim_reason'] = $topReason;
                     $details['top_claim_reason_count'] = $recentClaimReasons[$topReason];
                 }
-
             } catch (\Exception $e) {
                 log_warning('Falha ao buscar reclamações', [
                     'account_id' => $this->accountId,
@@ -1747,7 +1755,6 @@ class AccountHealthService
                         'count'    => $inactiveTotal,
                     ];
                 }
-
             } catch (\Exception $e) {
                 log_warning('Falha ao verificar itens de compliance', [
                     'account_id' => $this->accountId,
@@ -1772,7 +1779,6 @@ class AccountHealthService
             $details['cancel_rate'] = isset($details['orders_30d']) && $details['orders_30d'] > 0
                 ? round(($details['cancelled_30d'] ?? 0) / $details['orders_30d'] * 100, 1)
                 : 0;
-
         } catch (\Exception $e) {
             log_error('Erro no pilar Operação', [
                 'account_id' => $this->accountId,
@@ -1960,7 +1966,6 @@ class AccountHealthService
                     'error' => $e->getMessage(),
                 ]);
             }
-
         } catch (\Exception $e) {
             log_error('Erro no pilar Vendas', [
                 'account_id' => $this->accountId,
@@ -2031,7 +2036,6 @@ class AccountHealthService
                 'revenue_growth'     => $revenueGrowth,
                 'total_active_items' => $activeItems,
             ];
-
         } catch (\Exception $e) {
             log_error('Erro na comparação de vendas', [
                 'account_id' => $this->accountId,
@@ -2060,6 +2064,18 @@ class AccountHealthService
 
             // Primeiro request para pegar o total
             $response = $this->client->get('/orders/search', $params);
+
+            if (isset($response['error'])
+                && $response['error'] === 'orders_access_unavailable'
+                && ($response['feature'] ?? null) === 'orders'
+                && ($response['optional_feature'] ?? false) === true
+            ) {
+                log_info('AccountHealthService: orders capability unavailable — returning zero stats', [
+                    'seller_id' => $sellerId,
+                ]);
+                return ['count' => 0, 'revenue' => 0];
+            }
+
             $totalOrders = (int)($response['paging']['total'] ?? 0);
 
             // Calcular receita dos primeiros resultados
@@ -2094,7 +2110,6 @@ class AccountHealthService
             }
 
             return ['count' => $totalOrders, 'revenue' => $revenue];
-
         } catch (\Exception $e) {
             return ['count' => 0, 'revenue' => 0];
         }
@@ -2296,7 +2311,6 @@ class AccountHealthService
                     'recommendation'      => $this->getStaleRecommendation($stalePercent, $totalStale),
                 ],
             ];
-
         } catch (\Exception $e) {
             log_error('Erro ao analisar anúncios parados', [
                 'account_id' => $this->accountId,
@@ -2499,7 +2513,6 @@ class AccountHealthService
             }
 
             return $items;
-
         } catch (\Exception $e) {
             log_error('Erro ao buscar itens que precisam de atenção', [
                 'account_id' => $this->accountId,
@@ -2542,7 +2555,7 @@ class AccountHealthService
                     default    => 1,
                 };
 
-                // Impact score: combina peso do pilar, gap e severidade  
+                // Impact score: combina peso do pilar, gap e severidade
                 // Range: 0-100 (maior = mais impactante)
                 $impactScore = (int) min(100, round(
                     ($pillarWeight / 25) * ($pillarGap / 100) * $severityMultiplier * 33
@@ -2856,9 +2869,9 @@ class AccountHealthService
                 $cat['zero_sales_pct'] = round($cat['zero_sales'] / $total * 100, 1);
                 $cat['issue_score'] = round(
                     ($cat['zero_sales'] / $total * 30) +
-                    ($cat['low_health'] / $total * 25) +
-                    ($cat['no_free_ship'] / $total * 25) +
-                    ($cat['not_premium'] / $total * 20),
+                        ($cat['low_health'] / $total * 25) +
+                        ($cat['no_free_ship'] / $total * 25) +
+                        ($cat['not_premium'] / $total * 20),
                     1
                 );
                 $cat['avg_sales'] = round($cat['total_sales'] / $total, 1);
@@ -3146,7 +3159,7 @@ class AccountHealthService
                 'type'     => 'no_data',
                 'severity' => 'critical',
                 'message'  => $reason,
-                'impact'   => $name === 'reputation' && str_contains($reason, 'conectada') 
+                'impact'   => $name === 'reputation' && str_contains($reason, 'conectada')
                     ? 'Sem conexão, não é possível obter dados reais do Mercado Livre'
                     : 'Dados indisponíveis para análise',
                 'action'   => $name === 'reputation' && str_contains($reason, 'conectada')
@@ -3169,7 +3182,7 @@ class AccountHealthService
         foreach ($pillars as $key => $pillar) {
             $score = $pillar['score'] ?? 0;
             $details = $pillar['details'] ?? [];
-            
+
             // Verificar se é empty/mock
             if (isset($details['error']) || isset($details['is_mock'])) {
                 $emptyPillars++;
@@ -3411,7 +3424,7 @@ class AccountHealthService
 
             // Get user detailed info
             $user = $this->client->get("/users/{$sellerId}");
-            
+
             // Get shipping preferences
             $shippingPrefs = null;
             try {
@@ -3437,7 +3450,7 @@ class AccountHealthService
             // Build diagnostic
             $verificationStatus = $this->assessVerificationStatus($user);
             $featureAvailability = $this->assessFeatureAvailability($user, $shippingPrefs);
-            
+
             return [
                 'score' => $this->calculateAccountStatusScore($verificationStatus, $featureAvailability, $isOfficialStore),
                 'verification' => $verificationStatus,
@@ -3461,7 +3474,7 @@ class AccountHealthService
     private function assessVerificationStatus(array $user): array
     {
         $status = $user['status'] ?? [];
-        
+
         return [
             'site_status' => $status['site_status'] ?? 'unknown',
             'confirmed_email' => ($status['confirmed_email'] ?? false),
@@ -3476,7 +3489,7 @@ class AccountHealthService
     private function assessFeatureAvailability(array $user, ?array $shippingPrefs): array
     {
         $tags = $user['tags'] ?? [];
-        
+
         return [
             'mercado_envios' => in_array('normal', $tags) || in_array('mshops', $tags),
             'mercado_pago' => in_array('mercadopago_account', $tags) || in_array('eshop', $tags),
@@ -3492,27 +3505,27 @@ class AccountHealthService
     private function calculateAccountStatusScore(array $verification, array $features, bool $officialStore): int
     {
         $score = 0;
-        
+
         // Verification (40 points)
         if ($verification['is_verified']) $score += 30;
         if ($verification['confirmed_email']) $score += 10;
-        
+
         // Features (40 points)
         if ($features['mercado_envios']) $score += 10;
         if ($features['mercado_pago']) $score += 10;
         if ($features['catalog_enabled']) $score += 10;
         if ($features['full_eligible']) $score += 10;
-        
+
         // Official Store (20 points bonus)
         if ($officialStore) $score += 20;
-        
+
         return min(100, $score);
     }
 
     private function generateAccountStatusRecommendations(array $verification, array $features): array
     {
         $recommendations = [];
-        
+
         if (!$verification['confirmed_email']) {
             $recommendations[] = [
                 'priority' => 'critical',
@@ -3521,7 +3534,7 @@ class AccountHealthService
                 'link' => '/settings/profile',
             ];
         }
-        
+
         if (!$features['mercado_pago']) {
             $recommendations[] = [
                 'priority' => 'high',
@@ -3530,7 +3543,7 @@ class AccountHealthService
                 'link' => 'https://www.mercadopago.com.br',
             ];
         }
-        
+
         if (!$features['mercado_envios']) {
             $recommendations[] = [
                 'priority' => 'high',
@@ -3539,7 +3552,7 @@ class AccountHealthService
                 'link' => '/settings/shipping',
             ];
         }
-        
+
         if ($features['full_eligible'] && !in_array('logistics', $features['available_tags'] ?? [])) {
             $recommendations[] = [
                 'priority' => 'medium',
@@ -3548,7 +3561,7 @@ class AccountHealthService
                 'link' => 'https://vendedores.mercadolivre.com.br/nota/envio-full-o-que-e',
             ];
         }
-        
+
         return $recommendations;
     }
 
@@ -3592,7 +3605,7 @@ class AccountHealthService
             $questions = $recent['questions'] ?? [];
             $metrics = $this->calculateQuestionMetrics($questions);
             $unansweredList = $unanswered['questions'] ?? [];
-            
+
             $score = $this->calculateCustomerServiceScore($metrics, count($unansweredList));
 
             return [
@@ -3630,7 +3643,7 @@ class AccountHealthService
 
             if ($status === 'ANSWERED') {
                 $answered++;
-                
+
                 // Calculate response time
                 if (!empty($q['date_created']) && !empty($q['answer']['date_created'])) {
                     $created = strtotime($q['date_created']);
@@ -3672,10 +3685,10 @@ class AccountHealthService
 
         foreach ($unanswered as $q) {
             if (empty($q['date_created'])) continue;
-            
+
             $created = strtotime($q['date_created']);
             $ageHours = ($now - $created) / 3600;
-            
+
             if ($ageHours > 6) { // Urgent after 6 hours
                 $urgent[] = [
                     'id' => $q['id'] ?? null,
@@ -3786,16 +3799,16 @@ class AccountHealthService
             }
 
             $items = $this->getCachedActiveItems();
-            
+
             // Analyze catalog participation
             $catalogItems = array_filter($items, fn($item) => !empty($item['catalog_product_id']));
             $nonCatalogItems = array_filter($items, fn($item) => empty($item['catalog_product_id']));
-            
+
             $catalogRatio = count($items) > 0 ? (count($catalogItems) / count($items)) * 100 : 0;
-            
+
             // Check for duplicates (simplified)
             $duplicates = $this->detectDuplicateListings($items);
-            
+
             // Calculate score
             $score = $this->calculateCatalogHealthScore($catalogRatio, count($duplicates), count($items));
 

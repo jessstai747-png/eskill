@@ -568,11 +568,23 @@ class CloneROIAnalysisService
                             'order.date_created.from' => date('Y-m-d\TH:i:s.000-00:00', strtotime('-30 days')),
                             'sort' => 'date_desc',
                         ]);
-                        foreach ($ordersData['results'] ?? [] as $order) {
-                            foreach ($order['order_items'] ?? [] as $orderItem) {
-                                if (($orderItem['item']['id'] ?? '') === $itemId) {
-                                    $sales += intval($orderItem['quantity'] ?? 1);
-                                    $revenue += floatval($orderItem['unit_price'] ?? 0) * intval($orderItem['quantity'] ?? 1);
+
+                        if (isset($ordersData['error'])
+                            && $ordersData['error'] === 'orders_access_unavailable'
+                            && ($ordersData['feature'] ?? null) === 'orders'
+                            && ($ordersData['optional_feature'] ?? false) === true
+                        ) {
+                            log_info('CloneROIAnalysisService: orders capability unavailable — skipping sales metrics', [
+                                'service' => self::class,
+                                'item_id' => $itemId,
+                            ]);
+                        } else {
+                            foreach ($ordersData['results'] ?? [] as $order) {
+                                foreach ($order['order_items'] ?? [] as $orderItem) {
+                                    if (($orderItem['item']['id'] ?? '') === $itemId) {
+                                        $sales += intval($orderItem['quantity'] ?? 1);
+                                        $revenue += floatval($orderItem['unit_price'] ?? 0) * intval($orderItem['quantity'] ?? 1);
+                                    }
                                 }
                             }
                         }

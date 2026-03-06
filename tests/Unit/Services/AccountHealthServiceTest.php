@@ -912,11 +912,13 @@ class AccountHealthServiceTest extends TestCase
     {
         $pillars = [
             'reputation' => [
-                'name' => 'Rep', 'score' => 30,
+                'name' => 'Rep',
+                'score' => 30,
                 'issues' => [['type' => 'rep_low', 'severity' => 'critical', 'message' => 'Low', 'impact' => 'High', 'action' => 'Fix']],
             ],
             'seo_quality' => [
-                'name' => 'SEO', 'score' => 90,
+                'name' => 'SEO',
+                'score' => 90,
                 'issues' => [['type' => 'seo_minor', 'severity' => 'info', 'message' => 'Minor', 'impact' => 'Low', 'action' => 'Opt']],
             ],
         ];
@@ -929,11 +931,13 @@ class AccountHealthServiceTest extends TestCase
     {
         $pillars = [
             'reputation' => [
-                'name' => 'Rep', 'score' => 50,
+                'name' => 'Rep',
+                'score' => 50,
                 'issues' => [['type' => 'dup', 'severity' => 'warning', 'message' => 'M', 'impact' => 'I', 'action' => 'A']],
             ],
             'seo_quality' => [
-                'name' => 'SEO', 'score' => 50,
+                'name' => 'SEO',
+                'score' => 50,
                 'issues' => [['type' => 'dup', 'severity' => 'warning', 'message' => 'M2', 'impact' => 'I2', 'action' => 'A2']],
             ],
         ];

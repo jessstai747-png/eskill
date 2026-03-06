@@ -400,6 +400,20 @@ class SellerReputationService
             'order.status' => 'paid',
         ]);
 
+        if ($this->isOrdersCapabilityUnavailable($ordersResponse)) {
+            return [
+                'period' => ['from' => $startDate, 'to' => $endDate],
+                'feature_unavailable' => true,
+                'error' => 'orders_access_unavailable',
+                'total_visits' => $totalVisits,
+                'total_sales' => 0,
+                'conversion_rate' => 0,
+                'conversion_rate_formatted' => '0%',
+                'visits_per_sale' => 0,
+                'benchmark' => null,
+            ];
+        }
+
         $totalSales = $ordersResponse['paging']['total'] ?? 0;
 
         // Calcular conversão
@@ -458,6 +472,23 @@ class SellerReputationService
             'order.date_created.from' => $startDate . 'T00:00:00.000-00:00',
             'order.date_created.to' => $endDate . 'T23:59:59.999-00:00',
         ]);
+
+        if ($this->isOrdersCapabilityUnavailable($ordersResponse)) {
+            return [
+                'period' => ['from' => $startDate, 'to' => $endDate],
+                'generated_at' => date('Y-m-d H:i:s'),
+                'feature_unavailable' => true,
+                'error' => 'orders_access_unavailable',
+                'reputation' => [
+                    'level' => $reputation['level'] ?? null,
+                    'power_seller' => $reputation['level']['power_seller_status'] ?? null,
+                    'interpretation' => $reputation['interpretation'] ?? null,
+                ],
+                'sales' => null,
+                'conversion' => $conversion,
+                'scores' => null,
+            ];
+        }
 
         $orders = $ordersResponse['results'] ?? [];
         $totalRevenue = 0;
@@ -746,6 +777,19 @@ class SellerReputationService
             'limit' => 50,
         ]);
 
+        if ($this->isOrdersCapabilityUnavailable($ordersResponse)) {
+            return [
+                'period_months' => $months,
+                'period' => ['from' => $startDate, 'to' => $endDate],
+                'feature_unavailable' => true,
+                'error' => 'orders_access_unavailable',
+                'metrics' => null,
+                'averages' => null,
+                'ltv' => null,
+                'insights' => [],
+            ];
+        }
+
         $orders = $ordersResponse['results'] ?? [];
         $totalOrders = $ordersResponse['paging']['total'] ?? count($orders);
 
@@ -826,5 +870,16 @@ class SellerReputationService
         }
 
         return $insights;
+    }
+
+    /**
+     * Verifica se a resposta da API indica que a capability de orders não está disponível
+     */
+    private function isOrdersCapabilityUnavailable(array $response): bool
+    {
+        return isset($response['error'])
+            && $response['error'] === 'orders_access_unavailable'
+            && ($response['feature'] ?? null) === 'orders'
+            && ($response['optional_feature'] ?? false) === true;
     }
 }

@@ -9,13 +9,13 @@ use PDO;
 
 /**
  * BrandCentralService - Gestão de Lojas Oficiais (Brand Central)
- * 
+ *
  * Gerencia lojas oficiais de marcas no Mercado Livre
  * - Customização de vitrine
  * - Análise de desempenho da marca
  * - Gestão de produtos da marca
  * - Configurações visuais
- * 
+ *
  * @link https://developers.mercadolivre.com.br/pt_br/brand-central
  */
 class BrandCentralService extends MercadoLivreClient
@@ -34,7 +34,7 @@ class BrandCentralService extends MercadoLivreClient
 
     /**
      * Obtém informações da loja oficial
-     * 
+     *
      * @return array Dados da loja
      */
     public function getBrandStore(): array
@@ -93,7 +93,7 @@ class BrandCentralService extends MercadoLivreClient
 
     /**
      * Atualiza customização da loja
-     * 
+     *
      * @param array $customization Dados de customização
      * @return array Resultado
      */
@@ -129,7 +129,7 @@ class BrandCentralService extends MercadoLivreClient
 
     /**
      * Lista produtos da marca
-     * 
+     *
      * @param array $filters Filtros
      * @return array Lista de produtos
      */
@@ -177,7 +177,7 @@ class BrandCentralService extends MercadoLivreClient
 
     /**
      * Adiciona produto à vitrine
-     * 
+     *
      * @param string $itemId ID do item
      * @param array $options Opções de exibição
      * @return array Resultado
@@ -216,7 +216,7 @@ class BrandCentralService extends MercadoLivreClient
 
     /**
      * Remove produto da vitrine
-     * 
+     *
      * @param string $itemId ID do item
      * @return array Resultado
      */
@@ -247,7 +247,7 @@ class BrandCentralService extends MercadoLivreClient
 
     /**
      * Analisa performance da marca
-     * 
+     *
      * @param array $filters Filtros
      * @return array Métricas
      */
@@ -266,7 +266,7 @@ class BrandCentralService extends MercadoLivreClient
             $endDate = $filters['end_date'] ?? date('Y-m-d');
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_sales,
                     SUM(total_amount) as total_revenue,
                     AVG(total_amount) as avg_ticket,
@@ -317,7 +317,7 @@ class BrandCentralService extends MercadoLivreClient
 
     /**
      * Gerencia seções da vitrine
-     * 
+     *
      * @param array $sections Configuração das seções
      * @return array Resultado
      */
@@ -384,7 +384,7 @@ class BrandCentralService extends MercadoLivreClient
 
     private function formatProducts(array $products): array
     {
-        return array_map(function($product) {
+        return array_map(function ($product) {
             return [
                 'id' => $product['id'],
                 'title' => $product['title'],

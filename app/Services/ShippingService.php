@@ -11,13 +11,13 @@ use Dompdf\Options;
 
 /**
  * ShippingService - Gestão Avançada de Envios
- * 
+ *
  * Expande funcionalidades de envios do Mercado Livre com:
  * - Preferências avançadas de shipping
  * - Gestão de dimensões e pesos
  * - Configuração de free shipping
  * - Picking lists e etiquetas
- * 
+ *
  * @link https://developers.mercadolivre.com.br/pt_br/envios
  */
 class ShippingService
@@ -46,7 +46,7 @@ class ShippingService
 
     /**
      * Obtém preferências de envio do vendedor
-     * 
+     *
      * @return array Preferências configuradas
      */
     public function getShippingPreferences(): array
@@ -96,7 +96,7 @@ class ShippingService
 
     /**
      * Atualiza preferências de envio
-     * 
+     *
      * @param array $preferences Novas preferências
      * @return array Resultado
      */
@@ -105,7 +105,7 @@ class ShippingService
         try {
             $userId = $this->client->getSellerId();
             $payload = $this->buildPreferencesPayload($preferences);
-            
+
             $response = $this->client->put("/users/{$userId}/shipping_preferences", $payload);
 
             if (isset($response['error'])) {
@@ -136,7 +136,7 @@ class ShippingService
 
     /**
      * Configura frete grátis por categoria/valor
-     * 
+     *
      * @param array $rules Regras de frete grátis
      * @return array Resultado
      */
@@ -144,7 +144,7 @@ class ShippingService
     {
         try {
             $userId = $this->client->getSellerId();
-            
+
             $payload = [
                 'free_shipping_rules' => $rules,
             ];
@@ -176,7 +176,7 @@ class ShippingService
 
     /**
      * Simula custo de envio para item
-     * 
+     *
      * @param array $itemData Dados do item
      * @param string $zipcode CEP de destino
      * @return array Simulação
@@ -222,7 +222,7 @@ class ShippingService
 
     /**
      * Obtém dimensões recomendadas por categoria
-     * 
+     *
      * @param string $categoryId ID da categoria
      * @return array Dimensões sugeridas
      */
@@ -249,7 +249,7 @@ class ShippingService
 
     /**
      * Valida dimensões de pacote
-     * 
+     *
      * @param array $dimensions Dimensões
      * @return array Resultado validação
      */
@@ -300,7 +300,7 @@ class ShippingService
 
     /**
      * Obtém etiquetas de envio (labels)
-     * 
+     *
      * @param array $shipmentIds IDs dos envios
      * @param string $format Formato (pdf, zpl)
      * @return array URLs das etiquetas
@@ -338,7 +338,7 @@ class ShippingService
 
     /**
      * Configura handling time (tempo de preparação)
-     * 
+     *
      * @param int $value Valor
      * @param string $unit Unidade (hours, days)
      * @return array Resultado
@@ -347,7 +347,7 @@ class ShippingService
     {
         try {
             $userId = $this->client->getSellerId();
-            
+
             $payload = [
                 'handling_time' => [
                     'value' => $value,
@@ -382,7 +382,7 @@ class ShippingService
 
     /**
      * Analisa performance de envios
-     * 
+     *
      * @param array $filters Filtros
      * @return array Métricas
      */
@@ -404,7 +404,7 @@ class ShippingService
 
             // Query local database
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_shipments,
                     AVG(TIMESTAMPDIFF(HOUR, created_at, shipped_at)) as avg_handling_hours,
                     COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered,
@@ -527,7 +527,7 @@ class ShippingService
                     ?? $item['id']
                     ?? 'N/A'
                 );
-                
+
                 if (!isset($pickList[$sku])) {
                     $pickList[$sku] = [
                         'sku' => $sku,
@@ -562,18 +562,18 @@ class ShippingService
     public function generatePickListPDF(array $orderIds): string
     {
         $items = $this->generatePickList($orderIds);
-        
+
         $options = new Options();
         $options->set('defaultFont', 'Helvetica');
         $dompdf = new Dompdf($options);
-        
+
         $html = '<html><body>';
         $html .= '<h1>Picking List (Lista de Separacao)</h1>';
         $html .= '<p>Data: ' . date('d/m/Y H:i') . '</p>';
         $html .= '<table width="100%" border="1" cellspacing="0" cellpadding="5">';
         $html .= '<thead><tr style="background:#eee;"><th>SKU</th><th>Produto</th><th>Qtd</th><th>Pedidos</th></tr></thead>';
         $html .= '<tbody>';
-        
+
         foreach ($items as $item) {
             $html .= '<tr>';
             $html .= '<td>' . htmlspecialchars((string) $item['sku']) . '</td>';
@@ -582,13 +582,13 @@ class ShippingService
             $html .= '<td>' . implode(', ', $item['orders']) . '</td>';
             $html .= '</tr>';
         }
-        
+
         $html .= '</tbody></table></body></html>';
-        
+
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
-        
+
         return $dompdf->output();
     }
 
@@ -671,7 +671,7 @@ class ShippingService
 
     private function formatShippingOptions(array $options): array
     {
-        return array_map(function($opt) {
+        return array_map(function ($opt) {
             return [
                 'id' => $opt['shipping_method_id'] ?? null,
                 'name' => $opt['name'] ?? 'N/A',

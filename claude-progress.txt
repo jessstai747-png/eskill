@@ -6,6 +6,29 @@
 
 ---
 
+## Sessão 2026-03-06 (8) — FIX-008: hardening de capability em consumidores de /orders/search
+
+**Testes:** PHPUnit completo 2953 pass, 0 fail, 34 skipped (+25 novos)
+
+### Problema
+- 6 serviços consumiam `/orders/search` ou `/merchant_orders/search` sem tratar o erro semântico `orders_access_unavailable` / `merchant_orders_unavailable` introduzido em FIX-007
+- Quando a conta não tem permissão, esses serviços falhavam com erros genéricos ou dados inconsistentes
+
+### Correção aplicada
+- **SalesAnalyticsService** — capability check em `fetchOrdersFromML()`, `getSalesData()`, `getQuickSummary()`; fix bug `getUserId()` → `getSellerId()`
+- **SellerReputationService** — capability check em `calculateConversionRate()`, `generateSellerPerformanceReport()`, `calculateCustomerLTV()`
+- **OrderFinancialService** — capability check em `getOrdersFromApi()`, `syncOrdersWithFinancials()`, `searchMerchantOrders()`
+- **AccountGovernanceIntegrationService** — semantic logging em `fetchSalesByItem()`
+- **AccountHealthService** — semantic logging em `fetchOrderStats()` e `getOperationPillar()` (2 call sites)
+- **CloneROIAnalysisService** — semantic logging em `syncMetricsFromML()`
+
+### Testes criados
+- `SalesAnalyticsServiceTest.php` — 9 testes
+- `SellerReputationServiceTest.php` — 8 testes (ReflectionClass DI pattern)
+- `OrderFinancialServiceTest.php` — 8 testes (orders + merchant_orders)
+
+---
+
 ## Sessão 2026-03-06 (7) — FIX-007: permissões semânticas para pedidos ML
 
 **Commit:** registrado no HEAD desta sessão

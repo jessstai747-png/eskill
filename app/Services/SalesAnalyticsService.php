@@ -15,13 +15,17 @@ class SalesAnalyticsService
     private ?string $accountId;
     private MercadoLivreClient $mlClient;
     private CacheService $cache;
+    private bool $ordersCapabilityUnavailable = false;
     private const CACHE_TTL = 3600; // 1 hora
 
-    public function __construct(?string $accountId = null)
-    {
+    public function __construct(
+        ?string $accountId = null,
+        ?MercadoLivreClient $mlClient = null,
+        ?CacheService $cache = null
+    ) {
         $this->accountId = $accountId;
-        $this->mlClient = new MercadoLivreClient($accountId);
-        $this->cache = new CacheService();
+        $this->mlClient = $mlClient ?? new MercadoLivreClient($accountId);
+        $this->cache = $cache ?? new CacheService();
     }
 
     /**
@@ -45,7 +49,15 @@ class SalesAnalyticsService
             $dateTo = date('Y-m-d\T23:59:59.999-00:00');
 
             // Buscar pedidos do ML
+            $this->ordersCapabilityUnavailable = false;
             $orders = $this->fetchOrdersFromML($dateFrom, $dateTo);
+
+            if ($this->ordersCapabilityUnavailable) {
+                $result = $this->getEmptyStructure($period);
+                $result['feature_unavailable'] = true;
+                $result['error'] = 'orders_access_unavailable';
+                return $result;
+            }
             
             // Calcular métricas
             $metrics = $this->calculateSalesMetrics($orders);
@@ -105,7 +117,7 @@ class SalesAnalyticsService
 
         do {
             $params = [
-                'seller' => $this->mlClient->getUserId(),
+                'seller' => $this->mlClient->getSellerId(),
                 'order.date_created.from' => $dateFrom,
                 'order.date_created.to' => $dateTo,
                 'sort' => 'date_desc',
@@ -114,7 +126,12 @@ class SalesAnalyticsService
             ];
 
             $response = $this->mlClient->get('/orders/search', $params);
-            
+
+            if ($this->isOrdersCapabilityUnavailable($response)) {
+                $this->ordersCapabilityUnavailable = true;
+                return [];
+            }
+
             if (isset($response['results'])) {
                 $orders = array_merge($orders, $response['results']);
                 $offset += $limit;
@@ -324,13 +341,22 @@ class SalesAnalyticsService
             $dateTo = date('Y-m-d\T23:59:59.999-00:00');
 
             $params = [
-                'seller' => $this->mlClient->getUserId(),
+                'seller' => $this->mlClient->getSellerId(),
                 'order.date_created.from' => $dateFrom,
                 'order.date_created.to' => $dateTo,
                 'limit' => 50
             ];
 
             $response = $this->mlClient->get('/orders/search', $params);
+
+            if ($this->isOrdersCapabilityUnavailable($response)) {
+                return [
+                    'success' => false,
+                    'error' => 'orders_access_unavailable',
+                    'feature_unavailable' => true,
+                ];
+            }
+
             $orders = $response['results'] ?? [];
 
             $metrics = $this->calculateSalesMetrics($orders);
@@ -347,5 +373,15 @@ class SalesAnalyticsService
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Verifica se a resposta da API indica que o endpoint de orders é uma capability indisponível
+     */
+    private function isOrdersCapabilityUnavailable(array $response): bool
+    {
+        return ($response['error'] ?? null) === 'orders_access_unavailable'
+            && ($response['feature'] ?? null) === 'orders'
+            && ($response['optional_feature'] ?? false) === true;
     }
 }

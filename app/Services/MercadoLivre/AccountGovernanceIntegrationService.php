@@ -454,6 +454,17 @@ class AccountGovernanceIntegrationService
                     'limit' => $limit,
                 ]);
 
+                if (isset($response['error'])
+                    && $response['error'] === 'orders_access_unavailable'
+                    && ($response['feature'] ?? null) === 'orders'
+                    && ($response['optional_feature'] ?? false) === true
+                ) {
+                    $this->log('info', 'Orders capability unavailable for seller — skipping sales metrics', [
+                        'seller_id' => $sellerId,
+                    ]);
+                    break;
+                }
+
                 if (isset($response['error']) || !isset($response['results'])) {
                     break;
                 }
