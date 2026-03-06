@@ -98,7 +98,6 @@ memory_limit=256M\n\
 max_execution_time=60\n\
 max_input_time=60\n\
 \n\
-session.cookie_secure=1\n\
 session.cookie_httponly=1\n\
 session.cookie_samesite=Lax\n\
 session.use_strict_mode=1\n\

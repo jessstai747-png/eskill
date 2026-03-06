@@ -100,11 +100,11 @@ if (session_status() === PHP_SESSION_NONE) {
     $isHttpsRequest = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['SERVER_PORT'] ?? null) == 443)
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-    $forceHttpsEnv = filter_var($_ENV['FORCE_HTTPS'] ?? 'false', FILTER_VALIDATE_BOOLEAN);
-    // Secure cookie based on actual request protocol, not environment name.
+    // Secure flag based ONLY on actual request protocol.
+    // FORCE_HTTPS controls redirects (below), NOT the cookie flag.
     // Setting Secure on HTTP causes browsers to silently drop the session cookie,
-    // breaking CSRF validation entirely.
-    $secureCookie = $isHttpsRequest || $forceHttpsEnv;
+    // breaking CSRF validation and all session-dependent features.
+    $secureCookie = $isHttpsRequest;
 
     if ($isProduction && !$secureCookie) {
         error_log('[SECURITY WARNING] Production running without HTTPS. Session cookies are NOT Secure. Configure HTTPS or a reverse proxy with X-Forwarded-Proto.');
