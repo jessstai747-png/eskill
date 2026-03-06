@@ -9,13 +9,13 @@ use App\Services\Shipping\DimensionCalculatorService;
 
 /**
  * Health Check Service - Verifica a saúde de anúncios no Mercado Livre
- * 
+ *
  * Analisa o status de saúde (health) de anúncios publicados, identificando:
  * - Problemas que afetam visibilidade
  * - Oportunidades de melhoria
  * - Alertas críticos
  * - Recomendações de ação
- * 
+ *
  * Baseado na API oficial: /items/{item_id}/health
  */
 class HealthCheckService
@@ -116,7 +116,7 @@ class HealthCheckService
     {
         try {
             $health = $this->client->get("/items/{$itemId}/health");
-            
+
             if (!isset($health['error'])) {
                 return [
                     'available' => true,
@@ -246,7 +246,9 @@ class HealthCheckService
 
         // Buscar atributos obrigatórios da categoria
         $categoryAttributes = $this->categoryService->getCategoryAttributes($categoryId);
-        $requiredAttributes = array_filter($categoryAttributes, fn($attr) => 
+        $requiredAttributes = array_filter(
+            $categoryAttributes,
+            fn($attr) =>
             isset($attr['tags']['required']) && $attr['tags']['required']
         );
 
@@ -263,7 +265,7 @@ class HealthCheckService
         if (!empty($missingRequired)) {
             $count = count($missingRequired);
             $score -= ($count * 10);
-            
+
             $issues[] = [
                 'category' => 'attributes',
                 'severity' => 'high',
@@ -407,10 +409,10 @@ class HealthCheckService
 
         // Nota: descrição completa requer chamada separada
         // Por hora, verificamos apenas se existe
-        
+
         // Verificar se tem video
         $hasVideo = !empty($item['video_id']);
-        
+
         if (!$hasVideo) {
             $recommendations[] = [
                 'category' => 'description',
@@ -489,18 +491,18 @@ class HealthCheckService
         try {
             $optimizer = new \App\Services\Shipping\ShippingOptimizerService();
             $itemId = $item['id'] ?? null;
-            
+
             if ($itemId) {
                 // Obter análise completa de shipping do novo serviço
                 $optimization = $optimizer->optimizeShipping($itemId);
-                
+
                 if ($optimization['success']) {
                     // Usar issues detectados pelo optimizer
                     $shippingIssues = $optimization['current_shipping']['issues'] ?? [];
-                    
+
                     foreach ($shippingIssues as $issue) {
                         $score -= $this->getScoreDeduction($issue['severity']);
-                        
+
                         $issues[] = [
                             'category' => 'shipping',
                             'severity' => $issue['severity'],
@@ -509,7 +511,7 @@ class HealthCheckService
                             'impact' => $issue['solution'],
                         ];
                     }
-                    
+
                     // Usar recomendação do optimizer
                     $recommendation = $optimization['recommendation'] ?? [];
                     if (!empty($recommendation['next_steps'])) {
@@ -517,12 +519,12 @@ class HealthCheckService
                             $recommendations[] = [
                                 'category' => 'shipping',
                                 'priority' => $step['priority'],
-'action' => $step['step'],
+                                'action' => $step['step'],
                                 'description' => $step['description'],
                             ];
                         }
                     }
-                    
+
                     // Opportunities baseadas em aumento de conversão
                     if (!empty($recommendation['estimated_conversion_increase'])) {
                         $conversionIncrease = $recommendation['estimated_conversion_increase'];
@@ -586,7 +588,7 @@ class HealthCheckService
                     $dimensions['height'] ?? 0,
                     $dimensions['weight'] ?? 0
                 );
-                
+
                 // Se não é compatível com modos melhores, sugerir otimização
                 $compatibleModes = $validation['compatible_modes'] ?? [];
                 if (!in_array('full', $compatibleModes) && !in_array('flex', $compatibleModes)) {
@@ -615,7 +617,7 @@ class HealthCheckService
      */
     private function getScoreDeduction(string $severity): int
     {
-        return match($severity) {
+        return match ($severity) {
             'critical' => 25,
             'high' => 15,
             'medium' => 8,

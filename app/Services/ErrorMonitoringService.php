@@ -36,7 +36,7 @@ class ErrorMonitoringService
         $this->stateFile = $this->logPath . 'error-monitor-state.json';
         $this->alertRecipient = $_ENV['ALERT_EMAIL_RECIPIENT'] ?? $_ENV['EMAIL_FROM'] ?? '';
     }
-    
+
     /**
      * Registra erro no banco de dados
      */
@@ -44,11 +44,11 @@ class ErrorMonitoringService
     {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO error_monitoring 
+                INSERT INTO error_monitoring
                 (error_type, error_message, file, line, trace, context, user_id, account_id, url, ip_address, user_agent, severity, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
-            
+
             $stmt->execute([
                 $errorData['type'] ?? 'Error',
                 $errorData['message'] ?? '',
@@ -69,7 +69,7 @@ class ErrorMonitoringService
             ]);
         }
     }
-    
+
     /**
      * Obtém erros recentes
      */
@@ -79,17 +79,17 @@ class ErrorMonitoringService
             $limitSql = max(1, min(200, (int)$limit));
             $sql = "SELECT * FROM error_monitoring WHERE 1=1";
             $params = [];
-            
+
             if ($severity) {
                 $sql .= " AND severity = ?";
                 $params[] = $severity;
             }
-            
+
             $sql .= " ORDER BY created_at DESC LIMIT {$limitSql}";
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
             log_error('Erro ao buscar erros recentes', [
@@ -100,7 +100,7 @@ class ErrorMonitoringService
             return [];
         }
     }
-    
+
     /**
      * Obtém estatísticas de erros
      */
@@ -109,27 +109,27 @@ class ErrorMonitoringService
         try {
             // Total de erros no período
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total,
                     severity,
                     COUNT(DISTINCT error_message) as unique_errors
-                FROM error_monitoring 
+                FROM error_monitoring
                 WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
                 GROUP BY severity
             ");
             $stmt->execute([$hours]);
             $bySeverity = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Erros mais frequentes
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     error_type,
                     error_message,
                     file,
                     line,
                     COUNT(*) as occurrences,
                     MAX(created_at) as last_occurrence
-                FROM error_monitoring 
+                FROM error_monitoring
                 WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
                 GROUP BY error_type, error_message, file, line
                 ORDER BY occurrences DESC
@@ -137,20 +137,20 @@ class ErrorMonitoringService
             ");
             $stmt->execute([$hours]);
             $topErrors = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Erros por hora
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') as hour,
                     COUNT(*) as count
-                FROM error_monitoring 
+                FROM error_monitoring
                 WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
                 GROUP BY hour
                 ORDER BY hour
             ");
             $stmt->execute([$hours]);
             $byHour = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             return [
                 'period' => "{$hours} horas",
                 'by_severity' => $bySeverity,
@@ -171,21 +171,21 @@ class ErrorMonitoringService
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Analisa logs de arquivo em tempo real
      */
     public function analyzeLogFile(string $filename = 'error.log', int $lines = 100): array
     {
         $filepath = $this->logPath . $filename;
-        
+
         if (!file_exists($filepath)) {
             return ['error' => 'Arquivo de log não encontrado'];
         }
-        
+
         $content = $this->tail($filepath, $lines);
         $errors = $this->parseLogContent($content);
-        
+
         return [
             'file' => $filename,
             'lines_analyzed' => $lines,
@@ -193,7 +193,7 @@ class ErrorMonitoringService
             'errors' => $errors
         ];
     }
-    
+
     /**
      * Limpa erros antigos
      */
@@ -201,11 +201,11 @@ class ErrorMonitoringService
     {
         try {
             $stmt = $this->db->prepare("
-                DELETE FROM error_monitoring 
+                DELETE FROM error_monitoring
                 WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)
             ");
             $stmt->execute([$days]);
-            
+
             return $stmt->rowCount();
         } catch (\Exception $e) {
             log_error('Erro ao limpar erros antigos', [
@@ -215,9 +215,9 @@ class ErrorMonitoringService
             return 0;
         }
     }
-    
+
     // ==================== MÉTODOS PRIVADOS ====================
-    
+
     private function countBySeverity(array $data, string $severity): int
     {
         foreach ($data as $row) {
@@ -227,7 +227,7 @@ class ErrorMonitoringService
         }
         return 0;
     }
-    
+
     private function tail(string $filepath, int $lines): string
     {
         // Security: cast $lines to int to prevent command injection
@@ -235,19 +235,19 @@ class ErrorMonitoringService
         $command = "tail -n {$safeLines} " . escapeshellarg($filepath);
         return shell_exec($command) ?? '';
     }
-    
+
     private function parseLogContent(string $content): array
     {
         $lines = explode("\n", $content);
         $errors = [];
         $currentError = null;
-        
+
         foreach ($lines as $line) {
             if (preg_match('/^\[([^\]]+)\] PHP (Fatal error|Warning|Notice|Parse error):(.+)/', $line, $matches)) {
                 if ($currentError) {
                     $errors[] = $currentError;
                 }
-                
+
                 $currentError = [
                     'timestamp' => $matches[1],
                     'type' => trim($matches[2]),
@@ -266,11 +266,11 @@ class ErrorMonitoringService
                 $currentError = null;
             }
         }
-        
+
         if ($currentError) {
             $errors[] = $currentError;
         }
-        
+
         return $errors;
     }
 

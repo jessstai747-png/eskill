@@ -45,16 +45,15 @@ class ClaimsService
                 'offset' => $offset,
                 'status' => 'opened' // Filter by status instead of type
             ];
-            
+
             // Use correct endpoint: /post-purchase/v1/claims
             $response = $this->client->get('/post-purchase/v1/claims', $params);
-            
+
             if (isset($response['error'])) {
-                 return ['error' => $response['message'] ?? 'Failed to fetch claims'];
+                return ['error' => $response['message'] ?? 'Failed to fetch claims'];
             }
-            
+
             return $response;
-            
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
@@ -89,7 +88,7 @@ class ClaimsService
     {
         $claim = $this->getClaim($claimId);
         if (isset($claim['id'])) {
-             return true; // Saved in getClaim
+            return true; // Saved in getClaim
         }
         return false;
     }
@@ -126,10 +125,10 @@ class ClaimsService
 
         $sql = "
             INSERT INTO ml_claims (
-                id, order_id, account_id, type, status, stage, reason, 
+                id, order_id, account_id, type, status, stage, reason,
                 amount, currency_id, date_created, last_updated, raw_data
             ) VALUES (
-                :id, :order_id, :account_id, :type, :status, :stage, :reason, 
+                :id, :order_id, :account_id, :type, :status, :stage, :reason,
                 :amount, :currency_id, :date_created, :last_updated, :raw_data
             )
             ON DUPLICATE KEY UPDATE
@@ -143,7 +142,7 @@ class ClaimsService
 
         try {
             $stmt = $this->db->prepare($sql);
-            
+
             $stmt->execute([
                 ':id' => $claim['id'],
                 ':order_id' => $claim['order_id'],
@@ -158,7 +157,6 @@ class ClaimsService
                 ':last_updated' => date('Y-m-d H:i:s', strtotime($claim['last_updated'])),
                 ':raw_data' => json_encode($claim)
             ]);
-
         } catch (\Exception $e) {
             log_error('Falha ao sincronizar reclamação no banco', [
                 'service' => 'ClaimsService',

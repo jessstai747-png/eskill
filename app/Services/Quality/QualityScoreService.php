@@ -8,14 +8,14 @@ use App\Services\Quality\HealthCheckService;
 
 /**
  * Quality Score Service - Calcula pontuação de qualidade de anúncios
- * 
+ *
  * Sistema de pontuação baseado nas melhores práticas do Mercado Livre:
  * - Qualidade do conteúdo (título, descrição, imagens)
  * - Completude de informações (atributos, especificações)
  * - Experiência do comprador (frete, preço, reputação)
  * - Performance (conversão, visitas, vendas)
  * - Conformidade (catálogo, moderações)
- * 
+ *
  * Score vai de 0 a 100, onde:
  * - 90-100: Excelente
  * - 75-89: Muito Bom
@@ -102,10 +102,10 @@ class QualityScoreService
         // Calcular score total ponderado
         $totalScore = round(
             ($contentScore['score'] * self::WEIGHTS['content'] / 100) +
-            ($completenessScore['score'] * self::WEIGHTS['completeness'] / 100) +
-            ($experienceScore['score'] * self::WEIGHTS['experience'] / 100) +
-            ($performanceScore['score'] * self::WEIGHTS['performance'] / 100) +
-            ($complianceScore['score'] * self::WEIGHTS['compliance'] / 100),
+                ($completenessScore['score'] * self::WEIGHTS['completeness'] / 100) +
+                ($experienceScore['score'] * self::WEIGHTS['experience'] / 100) +
+                ($performanceScore['score'] * self::WEIGHTS['performance'] / 100) +
+                ($complianceScore['score'] * self::WEIGHTS['compliance'] / 100),
             1
         );
 
@@ -283,7 +283,9 @@ class QualityScoreService
 
         // 1. ATRIBUTOS OBRIGATÓRIOS (50 pontos)
         $categoryAttributes = $this->categoryService->getCategoryAttributes($categoryId);
-        $requiredAttributes = array_filter($categoryAttributes, fn($attr) => 
+        $requiredAttributes = array_filter(
+            $categoryAttributes,
+            fn($attr) =>
             isset($attr['tags']['required']) && $attr['tags']['required']
         );
 
@@ -314,7 +316,9 @@ class QualityScoreService
         }
 
         // 2. ATRIBUTOS RECOMENDADOS (30 pontos)
-        $recommendedAttributes = array_filter($categoryAttributes, fn($attr) => 
+        $recommendedAttributes = array_filter(
+            $categoryAttributes,
+            fn($attr) =>
             isset($attr['tags']['recommended']) && $attr['tags']['recommended']
         );
 
@@ -777,7 +781,6 @@ class QualityScoreService
                 'above_average' => $myScore > $categoryAvg,
                 'difference' => round($myScore - $categoryAvg, 1),
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => true,

@@ -74,7 +74,6 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 </div>
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-
     const shippingRequestJson = async (url, options = {}) => {
         if (typeof window.requestJson === 'function') {
             return window.requestJson(url, options);

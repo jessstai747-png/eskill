@@ -7,13 +7,13 @@ use PDO;
 
 /**
  * PromotionService - Gestão Avançada de Promoções
- * 
+ *
  * Expande funcionalidades de promoções do Mercado Livre com:
  * - Cupons personalizados
  * - Campanhas de co-participação
  * - Deals e Flash Sales
  * - Análise de performance de promoções
- * 
+ *
  * @link https://developers.mercadolivre.com.br/pt_br/promocoes
  */
 class PromotionService extends MercadoLivreClient
@@ -28,7 +28,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Lista todas promoções disponíveis
-     * 
+     *
      * @param array $filters Filtros
      * @return array Lista de promoções
      */
@@ -37,18 +37,17 @@ class PromotionService extends MercadoLivreClient
         try {
             $userId = $this->getSellerId();
             $params = array_merge(['seller_id' => $userId], $filters);
-            
+
             $response = $this->get("/seller-promotions/promotions", $params);
-            
+
             if (isset($response['error'])) {
                 return $this->getEmptyPromotions();
             }
-            
+
             return [
                 'total' => count($response['results'] ?? []),
                 'promotions' => $this->formatPromotions($response['results'] ?? []),
             ];
-            
         } catch (\Exception $e) {
             log_error('Erro ao listar promoções', [
                 'account_id' => $this->accountId ?? null,
@@ -60,7 +59,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Lista itens elegíveis para promoção
-     * 
+     *
      * @param string $promotionId ID da promoção
      * @return array Lista de itens
      */
@@ -71,7 +70,7 @@ class PromotionService extends MercadoLivreClient
             $response = $this->get("/seller-promotions/promotions/{$promotionId}/items", [
                 'seller_id' => $userId,
             ]);
-             
+
             if (isset($response['error'])) {
                 return ['total' => 0, 'items' => []];
             }
@@ -80,7 +79,6 @@ class PromotionService extends MercadoLivreClient
                 'total' => count($response['results'] ?? []),
                 'items' => $this->formatPromotionItems($response['results'] ?? [], $promotionId),
             ];
-             
         } catch (\Exception $e) {
             log_error('Erro ao listar itens da promoção', [
                 'promotion_id' => $promotionId,
@@ -92,7 +90,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Participa itens em promoção
-     * 
+     *
      * @param string $promotionId ID da promoção
      * @param array $items Lista de itens
      * @return array Resultado
@@ -102,14 +100,14 @@ class PromotionService extends MercadoLivreClient
         try {
             $payload = [
                 'promotion_id' => $promotionId,
-                'items' => array_map(function($item) {
+                'items' => array_map(function ($item) {
                     return [
                         'item_id' => $item['item_id'],
                         'price' => $item['price'] ?? null,
                     ];
                 }, $items),
             ];
-            
+
             $response = $this->post("/seller-promotions/promotions/{$promotionId}/items", $payload);
 
             if (isset($response['error'])) {
@@ -125,7 +123,6 @@ class PromotionService extends MercadoLivreClient
                 'promotion_id' => $promotionId,
                 'message' => 'Itens adicionados à promoção',
             ];
-        
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -133,7 +130,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Cria cupom de desconto
-     * 
+     *
      * @param array $couponData Dados do cupom
      * @return array Resultado
      */
@@ -141,7 +138,7 @@ class PromotionService extends MercadoLivreClient
     {
         try {
             $userId = $this->getSellerId();
-            
+
             $payload = $this->buildCouponPayload($couponData);
             $response = $this->post("/seller-promotions/coupons?seller_id={$userId}", $payload);
 
@@ -166,7 +163,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Lista cupons ativos
-     * 
+     *
      * @return array Lista de cupons
      */
     public function listCoupons(): array
@@ -194,7 +191,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Atualiza status de cupom
-     * 
+     *
      * @param string $couponId ID do cupom
      * @param string $status Novo status (active, paused)
      * @return array Resultado
@@ -204,7 +201,7 @@ class PromotionService extends MercadoLivreClient
         try {
             $userId = $this->getSellerId();
             $payload = ['status' => $status];
-            
+
             $response = $this->put("/seller-promotions/coupons/{$couponId}?seller_id={$userId}", $payload);
 
             if (isset($response['error'])) {
@@ -224,7 +221,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Obtém performance de cupom
-     * 
+     *
      * @param string $couponId ID do cupom
      * @return array Métricas
      */
@@ -256,7 +253,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Cria campanha de co-participação
-     * 
+     *
      * @param array $campaignData Dados da campanha
      * @return array Resultado
      */
@@ -264,7 +261,7 @@ class PromotionService extends MercadoLivreClient
     {
         try {
             $userId = $this->getSellerId();
-            
+
             $payload = [
                 'name' => $campaignData['name'],
                 'start_date' => $campaignData['start_date'],
@@ -297,7 +294,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Lista campanhas de co-participação
-     * 
+     *
      * @return array Lista de campanhas
      */
     public function listCoParticipationCampaigns(): array
@@ -325,7 +322,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Simula impacto de desconto
-     * 
+     *
      * @param string $itemId ID do item
      * @param float $discountPercentage Desconto em %
      * @return array Simulação
@@ -342,7 +339,7 @@ class PromotionService extends MercadoLivreClient
 
             $currentPrice = $item['price'];
             $newPrice = $currentPrice * (1 - $discountPercentage / 100);
-            
+
             // Estimativa de aumento de conversão (simplificada)
             $conversionIncrease = min($discountPercentage * 2, 100); // 2x o desconto, max 100%
 
@@ -363,7 +360,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Analisa performance geral de promoções
-     * 
+     *
      * @param array $filters Filtros
      * @return array Métricas
      */
@@ -374,7 +371,7 @@ class PromotionService extends MercadoLivreClient
             $endDate = $filters['end_date'] ?? date('Y-m-d');
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(DISTINCT promotion_id) as total_promotions,
                     SUM(sales) as total_sales,
                     SUM(revenue) as total_revenue,
@@ -426,7 +423,7 @@ class PromotionService extends MercadoLivreClient
 
     /**
      * Obtém sugestões de itens para promoção
-     * 
+     *
      * @param array $criteria Critérios
      * @return array Itens sugeridos
      */
@@ -437,7 +434,7 @@ class PromotionService extends MercadoLivreClient
             $maxConversion = $criteria['max_conversion'] ?? 5;
 
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     item_id,
                     title,
                     price,
@@ -462,7 +459,7 @@ class PromotionService extends MercadoLivreClient
 
             return [
                 'total' => count($items),
-                'items' => array_map(function($item) {
+                'items' => array_map(function ($item) {
                     return [
                         'item_id' => $item['item_id'],
                         'title' => $item['title'],
@@ -503,7 +500,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatPromotions(array $promotions): array
     {
-        return array_map(function($p) {
+        return array_map(function ($p) {
             return [
                 'id' => $p['id'],
                 'type' => $p['type'],
@@ -518,7 +515,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatPromotionItems(array $items, string $promotionId): array
     {
-        return array_map(function($item) use ($promotionId) {
+        return array_map(function ($item) use ($promotionId) {
             return [
                 'id' => $item['id'],
                 'title' => $item['name'] ?? $item['id'],
@@ -532,7 +529,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatCoupons(array $coupons): array
     {
-        return array_map(function($c) {
+        return array_map(function ($c) {
             return [
                 'id' => $c['id'],
                 'code' => $c['code'],
@@ -549,7 +546,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatCampaigns(array $campaigns): array
     {
-        return array_map(function($c) {
+        return array_map(function ($c) {
             return [
                 'id' => $c['id'],
                 'name' => $c['name'],
@@ -568,7 +565,7 @@ class PromotionService extends MercadoLivreClient
     {
         $redemptions = $data['redemptions'] ?? 0;
         $impressions = $data['impressions'] ?? 1;
-        
+
         return $impressions > 0 ? round(($redemptions / $impressions) * 100, 2) : 0;
     }
 
@@ -576,19 +573,19 @@ class PromotionService extends MercadoLivreClient
     {
         $revenue = $data['revenue'] ?? 0;
         $discount = $data['discount_given'] ?? 1;
-        
+
         return $discount > 0 ? round((($revenue - $discount) / $discount) * 100, 2) : 0;
     }
 
     private function suggestDiscount(array $item): float
     {
         $conversion = $item['conversion_rate'] ?? 0;
-        
+
         // Sugestão baseada na conversão atual
         if ($conversion < 1) return 20; // Baixa conversão = desconto maior
         if ($conversion < 3) return 15;
         if ($conversion < 5) return 10;
-        
+
         return 5; // Conversão boa = desconto menor
     }
 

@@ -34,11 +34,26 @@ if (file_exists(ROOT_PATH . '/.env')) {
 }
 
 // Cores para terminal
-function green(string $text): string { return "\033[32m{$text}\033[0m"; }
-function red(string $text): string { return "\033[31m{$text}\033[0m"; }
-function yellow(string $text): string { return "\033[33m{$text}\033[0m"; }
-function cyan(string $text): string { return "\033[36m{$text}\033[0m"; }
-function bold(string $text): string { return "\033[1m{$text}\033[0m"; }
+function green(string $text): string
+{
+    return "\033[32m{$text}\033[0m";
+}
+function red(string $text): string
+{
+    return "\033[31m{$text}\033[0m";
+}
+function yellow(string $text): string
+{
+    return "\033[33m{$text}\033[0m";
+}
+function cyan(string $text): string
+{
+    return "\033[36m{$text}\033[0m";
+}
+function bold(string $text): string
+{
+    return "\033[1m{$text}\033[0m";
+}
 
 echo "\n" . bold("═══════════════════════════════════════════") . "\n";
 echo bold("  🔐 Criar Administrador — eskill.com.br") . "\n";
@@ -172,8 +187,8 @@ if ($existing) {
         if (strtolower($resetPw) === 's' || strtolower($resetPw) === 'y') {
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
             $stmt = $db->prepare("
-                UPDATE users 
-                SET password = :password, 
+                UPDATE users
+                SET password = :password,
                     email_verified_at = COALESCE(email_verified_at, NOW()),
                     role = 'admin',
                     updated_at = NOW()

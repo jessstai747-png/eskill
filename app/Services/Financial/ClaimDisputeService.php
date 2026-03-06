@@ -36,7 +36,7 @@ class ClaimDisputeService
         }
 
         try {
-        $response = $client->get('/post-purchase/v1/claims/search', $params);
+            $response = $client->get('/post-purchase/v1/claims/search', $params);
         } catch (\Exception $e) {
             log_error('Falha ao buscar reclamações', [
                 'service' => 'ClaimDisputeService',

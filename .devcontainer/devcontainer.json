@@ -2,13 +2,8 @@
   "name": "eskill-copilot-autonomy",
   "image": "mcr.microsoft.com/devcontainers/php:1-8.2-bookworm",
   "remoteUser": "vscode",
-  "runArgs": [
-    "--init"
-  ],
-  "forwardPorts": [
-    80,
-    3307
-  ],
+  "runArgs": ["--init"],
+  "forwardPorts": [80, 3307],
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "20"

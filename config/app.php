@@ -21,7 +21,7 @@ return [
     'env' => $_ENV['APP_ENV'] ?? 'production',
     'debug' => filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN),
     'key' => $_ENV['APP_KEY'] ?? '',
-    
+
     'mercadolivre' => [
         'app_id' => $_ENV['ML_APP_ID'] ?? getenv('ML_APP_ID') ?? $_ENV['ML_CLIENT_ID'] ?? getenv('ML_CLIENT_ID') ?? '',
         'client_secret' => $_ENV['ML_CLIENT_SECRET'] ?? getenv('ML_CLIENT_SECRET') ?? '',
@@ -31,17 +31,17 @@ return [
         'api_url' => $_ENV['ML_API_URL'] ?? getenv('ML_API_URL') ?? 'https://api.mercadolibre.com',
         'site_id' => $_ENV['ML_SITE_ID'] ?? getenv('ML_SITE_ID') ?? 'MLB', // Brasil
     ],
-    
+
     'cache' => [
         'driver' => $_ENV['CACHE_DRIVER'] ?? 'file',
         'ttl' => (int)($_ENV['CACHE_TTL'] ?? 3600),
     ],
-    
+
     'log' => [
         'level' => $_ENV['LOG_LEVEL'] ?? 'warning',
         'file' => $_ENV['LOG_FILE'] ?? 'storage/logs/app.log',
     ],
-    
+
     'email' => [
         'enabled' => filter_var($_ENV['EMAIL_ENABLED'] ?? false, FILTER_VALIDATE_BOOLEAN),
         'from' => $_ENV['EMAIL_FROM'] ?? 'noreply@eskill.com.br',
@@ -52,23 +52,23 @@ return [
         'smtp_pass' => $_ENV['SMTP_PASS'] ?? '',
         'smtp_secure' => $_ENV['SMTP_SECURE'] ?? 'tls',
     ],
-    
+
     'polling' => [
         'enabled' => filter_var($_ENV['POLLING_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN),
         'interval_minutes' => (int)($_ENV['POLLING_INTERVAL_MINUTES'] ?? 30),
     ],
-    
+
     'telegram' => [
         'enabled' => filter_var($_ENV['TELEGRAM_ENABLED'] ?? false, FILTER_VALIDATE_BOOLEAN),
         'bot_token' => $_ENV['TELEGRAM_BOT_TOKEN'] ?? null,
         'chat_id' => $_ENV['TELEGRAM_CHAT_ID'] ?? null,
     ],
-    
+
     'monitoring' => [
         'enabled' => filter_var($_ENV['MONITORING_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN),
         'interval_minutes' => (int)($_ENV['MONITORING_INTERVAL_MINUTES'] ?? 5),
     ],
-    
+
     // ========================================
     // Feature Flags - Ficha Técnica (Tech Sheet)
     // ========================================
@@ -84,4 +84,3 @@ return [
         'benchmark_cache_ttl' => (int)($_ENV['TECH_SHEET_BENCHMARK_CACHE_TTL'] ?? 3600),
     ],
 ];
-
