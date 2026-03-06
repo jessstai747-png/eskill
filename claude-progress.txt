@@ -6,6 +6,65 @@
 
 ---
 
+## Sessão 2026-03-06 (3) — FIX-003: ML API 403 PolicyAgent por injeção de client_id
+
+**Commit:** (pendente)
+**Testes:** 2923 pass, 0 fail, 34 skipped
+
+### Problema
+- `requestWithRetry()` injetava `client_id=757032559637450` em TODAS as requisições públicas da API ML
+- ML PolicyAgent bloqueia este `client_id` com 403 `PA_UNAUTHORIZED_RESULT_FROM_POLICIES`
+- 2352 erros em `/sites/MLB`, 109 em `/sites/MLB/search` — acumulando 5624 ERROR logs no app.log
+- Health check a cada 5 min gerava erro → fallback sem client_id funcionava (prova que a API está OK)
+
+### Correção
+- Removida injeção automática de `client_id` em `requestWithRetry()` (MercadoLivreClient.php)
+- Fallback `probePublicSiteWithoutClientId()` mantido como camada de segurança
+- Fix cirúrgico: 1 bloco removido (8 linhas)
+
+### Arquivo modificado
+- `app/Services/MercadoLivreClient.php` — Removido bloco de injeção de client_id em requisições públicas
+
+---
+
+## Sessão 2026-03-06 (2) — FIX-002: 19 stubs/placeholders substituídos por implementações reais
+
+**Commit:** `30f0bfb`
+**Testes:** 2923 pass, 0 fail, 34 skipped | **Codacy:** 0 issues
+
+### Arquivos modificados (5):
+1. **AdvancedSEOMaximizer.php** — 3 stubs corrigidos:
+   - `extractKeywords()`: stopwords expandida + bigrams
+   - `optimizeTitleStructure()`: reestrutura [Marca]+[Modelo]+[Resto]
+   - `isPowerWordRelevant()`: filtragem por mapa categoria/palavra
+2. **KeywordGapAnalyzerService.php** — 10 stubs implementados:
+   - `getTopProductsByCategory()`: busca via ML API sort by sold_quantity
+   - `identifySuccessPatterns()`: correlaciona keywords vs vendas
+   - `findMissingOpportunities()`: identifica keywords freq >= 3 ausentes
+   - `identifyTrendingKeywords()`: ML trends API com fallback
+   - `generateCategoryRecommendations()`: recomendações structure
+   - `getPreviousAnalysis()`: leitura via CacheService
+   - `detectChanges()`: diff gap_score + keywords ausentes
+   - `calculateTrend()`: improving/declining/stable via deltas
+   - `generateAlerts()`: alertas gap_score > 70, keywords críticas
+   - `generateMonitoringSummary()`: agregação de tendências e alertas
+   - Também: salva resultado em cache após analyzeKeywordGaps()
+3. **CloneSeoIntegrationService.php** — 3 stubs:
+   - `getFromCache()`/`saveToCache()`: delegam para CacheService
+   - `optimizeImageOrder()`: ordena por resolução (pixels desc)
+4. **SEOPerformancePredictor.php** — 2 stubs:
+   - `getSeasonalAdjustment()`: query category_performance por mês com fallback
+   - `extractMainKeywords()`: stopwords PT expandido
+5. **AIPredictiveAnalyticsService.php** — 2 confidence fixes:
+   - `regressionPrediction()`: confidence varia com factor count + horizon decay
+   - `ensemblePrediction()`: confidence via variância entre modelos (acordo)
+
+### Arquivos descartados (não precisam de fix):
+- **ChatbotAIService.php** — confidence scores são heurísticas intencionais
+- **AIContentGeneratorService.php** — cache já removido, template já implementado
+
+---
+
 ## Sessão 2026-03-06 — FIX-001: Substituição de código placeholder/fake por implementações reais
 
 **Objetivo:** Corrigir código placeholder/stub encontrado em audit de qualidade de código.

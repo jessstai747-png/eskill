@@ -757,17 +757,6 @@ class MercadoLivreClient
             }
         }
 
-        // Se for requisição pública, adicionar client_id para evitar rate limits agressivos
-        $clientId = (string)($_ENV['ML_APP_ID'] ?? getenv('ML_APP_ID') ?? '');
-        if (!$requiresAuth && $clientId !== '') {
-            if (!isset($options['query'])) {
-                $options['query'] = [];
-            }
-            if (is_array($options['query']) && !isset($options['query']['client_id'])) {
-                $options['query']['client_id'] = $clientId;
-            }
-        }
-
         $url = $this->baseUrl . $endpoint;
 
         try {
