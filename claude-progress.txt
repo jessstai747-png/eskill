@@ -6,6 +6,43 @@
 
 ---
 
+## Sessão 2026-03-06 (19) — Admin creation + Error monitoring proativo
+
+### O que foi feito
+- Criado `bin/create-admin.php` — CLI completo para criar usuário admin no banco
+  - Suporte a modos interativo e não-interativo (`--name`, `--email`, `--password`, `--non-interactive`)
+  - Validação de senha (8+ chars, maiúscula, minúscula, número)
+  - Verificação de e-mail existente com opção de reset de senha
+  - bcrypt cost 12 (mesma config do SecurityService), email_verified_at = NOW()
+  - Verificação dinâmica de colunas do schema para compatibilidade
+- Aprimorado `app/Services/ErrorMonitoringService.php` — adicionado monitoramento proativo
+  - `runMonitoringCycle()` — ciclo completo: logs, HTTP health, disco, DB, PHP errors, erros não resolvidos
+  - `getQuickStatus()` — resumo rápido para API
+  - Alertas por e-mail via EmailService com cooldown de 30 min e fallback para arquivo
+  - Persistência de estado entre execuções (JSON state file)
+- Criado `bin/error-monitor.php` — worker CLI para cron
+  - Flags: `--status` (ver último status), `--verbose` (saída detalhada)
+  - Output colorizado com resumo e detalhes por check
+- Criado `crontab.error-monitor.example` — exemplo de crontab
+
+### Validação
+- `php -l` em todos os arquivos: sem erros
+- PHPUnit: 2997 tests, 6982 assertions, 51 skipped (baseline OK)
+- Codacy: zero issues em todos os arquivos
+
+### Arquivos criados/alterados
+1. **`bin/create-admin.php`** ✨ Criado — CLI admin user creation
+2. **`app/Services/ErrorMonitoringService.php`** ✏️ Editado — monitoramento proativo
+3. **`bin/error-monitor.php`** ✨ Criado — worker CLI para cron
+4. **`crontab.error-monitor.example`** ✨ Criado — exemplo de crontab
+
+### Próximos passos
+- Rodar `php bin/create-admin.php` no servidor de produção para criar admin
+- Configurar crontab do error-monitor no servidor de produção
+- Configurar ALERT_EMAIL_RECIPIENT e EMAIL_ENABLED no .env de produção
+
+---
+
 ## Sessão 2026-03-06 (18) — SHIP-001: Fix shipping dashboard requestJson compatibility
 
 ### O que foi feito
