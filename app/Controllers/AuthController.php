@@ -55,7 +55,7 @@ class AuthController extends BaseController
         }
 
         // Gerar token CSRF se não existir
-        if (!isset($_SESSION['csrf_token'])) {
+        if (empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time'])) {
             $this->security->generateCsrfToken();
         }
 
@@ -195,7 +195,7 @@ class AuthController extends BaseController
         }
 
         // Gerar token CSRF se não existir
-        if (!isset($_SESSION['csrf_token'])) {
+        if (empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time'])) {
             $this->security->generateCsrfToken();
         }
 
@@ -288,7 +288,7 @@ class AuthController extends BaseController
     public function forgotPassword(): void
     {
         // Gerar token CSRF se não existir
-        if (!isset($_SESSION['csrf_token'])) {
+        if (empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time'])) {
             $this->security->generateCsrfToken();
         }
 
@@ -349,7 +349,7 @@ class AuthController extends BaseController
         }
 
         // Gerar token CSRF se não existir
-        if (!isset($_SESSION['csrf_token'])) {
+        if (empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time'])) {
             $this->security->generateCsrfToken();
         }
 

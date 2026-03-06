@@ -144,7 +144,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Garantir que token CSRF existe na sessão e não está expirado (1 hora)
 if (
-    !isset($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) ||
+    empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) ||
     (time() - $_SESSION['csrf_token_time']) > 3600
 ) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

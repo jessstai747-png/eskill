@@ -98,7 +98,7 @@ class SecurityService
             return bin2hex(random_bytes(32));
         }
 
-        if (isset($_SESSION['csrf_token'], $_SESSION['csrf_token_time'])) {
+        if (!empty($_SESSION['csrf_token']) && isset($_SESSION['csrf_token_time'])) {
             $isExpired = (time() - $_SESSION['csrf_token_time']) > 3600;
             if (!$isExpired) {
                 return $_SESSION['csrf_token'];

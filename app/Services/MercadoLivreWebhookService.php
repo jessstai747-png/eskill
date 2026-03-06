@@ -58,7 +58,7 @@ class MercadoLivreWebhookService
 
     /**
      * Process a single webhook event
-     * 
+     *
      * @param array $payload Webhook payload from ML
      * @return array Result ['success' => bool, 'error' => ?string, 'event_id' => ?string]
      */
@@ -97,7 +97,7 @@ class MercadoLivreWebhookService
                 case 'questions':
                     $this->handleQuestionEvent($resource);
                     break;
-                
+
                 case 'claims':
                     $this->handleClaimEvent($resource);
                     break;
@@ -154,13 +154,12 @@ class MercadoLivreWebhookService
             }
 
             return ['success' => true, 'event_id' => $eventId];
-
         } catch (\Throwable $e) {
             $this->logger->error("Error processing webhook [{$eventId}]", [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -189,7 +188,7 @@ class MercadoLivreWebhookService
         }
 
         // Notify UI/User
-        $userId = $this->getUserIdFromAccount(); 
+        $userId = $this->getUserIdFromAccount();
         if ($userId) {
             $total = $order['total_amount'] ?? ($order['data']['total_amount'] ?? '---');
             $this->getNotificationService()->create(
@@ -213,14 +212,14 @@ class MercadoLivreWebhookService
         }
 
         // 1. Force Sync Item to Local DB
-        $this->getItemService()->syncItem($itemId); 
+        $this->getItemService()->syncItem($itemId);
 
         // 2. Refresh Tech Sheet Analysis
         try {
             $this->getTechSheetService()->getItem($itemId);
             $this->logger->info("TechSheet refreshed for item {$itemId}");
         } catch (\Exception $e) {
-             $this->logger->warning("Failed to refresh TechSheet for {$itemId}", ['error' => $e->getMessage()]);
+            $this->logger->warning("Failed to refresh TechSheet for {$itemId}", ['error' => $e->getMessage()]);
         }
     }
 
@@ -239,13 +238,13 @@ class MercadoLivreWebhookService
         if (!empty($question['error'])) {
             throw new \RuntimeException((string)($question['message'] ?? 'Falha ao sincronizar pergunta do webhook'));
         }
-        
+
         // Notify User
         $userId = $this->getUserIdFromAccount();
         if ($userId) {
-             $itemTitle = $question['item_title'] ?? ($question['item']['title'] ?? 'Anúncio');
-             $text = $question['text'] ?? 'Nova pergunta';
-             $this->getNotificationService()->create(
+            $itemTitle = $question['item_title'] ?? ($question['item']['title'] ?? 'Anúncio');
+            $text = $question['text'] ?? 'Nova pergunta';
+            $this->getNotificationService()->create(
                 $userId,
                 'question_new',
                 "Nova Pergunta",
@@ -253,7 +252,7 @@ class MercadoLivreWebhookService
                 ['question_id' => $questionId, 'item_id' => $question['item_id'] ?? null]
             );
         }
-        
+
         // Attempt auto-reply or draft generation
         try {
             $qService->generateDraftAnswer($questionId);
@@ -265,10 +264,10 @@ class MercadoLivreWebhookService
     private function handleMessageEvent(string $resource): void
     {
         $this->logger->info("New Message event", ['resource' => $resource]);
-        
+
         $parts = explode('/', $resource);
         $id = end($parts);
-        
+
         if (!$id) {
             return;
         }
@@ -442,36 +441,36 @@ class MercadoLivreWebhookService
         // Resource: /v1/claims/{claimId}
         $parts = explode('/', $resource);
         $claimId = end($parts);
-        
+
         if (!$claimId) {
             throw new \Exception("Invalid claim resource: {$resource}");
         }
-        
+
         $claimService = new \App\Services\ClaimsService($this->accountId);
         $claimService->syncClaim($claimId);
-        
+
         // Notify Urgent
         $userId = $this->getUserIdFromAccount();
         if ($userId) {
-             $this->getNotificationService()->create(
+            $this->getNotificationService()->create(
                 $userId,
                 'claim_new',
                 "⚠️ Nova Reclamação #{$claimId}",
                 "Responda imediatamente para evitar impacto na reputação.",
                 ['claim_id' => $claimId, 'priority' => 'critical']
             );
-            
+
             // External Alert
             $this->getNotificationService()->sendAlert(
-                "Nova Reclamação #{$claimId}", 
-                "Conta {$this->accountId}: Nova reclamação recebida.", 
+                "Nova Reclamação #{$claimId}",
+                "Conta {$this->accountId}: Nova reclamação recebida.",
                 "CRITICAL"
             );
         }
-        
+
         $this->logger->info("Claim Synced", ['claim_id' => $claimId]);
     }
-    
+
     private function getUserIdFromAccount(): ?int
     {
         try {
@@ -492,7 +491,7 @@ class MercadoLivreWebhookService
     }
 
     // Lazy Loaders (respeitam instâncias injetadas via construtor)
-    
+
     private function getOrderService(): OrderService
     {
         if ($this->orderService === null) {
@@ -514,7 +513,7 @@ class MercadoLivreWebhookService
         }
         return $this->itemService;
     }
-    
+
     private function getTechSheetService(): \App\Services\TechSheetService
     {
         return new \App\Services\TechSheetService($this->accountId);

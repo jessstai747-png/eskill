@@ -180,4 +180,3 @@ fclose($lockHandle);
 
 logMsg('Worker encerrado', 'info');
 exit(0);
-

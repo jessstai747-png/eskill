@@ -7,7 +7,7 @@ use Exception;
 
 /**
  * Serviço de Análise Automática de Imagens por IA
- * 
+ *
  * Sistema avançado para análise inteligente de imagens de produtos:
  * - Reconhecimento automático de objetos e características
  * - Análise de qualidade e composição
@@ -15,7 +15,7 @@ use Exception;
  * - Detecção de texto em imagens
  * - Sugestões de otimização
  * - Análise de conformidade com padrões ML
- * 
+ *
  * @author Sistema ML Manager V8.0
  * @version 8.0.0
  */
@@ -69,10 +69,10 @@ class AIImageAnalyzerService
 
             // Pontuação geral
             $overallScore = $this->calculateOverallScore($analyses);
-            
+
             // Sugestões de melhoria
             $suggestions = $this->generateImprovementSuggestions($analyses);
-            
+
             // Classificação automática
             $classification = $this->classifyImageType($analyses);
 
@@ -94,7 +94,7 @@ class AIImageAnalyzerService
 
             // Cache por 24 horas
             $this->cache->set($cacheKey, $result, 'ai_images', 86400);
-            
+
             // Log da análise
             $this->logger->info('AI image analysis completed', [
                 'image_url' => $imageUrl,
@@ -108,7 +108,6 @@ class AIImageAnalyzerService
             }
 
             return $result;
-
         } catch (Exception $e) {
             $this->logger->error('AI image analysis failed', [
                 'error' => $e->getMessage(),
@@ -141,7 +140,7 @@ class AIImageAnalyzerService
             if ($analysis['success']) {
                 $summary['analyzed']++;
                 $summary['average_score'] += $analysis['overall_score'];
-                
+
                 // Encontrar melhor imagem
                 if (!$summary['best_image'] || $analysis['overall_score'] > $summary['best_image']['score']) {
                     $summary['best_image'] = [
@@ -150,11 +149,11 @@ class AIImageAnalyzerService
                         'score' => $analysis['overall_score']
                     ];
                 }
-                
+
                 // Coletar problemas
                 if (!empty($analysis['suggestions'])) {
                     $summary['issues_found'] = array_merge(
-                        $summary['issues_found'], 
+                        $summary['issues_found'],
                         array_column($analysis['suggestions'], 'type')
                     );
                 }
@@ -458,15 +457,24 @@ class AIImageAnalyzerService
     private function getColorName(int $r, int $g, int $b): string
     {
         $colors = [
-            'Branco' => [255, 255, 255], 'Preto' => [0, 0, 0],
-            'Vermelho' => [255, 0, 0], 'Verde' => [0, 128, 0],
-            'Azul' => [0, 0, 255], 'Amarelo' => [255, 255, 0],
-            'Laranja' => [255, 165, 0], 'Rosa' => [255, 192, 203],
-            'Roxo' => [128, 0, 128], 'Marrom' => [139, 69, 19],
-            'Cinza' => [128, 128, 128], 'Cinza Claro' => [192, 192, 192],
-            'Cinza Escuro' => [64, 64, 64], 'Azul Claro' => [135, 206, 235],
-            'Azul Escuro' => [0, 0, 139], 'Bege' => [245, 245, 220],
-            'Ciano' => [0, 255, 255], 'Magenta' => [255, 0, 255],
+            'Branco' => [255, 255, 255],
+            'Preto' => [0, 0, 0],
+            'Vermelho' => [255, 0, 0],
+            'Verde' => [0, 128, 0],
+            'Azul' => [0, 0, 255],
+            'Amarelo' => [255, 255, 0],
+            'Laranja' => [255, 165, 0],
+            'Rosa' => [255, 192, 203],
+            'Roxo' => [128, 0, 128],
+            'Marrom' => [139, 69, 19],
+            'Cinza' => [128, 128, 128],
+            'Cinza Claro' => [192, 192, 192],
+            'Cinza Escuro' => [64, 64, 64],
+            'Azul Claro' => [135, 206, 235],
+            'Azul Escuro' => [0, 0, 139],
+            'Bege' => [245, 245, 220],
+            'Ciano' => [0, 255, 255],
+            'Magenta' => [255, 0, 255],
         ];
         $minDist = PHP_INT_MAX;
         $closest = 'Desconhecida';
@@ -722,7 +730,7 @@ class AIImageAnalyzerService
         }
 
         $compliance['overall_compliance'] = round(
-            (count($checks) - count($compliance['violations'])) / count($checks) * 100, 
+            (count($checks) - count($compliance['violations'])) / count($checks) * 100,
             2
         );
 
@@ -846,7 +854,7 @@ class AIImageAnalyzerService
 
             list($width, $height, $type) = $imageSize;
             $mime = $imageSize['mime'];
-            
+
             // Mapear tipo para formato
             $formatMap = [
                 IMAGETYPE_JPEG => 'JPEG',
@@ -870,7 +878,6 @@ class AIImageAnalyzerService
             ];
 
             return $imageInfo;
-
         } catch (Exception $e) {
             return ['valid' => false, 'error' => $e->getMessage()];
         }
@@ -927,13 +934,20 @@ class AIImageAnalyzerService
     }
 
     // Implementações reais usando GD library para análise de imagens
-    private function calculateResolutionScore($imageInfo): int { 
-        return min(100, (int)(($imageInfo['width'] * $imageInfo['height']) / (1200 * 1200) * 100)); 
+    private function calculateResolutionScore($imageInfo): int
+    {
+        return min(100, (int)(($imageInfo['width'] * $imageInfo['height']) / (1200 * 1200) * 100));
     }
-    private function checkSizeCompliance($imageInfo): bool { return $imageInfo['file_size'] <= 10485760; }
-    private function checkFormatCompliance($format): bool { return in_array($format, ['JPEG', 'PNG', 'WEBP']); }
-    
-    private function calculateSharpness($imageInfo): int 
+    private function checkSizeCompliance($imageInfo): bool
+    {
+        return $imageInfo['file_size'] <= 10485760;
+    }
+    private function checkFormatCompliance($format): bool
+    {
+        return in_array($format, ['JPEG', 'PNG', 'WEBP']);
+    }
+
+    private function calculateSharpness($imageInfo): int
     {
         if (!isset($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
             return 70; // Default quando imagem não está acessível localmente
@@ -968,8 +982,8 @@ class AIImageAnalyzerService
             return 70;
         }
     }
-    
-    private function calculateBrightness($imageInfo): int 
+
+    private function calculateBrightness($imageInfo): int
     {
         if (!isset($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
             return 75;
@@ -1005,7 +1019,7 @@ class AIImageAnalyzerService
         }
     }
 
-    private function calculateContrast($imageInfo): int 
+    private function calculateContrast($imageInfo): int
     {
         if (!isset($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
             return 70;
@@ -1036,7 +1050,7 @@ class AIImageAnalyzerService
         }
     }
 
-    private function calculateNoise($imageInfo): int 
+    private function calculateNoise($imageInfo): int
     {
         if (!isset($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
             return 15;
@@ -1066,21 +1080,21 @@ class AIImageAnalyzerService
         }
     }
 
-    private function detectBlur($imageInfo): int 
+    private function detectBlur($imageInfo): int
     {
         // Reusar sharpness invertido: menos nítido = mais blur
         $sharpness = $this->calculateSharpness($imageInfo);
         return max(0, 100 - $sharpness);
     }
 
-    private function analyzeExposure($imageInfo): int 
+    private function analyzeExposure($imageInfo): int
     {
         $brightness = $this->calculateBrightness($imageInfo);
         // Boa exposição está na faixa 60-85 de brightness score
         if ($brightness >= 60 && $brightness <= 90) return min(100, $brightness + 10);
         return max(0, $brightness - 10);
     }
-    
+
     private function detectObjects($imageInfo): array
     {
         // Se não há arquivo local, não há como analisar objetos via heurística
@@ -1151,15 +1165,15 @@ class AIImageAnalyzerService
 
         return $objects;
     }
-    
-    private function analyzeProductVisibility($imageInfo): int 
+
+    private function analyzeProductVisibility($imageInfo): int
     {
         // Base no tamanho vs resolução ideal ML (1200x1200)
         $coverage = min(1.0, ($imageInfo['width'] * $imageInfo['height']) / (1200 * 1200));
         return (int)($coverage * 100);
     }
 
-    private function analyzeBackground($imageInfo): array 
+    private function analyzeBackground($imageInfo): array
     {
         if (!isset($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
             return ['type' => 'unknown', 'score' => 50];
@@ -1173,7 +1187,7 @@ class AIImageAnalyzerService
             $height = imagesy($img);
             $cornerPixels = [];
             $margin = min(20, (int)($width * 0.05));
-            
+
             $corners = [[0, 0], [$width - $margin, 0], [0, $height - $margin], [$width - $margin, $height - $margin]];
             foreach ($corners as [$cx, $cy]) {
                 for ($dx = 0; $dx < $margin; $dx += 3) {
@@ -1213,7 +1227,7 @@ class AIImageAnalyzerService
         }
     }
 
-    private function analyzeContentComposition($imageInfo): int 
+    private function analyzeContentComposition($imageInfo): int
     {
         // Score baseado em: resolução adequada + formato correto + proporção ideal
         $resScore = $this->calculateResolutionScore($imageInfo);
@@ -1223,7 +1237,7 @@ class AIImageAnalyzerService
         return (int)(($resScore + $formatOk + $ratioScore) / 3);
     }
 
-    private function analyzeProfessionalism($imageInfo): int 
+    private function analyzeProfessionalism($imageInfo): int
     {
         $bg = $this->analyzeBackground($imageInfo);
         $res = $this->calculateResolutionScore($imageInfo);
@@ -1231,7 +1245,7 @@ class AIImageAnalyzerService
         return (int)(($bg['score'] * 0.4) + ($res * 0.3) + ($sharp * 0.3));
     }
 
-    private function analyzeColorHarmony(array $dominantColors = []): int 
+    private function analyzeColorHarmony(array $dominantColors = []): int
     {
         if (count($dominantColors) < 2) {
             return 60;
@@ -1293,22 +1307,22 @@ class AIImageAnalyzerService
 
         return (int)max(40, min(98, round(($hueScore * 0.6) + ($lumScore * 0.4))));
     }
-    
-    private function checkRuleOfThirds($imageInfo): int 
+
+    private function checkRuleOfThirds($imageInfo): int
     {
         // Sem detecção de objetos avançada, base na proporção
         $ratio = $imageInfo['width'] / max(1, $imageInfo['height']);
         return ($ratio >= 0.9 && $ratio <= 1.1) ? 85 : 70;
     }
 
-    private function analyzeCentering($imageInfo): int 
+    private function analyzeCentering($imageInfo): int
     {
         // Estimar centralização pelo contraste centro vs bordas
         $brightness = $this->calculateBrightness($imageInfo);
         return min(95, max(50, $brightness + 10));
     }
 
-    private function analyzeSymmetry($imageInfo): int 
+    private function analyzeSymmetry($imageInfo): int
     {
         if (!isset($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
             return 65;
@@ -1341,14 +1355,14 @@ class AIImageAnalyzerService
         }
     }
 
-    private function analyzeDepthOfField($imageInfo): int 
+    private function analyzeDepthOfField($imageInfo): int
     {
         // Aproximar: diferença de nitidez centro vs borda
         $sharpness = $this->calculateSharpness($imageInfo);
         return min(100, max(30, $sharpness - 5));
     }
 
-    private function detectLeadingLines($imageInfo): int 
+    private function detectLeadingLines($imageInfo): int
     {
         if (!isset($imageInfo['local_path']) || !file_exists($imageInfo['local_path'])) {
             return 55;
@@ -1429,21 +1443,33 @@ class AIImageAnalyzerService
         }
     }
 
-    private function checkMLSizeRequirements($imageInfo): bool { return $imageInfo['width'] >= 500 && $imageInfo['height'] >= 500; }
-    private function checkMLQualityRequirements($imageInfo): bool { 
+    private function checkMLSizeRequirements($imageInfo): bool
+    {
+        return $imageInfo['width'] >= 500 && $imageInfo['height'] >= 500;
+    }
+    private function checkMLQualityRequirements($imageInfo): bool
+    {
         $sharpness = $this->calculateSharpness($imageInfo);
         $noise = $this->calculateNoise($imageInfo);
         return $sharpness >= 40 && $noise <= 50;
     }
-    private function checkMLContentPolicy($imageInfo): bool { return true; }
-    private function checkMLFormatRequirements($imageInfo): bool { return in_array($imageInfo['format'] ?? '', ['JPEG', 'PNG', 'WEBP']); }
-    private function classifyImageType($analyses): string { 
+    private function checkMLContentPolicy($imageInfo): bool
+    {
+        return true;
+    }
+    private function checkMLFormatRequirements($imageInfo): bool
+    {
+        return in_array($imageInfo['format'] ?? '', ['JPEG', 'PNG', 'WEBP']);
+    }
+    private function classifyImageType($analyses): string
+    {
         if (isset($analyses['background']) && $analyses['background']['type'] === 'white') {
             return 'product_photo_studio';
         }
         return 'product_photo';
     }
-    private function generateBulkRecommendations($summary, $results): array { 
+    private function generateBulkRecommendations($summary, $results): array
+    {
         $recs = [];
         if (($summary['avg_quality_score'] ?? 0) < 70) {
             $recs[] = 'Melhore a qualidade geral das imagens (resolução e nitidez)';

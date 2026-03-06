@@ -8,7 +8,7 @@ use Exception;
 
 /**
  * Serviço de Análise Preditiva Avançada por IA
- * 
+ *
  * Sistema de Machine Learning para previsões de mercado:
  * - Previsão de demanda de produtos
  * - Análise de tendências futuras
@@ -17,7 +17,7 @@ use Exception;
  * - Análise sazonal inteligente
  * - Detecção precoce de oportunidades
  * - Alertas preditivos automatizados
- * 
+ *
  * @author Sistema ML Manager V8.0
  * @version 8.0.0
  */
@@ -58,10 +58,10 @@ class AIPredictiveAnalyticsService
 
             // Dados históricos relevantes
             $historical = $this->gatherRelevantHistory($productData);
-            
+
             // Contexto atual de mercado
             $marketContext = $this->getMarketContext($productData);
-            
+
             // Diferentes modelos de predição
             $predictions = [
                 'demand_forecast' => $this->predictDemand($productData, $historical, $marketContext),
@@ -76,13 +76,13 @@ class AIPredictiveAnalyticsService
 
             // Consolidação e validação
             $consolidated = $this->consolidatePredictions($predictions);
-            
+
             // Confiança geral
             $confidence = $this->calculatePredictionConfidence($predictions, $historical);
-            
+
             // Alertas e oportunidades
             $insights = $this->generatePredictiveInsights($consolidated, $confidence);
-            
+
             // Recomendações baseadas nas previsões
             $recommendations = $this->generatePredictiveRecommendations($consolidated, $insights);
 
@@ -106,7 +106,7 @@ class AIPredictiveAnalyticsService
 
             // Cache por 4 horas
             $this->cache->set($cacheKey, $result, 'ai_predictions', 14400);
-            
+
             // Log da previsão
             $this->logger->info('AI prediction completed', [
                 'product_id' => $productData['id'] ?? null,
@@ -115,7 +115,6 @@ class AIPredictiveAnalyticsService
             ]);
 
             return $result;
-
         } catch (Exception $e) {
             $this->logger->error('AI prediction failed', [
                 'error' => $e->getMessage(),
@@ -134,13 +133,13 @@ class AIPredictiveAnalyticsService
         try {
             $horizon = $options['days_ahead'] ?? 30;
             $granularity = $options['granularity'] ?? 'daily'; // daily, weekly, monthly
-            
+
             // Coleta de dados históricos
             $historical = $this->getHistoricalDemandData($categoryId, 365);
-            
+
             // Fatores externos
             $externalFactors = $this->getExternalFactors($categoryId);
-            
+
             // Modelos de previsão
             $models = [
                 'time_series' => $this->timeSeriesPrediction($historical, $horizon),
@@ -148,16 +147,16 @@ class AIPredictiveAnalyticsService
                 'neural_network' => $this->neuralNetworkPrediction($historical, $horizon),
                 'ensemble' => null // Será calculado depois
             ];
-            
+
             // Ensemble (combinação dos modelos)
             $models['ensemble'] = $this->ensemblePrediction($models, $horizon);
-            
+
             // Intervalos de confiança
             $intervals = $this->calculateConfidenceIntervals($models['ensemble'], $historical);
-            
+
             // Fatores de influência
             $influenceFactors = $this->identifyInfluenceFactors($categoryId, $historical);
-            
+
             // Cenários alternativos
             $scenarios = $this->generateScenarios($models['ensemble'], $influenceFactors);
 
@@ -177,7 +176,6 @@ class AIPredictiveAnalyticsService
             ];
 
             return $result;
-
         } catch (Exception $e) {
             return $this->createErrorResponse($e->getMessage());
         }
@@ -191,13 +189,13 @@ class AIPredictiveAnalyticsService
         try {
             // Análise de elasticidade de preço
             $elasticity = $this->calculatePriceElasticity($productData, $historical);
-            
+
             // Análise da concorrência
             $competitorPricing = $this->analyzeCompetitorPricing($productData, $marketContext);
-            
+
             // Sazonalidade de preços
             $seasonalFactors = $this->analyzePriceSeasonality($productData, $historical);
-            
+
             // Modelos de otimização de preço
             $priceModels = [
                 'profit_maximization' => $this->calculateProfitMaximizingPrice($productData, $elasticity),
@@ -206,13 +204,13 @@ class AIPredictiveAnalyticsService
                 'premium_positioning' => $this->calculatePremiumPrice($productData, $competitorPricing),
                 'dynamic_pricing' => $this->calculateDynamicPrice($productData, $marketContext)
             ];
-            
+
             // Recomendação principal
             $recommendedStrategy = $this->selectOptimalPricingStrategy($priceModels, $productData, $marketContext);
-            
+
             // Simulação de impacto
             $impactSimulation = $this->simulatePriceImpact($recommendedStrategy, $productData, $elasticity);
-            
+
             // Alertas de preço
             $priceAlerts = $this->generatePriceAlerts($priceModels, $competitorPricing);
 
@@ -229,7 +227,6 @@ class AIPredictiveAnalyticsService
                 'price_alerts' => $priceAlerts,
                 'next_review_date' => date('Y-m-d', strtotime('+7 days'))
             ];
-
         } catch (Exception $e) {
             return ['error' => $e->getMessage()];
         }
@@ -248,13 +245,13 @@ class AIPredictiveAnalyticsService
             'weekly' => $this->detectWeeklyPatterns($historicalData),
             'daily' => $this->detectDailyPatterns($historicalData)
         ];
-        
+
         // Identificar padrões mais significativos
         $significance = [];
         foreach ($patterns as $period => $pattern) {
             $significance[$period] = $this->calculatePatternSignificance($pattern);
         }
-        
+
         return [
             'patterns' => $patterns,
             'significance' => $significance,
@@ -269,16 +266,16 @@ class AIPredictiveAnalyticsService
     private function predictProductLifecycle(array $productData, array $historical): array
     {
         $stages = ['introduction', 'growth', 'maturity', 'decline'];
-        
+
         // Análise da fase atual
         $currentStage = $this->identifyCurrentStage($productData, $historical);
-        
+
         // Previsão de transições
         $transitions = $this->predictStageTransitions($currentStage, $historical);
-        
+
         // Estratégias por fase
         $strategies = $this->getLifecycleStrategies($currentStage, $transitions);
-        
+
         return [
             'current_stage' => $currentStage,
             'stage_confidence' => $this->calculateStageConfidence($currentStage, $historical),
@@ -302,13 +299,13 @@ class AIPredictiveAnalyticsService
             'economic_risks' => $this->analyzeEconomicRisks($marketContext),
             'seasonal_risks' => $this->analyzeSeasonalRisks($productData, $historical)
         ];
-        
+
         // Score de risco consolidado
         $overallRisk = $this->calculateOverallRisk($risks);
-        
+
         // Plano de mitigação
         $mitigation = $this->generateMitigationPlan($risks);
-        
+
         return [
             'risk_categories' => $risks,
             'overall_risk_score' => $overallRisk,
@@ -333,11 +330,11 @@ class AIPredictiveAnalyticsService
             $values = [0];
         }
         $lastValue = end($values);
-        
+
         // Calculate basic trend from last 30 days vs previous 30
         $count = count($values);
         $trend = 0;
-        
+
         if ($count >= 60) {
             $recentAvg = array_sum(array_slice($values, -30)) / 30;
             $previousAvg = array_sum(array_slice($values, -60, 30)) / 30;
@@ -352,28 +349,28 @@ class AIPredictiveAnalyticsService
 
         // Daily trend projection (linearized)
         $dailyTrend = $trend / 30;
-        
+
         // Project future
         $currentVal = $lastValue;
-        
+
         for ($i = 1; $i <= $horizon; $i++) {
             // Apply trend
             $currentVal = $currentVal * (1 + $dailyTrend);
-            
+
             // Decomposição sazonal e projeção usando suavização exponencial
             $seasonalResult = MLStatisticsHelper::seasonalDecomposition($data, 7); // Semanal
             $monthlySeasonalResult = MLStatisticsHelper::seasonalDecomposition($data, 30); // Mensal
-            
+
             // Aplica tendência e sazonalidade via Holt-Winters
             $hwResult = MLStatisticsHelper::holtWintersSeasonal($data, 7, 0.3, 0.1, 0.1, $horizon);
-            
+
             $predictions[] = [
                 'date' => date('Y-m-d', strtotime("+{$i} days")),
                 'value' => round($hwResult['forecast'][$i - 1] ?? $currentVal, 2),
                 'confidence' => max(0.4, 0.9 - ($i * 0.015)) // Confidence decays with time
             ];
         }
-        
+
         return $predictions;
     }
 
@@ -384,38 +381,38 @@ class AIPredictiveAnalyticsService
     {
         $predictions = [];
         $baseValue = end($historical)['value'] ?? 100;
-        
+
         // Calculate factor impact
         $totalImpact = 0;
         foreach ($factors as $factor => $value) {
             $coefficient = $this->getFactorCoefficient($factor);
             $totalImpact += $value * $coefficient; // e.g., seasonality(0.1) * coeff(0.5) = +0.05
         }
-        
+
         // Normalize impact per step (simple linear application)
         $stepImpact = $totalImpact / 10; // spread impact
-        
+
         $currentVal = $baseValue;
-        
+
         for ($i = 1; $i <= $horizon; $i++) {
             // Apply regression factor
             // Logic: Base Trend + Factor Impact * Step
             $currentVal = $currentVal * (1 + 0.001); // minimal organic trend
             $currentVal += $currentVal * ($stepImpact * ($i / $horizon)); // ramping impact
-            
+
             $predictions[] = [
                 'date' => date('Y-m-d', strtotime("+{$i} days")),
                 'value' => round($currentVal, 2),
                 'confidence' => 0.8 // Fixed confidence for regression model
             ];
         }
-        
+
         return $predictions;
     }
 
     /**
      * Previsão por "Neural Network" (Simplified Linear Projection)
-     * 
+     *
      * In a full environment, this would call Python/TensorFlow.
      * Here we implement a weighted projection based on recent volatility.
      */
@@ -423,26 +420,26 @@ class AIPredictiveAnalyticsService
     {
         $predictions = [];
         $pattern = $this->extractNeuralPattern($data);
-        
+
         $baseValue = end($data)['value'] ?? 100;
         $growthRate = $pattern['growth'];
-        
+
         for ($i = 1; $i <= $horizon; $i++) {
             // Apply growth compounding
             $predicted = $baseValue * pow(1 + $growthRate, $i);
-            
+
             // Dampen growth over time (conservative prediction)
             if ($i > 10) {
-                 $predicted *= 0.95; 
+                $predicted *= 0.95;
             }
-            
+
             $predictions[] = [
                 'date' => date('Y-m-d', strtotime("+{$i} days")),
                 'value' => round($predicted, 2),
                 'confidence' => $pattern['confidence']
             ];
         }
-        
+
         return $predictions;
     }
 
@@ -457,12 +454,12 @@ class AIPredictiveAnalyticsService
             'regression' => 0.3,
             'neural_network' => 0.3
         ];
-        
+
         for ($i = 0; $i < $horizon; $i++) {
             $weightedSum = 0;
             $totalWeight = 0;
             $date = '';
-            
+
             foreach ($weights as $model => $weight) {
                 if (isset($models[$model][$i])) {
                     $weightedSum += $models[$model][$i]['value'] * $weight;
@@ -470,14 +467,14 @@ class AIPredictiveAnalyticsService
                     $date = $models[$model][$i]['date'];
                 }
             }
-            
+
             $ensemble[] = [
                 'date' => $date,
                 'value' => round($weightedSum / $totalWeight, 2),
                 'confidence' => min(0.95, $totalWeight)
             ];
         }
-        
+
         return $ensemble;
     }
 
@@ -519,7 +516,7 @@ class AIPredictiveAnalyticsService
     {
         // Counts actual data to prevent empty states
         $count = $this->db->query("SELECT COUNT(*) FROM item_metrics_history")->fetchColumn();
-        
+
         $this->historicalData = [
             'data_points' => (int)$count,
             'date_range' => 'variable',
@@ -582,12 +579,12 @@ class AIPredictiveAnalyticsService
     /**
      * Coleta dados históricos reais do banco
      */
-    private function gatherRelevantHistory(array $product): array 
+    private function gatherRelevantHistory(array $product): array
     {
         if (empty($product['id'])) {
             return ['data_points' => 0, 'quality' => 'low'];
         }
-        
+
         // 1. Histórico de métricas diárias (visitas, vendas locais)
         $stmt = $this->db->prepare("
             SELECT date, visits, sold_quantity, price
@@ -635,7 +632,7 @@ class AIPredictiveAnalyticsService
 
             if ($productId) {
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         AVG(CASE WHEN date >= DATE_SUB(CURDATE(), INTERVAL 15 DAY) THEN sold_quantity END) as recent_avg,
                         AVG(CASE WHEN date < DATE_SUB(CURDATE(), INTERVAL 15 DAY) AND date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN sold_quantity END) as prev_avg,
                         STDDEV(sold_quantity) as std_dev,
@@ -691,8 +688,8 @@ class AIPredictiveAnalyticsService
     /**
      * Previsão de demanda baseada em média móvel simples
      */
-    private function predictDemand($product, $historical, $context): array 
-    { 
+    private function predictDemand($product, $historical, $context): array
+    {
         $sales = $historical['sales_vector'] ?? [];
         if (empty($sales)) {
             return ['forecast' => 'stable', 'confidence' => 0.1];
@@ -701,49 +698,49 @@ class AIPredictiveAnalyticsService
         // Média dos últimos 7 dias
         $recent = array_slice($sales, -7);
         $avgRecent = count($recent) > 0 ? array_sum($recent) / count($recent) : 0;
-        
+
         // Média dos últimos 30 dias
         $month = array_slice($sales, -30);
         $avgMonth = count($month) > 0 ? array_sum($month) / count($month) : 0;
 
         $trend = ($avgRecent > $avgMonth) ? 'increasing' : (($avgRecent < $avgMonth * 0.9) ? 'decreasing' : 'stable');
-        
+
         return [
             'forecast' => $trend,
             'confidence' => ($historical['data_points'] > 30) ? 0.8 : 0.4,
             'avg_daily_sales' => round($avgMonth, 2)
-        ]; 
+        ];
     }
 
     /**
      * Previsão de vendas futuras baseada em regressão linear simples
      */
-    private function predictSales($product, $historical, $context): array 
-    { 
+    private function predictSales($product, $historical, $context): array
+    {
         $sales = $historical['sales_vector'] ?? [];
         if (count($sales) < 10) {
-             return ['projected_units' => 0, 'confidence' => 0.1, 'method' => 'insufficient_data'];
+            return ['projected_units' => 0, 'confidence' => 0.1, 'method' => 'insufficient_data'];
         }
 
         // Regressão Linear Simples (dias vs vendas)
         $n = count($sales);
         $x = range(1, $n);
         $y = $sales;
-        
+
         $sumX = array_sum($x);
         $sumY = array_sum($y);
-        
+
         $sumXY = 0;
         $sumXX = 0;
-        
+
         for ($i = 0; $i < $n; $i++) {
             $sumXY += $x[$i] * $y[$i];
             $sumXX += $x[$i] * $x[$i];
         }
-        
+
         $slope = ($n * $sumXY - $sumX * $sumY) / ($n * $sumXX - $sumX * $sumX);
         $intercept = ($sumY - $slope * $sumX) / $n;
-        
+
         // Projetar para os próximos 30 dias (total)
         $projectedTotal = 0;
         for ($i = 1; $i <= 30; $i++) {
@@ -751,45 +748,48 @@ class AIPredictiveAnalyticsService
             $prediction = $slope * $futureDay + $intercept;
             $projectedTotal += max(0, $prediction); // Não pode ser negativo
         }
-        
+
         return [
             'projected_units' => round($projectedTotal),
             'confidence' => 0.75,
             'daily_trend' => round($slope, 4)
-        ]; 
+        ];
     }
-    private function predictSeasonalTrends($product, $historical): array 
-    { 
+    private function predictSeasonalTrends($product, $historical): array
+    {
         // Identify peak sales months from history
         $sales = $historical['raw_metrics'] ?? [];
         $months = [];
-        foreach($sales as $row) {
-             $m = date('M', strtotime($row['date']));
-             if(!isset($months[$m])) $months[$m] = 0;
-             $months[$m] += $row['sold_quantity'];
+        foreach ($sales as $row) {
+            $m = date('M', strtotime($row['date']));
+            if (!isset($months[$m])) $months[$m] = 0;
+            $months[$m] += $row['sold_quantity'];
         }
         arsort($months);
         $peak = array_slice(array_keys($months), 0, 2);
         $low = array_slice(array_keys($months), -2);
-        
-        return ['peak_months' => $peak ?: ['Nov', 'Dec'], 'low_months' => $low ?: ['Jan', 'Feb']]; 
+
+        return ['peak_months' => $peak ?: ['Nov', 'Dec'], 'low_months' => $low ?: ['Jan', 'Feb']];
     }
-    private function predictCompetitionChanges($product, $historical, $context): array 
-    { 
+    private function predictCompetitionChanges($product, $historical, $context): array
+    {
         $trend = $context['trend'] ?? 'stable';
         return [
-            'new_entrants' => $trend === 'positive' ? 2 : 0, 
+            'new_entrants' => $trend === 'positive' ? 2 : 0,
             'price_wars' => $trend === 'negative' ? 'likely' : 'unlikely'
-        ]; 
+        ];
     }
-    private function predictMarketShare($product, $historical, $context): array 
-    { 
+    private function predictMarketShare($product, $historical, $context): array
+    {
         $sales = array_sum($historical['sales_vector'] ?? []);
         // Rough estimate share based on sales volume
-        $share = min(100, $sales / 1000); 
-        return ['projected_share' => round($share, 1) . '%', 'growth_potential' => $share < 10 ? 'high' : 'medium']; 
+        $share = min(100, $sales / 1000);
+        return ['projected_share' => round($share, 1) . '%', 'growth_potential' => $share < 10 ? 'high' : 'medium'];
     }
-    private function consolidatePredictions($predictions): array { return array_merge(...array_values($predictions)); }
+    private function consolidatePredictions($predictions): array
+    {
+        return array_merge(...array_values($predictions));
+    }
 
     private function calculatePredictionConfidence($predictions, $historical): array
     {
@@ -976,18 +976,21 @@ class AIPredictiveAnalyticsService
         return $recommendations;
     }
 
-    private function getModelAccuracy(): array { return $this->predictionAccuracy; }
-    
+    private function getModelAccuracy(): array
+    {
+        return $this->predictionAccuracy;
+    }
+
     // Métodos específicos de previsão
     // Métodos específicos de previsão
-    
+
     /**
      * Obtém demanda histórica agregada por categoria
      */
-    private function getHistoricalDemandData($categoryId, $days): array 
-    { 
+    private function getHistoricalDemandData($categoryId, $days): array
+    {
         $startDate = date('Y-m-d', strtotime("-{$days} days"));
-        
+
         // Agregar vendas de todos os itens da categoria
         // JOIN com items table pode ser necessário se category_id não estiver em item_metrics_history
         // Assumindo join com items
@@ -1007,8 +1010,8 @@ class AIPredictiveAnalyticsService
             // Fallback seguro se não há dados para evitar quebra
             return [['date' => date('Y-m-d'), 'value' => 0]];
         }
-        
-        return $data; 
+
+        return $data;
     }
     private function getExternalFactors($categoryId): array
     {
@@ -1016,15 +1019,24 @@ class AIPredictiveAnalyticsService
             $month = (int)date('n');
 
             $seasonalFactors = [
-                1 => -0.10, 2 => -0.05, 3 => 0.0, 4 => 0.0,
-                5 => 0.10, 6 => 0.08, 7 => -0.05, 8 => 0.05,
-                9 => 0.05, 10 => 0.08, 11 => 0.25, 12 => 0.15,
+                1 => -0.10,
+                2 => -0.05,
+                3 => 0.0,
+                4 => 0.0,
+                5 => 0.10,
+                6 => 0.08,
+                7 => -0.05,
+                8 => 0.05,
+                9 => 0.05,
+                10 => 0.08,
+                11 => 0.25,
+                12 => 0.15,
             ];
 
             $trend = 0.0;
             if ($categoryId) {
                 $stmt = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         AVG(CASE WHEN h.date >= DATE_SUB(CURDATE(), INTERVAL 15 DAY) THEN h.sold_quantity END) as recent_avg,
                         AVG(CASE WHEN h.date < DATE_SUB(CURDATE(), INTERVAL 15 DAY) AND h.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN h.sold_quantity END) as prev_avg
                     FROM item_metrics_history h
@@ -1055,24 +1067,24 @@ class AIPredictiveAnalyticsService
             return ['seasonality' => 0, 'trend' => 0];
         }
     }
-    private function calculateConfidenceIntervals($forecast, $historical): array 
-    { 
+    private function calculateConfidenceIntervals($forecast, $historical): array
+    {
         // Calcula intervalos de confiança reais baseados na variabilidade histórica
         $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $historical);
         $values = array_values(array_filter($values, 'is_numeric'));
-        
+
         if (count($values) < 3) {
             return ['lower' => 90, 'upper' => 110];
         }
-        
+
         $ci = MLStatisticsHelper::confidenceInterval($values, 0.95);
         $mean = $ci['mean'];
-        
+
         // Intervalos como percentual do valor médio
         $lowerPct = $mean > 0 ? round(($ci['lower'] / $mean) * 100, 1) : 90;
         $upperPct = $mean > 0 ? round(($ci['upper'] / $mean) * 100, 1) : 110;
-        
-        return ['lower' => $lowerPct, 'upper' => $upperPct, 'margin_of_error' => round($ci['margin'], 2)]; 
+
+        return ['lower' => $lowerPct, 'upper' => $upperPct, 'margin_of_error' => round($ci['margin'], 2)];
     }
     private function identifyInfluenceFactors($categoryId, $historical): array
     {
@@ -1225,20 +1237,20 @@ class AIPredictiveAnalyticsService
         return $performance;
     }
 
-    private function analyzeTrends($forecast): array 
-    { 
+    private function analyzeTrends($forecast): array
+    {
         // Análise de tendência usando regressão linear
         $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $forecast);
         $values = array_values(array_filter($values, 'is_numeric'));
         $n = count($values);
-        
+
         if ($n < 2) {
             return ['direction' => 'stable', 'strength' => 'none', 'slope' => 0];
         }
-        
+
         $x = range(0, $n - 1);
         $regression = MLStatisticsHelper::linearRegression($x, $values);
-        
+
         // Determinar direção
         $direction = 'stable';
         if ($regression['slope'] > 0.01) {
@@ -1246,7 +1258,7 @@ class AIPredictiveAnalyticsService
         } elseif ($regression['slope'] < -0.01) {
             $direction = 'downward';
         }
-        
+
         // Determinar força baseado no R²
         $strength = 'none';
         if ($regression['r_squared'] >= 0.7) {
@@ -1256,56 +1268,57 @@ class AIPredictiveAnalyticsService
         } elseif ($regression['r_squared'] >= 0.1) {
             $strength = 'weak';
         }
-        
+
         return [
-            'direction' => $direction, 
-            'strength' => $strength, 
+            'direction' => $direction,
+            'strength' => $strength,
             'slope' => $regression['slope'],
             'r_squared' => $regression['r_squared']
-        ]; 
+        ];
     }
-    
+
     // Algoritmos de preço
-    private function calculatePriceElasticity($product, $historical): float 
-    { 
+    private function calculatePriceElasticity($product, $historical): float
+    {
         // Calcula elasticidade-preço usando correlação histórica
         if (!is_array($historical) || count($historical) < 5) {
             return -1.2; // Elasticidade padrão negativa (bem normal)
         }
-        
+
         $prices = [];
         $quantities = [];
-        
+
         foreach ($historical as $record) {
             if (isset($record['price']) && isset($record['quantity'])) {
                 $prices[] = (float)$record['price'];
                 $quantities[] = (float)$record['quantity'];
             }
         }
-        
+
         if (count($prices) < 3) {
             return -1.2;
         }
-        
+
         // Correlação entre preço e quantidade (deve ser negativa para bens normais)
         $correlation = MLStatisticsHelper::correlation($prices, $quantities);
-        
+
         // Elasticidade = correlação ajustada por fator de escala
         // Elasticidade típica: -0.5 (inelástica) a -2.0 (muito elástica)
-        return round($correlation * 2, 2); 
+        return round($correlation * 2, 2);
     }
-    private function analyzeCompetitorPricing($product, $context): array 
+    private function analyzeCompetitorPricing($product, $context): array
     {
         try {
             $prompt = $this->buildCompetitorAnalysisPrompt($product, $context);
-            
-            $response = $this->llm->generate($prompt, 
-                "You are a pricing analyst specializing in e-commerce competitive analysis. 
+
+            $response = $this->llm->generate(
+                $prompt,
+                "You are a pricing analyst specializing in e-commerce competitive analysis.
                 Analyze the provided product data and market context to determine competitor pricing patterns.
-                Return your analysis as a JSON object with: avg_price (number), price_range (array with min/max), 
+                Return your analysis as a JSON object with: avg_price (number), price_range (array with min/max),
                 market_positioning (string), and key_insights (array of strings)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1323,27 +1336,28 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         // Fallback to basic analysis
         return [
-            'avg_price' => 150, 
+            'avg_price' => 150,
             'price_range' => [120, 180],
             'market_positioning' => 'competitive',
             'key_insights' => ['Limited data available']
         ];
     }
-    
-    private function analyzePriceSeasonality($product, $historical): array 
+
+    private function analyzePriceSeasonality($product, $historical): array
     {
         try {
             $prompt = $this->buildSeasonalityPrompt($product, $historical);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a seasonal pricing expert. Analyze the product and historical data to identify seasonal patterns.
                 Return JSON with: seasonal_multiplier (number), peak_months (array), seasonal_trends (array of strings),
                 and recommendations (array of strings)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1361,21 +1375,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['seasonal_multiplier' => 1.1, 'peak_months' => [12, 5], 'seasonal_trends' => [], 'recommendations' => []];
     }
-    
-    private function calculateProfitMaximizingPrice($product, $elasticity): array 
+
+    private function calculateProfitMaximizingPrice($product, $elasticity): array
     {
         try {
             $prompt = $this->buildProfitOptimizationPrompt($product, $elasticity);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a profit optimization expert. Calculate the profit-maximizing price considering costs, elasticity, and market factors.
-                Return JSON with: price (number), profit_margin (percentage), profit_per_unit (number), 
+                Return JSON with: price (number), profit_margin (percentage), profit_per_unit (number),
                 risk_level (low/medium/high), and confidence (0-1)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1395,21 +1410,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['price' => 180, 'profit' => 45, 'profit_margin' => 25, 'risk_level' => 'medium', 'confidence' => 0.7];
     }
-    
-    private function calculateRevenueMaximizingPrice($product, $elasticity): array 
+
+    private function calculateRevenueMaximizingPrice($product, $elasticity): array
     {
         try {
             $prompt = $this->buildRevenueOptimizationPrompt($product, $elasticity);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a revenue optimization expert. Calculate the revenue-maximizing price considering demand elasticity.
-                Return JSON with: price (number), expected_revenue (number), demand_change (percentage), 
+                Return JSON with: price (number), expected_revenue (number), demand_change (percentage),
                 market_share_impact (string), and confidence (0-1)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1429,21 +1445,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['price' => 160, 'revenue' => 320, 'demand_change' => 0, 'market_share_impact' => 'neutral', 'confidence' => 0.7];
     }
-    
-    private function calculatePenetrationPrice($product, $competitor): array 
+
+    private function calculatePenetrationPrice($product, $competitor): array
     {
         try {
             $prompt = $this->buildPenetrationPricingPrompt($product, $competitor);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a market penetration pricing expert. Calculate an aggressive entry price to gain market share.
                 Return JSON with: price (number), market_share_target (percentage), time_horizon (months),
                 investment_required (number), and risk_factors (array of strings)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1463,21 +1480,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['price' => 140, 'market_share' => '20%', 'time_horizon' => 6, 'investment_required' => 0, 'risk_factors' => []];
     }
-    
-    private function calculatePremiumPrice($product, $competitor): array 
+
+    private function calculatePremiumPrice($product, $competitor): array
     {
         try {
             $prompt = $this->buildPremiumPricingPrompt($product, $competitor);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a premium pricing strategist. Calculate a premium price leveraging unique value propositions.
                 Return JSON with: price (number), positioning (string), value_propositions (array of strings),
                 target_audience (string), and brand_impact (string)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1497,21 +1515,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['price' => 200, 'positioning' => 'premium', 'value_propositions' => [], 'target_audience' => 'quality-conscious', 'brand_impact' => 'positive'];
     }
-    
-    private function calculateDynamicPrice($product, $context): array 
+
+    private function calculateDynamicPrice($product, $context): array
     {
         try {
             $prompt = $this->buildDynamicPricingPrompt($product, $context);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a dynamic pricing expert. Calculate optimal real-time pricing strategy.
                 Return JSON with: price (number), adjustment_frequency (string), key_triggers (array of strings),
                 price_range (array with min/max), and expected_lift (percentage)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1531,21 +1550,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['price' => 170, 'adjustment_frequency' => 'daily', 'key_triggers' => [], 'price_range' => [150, 190], 'expected_lift' => 5];
     }
-    
-    private function selectOptimalPricingStrategy($models, $product, $context): array 
+
+    private function selectOptimalPricingStrategy($models, $product, $context): array
     {
         try {
             $prompt = $this->buildStrategySelectionPrompt($models, $product, $context);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a pricing strategy expert. Analyze all pricing models and select the optimal strategy.
                 Return JSON with: price (number), strategy (string), confidence (0-1), rationale (string),
                 implementation_timeline (string), and risks (array of strings)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1566,21 +1586,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['price' => 170, 'strategy' => 'dynamic_pricing', 'confidence' => 0.85, 'rationale' => 'Optimal balance of profit and market share', 'implementation_timeline' => '2-4 weeks', 'risks' => []];
     }
-    
-    private function simulatePriceImpact($strategy, $product, $elasticity): array 
+
+    private function simulatePriceImpact($strategy, $product, $elasticity): array
     {
         try {
             $prompt = $this->buildImpactSimulationPrompt($strategy, $product, $elasticity);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a pricing impact analyst. Simulate the business impact of pricing changes.
                 Return JSON with: sales_change (percentage string), profit_change (percentage string),
                 market_share_change (percentage string), competitive_response (string), and confidence (0-1)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1601,21 +1622,22 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['sales_change' => '+15%', 'profit_change' => '+25%', 'market_share_change' => '+5%', 'competitive_response' => 'moderate', 'confidence' => 0.7];
     }
-    
-    private function generatePriceAlerts($models, $competitor): array 
+
+    private function generatePriceAlerts($models, $competitor): array
     {
         try {
             $prompt = $this->buildAlertGenerationPrompt($models, $competitor);
-            
-            $response = $this->llm->generate($prompt,
+
+            $response = $this->llm->generate(
+                $prompt,
                 "You are a pricing alert system. Generate actionable alerts based on pricing models and competitor data.
                 Return JSON with: alert (string), severity (low/medium/high), urgency (hours/days/weeks),
                 recommended_action (string), and impact_potential (string)."
             );
-            
+
             if ($response['success']) {
                 $data = json_decode($response['content'], true);
                 if ($data) {
@@ -1635,23 +1657,23 @@ class AIPredictiveAnalyticsService
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return ['alert' => 'Competitor price drop detected', 'severity' => 'medium', 'urgency' => 'days', 'recommended_action' => 'Monitor market', 'impact_potential' => 'moderate'];
     }
-    
+
     // Outros métodos auxiliares
-    private function detectYearlyPatterns($data): array 
-    { 
+    private function detectYearlyPatterns($data): array
+    {
         // Detecta padrão anual usando decomposição sazonal
         $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
-        
+
         if (count($values) < 365) {
             // Dados insuficientes para padrão anual
             $peakMonth = 12; // Dezembro default (alta temporada)
             return ['peak_month' => $peakMonth, 'has_annual_pattern' => false];
         }
-        
+
         // Agregar por mês e encontrar pico
         $monthlyAvg = array_fill(1, 12, []);
         foreach ($values as $i => $value) {
@@ -1659,26 +1681,26 @@ class AIPredictiveAnalyticsService
             $month = min(12, max(1, (int)$month));
             $monthlyAvg[$month][] = $value;
         }
-        
+
         $monthlyMeans = [];
         foreach ($monthlyAvg as $month => $vals) {
             $monthlyMeans[$month] = count($vals) > 0 ? array_sum($vals) / count($vals) : 0;
         }
-        
+
         $peakMonth = array_keys($monthlyMeans, max($monthlyMeans))[0] ?? 12;
-        
-        return ['peak_month' => $peakMonth, 'has_annual_pattern' => true, 'monthly_means' => $monthlyMeans]; 
+
+        return ['peak_month' => $peakMonth, 'has_annual_pattern' => true, 'monthly_means' => $monthlyMeans];
     }
-    private function detectMonthlyPatterns($data): array 
-    { 
+    private function detectMonthlyPatterns($data): array
+    {
         // Detecta padrão mensal (semanas do mês)
         $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
-        
+
         if (count($values) < 28) {
             return ['peak_week' => 1, 'has_monthly_pattern' => false];
         }
-        
+
         // Agregar por semana do mês
         $weeklyAvg = [1 => [], 2 => [], 3 => [], 4 => []];
         foreach ($values as $i => $value) {
@@ -1686,99 +1708,99 @@ class AIPredictiveAnalyticsService
             $week = min(4, max(1, (int)$week));
             $weeklyAvg[$week][] = $value;
         }
-        
+
         $weeklyMeans = [];
         foreach ($weeklyAvg as $week => $vals) {
             $weeklyMeans[$week] = count($vals) > 0 ? array_sum($vals) / count($vals) : 0;
         }
-        
+
         $peakWeek = array_keys($weeklyMeans, max($weeklyMeans))[0] ?? 1;
-        
-        return ['peak_week' => $peakWeek, 'has_monthly_pattern' => true, 'weekly_means' => $weeklyMeans]; 
+
+        return ['peak_week' => $peakWeek, 'has_monthly_pattern' => true, 'weekly_means' => $weeklyMeans];
     }
-    private function detectWeeklyPatterns($data): array 
-    { 
+    private function detectWeeklyPatterns($data): array
+    {
         // Detecta padrão semanal (dia da semana)
         $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
-        
+
         if (count($values) < 7) {
             return ['peak_day' => 'Friday', 'has_weekly_pattern' => false];
         }
-        
+
         // Usar decomposição sazonal com período 7
         $decomp = MLStatisticsHelper::seasonalDecomposition($values, 7);
-        
+
         // Encontrar dia com maior fator sazonal
         $seasonalFactors = $decomp['seasonal_factors'] ?? array_fill(0, 7, 0);
         $peakDayIndex = array_keys($seasonalFactors, max($seasonalFactors))[0] ?? 5;
-        
+
         return [
-            'peak_day' => $days[$peakDayIndex] ?? 'Friday', 
+            'peak_day' => $days[$peakDayIndex] ?? 'Friday',
             'has_weekly_pattern' => $decomp['seasonal_strength'] > 0.1,
             'seasonal_factors' => $seasonalFactors,
             'seasonal_strength' => $decomp['seasonal_strength']
-        ]; 
+        ];
     }
-    private function detectDailyPatterns($data): array 
-    { 
+    private function detectDailyPatterns($data): array
+    {
         // Detecta padrão diário (hora do dia) - requer dados horários
         $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
-        
+
         if (count($values) < 24) {
             return ['peak_hour' => 14, 'has_daily_pattern' => false];
         }
-        
+
         // Agregar por hora (assume dados horários ou interpola)
         $hourlyAvg = array_fill(0, 24, []);
         foreach ($values as $i => $value) {
             $hour = $i % 24;
             $hourlyAvg[$hour][] = $value;
         }
-        
+
         $hourlyMeans = [];
         foreach ($hourlyAvg as $hour => $vals) {
             $hourlyMeans[$hour] = count($vals) > 0 ? array_sum($vals) / count($vals) : 0;
         }
-        
+
         $peakHour = array_keys($hourlyMeans, max($hourlyMeans))[0] ?? 14;
-        
+
         return [
-            'peak_hour' => $peakHour, 
+            'peak_hour' => $peakHour,
             'has_daily_pattern' => max($hourlyMeans) > min($hourlyMeans) * 1.2,
             'hourly_means' => $hourlyMeans
-        ]; 
+        ];
     }
-    private function calculatePatternSignificance($pattern): float 
-    { 
+    private function calculatePatternSignificance($pattern): float
+    {
         // Usa teste t para verificar significância estatística do padrão
         if (!is_array($pattern) || count($pattern) < 3) {
             return 0.5;
         }
-        
+
         // Extrair valores numéricos do padrão
         $values = array_map(fn($item) => is_numeric($item) ? (float)$item : ($item['value'] ?? 0), $pattern);
         $values = array_filter($values, 'is_numeric');
-        
+
         if (count($values) < 3) {
             return 0.5;
         }
-        
+
         // Teste t de uma amostra (H0: média = média global)
         $result = MLStatisticsHelper::tTest(array_values($values));
-        
+
         // Converter p-valor em significância (1 - p_value)
         $significance = 1 - ($result['p_value'] ?? 0.5);
-        
+
         // Ajustar pelo tamanho da amostra
         $sampleBonus = min(0.1, count($values) * 0.01);
-        
+
         return min(0.99, max(0.1, $significance + $sampleBonus));
     }
-    private function calculateSeasonalIndex($patterns): float 
-    { 
+    private function calculateSeasonalIndex($patterns): float
+    {
         // Calcula índice sazonal combinado dos diferentes padrões
         $weights = [
             'yearly' => 0.3,
@@ -1786,16 +1808,16 @@ class AIPredictiveAnalyticsService
             'weekly' => 0.25,
             'daily' => 0.15
         ];
-        
+
         $totalIndex = 1.0;
         $totalWeight = 0;
-        
+
         foreach ($patterns as $period => $pattern) {
             if (!is_array($pattern)) continue;
-            
+
             $weight = $weights[$period] ?? 0.1;
             $hasPattern = $pattern['has_' . $period . '_pattern'] ?? true;
-            
+
             if ($hasPattern) {
                 // Extrair fator sazonal do padrão
                 $seasonalFactors = $pattern['seasonal_factors'] ?? [];
@@ -1808,8 +1830,8 @@ class AIPredictiveAnalyticsService
                 }
             }
         }
-        
-        return round($totalIndex, 4); 
+
+        return round($totalIndex, 4);
     }
     private function identifyCurrentStage($product, $historical): string
     {
@@ -2010,7 +2032,7 @@ class AIPredictiveAnalyticsService
 
         return $risks;
     }
-    
+
     // Análise de riscos
     private function analyzeMarketRisks($product, $context): array
     {
@@ -2230,7 +2252,10 @@ class AIPredictiveAnalyticsService
         ];
     }
 
-    private function calculateOverallRisk($risks): float { return array_sum(array_column($risks, 'score')) / max(1, count($risks)); }
+    private function calculateOverallRisk($risks): float
+    {
+        return array_sum(array_column($risks, 'score')) / max(1, count($risks));
+    }
 
     private function generateMitigationPlan($risks): array
     {
@@ -2270,7 +2295,10 @@ class AIPredictiveAnalyticsService
         return ['actions' => $actions, 'total_risks_assessed' => count($risks)];
     }
 
-    private function getRiskLevel($score): string { return $score > 0.6 ? 'high' : ($score > 0.3 ? 'medium' : 'low'); }
+    private function getRiskLevel($score): string
+    {
+        return $score > 0.6 ? 'high' : ($score > 0.3 ? 'medium' : 'low');
+    }
 
     private function generateRiskAlerts($risks): array
     {
@@ -2319,90 +2347,93 @@ class AIPredictiveAnalyticsService
 
         return $alerts;
     }
-    
+
     // Algoritmos ML
-    private function getFactorCoefficient($factor): float { return ['seasonality' => 0.5, 'trend' => 1.2][$factor] ?? 0.1; }
-    private function extractNeuralPattern($data): array 
-    { 
+    private function getFactorCoefficient($factor): float
+    {
+        return ['seasonality' => 0.5, 'trend' => 1.2][$factor] ?? 0.1;
+    }
+    private function extractNeuralPattern($data): array
+    {
         // Extrai padrões usando regressão linear e análise estatística
         $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
         $n = count($values);
-        
+
         if ($n < 2) {
             return ['base' => $values[0] ?? 100, 'growth' => 0, 'volatility' => 0, 'confidence' => 0.5];
         }
-        
+
         // Regressão linear para identificar tendência
         $x = range(0, $n - 1);
         $regression = MLStatisticsHelper::linearRegression($x, $values);
-        
+
         // Taxa de crescimento diária baseada no slope
         $base = end($values);
         $growth = $base > 0 ? $regression['slope'] / $base : 0;
-        
+
         // Volatilidade como desvio padrão normalizado
         $stdDev = MLStatisticsHelper::standardDeviation($values);
         $mean = array_sum($values) / $n;
         $volatility = $mean > 0 ? $stdDev / $mean : 0;
-        
+
         // Confiança baseada no R² da regressão
         $confidence = max(0.5, min(0.95, $regression['r_squared'] * 0.4 + 0.55));
-        
+
         return [
-            'base' => round($base, 2), 
-            'growth' => round($growth, 6), 
-            'volatility' => round($volatility, 4), 
+            'base' => round($base, 2),
+            'growth' => round($growth, 6),
+            'volatility' => round($volatility, 4),
             'confidence' => round($confidence, 4)
-        ]; 
+        ];
     }
-    
+
     // ========== AI PROMPT BUILDERS ==========
-    
+
     private function buildCompetitorAnalysisPrompt($product, $context): string
     {
         return sprintf(
             "Analyze competitor pricing for this product:\n\n" .
-            "Product: %s\n" .
-            "Category: %s\n" .
-            "Current Price: %s\n" .
-            "Market Context: %s\n\n" .
-            "Provide detailed competitor analysis considering:\n" .
-            "- Direct competitor pricing\n" .
-            "- Market positioning\n" .
-            "- Price trends\n" .
-            "- Key competitive insights",
+                "Product: %s\n" .
+                "Category: %s\n" .
+                "Current Price: %s\n" .
+                "Market Context: %s\n\n" .
+                "Provide detailed competitor analysis considering:\n" .
+                "- Direct competitor pricing\n" .
+                "- Market positioning\n" .
+                "- Price trends\n" .
+                "- Key competitive insights",
             $product['title'] ?? 'Unknown Product',
             $product['category_id'] ?? 'Unknown',
             $product['price'] ?? 0,
             json_encode($context)
         );
     }
-    
+
     private function buildSeasonalityPrompt($product, $historical): string
     {
         return sprintf(
             "Analyze seasonal patterns for this product:\n\n" .
-            "Product: %s\n" .
-            "Category: %s\n" .
-            "Historical Data: %s\n\n" .
-            "Identify seasonal trends, peak periods, and pricing opportunities.",
+                "Product: %s\n" .
+                "Category: %s\n" .
+                "Historical Data: %s\n\n" .
+                "Identify seasonal trends, peak periods, and pricing opportunities.",
             $product['title'] ?? 'Unknown Product',
             $product['category_id'] ?? 'Unknown',
             json_encode($historical)
         );
     }
-    
+
     private function buildProfitOptimizationPrompt($product, $elasticity): string
     {
         return sprintf(
             "Calculate profit-maximizing price:\n\n" .
-            "Product: %s\n" .
-            "Current Price: %s\n" .
-            "Cost: %s\n" .
-            "Price Elasticity: %s\n" .
-            "Category: %s\n\n" .
-            "Optimize for maximum profit while considering market factors.",
+                "Product: %s\n" .
+                "Current Price: %s\n" .
+                "Cost: %s\n" .
+                "Price Elasticity: %s\n" .
+                "Category: %s\n\n" .
+                "Optimize for maximum profit while considering market factors.",
             $product['title'] ?? 'Unknown Product',
             $product['price'] ?? 0,
             $product['cost'] ?? 0,
@@ -2410,111 +2441,111 @@ class AIPredictiveAnalyticsService
             $product['category_id'] ?? 'Unknown'
         );
     }
-    
+
     private function buildRevenueOptimizationPrompt($product, $elasticity): string
     {
         return sprintf(
             "Calculate revenue-maximizing price:\n\n" .
-            "Product: %s\n" .
-            "Current Price: %s\n" .
-            "Price Elasticity: %s\n" .
-            "Market Demand: %s\n\n" .
-            "Optimize for maximum revenue considering demand elasticity.",
+                "Product: %s\n" .
+                "Current Price: %s\n" .
+                "Price Elasticity: %s\n" .
+                "Market Demand: %s\n\n" .
+                "Optimize for maximum revenue considering demand elasticity.",
             $product['title'] ?? 'Unknown Product',
             $product['price'] ?? 0,
             $elasticity,
             $product['demand'] ?? 'moderate'
         );
     }
-    
+
     private function buildPenetrationPricingPrompt($product, $competitor): string
     {
         return sprintf(
             "Calculate penetration pricing strategy:\n\n" .
-            "Product: %s\n" .
-            "Competitor Prices: %s\n" .
-            "Market Share Goal: %s\n" .
-            "Time Horizon: %s\n\n" .
-            "Determine aggressive pricing to gain market share.",
+                "Product: %s\n" .
+                "Competitor Prices: %s\n" .
+                "Market Share Goal: %s\n" .
+                "Time Horizon: %s\n\n" .
+                "Determine aggressive pricing to gain market share.",
             $product['title'] ?? 'Unknown Product',
             json_encode($competitor),
             '20%',
             '6 months'
         );
     }
-    
+
     private function buildPremiumPricingPrompt($product, $competitor): string
     {
         return sprintf(
             "Calculate premium pricing strategy:\n\n" .
-            "Product: %s\n" .
-            "Unique Features: %s\n" .
-            "Brand Positioning: %s\n" .
-            "Target Audience: %s\n\n" .
-            "Leverage unique value for premium pricing.",
+                "Product: %s\n" .
+                "Unique Features: %s\n" .
+                "Brand Positioning: %s\n" .
+                "Target Audience: %s\n\n" .
+                "Leverage unique value for premium pricing.",
             $product['title'] ?? 'Unknown Product',
             $product['features'] ?? 'Quality features',
             $product['brand'] ?? 'Premium',
             $product['target_audience'] ?? 'Quality-conscious'
         );
     }
-    
+
     private function buildDynamicPricingPrompt($product, $context): string
     {
         return sprintf(
             "Design dynamic pricing strategy:\n\n" .
-            "Product: %s\n" .
-            "Market Volatility: %s\n" .
-            "Competitor Activity: %s\n" .
-            "Demand Patterns: %s\n\n" .
-            "Create real-time pricing optimization plan.",
+                "Product: %s\n" .
+                "Market Volatility: %s\n" .
+                "Competitor Activity: %s\n" .
+                "Demand Patterns: %s\n\n" .
+                "Create real-time pricing optimization plan.",
             $product['title'] ?? 'Unknown Product',
             $context['volatility'] ?? 'moderate',
             json_encode($context['competitors'] ?? []),
             json_encode($context['demand_patterns'] ?? [])
         );
     }
-    
+
     private function buildStrategySelectionPrompt($models, $product, $context): string
     {
         return sprintf(
             "Select optimal pricing strategy:\n\n" .
-            "Product: %s\n" .
-            "Available Models: %s\n" .
-            "Market Context: %s\n" .
-            "Business Goals: %s\n\n" .
-            "Analyze all models and recommend the best strategy.",
+                "Product: %s\n" .
+                "Available Models: %s\n" .
+                "Market Context: %s\n" .
+                "Business Goals: %s\n\n" .
+                "Analyze all models and recommend the best strategy.",
             $product['title'] ?? 'Unknown Product',
             json_encode(array_keys($models)),
             json_encode($context),
             $context['business_goals'] ?? 'Profit optimization'
         );
     }
-    
+
     private function buildImpactSimulationPrompt($strategy, $product, $elasticity): string
     {
         return sprintf(
             "Simulate pricing strategy impact:\n\n" .
-            "Strategy: %s\n" .
-            "Product: %s\n" .
-            "Price Elasticity: %s\n" .
-            "Market Position: %s\n\n" .
-            "Predict business impact across multiple dimensions.",
+                "Strategy: %s\n" .
+                "Product: %s\n" .
+                "Price Elasticity: %s\n" .
+                "Market Position: %s\n\n" .
+                "Predict business impact across multiple dimensions.",
             $strategy['strategy'] ?? 'dynamic_pricing',
             $product['title'] ?? 'Unknown Product',
             $elasticity,
             $product['market_position'] ?? 'competitive'
         );
     }
-    
+
     private function buildAlertGenerationPrompt($models, $competitor): string
     {
         return sprintf(
             "Generate pricing alerts:\n\n" .
-            "Model Results: %s\n" .
-            "Competitor Intelligence: %s\n" .
-            "Market Signals: %s\n\n" .
-            "Create actionable alerts with severity and recommendations.",
+                "Model Results: %s\n" .
+                "Competitor Intelligence: %s\n" .
+                "Market Signals: %s\n\n" .
+                "Create actionable alerts with severity and recommendations.",
             json_encode($models),
             json_encode($competitor),
             'Price changes detected'
