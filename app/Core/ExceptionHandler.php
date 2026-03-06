@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Services\ErrorMonitoringService;
+
 class ExceptionHandler
 {
-    public static function register()
+    public static function register(): void
     {
         set_exception_handler([self::class, 'handle']);
     }
 
-    public static function handle(\Throwable $e)
+    public static function handle(\Throwable $e): void
     {
-        // Log o erro completo para os desenvolvedores
+        // Log o erro completo para arquivo
         self::log($e);
+
+        // Registrar no banco via ErrorMonitoringService (para dashboard e alertas)
+        self::logToMonitoring($e);
 
         // Se for CLI, apenas exibe o erro e sai (o worker tem seu proprio handling, mas isso ajuda script avulsos)
         if (php_sapi_name() === 'cli') {
@@ -73,7 +78,7 @@ class ExceptionHandler
         $safeMessage = htmlspecialchars($e->getMessage(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         echo '<h1>Erro interno</h1>';
         echo '<p>' . $safeMessage . '</p>';
-        exit(1);
+        exit(1); // @phpstan-ignore-line
     }
 
     private static function wantsJson(): bool
@@ -98,7 +103,7 @@ class ExceptionHandler
         return (getenv('APP_DEBUG') === 'true') || (isset($_ENV['APP_DEBUG']) && $_ENV['APP_DEBUG'] === 'true');
     }
 
-    private static function log(\Throwable $e)
+    private static function log(\Throwable $e): void
     {
         $logFile = __DIR__ . '/../../storage/logs/error.log';
         $timestamp = date('Y-m-d H:i:s');
@@ -118,5 +123,30 @@ class ExceptionHandler
         }
 
         error_log($message, 3, $logFile);
+    }
+
+    /**
+     * Registra a exceção no ErrorMonitoringService (banco + alertas).
+     * Envolvido em try/catch para NUNCA interferir no fluxo do handler.
+     */
+    private static function logToMonitoring(\Throwable $e): void
+    {
+        try {
+            $service = new ErrorMonitoringService();
+            $service->logError([
+                'type' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => explode("\n", $e->getTraceAsString()),
+                'severity' => 'critical',
+                'context' => [
+                    'sapi' => php_sapi_name(),
+                    'memory_usage' => memory_get_peak_usage(true),
+                ],
+            ]);
+        } catch (\Throwable $ignored) {
+            // Silenciar — o log de arquivo já foi gravado em self::log()
+        }
     }
 }

@@ -6,6 +6,39 @@
 
 ---
 
+## Sessão 2026-03-06 (20) — ExceptionHandler integration + Setup de produção
+
+### O que foi feito
+- Integrado `ErrorMonitoringService` no `ExceptionHandler` — toda exceção não capturada agora:
+  1. Grava log em arquivo (comportamento original preservado)
+  2. Registra no banco via `ErrorMonitoringService::logError()` (para dashboard + alertas)
+  3. try/catch isolado: se o banco falhar, NUNCA interfere no fluxo do handler
+- Adicionados type hints de retorno em todos os métodos do ExceptionHandler
+- Criado `bin/setup-production.sh` — script único para setup completo do servidor:
+  1. Verifica MySQL rodando
+  2. Testa conexão com banco via PDO
+  3. Aplica migrations pendentes
+  4. Cria admin se não existir (interativo)
+  5. Testa error monitor
+  6. Configura cron automaticamente
+- Tentativa de iniciar MySQL no sandbox: dados já existiam no workspace-datadir (250+ tabelas no meli DB), mas sandbox bloqueia `bind()` para sockets e portas. Limpou arquivos temporários.
+
+### Validação
+- `php -l` — Todos os arquivos sem erros de sintaxe
+- PHPUnit: 2997 tests, 6982 assertions, 51 skipped (baseline OK, mesma contagem de antes)
+- Codacy: MCP indisponível no sandbox (WSL não configurado)
+
+### Arquivos criados/alterados
+1. **`app/Core/ExceptionHandler.php`** ✏️ Editado — integração com ErrorMonitoringService
+2. **`bin/setup-production.sh`** ✨ Criado — setup automatizado de produção
+
+### Próximos passos
+- **[PRODUÇÃO]** Rodar no servidor: `bash bin/setup-production.sh`
+  - Isso cria o admin, configura cron, e valida tudo
+- **[MONITORAMENTO]** Após setup, verificar: `php bin/error-monitor.php --verbose`
+
+---
+
 ## Sessão 2026-03-06 (19) — Admin creation + Error monitoring proativo
 
 ### O que foi feito
