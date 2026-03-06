@@ -6,6 +6,21 @@
 
 ---
 
+## Sessão 2026-03-06 (15) — ENV-AUTO-04: Normalize kit README tables
+
+### O que foi feito
+- Preservados os ajustes de formatação em `README.md` e `vscode-copilot-autonomo/README.md` para alinhar visualmente as tabelas de agents e instruction files
+- Mantido o conteúdo funcional do kit sem alteração de inventário, apenas melhorando a legibilidade da documentação
+- Validados ambos os READMEs com diagnostics e análise local, sem issues
+
+### Arquivos alterados
+1. **`README.md`** — tabelas normalizadas para melhor leitura
+2. **`vscode-copilot-autonomo/README.md`** — documentação espelhada com a mesma normalização
+
+### Resultado
+- Documentação do kit ficou visualmente consistente entre raiz e pasta espelhada
+- Nenhuma mudança funcional no setup; apenas polimento de docs
+
 ## Sessão 2026-03-06 (14) — ENV-AUTO-03: Complete ML MCP kit artifacts and fix inventory drift
 
 ### O que foi feito

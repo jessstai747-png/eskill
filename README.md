@@ -38,7 +38,7 @@ Instruções globais específicas do Copilot. Define stack, padrões de código,
 
 | Agent             | Comando                   | Função                                        |
 | ----------------- | ------------------------- | --------------------------------------------- |
-| **Executor**      | `/agents` → Executor      | Executa features de forma incremental          |
+| **Executor**      | `/agents` → Executor      | Executa features de forma incremental         |
 | **Implementador** | `/agents` → Implementador | Implementa features completas com código real |
 | **Revisor**       | `/agents` → Revisor       | Revisa código sem modificar                   |
 | **Arquiteto**     | `/agents` → Arquiteto     | Planeja antes de implementar                  |
@@ -48,13 +48,13 @@ Instruções globais específicas do Copilot. Define stack, padrões de código,
 
 ### .github/instructions/
 
-| Arquivo          | Aplica a               | Função                        |
-| ---------------- | ---------------------- | ----------------------------- |
-| react-components | `Views/**/*.php`                      | Regras para componentes/templates |
-| services-api     | `Services/**/*.php, Controllers/**/*.php` | Regras para services e APIs   |
-| tests            | `*Test.php, tests/**/*.php`          | Regras para testes            |
-| prisma-database  | `Database/**/*.php, Models/**/*.php` | Regras para banco/modelos     |
-| codacy           | `**`                                 | Regras de análise local       |
+| Arquivo          | Aplica a                                  | Função                            |
+| ---------------- | ----------------------------------------- | --------------------------------- |
+| react-components | `Views/**/*.php`                          | Regras para componentes/templates |
+| services-api     | `Services/**/*.php, Controllers/**/*.php` | Regras para services e APIs       |
+| tests            | `*Test.php, tests/**/*.php`               | Regras para testes                |
+| prisma-database  | `Database/**/*.php, Models/**/*.php`      | Regras para banco/modelos         |
+| codacy           | `**`                                      | Regras de análise local           |
 
 ### .github/prompts/
 
