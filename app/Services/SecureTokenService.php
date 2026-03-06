@@ -11,11 +11,27 @@ class SecureTokenService
 {
     private EncryptionService $encryption;
     private \PDO $db;
+    private array $config;
 
     public function __construct()
     {
         $this->encryption = new EncryptionService();
         $this->db = \App\Database::getInstance();
+        $this->config = \App\Core\Config::getInstance()->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getMercadoLivreConfig(): array
+    {
+        $config = $this->config['mercadolivre'] ?? [];
+        return is_array($config) ? $config : [];
+    }
+
+    private function getMercadoLivreTokenUrl(): string
+    {
+        return (string)($this->getMercadoLivreConfig()['token_url'] ?? 'https://api.mercadolibre.com/oauth/token');
     }
 
     /**
@@ -211,8 +227,9 @@ class SecureTokenService
     private function refreshAccessToken(int $accountId, string $refreshToken): ?array
     {
         // Obter credenciais do ML
-        $clientId = getenv('ML_CLIENT_ID');
-        $clientSecret = getenv('ML_CLIENT_SECRET');
+        $ml = $this->getMercadoLivreConfig();
+        $clientId = (string)($ml['app_id'] ?? getenv('ML_CLIENT_ID') ?: '');
+        $clientSecret = (string)($ml['client_secret'] ?? getenv('ML_CLIENT_SECRET') ?: '');
 
         if (empty($clientId) || empty($clientSecret)) {
             log_error('Credenciais ML não configuradas', ['service' => 'SecureTokenService']);
@@ -226,7 +243,7 @@ class SecureTokenService
             'refresh_token' => $refreshToken
         ];
 
-        $ch = curl_init('https://api.mercadolibre.com/oauth/token');
+        $ch = curl_init($this->getMercadoLivreTokenUrl());
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
@@ -236,8 +253,18 @@ class SecureTokenService
         ]);
 
         $response = curl_exec($ch);
+        $curlError = $response === false ? curl_error($ch) : '';
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        if ($response === false) {
+            log_error('Falha de rede ao renovar token', [
+                'service' => 'SecureTokenService',
+                'account_id' => $accountId,
+                'curl_error' => $curlError,
+            ]);
+            return null;
+        }
 
         if ($httpCode !== 200) {
             log_error('Falha ao renovar token', ['service' => 'SecureTokenService', 'http_code' => $httpCode, 'response' => $response]);

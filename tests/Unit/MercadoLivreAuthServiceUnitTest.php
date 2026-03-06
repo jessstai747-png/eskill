@@ -12,6 +12,55 @@ use Tests\TestCase;
  */
 final class MercadoLivreAuthServiceUnitTest extends TestCase
 {
+    public function testDeveResolverTokenUrlCustomizadaDoConfig(): void
+    {
+        $service = new MercadoLivreAuthService(
+            db: null,
+            config: [
+                'mercadolivre' => [
+                    'token_url' => 'https://custom.mercadolivre.test/oauth/token',
+                ],
+            ]
+        );
+
+        $method = new \ReflectionMethod(MercadoLivreAuthService::class, 'getMercadoLivreTokenUrl');
+        $method->setAccessible(true);
+
+        $this->assertSame('https://custom.mercadolivre.test/oauth/token', $method->invoke($service));
+    }
+
+    public function testDeveCalcularBackoffExponencialComJitterConfiguravel(): void
+    {
+        $_ENV['ML_TRANSIENT_RETRY_BASE_SECONDS'] = '2';
+        $_ENV['ML_TRANSIENT_RETRY_JITTER_SECONDS'] = '0';
+        $_ENV['ML_TRANSIENT_RETRY_MAX_SECONDS'] = '30';
+        putenv('ML_TRANSIENT_RETRY_BASE_SECONDS=2');
+        putenv('ML_TRANSIENT_RETRY_JITTER_SECONDS=0');
+        putenv('ML_TRANSIENT_RETRY_MAX_SECONDS=30');
+
+        $service = new MercadoLivreAuthService(db: null, config: []);
+        $method = new \ReflectionMethod(MercadoLivreAuthService::class, 'calculateTokenRetryDelaySeconds');
+        $method->setAccessible(true);
+
+        $this->assertSame(8, $method->invoke($service, 3));
+
+        unset($_ENV['ML_TRANSIENT_RETRY_BASE_SECONDS'], $_ENV['ML_TRANSIENT_RETRY_JITTER_SECONDS'], $_ENV['ML_TRANSIENT_RETRY_MAX_SECONDS']);
+        putenv('ML_TRANSIENT_RETRY_BASE_SECONDS');
+        putenv('ML_TRANSIENT_RETRY_JITTER_SECONDS');
+        putenv('ML_TRANSIENT_RETRY_MAX_SECONDS');
+    }
+
+    public function testDeveRetentarApenasFalhasTransientesNoRefresh(): void
+    {
+        $service = new MercadoLivreAuthService(db: null, config: []);
+        $method = new \ReflectionMethod(MercadoLivreAuthService::class, 'shouldRetryTokenRequest');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($service, 503, ''));
+        $this->assertTrue($method->invoke($service, 0, 'Connection timed out'));
+        $this->assertFalse($method->invoke($service, 400, ''));
+    }
+
     public function testDeveIncluirParametrosObrigatoriosQuandoGerarAuthUrl(): void
     {
         $service = new MercadoLivreAuthService(

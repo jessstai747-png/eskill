@@ -92,6 +92,47 @@ class MercadoLivreAuthService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function getMercadoLivreConfig(): array
+    {
+        $config = $this->config['mercadolivre'] ?? [];
+        return is_array($config) ? $config : [];
+    }
+
+    private function getMercadoLivreTokenUrl(): string
+    {
+        return (string)($this->getMercadoLivreConfig()['token_url'] ?? 'https://api.mercadolibre.com/oauth/token');
+    }
+
+    private function getMercadoLivreApiUrl(): string
+    {
+        return (string)($this->getMercadoLivreConfig()['api_url'] ?? 'https://api.mercadolibre.com');
+    }
+
+    private function shouldRetryTokenRequest(int $httpCode, string $curlError): bool
+    {
+        if ($curlError !== '') {
+            return true;
+        }
+
+        return $httpCode === 408 || $httpCode === 429 || ($httpCode >= 500 && $httpCode < 600);
+    }
+
+    private function calculateTokenRetryDelaySeconds(int $attempt): int
+    {
+        $base = max(1, min(30, (int)($_ENV['ML_TRANSIENT_RETRY_BASE_SECONDS'] ?? getenv('ML_TRANSIENT_RETRY_BASE_SECONDS') ?? 2)));
+        $maxDelay = max($base, min(60, (int)($_ENV['ML_TRANSIENT_RETRY_MAX_SECONDS'] ?? getenv('ML_TRANSIENT_RETRY_MAX_SECONDS') ?? 30)));
+        $jitterMax = max(0, min(5, (int)($_ENV['ML_TRANSIENT_RETRY_JITTER_SECONDS'] ?? getenv('ML_TRANSIENT_RETRY_JITTER_SECONDS') ?? 1)));
+
+        $delay = $base * (int)pow(2, max(0, $attempt - 1));
+        $delay = min($maxDelay, $delay);
+        $jitter = $jitterMax > 0 ? random_int(0, $jitterMax) : 0;
+
+        return $delay + $jitter;
+    }
+
+    /**
      * Compatibilidade com instalações antigas: garante colunas/tabelas usadas pelo fluxo de tokens.
      */
     private function ensureCompatibilitySchema(): void
@@ -357,8 +398,8 @@ class MercadoLivreAuthService
         $parts = explode(':', $state, 2);
         $userId = (int)($parts[0] ?? 0);
 
-        $ml = $this->config['mercadolivre'] ?? [];
-        $tokenUrl = $ml['token_url'] ?? 'https://api.mercadolibre.com/oauth/token';
+        $ml = $this->getMercadoLivreConfig();
+        $tokenUrl = $this->getMercadoLivreTokenUrl();
         $clientId = $ml['app_id'] ?? '';
         $clientSecret = $ml['client_secret'] ?? '';
         $redirect = $ml['redirect_uri'] ?? '';
@@ -385,8 +426,13 @@ class MercadoLivreAuthService
         curl_setopt_array($ch, $curlOptions);
 
         $resp = curl_exec($ch);
+        $curlError = $resp === false ? curl_error($ch) : '';
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        if ($resp === false) {
+            throw new \Exception('Falha ao obter tokens do Mercado Livre: ' . $curlError);
+        }
 
         if ($httpCode !== 200) {
             throw new \Exception('Falha ao obter tokens do Mercado Livre: HTTP ' . $httpCode . ' - ' . $resp);
@@ -600,8 +646,8 @@ class MercadoLivreAuthService
             return false;
         }
 
-        $ml = $this->config['mercadolivre'] ?? [];
-        $tokenUrl = $ml['token_url'] ?? 'https://api.mercadolibre.com/oauth/token';
+        $ml = $this->getMercadoLivreConfig();
+        $tokenUrl = $this->getMercadoLivreTokenUrl();
         $clientId = $ml['app_id'] ?? '';
         $clientSecret = $ml['client_secret'] ?? '';
 
@@ -616,6 +662,7 @@ class MercadoLivreAuthService
         $success = false;
         $resp = null;
         $httpCode = 0;
+        $curlError = '';
         $disconnectReason = null;
 
         while ($attempt < $maxRetries && !$success) {
@@ -634,12 +681,12 @@ class MercadoLivreAuthService
             curl_setopt_array($ch, $curlOptions);
 
             $resp = curl_exec($ch);
+            $curlError = $resp === false ? curl_error($ch) : '';
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
             curl_close($ch);
 
             // Sucesso HTTP 200
-            if ($httpCode === 200) {
+            if ($resp !== false && $httpCode === 200) {
                 $success = true;
                 break;
             }
@@ -653,11 +700,22 @@ class MercadoLivreAuthService
                 }
             }
 
-            // Se falhou por rede ou erro 5xx, espera antes de tentar de novo (backoff)
-            if ($attempt < $maxRetries) {
-                $sleepSeconds = pow(2, $attempt); // 2s, 4s, 8s...
+            if ($attempt < $maxRetries && $this->shouldRetryTokenRequest($httpCode, $curlError)) {
+                $sleepSeconds = $this->calculateTokenRetryDelaySeconds($attempt);
+                $logger = new StructuredLogService();
+                $logger->warning('Retry de refresh token ML agendado', [
+                    'account_id' => $accountId,
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'http_code' => $httpCode,
+                    'curl_error' => $curlError !== '' ? $curlError : null,
+                    'sleep_seconds' => $sleepSeconds,
+                ]);
                 sleep($sleepSeconds);
+                continue;
             }
+
+            break;
         }
 
         if (!$success) {
@@ -689,13 +747,14 @@ class MercadoLivreAuthService
                 'attempts' => $attempt,
                 'status' => $httpCode,
                 'response' => $resp,
+                'curl_error' => $curlError,
                 'account_id' => $accountId
             ]);
 
             $this->logAuditEvent(
                 $accountId,
                 'refresh_failed',
-                ['attempts' => $attempt, 'response_preview' => substr($resp ?? '', 0, 200)],
+                ['attempts' => $attempt, 'response_preview' => substr((string)($resp ?? ''), 0, 200), 'curl_error' => $curlError !== '' ? $curlError : null],
                 $httpCode,
                 "Falha após {$attempt} tentativas",
                 $expiresAtBefore,
@@ -711,7 +770,7 @@ class MercadoLivreAuthService
                     updated_at = NOW()
                 WHERE id = :id'
             )->execute([
-                'error' => "HTTP {$httpCode}: " . substr($resp ?? '', 0, 500),
+                'error' => trim("HTTP {$httpCode}: " . substr((string)($resp ?? ''), 0, 500) . ($curlError !== '' ? ' | cURL: ' . $curlError : '')),
                 'id' => $accountId
             ]);
 
@@ -922,7 +981,7 @@ class MercadoLivreAuthService
      */
     private function fetchUserInfo(string $accessToken): array
     {
-        $url = ($this->config['mercadolivre']['api_url'] ?? 'https://api.mercadolibre.com') . '/users/me';
+        $url = $this->getMercadoLivreApiUrl() . '/users/me';
 
         $ch = curl_init($url);
         $curlOptions = [
@@ -935,8 +994,13 @@ class MercadoLivreAuthService
         curl_setopt_array($ch, $curlOptions);
 
         $resp = curl_exec($ch);
+        $curlError = $resp === false ? curl_error($ch) : '';
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        if ($resp === false) {
+            throw new \Exception('Falha ao obter informações do usuário ML: ' . $curlError);
+        }
 
         if ($httpCode !== 200) {
             throw new \Exception('Falha ao obter informações do usuário ML: HTTP ' . $httpCode . ' - ' . $resp);

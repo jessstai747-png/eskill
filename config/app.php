@@ -26,10 +26,10 @@ return [
         'app_id' => $_ENV['ML_APP_ID'] ?? getenv('ML_APP_ID') ?? $_ENV['ML_CLIENT_ID'] ?? getenv('ML_CLIENT_ID') ?? '',
         'client_secret' => $_ENV['ML_CLIENT_SECRET'] ?? getenv('ML_CLIENT_SECRET') ?? '',
         'redirect_uri' => $_ENV['ML_REDIRECT_URI'] ?? getenv('ML_REDIRECT_URI') ?? '',
-        'auth_url' => 'https://auth.mercadolivre.com.br/authorization',
-        'token_url' => 'https://api.mercadolibre.com/oauth/token',
-        'api_url' => 'https://api.mercadolibre.com',
-        'site_id' => 'MLB', // Brasil
+        'auth_url' => $_ENV['ML_AUTH_URL'] ?? getenv('ML_AUTH_URL') ?? 'https://auth.mercadolibre.com.br/authorization',
+        'token_url' => $_ENV['ML_TOKEN_URL'] ?? getenv('ML_TOKEN_URL') ?? 'https://api.mercadolibre.com/oauth/token',
+        'api_url' => $_ENV['ML_API_URL'] ?? getenv('ML_API_URL') ?? 'https://api.mercadolibre.com',
+        'site_id' => $_ENV['ML_SITE_ID'] ?? getenv('ML_SITE_ID') ?? 'MLB', // Brasil
     ],
     
     'cache' => [

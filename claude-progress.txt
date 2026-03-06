@@ -6,6 +6,29 @@
 
 ---
 
+## Sessão 2026-03-06 (11) — AUDIT-ML-01: Harden auth/client config and retry foundations
+
+### O que foi feito
+- Iniciada a primeira frente da auditoria profunda ML focada no núcleo `auth/client`
+- Removido hardcode do token endpoint no `SecureTokenService`
+- Tornadas env-driven as chaves `auth_url`, `token_url`, `api_url` e `site_id` em `config/app.php`
+- Adicionados helpers explícitos no `MercadoLivreAuthService` para resolver config/URLs do ML
+- Retry do refresh token passou a distinguir falhas transientes (`curl error`, `408`, `429`, `5xx`) de falhas não-transientes
+- Backoff do auth alinhado aos mesmos knobs de ambiente do client (`ML_TRANSIENT_RETRY_BASE_SECONDS`, `ML_TRANSIENT_RETRY_JITTER_SECONDS`, `ML_TRANSIENT_RETRY_MAX_SECONDS`)
+- Melhorado tratamento de erro cURL em `exchangeCodeForTokens()` e `fetchUserInfo()`
+
+### Arquivos alterados
+1. **`config/app.php`** — URLs/config do ML agora podem vir de variáveis de ambiente
+2. **`app/Services/SecureTokenService.php`** — token URL centralizada em config + logging explícito para falha cURL
+3. **`app/Services/MercadoLivreAuthService.php`** — helpers de config, retry transiente e backoff exponencial com jitter configurável
+4. **`tests/Unit/MercadoLivreAuthServiceUnitTest.php`** — novos testes para token URL e política de retry
+5. **`tests/Unit/SecureTokenServiceUnitTest.php`** — novo teste unitário para resolução de token URL
+
+### Validação
+- `php -l` OK nos 5 arquivos alterados
+- Testes focados OK: `MercadoLivreAuthServiceUnitTest|SecureTokenServiceUnitTest|MercadoLivreAuthServiceTest` = **10 testes, 21 assertions**
+- Suite Unit completa OK: **2995 testes**, 0 failures, 51 skipped
+
 ## Sessão 2026-03-06 (10) — FIX-010: Wrap unprotected ML API calls with try/catch
 
 ### O que foi feito
