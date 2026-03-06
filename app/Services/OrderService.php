@@ -107,6 +107,30 @@ class OrderService
         $response = $this->unwrapMlResponse($this->client->get('/orders/search', $params));
 
         if (isset($response['error'])) {
+            if ($this->isOrdersCapabilityUnavailable($response)) {
+                if ($this->shouldAllowLocalFallback($filters)) {
+                    return $this->listOrdersFromDatabase($filters, $limit, $page, $offset, [
+                        'warning' => $this->formatMlApiErrorMessage(
+                            $response,
+                            'Acesso à API de pedidos indisponível para esta conta; exibindo cache local'
+                        ),
+                        'reason' => 'orders_access_unavailable',
+                    ]);
+                }
+
+                return $this->emptyOrdersPayload($limit, $page, $offset, [
+                    'error' => $response['error'],
+                    'message' => $this->formatMlApiErrorMessage(
+                        $response,
+                        'Acesso à API de pedidos do Mercado Livre indisponível'
+                    ),
+                    'api_error' => $response,
+                    'feature' => $response['feature'] ?? 'orders',
+                    'feature_unavailable' => true,
+                    'source' => 'ml_api',
+                ]);
+            }
+
             if ($this->shouldAllowLocalFallback($filters)) {
                 return $this->listOrdersFromDatabase($filters, $limit, $page, $offset, [
                     'warning' => $this->formatMlApiErrorMessage(
@@ -812,6 +836,13 @@ class OrderService
         }
 
         return $response;
+    }
+
+    private function isOrdersCapabilityUnavailable(array $response): bool
+    {
+        return ($response['error'] ?? null) === 'orders_access_unavailable'
+            && ($response['feature'] ?? null) === 'orders'
+            && ($response['optional_feature'] ?? false) === true;
     }
 
     private function shouldAllowLocalFallback(array $filters): bool

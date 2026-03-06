@@ -29,11 +29,12 @@ class OrderServiceTest extends TestCase
      * Cria mock de MercadoLivreClient que retorna seller ID e respostas configuráveis.
      *
      * @param array<string,mixed> $getReturnMap Mapa de endpoint → resposta
+     * @return MercadoLivreClient&MockObject
      */
     private function createMockClient(
         ?string $sellerId = '123456',
         array $getReturnMap = []
-    ): MockObject {
+    ): MercadoLivreClient {
         $mock = $this->createMock(MercadoLivreClient::class);
 
         $mock->method('getSellerId')
@@ -63,7 +64,7 @@ class OrderServiceTest extends TestCase
      */
     private function buildService(
         ?int $accountId = 1,
-        ?MockObject $client = null,
+        ?MercadoLivreClient $client = null,
         ?PDO $db = null
     ): OrderService {
         return new OrderService(
@@ -552,6 +553,28 @@ class OrderServiceTest extends TestCase
         $this->assertStringContainsString('Access denied', $result['message']);
     }
 
+    public function testListOrdersPreservesOrdersCapabilityUnavailableError(): void
+    {
+        $client = $this->createMockClient('123456', [
+            '/orders/search' => [
+                'error' => 'orders_access_unavailable',
+                'message' => 'Sem permissão para consultar pedidos',
+                'status' => 403,
+                'feature' => 'orders',
+                'optional_feature' => true,
+            ],
+        ]);
+
+        $service = $this->buildService(1, $client);
+        $result = $service->listOrders();
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('orders_access_unavailable', $result['error']);
+        $this->assertTrue($result['feature_unavailable']);
+        $this->assertSame('orders', $result['feature']);
+        $this->assertStringContainsString('Sem permissão para consultar pedidos', $result['message']);
+    }
+
     public function testListOrdersApiErrorWithLocalFallback(): void
     {
         $client = $this->createMockClient('123456', [
@@ -584,6 +607,49 @@ class OrderServiceTest extends TestCase
             $this->assertTrue($result['success']);
             $this->assertSame('local', $result['source']);
             $this->assertArrayHasKey('warning', $result);
+        } finally {
+            unset($_ENV['ML_ALLOW_LOCAL_CACHE_FALLBACK']);
+            unset($_ENV['APP_ENV']);
+        }
+    }
+
+    public function testListOrdersOrdersCapabilityUnavailableFallsBackToLocalCache(): void
+    {
+        $client = $this->createMockClient('123456', [
+            '/orders/search' => [
+                'error' => 'orders_access_unavailable',
+                'message' => 'Sem permissão para consultar pedidos',
+                'status' => 403,
+                'feature' => 'orders',
+                'optional_feature' => true,
+            ],
+        ]);
+
+        $dbRows = [
+            [
+                'id' => 1,
+                'ml_order_id' => '990101',
+                'ml_account_id' => 1,
+                'order_data' => json_encode(['buyer' => ['nickname' => 'CACHE_ORDERS']]),
+                'status' => 'paid',
+                'total_amount' => 220.00,
+                'date_created' => '2026-02-20 10:00:00',
+                'synced_at' => '2026-02-20 10:05:00',
+            ],
+        ];
+        $db = $this->createMockDbForFallback($dbRows, 1);
+
+        $service = new OrderService(1, $client, $db);
+
+        $_ENV['ML_ALLOW_LOCAL_CACHE_FALLBACK'] = 'true';
+        $_ENV['APP_ENV'] = 'development';
+
+        try {
+            $result = $service->listOrders(['allow_local_cache' => 'true']);
+
+            $this->assertTrue($result['success']);
+            $this->assertSame('local', $result['source']);
+            $this->assertStringContainsString('Sem permissão para consultar pedidos', (string) ($result['warning'] ?? ''));
         } finally {
             unset($_ENV['ML_ALLOW_LOCAL_CACHE_FALLBACK']);
             unset($_ENV['APP_ENV']);

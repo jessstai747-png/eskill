@@ -466,4 +466,70 @@ class MercadoLivreClientTest extends TestCase
             }
         }
     }
+
+    public function testReturnsOrdersAccessUnavailableForOrdersSearchEndpoint(): void
+    {
+        $previousEnv = $_ENV['APP_ENV'] ?? null;
+
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+
+        try {
+            $client = $this->makeClientWithMockedTransport([
+                new Response(403, ['Content-Type' => 'application/json'], json_encode([
+                    'message' => 'forbidden',
+                    'status' => 403,
+                ])),
+            ]);
+            $this->setAuthenticatedState($client);
+
+            $response = $client->get('/orders/search', ['seller' => '123']);
+
+            $this->assertSame('orders_access_unavailable', $response['error'] ?? null);
+            $this->assertSame('orders', $response['feature'] ?? null);
+            $this->assertTrue($response['optional_feature'] ?? false);
+            $this->assertSame(403, $response['status'] ?? null);
+        } finally {
+            if ($previousEnv !== null) {
+                putenv("APP_ENV={$previousEnv}");
+                $_ENV['APP_ENV'] = $previousEnv;
+            } else {
+                putenv('APP_ENV');
+                unset($_ENV['APP_ENV']);
+            }
+        }
+    }
+
+    public function testReturnsMerchantOrdersUnavailableForMerchantOrdersEndpoint(): void
+    {
+        $previousEnv = $_ENV['APP_ENV'] ?? null;
+
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+
+        try {
+            $client = $this->makeClientWithMockedTransport([
+                new Response(404, ['Content-Type' => 'application/json'], json_encode([
+                    'message' => 'not found',
+                    'status' => 404,
+                ])),
+            ]);
+            $this->setAuthenticatedState($client);
+
+            $response = $client->get('/merchant_orders/search?collector_id=123');
+
+            $this->assertSame('merchant_orders_unavailable', $response['error'] ?? null);
+            $this->assertSame('merchant_orders', $response['feature'] ?? null);
+            $this->assertTrue($response['optional_feature'] ?? false);
+            $this->assertSame(404, $response['status'] ?? null);
+        } finally {
+            if ($previousEnv !== null) {
+                putenv("APP_ENV={$previousEnv}");
+                $_ENV['APP_ENV'] = $previousEnv;
+            } else {
+                putenv('APP_ENV');
+                unset($_ENV['APP_ENV']);
+            }
+        }
+    }
 }

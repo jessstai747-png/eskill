@@ -6,6 +6,31 @@
 
 ---
 
+## Sessão 2026-03-06 (7) — FIX-007: permissões semânticas para pedidos ML
+
+**Commit:** registrado no HEAD desta sessão
+**Testes:** PHPUnit completo 2928 pass, 0 fail, 26 skipped | `MercadoLivreClientTest.php`: 11 testes, 0 fail, 3 skipped | `OrderServiceTest.php`: 50 testes, 0 fail | **Codacy:** 0 issues
+
+### Problema
+- O endpoint autenticado `/orders/search` ainda retornava erro genérico quando a conta/app não tinha permissão para consultar pedidos
+- Consumidores como `OrderService` perdiam o contexto semântico e respondiam apenas com `ml_api_error`
+- `merchant_orders/search` também precisava ser tratado como endpoint autenticado/capability-aware no cliente ML
+
+### Correção aplicada
+- `MercadoLivreClient.php`
+   - `/orders/search` agora é classificado como capability/permissão opcional com erro semântico `orders_access_unavailable`
+   - `/merchant_orders/search` agora é classificado como `merchant_orders_unavailable`
+   - `merchant_orders` passou a ser reconhecido como endpoint autenticado
+- `OrderService.php`
+   - `listOrders()` preserva `orders_access_unavailable` em vez de colapsar tudo para erro genérico
+   - quando fallback local está habilitado, o serviço usa o cache local com warning explícito sobre indisponibilidade de permissão na API de pedidos
+- `MercadoLivreClientTest.php`
+   - cobertura para `orders_access_unavailable`
+   - cobertura para `merchant_orders_unavailable`
+- `OrderServiceTest.php`
+   - cobertura para erro semântico preservado em `listOrders()`
+   - cobertura para fallback local quando a API de pedidos está indisponível por permissão/capability
+
 ## Sessão 2026-03-06 (6) — FIX-006: shipping_preferences como capability opcional real
 
 **Commit:** registrado no HEAD desta sessão

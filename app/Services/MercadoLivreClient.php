@@ -27,6 +27,20 @@ class MercadoLivreClient
      */
     private const OPTIONAL_FEATURE_ENDPOINTS = [
         [
+            'pattern' => '#^/orders/search$#',
+            'status_codes' => [403],
+            'error' => 'orders_access_unavailable',
+            'feature' => 'orders',
+            'message' => 'A conta ou aplicação não possui permissão para consultar pedidos via API.',
+        ],
+        [
+            'pattern' => '#^/merchant_orders/search(?:\?.*)?$#',
+            'status_codes' => [403, 404],
+            'error' => 'merchant_orders_unavailable',
+            'feature' => 'merchant_orders',
+            'message' => 'A conta ou aplicação não possui acesso ao endpoint de merchant orders via API.',
+        ],
+        [
             'pattern' => '#^/users/[^/]+/shipping_preferences$#',
             'status_codes' => [403, 404],
             'error' => 'shipping_preferences_unavailable',
@@ -875,6 +889,7 @@ class MercadoLivreClient
             '#^/users/[^/]+/fulfillment#',
             '#^/users/[^/]+/brands_official_store#',
             '#^/orders#',
+            '#^/merchant_orders#',
             '#^/questions#',
             '#^/shipments#',
             '#^/payments#',
