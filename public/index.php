@@ -101,7 +101,14 @@ if (session_status() === PHP_SESSION_NONE) {
         || (($_SERVER['SERVER_PORT'] ?? null) == 443)
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
     $forceHttpsEnv = filter_var($_ENV['FORCE_HTTPS'] ?? 'false', FILTER_VALIDATE_BOOLEAN);
-    $secureCookie = $isHttpsRequest || $forceHttpsEnv || $isProduction;
+    // Secure cookie based on actual request protocol, not environment name.
+    // Setting Secure on HTTP causes browsers to silently drop the session cookie,
+    // breaking CSRF validation entirely.
+    $secureCookie = $isHttpsRequest || $forceHttpsEnv;
+
+    if ($isProduction && !$secureCookie) {
+        error_log('[SECURITY WARNING] Production running without HTTPS. Session cookies are NOT Secure. Configure HTTPS or a reverse proxy with X-Forwarded-Proto.');
+    }
 
     ini_set('session.cookie_httponly', 1);
     ini_set('session.cookie_samesite', 'Lax');
@@ -111,30 +118,43 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.gc_maxlifetime', 7200); // 2 horas
     ini_set('session.cookie_lifetime', 0);   // Expira ao fechar browser
 
-    // Ensure the session save path is writable (fallback for read-only envs like CI/sandbox)
-    $rawSavePath = session_save_path() ?: ini_get('session.save_path') ?: '';
-    // The save_path can be 'N;/path' — strip the numeric prefix if present
-    $activeSavePath = preg_replace('/^\d+;/', '', $rawSavePath);
-    if ($activeSavePath === '' || !is_writable($activeSavePath)) {
-        $candidates = [];
+    // Use Redis for sessions when available (shared across containers, survives restarts)
+    $redisHost = $_ENV['REDIS_HOST'] ?? '';
+    $redisPort = $_ENV['REDIS_PORT'] ?? '6379';
+    $redisPassword = $_ENV['REDIS_PASSWORD'] ?? '';
+    if ($redisHost !== '' && extension_loaded('redis')) {
+        ini_set('session.save_handler', 'redis');
+        $redisPath = 'tcp://' . $redisHost . ':' . $redisPort;
+        if ($redisPassword !== '') {
+            $redisPath .= '?auth=' . $redisPassword;
+        }
+        ini_set('session.save_path', $redisPath);
+    } else {
+        // Ensure the session save path is writable (fallback for read-only envs like CI/sandbox)
+        $rawSavePath = session_save_path() ?: ini_get('session.save_path') ?: '';
+        // The save_path can be 'N;/path' — strip the numeric prefix if present
+        $activeSavePath = preg_replace('/^\d+;/', '', $rawSavePath);
+        if ($activeSavePath === '' || !is_writable($activeSavePath)) {
+            $candidates = [];
 
-        // Prefer project-controlled writable dirs before system temp.
-        $candidates[] = STORAGE_PATH . '/sessions';
-        $candidates[] = ROOT_PATH . '/.tmp/sessions';
-        $candidates[] = sys_get_temp_dir() . '/eskill_sessions';
+            // Prefer project-controlled writable dirs before system temp.
+            $candidates[] = STORAGE_PATH . '/sessions';
+            $candidates[] = ROOT_PATH . '/.tmp/sessions';
+            $candidates[] = sys_get_temp_dir() . '/eskill_sessions';
 
-        foreach ($candidates as $candidate) {
-            if (!is_string($candidate) || $candidate === '') {
-                continue;
-            }
+            foreach ($candidates as $candidate) {
+                if (!is_string($candidate) || $candidate === '') {
+                    continue;
+                }
 
-            if (!is_dir($candidate)) {
-                @mkdir($candidate, 0700, true);
-            }
+                if (!is_dir($candidate)) {
+                    @mkdir($candidate, 0700, true);
+                }
 
-            if (is_dir($candidate) && is_writable($candidate)) {
-                session_save_path($candidate);
-                break;
+                if (is_dir($candidate) && is_writable($candidate)) {
+                    session_save_path($candidate);
+                    break;
+                }
             }
         }
     }
