@@ -6,6 +6,25 @@
 
 ---
 
+## Sessão 2026-03-06 (17) — AUDIT-ML-03: Align SecureTokenService refresh retry policy
+
+### O que foi feito
+- Endurecido `SecureTokenService` com `declare(strict_types=1)` e política explícita de retry/backoff para refresh token, alinhada aos knobs de ambiente já usados no auth principal (`ML_TRANSIENT_RETRY_BASE_SECONDS`, `ML_TRANSIENT_RETRY_JITTER_SECONDS`, `ML_TRANSIENT_RETRY_MAX_SECONDS`)
+- `refreshAccessToken()` agora retenta apenas falhas transientes (`curl error`, `408`, `429`, `5xx`), usa `CURLOPT_USERAGENT`, registra warnings antes do backoff e falha com log explícito após esgotar tentativas
+- Adicionada persistência defensiva: se `storeTokens()` falhar após um refresh bem-sucedido, o método retorna `null` e registra erro em vez de seguir como se tudo estivesse bem
+- Expandidos os testes unitários de `SecureTokenService` para cobrir resolução de token URL, cálculo de backoff exponencial e classificação de falhas transientes
+- Atualizado `project-status.json` em `AUTH-002` com `last_tested=2026-03-06`
+
+### Arquivos alterados
+1. **`app/Services/SecureTokenService.php`** — retry/backoff, logs estruturados via helpers e persistência defensiva do refresh
+2. **`tests/Unit/SecureTokenServiceUnitTest.php`** — cobertura de retry policy e backoff
+3. **`project-status.json`** — `AUTH-002` revalidado em `2026-03-06`
+
+### Resultado
+- O fluxo secundário de refresh do token deixou de ter comportamento "single shot" e agora se degrada melhor diante de instabilidades transitórias
+- Teste focal OK: **4 testes, 6 assertions**
+- Suite Unit completa OK: **2997 testes, 6982 assertions, 51 skipped**
+
 ## Sessão 2026-03-06 (16) — AUDIT-ML-02: Harden refresh disconnect and retry flow
 
 ### O que foi feito

@@ -41,7 +41,7 @@
         "app/Services/RefreshTokenService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-27"
+      "last_tested": "2026-03-06"
     },
     {
       "id": "AUTH-003",
