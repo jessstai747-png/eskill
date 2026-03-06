@@ -75,6 +75,27 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 
 <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
 
+    const shippingRequestJson = async (url, options = {}) => {
+        if (typeof window.requestJson === 'function') {
+            return window.requestJson(url, options);
+        }
+
+        if (window.ApiClient && typeof window.ApiClient.request === 'function') {
+            return window.ApiClient.request(url, options);
+        }
+
+        const response = await fetch(url, {
+            credentials: 'include',
+            ...options,
+        });
+
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+
+        return response.json();
+    };
+
     const shippingManager = {
         orders: [],
         init: function() {
@@ -99,7 +120,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             try {
                 // Reusing standard Orders API but filtering client-side or assume endpoint supports filter
                 // Actually, let's use the existing orders API and filter client-side for "Phase 2 MVP"
-                const data = await requestJson('/api/orders/all?status=' + status); // assuming API supports status param or we filter
+                const data = await shippingRequestJson('/api/orders/all?status=' + status); // assuming API supports status param or we filter
 
                 this.orders = data.results || [];
 

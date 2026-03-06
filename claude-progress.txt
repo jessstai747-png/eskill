@@ -6,6 +6,23 @@
 
 ---
 
+## Sessão 2026-03-06 (18) — SHIP-001: Fix shipping dashboard requestJson compatibility
+
+### O que foi feito
+- Corrigido o `ReferenceError: requestJson is not defined` na view `app/Views/dashboard/shipping.php`
+- Adicionado wrapper local `shippingRequestJson()` que usa `window.requestJson` quando disponível, faz fallback para `window.ApiClient.request` e, em último caso, para `fetch()` com `credentials: 'include'`
+- Atualizada a carga de pedidos (`loadOrders()`) para usar o wrapper local em vez de depender de um identificador global livre que nem sempre existe no escopo da página
+- Atualizado `project-status.json` em `SHIP-001` com `last_tested=2026-03-06`
+
+### Arquivos alterados
+1. **`app/Views/dashboard/shipping.php`** — compatibilidade do helper JSON na tela de expedição
+2. **`project-status.json`** — `SHIP-001` revalidado em `2026-03-06`
+
+### Resultado
+- A página de expedição deixa de falhar na inicialização por ausência de `requestJson`
+- `shippingManager.loadOrders()` agora continua compatível tanto com layouts que expõem `window.requestJson` quanto com fallback via `ApiClient`
+- Validação local: `php -l` + diagnostics OK
+
 ## Sessão 2026-03-06 (17) — AUDIT-ML-03: Align SecureTokenService refresh retry policy
 
 ### O que foi feito
