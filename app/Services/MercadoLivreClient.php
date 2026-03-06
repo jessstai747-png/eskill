@@ -10,6 +10,16 @@ use App\Database;
  */
 class MercadoLivreClient
 {
+    /**
+     * Endpoints públicos conhecidos por bloquear client_id via PolicyAgent.
+     *
+     * @var array<int, string>
+     */
+    private const PUBLIC_CLIENT_ID_POLICY_BLOCKED_PATTERNS = [
+        '#^/sites/[^/]+$#',
+        '#^/sites/[^/]+/search$#',
+    ];
+
     protected string $accessToken = '';
     protected string $refreshToken = '';
     protected ?string $tokenExpiresAt = null;
@@ -31,6 +41,12 @@ class MercadoLivreClient
     private ?string $accountNickname = null;
     private ?string $accountStatus = null;
     private ?string $lastRefreshError = null;
+    /**
+     * Endpoints aprendidos dinamicamente como bloqueados para client_id em requests públicos.
+     *
+     * @var array<string, bool>
+     */
+    private static array $publicClientIdPolicyBlockedEndpoints = [];
 
     private function isHttpContext(): bool
     {
@@ -579,6 +595,107 @@ class MercadoLivreClient
         ];
     }
 
+    private function getPublicClientId(): string
+    {
+        return (string)($_ENV['ML_APP_ID'] ?? getenv('ML_APP_ID') ?? '');
+    }
+
+    private function getPublicClientIdMode(): string
+    {
+        $mode = strtolower(trim((string)($_ENV['ML_PUBLIC_CLIENT_ID_MODE'] ?? getenv('ML_PUBLIC_CLIENT_ID_MODE') ?? 'auto')));
+
+        return in_array($mode, ['auto', 'never'], true) ? $mode : 'auto';
+    }
+
+    private function normalizePublicEndpointPolicyKey(string $endpoint): string
+    {
+        return match (true) {
+            preg_match('#^/sites/[^/]+$#', $endpoint) === 1 => '/sites/{site}',
+            preg_match('#^/sites/[^/]+/search$#', $endpoint) === 1 => '/sites/{site}/search',
+            default => $endpoint,
+        };
+    }
+
+    private function isKnownPolicyBlockedPublicEndpoint(string $endpoint): bool
+    {
+        $key = $this->normalizePublicEndpointPolicyKey($endpoint);
+        if (isset(self::$publicClientIdPolicyBlockedEndpoints[$key])) {
+            return true;
+        }
+
+        foreach (self::PUBLIC_CLIENT_ID_POLICY_BLOCKED_PATTERNS as $pattern) {
+            if (preg_match($pattern, $endpoint) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function markPublicEndpointAsPolicyBlocked(string $endpoint): void
+    {
+        self::$publicClientIdPolicyBlockedEndpoints[$this->normalizePublicEndpointPolicyKey($endpoint)] = true;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    private function shouldAttachClientIdToPublicRequest(string $method, string $endpoint, array $options): bool
+    {
+        if ($method !== 'GET') {
+            return false;
+        }
+
+        if ($this->getPublicClientIdMode() === 'never') {
+            return false;
+        }
+
+        if ($this->getPublicClientId() === '') {
+            return false;
+        }
+
+        if ($this->isKnownPolicyBlockedPublicEndpoint($endpoint)) {
+            return false;
+        }
+
+        return !(isset($options['query']) && is_array($options['query']) && array_key_exists('client_id', $options['query']));
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private function attachClientIdToPublicRequestOptions(array $options): array
+    {
+        $clientId = $this->getPublicClientId();
+        if ($clientId === '') {
+            return $options;
+        }
+
+        if (!isset($options['query']) || !is_array($options['query'])) {
+            $options['query'] = [];
+        }
+
+        $options['query']['client_id'] = $clientId;
+
+        return $options;
+    }
+
+    private function isPolicyBlockedHttpError(?int $status, ?string $body, string $message = ''): bool
+    {
+        if ($status !== 403) {
+            return false;
+        }
+
+        $haystack = strtolower(trim($message));
+        if ($body !== null && $body !== '') {
+            $haystack .= ' ' . strtolower($body);
+        }
+
+        return str_contains($haystack, 'pa_unauthorized_result_from_policies')
+            || (str_contains($haystack, 'policy') && str_contains($haystack, 'unauthorized'));
+    }
+
     private function normalizeHttpError(string $method, string $endpoint, ?int $status, ?string $body, string $fallbackMessage): array
     {
         $payload = [];
@@ -757,6 +874,12 @@ class MercadoLivreClient
             }
         }
 
+        $publicClientIdApplied = false;
+        if (!$requiresAuth && $this->shouldAttachClientIdToPublicRequest($method, $endpoint, $options)) {
+            $options = $this->attachClientIdToPublicRequestOptions($options);
+            $publicClientIdApplied = true;
+        }
+
         $url = $this->baseUrl . $endpoint;
 
         try {
@@ -774,10 +897,37 @@ class MercadoLivreClient
             return $this->decorateLegacyResponse($result);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $status = $e->getResponse()?->getStatusCode();
+            $body = null;
+            try {
+                $body = (string) $e->getResponse()?->getBody();
+            } catch (\Throwable $t) {
+                $body = null;
+            }
 
             // Se o endpoint exige auth e não há token, padroniza erro.
             if ($status === 401 && $requiresAuth && !$this->hasAccessToken) {
                 return $this->decorateLegacyResponse($this->missingTokenError($endpoint));
+            }
+
+            if (
+                $allowRetry
+                && !$requiresAuth
+                && $publicClientIdApplied
+                && $this->isPolicyBlockedHttpError($status, $body, $e->getMessage())
+            ) {
+                $this->markPublicEndpointAsPolicyBlocked($endpoint);
+
+                if (isset($options['query']) && is_array($options['query'])) {
+                    unset($options['query']['client_id']);
+                }
+
+                log_warning('ML public endpoint bloqueou client_id; retry automático sem client_id', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'status' => $status,
+                ]);
+
+                return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
             }
 
             // Token pode ter expirado / sido revogado; tenta refresh e reenvia 1x.
@@ -843,12 +993,6 @@ class MercadoLivreClient
                 'status' => $status,
                 'error' => $e->getMessage(),
             ]);
-            $body = null;
-            try {
-                $body = (string) $e->getResponse()?->getBody();
-            } catch (\Throwable $t) {
-                $body = null;
-            }
 
             return $this->decorateLegacyResponse(
                 $this->normalizeHttpError($method, $endpoint, $status, $body, $e->getMessage())

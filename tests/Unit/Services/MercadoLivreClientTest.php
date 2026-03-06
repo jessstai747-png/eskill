@@ -5,17 +5,66 @@ use PHPUnit\Framework\TestCase;
 use App\Services\MercadoLivreClient;
 use App\Services\EncryptionService;
 use App\Database;
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Response;
 
 class MercadoLivreClientTest extends TestCase
 {
     private int $accountId;
+    /** @var array<int, array<string, mixed>> */
+    private array $requestHistory = [];
+
+    private function currentTestRequiresDatabase(): bool
+    {
+        return in_array($this->getName(false), [
+            'testLoadAccountDecryptsToken',
+            'testEnsureValidAccessToken_uses_refresh_when_expired',
+        ], true);
+    }
+
+    /**
+     * @param array<int, Response> $responses
+     * @return MercadoLivreClient
+     */
+    private function makeClientWithMockedTransport(array $responses): MercadoLivreClient
+    {
+        $this->requestHistory = [];
+        $historyMiddleware = Middleware::history($this->requestHistory);
+        $handler = HandlerStack::create(new MockHandler($responses));
+        $handler->push($historyMiddleware);
+
+        $guzzle = new GuzzleClient(['handler' => $handler]);
+
+        $client = new MercadoLivreClient(null);
+
+        $httpClientProperty = new \ReflectionProperty(MercadoLivreClient::class, 'httpClient');
+        $httpClientProperty->setAccessible(true);
+        $httpClientProperty->setValue($client, $guzzle);
+
+        $publicHttpClientProperty = new \ReflectionProperty(MercadoLivreClient::class, 'publicHttpClient');
+        $publicHttpClientProperty->setAccessible(true);
+        $publicHttpClientProperty->setValue($client, $guzzle);
+
+        return $client;
+    }
 
     protected function setUp(): void
     {
         // Ensure APP_KEY for EncryptionService
         putenv('APP_KEY=UnitTestFallbackKey_ThisIs32CharsLong!');
 
-        $pdo = Database::getInstance();
+        if (!$this->currentTestRequiresDatabase()) {
+            return;
+        }
+
+        try {
+            $pdo = Database::getInstance();
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('MySQL indisponível para testes que dependem de ml_accounts');
+        }
 
         // Create table if not exists (safe DDL for tests)
         $pdo->exec("CREATE TABLE IF NOT EXISTS ml_accounts (
@@ -184,5 +233,122 @@ class MercadoLivreClientTest extends TestCase
         $response = $client->get('/sites/MLB/search', ['q' => 'notebook'], 0, true);
 
         $this->assertIsArray($response);
+    }
+
+    public function testSkipsClientIdForKnownPolicyBlockedPublicEndpoint(): void
+    {
+        $previousEnv = $_ENV['APP_ENV'] ?? null;
+        $previousAppId = $_ENV['ML_APP_ID'] ?? null;
+        $previousMode = $_ENV['ML_PUBLIC_CLIENT_ID_MODE'] ?? null;
+
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+        putenv('ML_APP_ID=757032559637450');
+        $_ENV['ML_APP_ID'] = '757032559637450';
+        putenv('ML_PUBLIC_CLIENT_ID_MODE=auto');
+        $_ENV['ML_PUBLIC_CLIENT_ID_MODE'] = 'auto';
+
+        try {
+            $client = $this->makeClientWithMockedTransport([
+                new Response(200, ['Content-Type' => 'application/json'], json_encode(['id' => 'MLB', 'name' => 'Brasil'])),
+            ]);
+
+            $response = $client->get('/sites/MLB', [], 0, true);
+
+            $this->assertSame('MLB', $response['id'] ?? null);
+            $this->assertCount(1, $this->requestHistory);
+
+            parse_str($this->requestHistory[0]['request']->getUri()->getQuery(), $query);
+            $this->assertArrayNotHasKey('client_id', $query);
+        } finally {
+            if ($previousEnv !== null) {
+                putenv("APP_ENV={$previousEnv}");
+                $_ENV['APP_ENV'] = $previousEnv;
+            } else {
+                putenv('APP_ENV');
+                unset($_ENV['APP_ENV']);
+            }
+
+            if ($previousAppId !== null) {
+                putenv("ML_APP_ID={$previousAppId}");
+                $_ENV['ML_APP_ID'] = $previousAppId;
+            } else {
+                putenv('ML_APP_ID');
+                unset($_ENV['ML_APP_ID']);
+            }
+
+            if ($previousMode !== null) {
+                putenv("ML_PUBLIC_CLIENT_ID_MODE={$previousMode}");
+                $_ENV['ML_PUBLIC_CLIENT_ID_MODE'] = $previousMode;
+            } else {
+                putenv('ML_PUBLIC_CLIENT_ID_MODE');
+                unset($_ENV['ML_PUBLIC_CLIENT_ID_MODE']);
+            }
+        }
+    }
+
+    public function testRetriesWithoutClientIdWhenUnknownPublicEndpointIsPolicyBlocked(): void
+    {
+        $previousEnv = $_ENV['APP_ENV'] ?? null;
+        $previousAppId = $_ENV['ML_APP_ID'] ?? null;
+        $previousMode = $_ENV['ML_PUBLIC_CLIENT_ID_MODE'] ?? null;
+
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+        putenv('ML_APP_ID=757032559637450');
+        $_ENV['ML_APP_ID'] = '757032559637450';
+        putenv('ML_PUBLIC_CLIENT_ID_MODE=auto');
+        $_ENV['ML_PUBLIC_CLIENT_ID_MODE'] = 'auto';
+
+        try {
+            $client = $this->makeClientWithMockedTransport([
+                new Response(403, ['Content-Type' => 'application/json'], json_encode([
+                    'message' => 'At least one policy returned UNAUTHORIZED.',
+                    'blocked_by' => 'PolicyAgent',
+                    'code' => 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES',
+                    'status' => 403,
+                ])),
+                new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                    'suggested_queries' => [
+                        ['q' => 'bagageiro cg 160'],
+                    ],
+                ])),
+            ]);
+
+            $response = $client->get('/sites/MLB/autosuggest', ['q' => 'bagageiro'], 0, true);
+
+            $this->assertCount(2, $this->requestHistory);
+            $this->assertSame('bagageiro cg 160', $response['suggested_queries'][0]['q'] ?? null);
+
+            parse_str($this->requestHistory[0]['request']->getUri()->getQuery(), $firstQuery);
+            parse_str($this->requestHistory[1]['request']->getUri()->getQuery(), $secondQuery);
+
+            $this->assertSame('757032559637450', $firstQuery['client_id'] ?? null);
+            $this->assertArrayNotHasKey('client_id', $secondQuery);
+        } finally {
+            if ($previousEnv !== null) {
+                putenv("APP_ENV={$previousEnv}");
+                $_ENV['APP_ENV'] = $previousEnv;
+            } else {
+                putenv('APP_ENV');
+                unset($_ENV['APP_ENV']);
+            }
+
+            if ($previousAppId !== null) {
+                putenv("ML_APP_ID={$previousAppId}");
+                $_ENV['ML_APP_ID'] = $previousAppId;
+            } else {
+                putenv('ML_APP_ID');
+                unset($_ENV['ML_APP_ID']);
+            }
+
+            if ($previousMode !== null) {
+                putenv("ML_PUBLIC_CLIENT_ID_MODE={$previousMode}");
+                $_ENV['ML_PUBLIC_CLIENT_ID_MODE'] = $previousMode;
+            } else {
+                putenv('ML_PUBLIC_CLIENT_ID_MODE');
+                unset($_ENV['ML_PUBLIC_CLIENT_ID_MODE']);
+            }
+        }
     }
 }

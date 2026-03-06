@@ -6,6 +6,30 @@
 
 ---
 
+## Sessão 2026-03-06 (4) — FIX-004: fallback seletivo para PolicyAgent em endpoints públicos ML
+
+**Commit:** registrado no HEAD desta sessão
+**Testes:** PHPUnit completo 2923 pass, 0 fail, 34 skipped | PHPUnit `MercadoLivreClientTest.php`: 6 testes, 0 fail, 3 skipped (MySQL indisponível) | **Codacy:** 0 issues
+
+### Problema
+- O hotfix anterior removeu `client_id` de toda request pública para eliminar 403 `PA_UNAUTHORIZED_RESULT_FROM_POLICIES`
+- Isso resolvia o erro, mas era amplo demais e perdia a possibilidade de usar `client_id` em endpoints públicos que não sofrem block de policy
+
+### Correção completa
+- `MercadoLivreClient.php`
+   - adicionada lógica seletiva para anexar `client_id` apenas quando permitido
+   - denylist de endpoints públicos conhecidos por policy block: `/sites/{site}` e `/sites/{site}/search`
+   - retry automático uma vez sem `client_id` quando um endpoint público desconhecido retorna 403 por PolicyAgent
+   - cache em memória do processo para endpoints aprendidos dinamicamente como bloqueados
+- `MercadoLivreClientTest.php`
+   - novo teste garantindo que `/sites/MLB` não recebe `client_id`
+   - novo teste garantindo retry sem `client_id` após 403 de policy em endpoint público desconhecido
+   - setup ajustado para pular apenas os testes realmente dependentes de MySQL quando o banco está indisponível
+
+### Arquivos modificados
+- `app/Services/MercadoLivreClient.php`
+- `tests/Unit/Services/MercadoLivreClientTest.php`
+
 ## Sessão 2026-03-06 (3) — FIX-003: ML API 403 PolicyAgent por injeção de client_id
 
 **Commit:** (pendente)
