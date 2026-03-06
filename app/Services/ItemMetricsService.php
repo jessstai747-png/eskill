@@ -106,6 +106,15 @@ class ItemMetricsService extends MercadoLivreClient
             $response = $this->get("/users/{$userId}/listings_quality");
 
             if (isset($response['error'])) {
+                if (($response['error'] ?? '') === 'listings_quality_unavailable') {
+                    return array_merge($this->getEmptyQuality(), [
+                        'user_id' => $userId,
+                        'available' => false,
+                        'source' => 'local_fallback',
+                        'message' => $response['message'] ?? 'Score oficial ML indisponível para esta conta.',
+                    ]);
+                }
+
                 return $this->getEmptyQuality();
             }
 
@@ -121,6 +130,9 @@ class ItemMetricsService extends MercadoLivreClient
                 ],
                 'issues_summary' => $this->summarizeQualityIssues($response),
                 'recommendations' => $this->generateQualityRecommendations($response),
+                'available' => true,
+                'source' => 'mercado_livre_official',
+                'message' => null,
             ];
         } catch (\Exception $e) {
             log_warning('Erro ao obter qualidade dos anúncios', [
@@ -563,6 +575,9 @@ class ItemMetricsService extends MercadoLivreClient
             ],
             'issues_summary' => [],
             'recommendations' => [],
+            'available' => false,
+            'source' => 'unavailable',
+            'message' => null,
         ];
     }
     /**

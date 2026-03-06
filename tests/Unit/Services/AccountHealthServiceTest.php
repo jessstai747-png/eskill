@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
+use App\Services\MercadoLivreClient;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -40,6 +41,17 @@ class AccountHealthServiceTest extends TestCase
     private function getPrivateConstant(string $name): mixed
     {
         return $this->reflection->getConstant($name);
+    }
+
+    private function createInstanceWithClient(MercadoLivreClient $client): object
+    {
+        $instance = $this->createInstance();
+
+        $clientProperty = $this->reflection->getProperty('client');
+        $clientProperty->setAccessible(true);
+        $clientProperty->setValue($instance, $client);
+
+        return $instance;
     }
 
     // =========================================================================
@@ -257,6 +269,46 @@ class AccountHealthServiceTest extends TestCase
             'unknown'  => ['unknown', 4],
             'empty'    => ['', 4],
         ];
+    }
+
+    public function testGetAccountStatusDiagnosticIgnoresErrorPayloadsFromOptionalEndpoints(): void
+    {
+        $client = $this->createMock(MercadoLivreClient::class);
+        $client->method('getSellerId')->willReturn('123');
+        $client->method('get')->willReturnCallback(function (string $endpoint) {
+            return match ($endpoint) {
+                '/users/123' => [
+                    'status' => [
+                        'site_status' => 'active',
+                        'confirmed_email' => true,
+                        'mercadopago_account_type' => 'personal',
+                    ],
+                    'seller_reputation' => [
+                        'metrics' => [
+                            'cancellations' => ['rate' => 0.01],
+                        ],
+                        'power_seller_status' => null,
+                    ],
+                    'tags' => [],
+                    'site_id' => 'MLB',
+                ],
+                '/users/123/shipping_preferences' => [
+                    'error' => 'feature_unavailable',
+                    'message' => 'Envios não configurado',
+                ],
+                '/users/123/brands_official_store' => [
+                    'error' => 'brand_central_unavailable',
+                    'message' => 'Conta sem loja oficial',
+                ],
+                default => [],
+            };
+        });
+
+        $instance = $this->createInstanceWithClient($client);
+        $result = $instance->getAccountStatusDiagnostic();
+
+        $this->assertFalse($result['official_store']);
+        $this->assertFalse($result['features']['shipping_configured']);
     }
 
     // =========================================================================

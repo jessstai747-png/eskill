@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
@@ -49,6 +50,21 @@ class MercadoLivreClientTest extends TestCase
         $publicHttpClientProperty->setValue($client, $guzzle);
 
         return $client;
+    }
+
+    private function setAuthenticatedState(MercadoLivreClient $client, string $token = 'unit-test-token'): void
+    {
+        $accessTokenProperty = new \ReflectionProperty(MercadoLivreClient::class, 'accessToken');
+        $accessTokenProperty->setAccessible(true);
+        $accessTokenProperty->setValue($client, $token);
+
+        $hasAccessTokenProperty = new \ReflectionProperty(MercadoLivreClient::class, 'hasAccessToken');
+        $hasAccessTokenProperty->setAccessible(true);
+        $hasAccessTokenProperty->setValue($client, true);
+
+        $tokenSourceProperty = new \ReflectionProperty(MercadoLivreClient::class, 'tokenSource');
+        $tokenSourceProperty->setAccessible(true);
+        $tokenSourceProperty->setValue($client, 'test');
     }
 
     protected function setUp(): void
@@ -348,6 +364,72 @@ class MercadoLivreClientTest extends TestCase
             } else {
                 putenv('ML_PUBLIC_CLIENT_ID_MODE');
                 unset($_ENV['ML_PUBLIC_CLIENT_ID_MODE']);
+            }
+        }
+    }
+
+    public function testReturnsListingsQualityUnavailableForOptionalAuthEndpoint(): void
+    {
+        $previousEnv = $_ENV['APP_ENV'] ?? null;
+
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+
+        try {
+            $client = $this->makeClientWithMockedTransport([
+                new Response(403, ['Content-Type' => 'application/json'], json_encode([
+                    'message' => 'forbidden',
+                    'status' => 403,
+                ])),
+            ]);
+            $this->setAuthenticatedState($client);
+
+            $response = $client->get('/users/123/listings_quality');
+
+            $this->assertSame('listings_quality_unavailable', $response['error'] ?? null);
+            $this->assertSame('listings_quality', $response['feature'] ?? null);
+            $this->assertTrue($response['optional_feature'] ?? false);
+            $this->assertSame(403, $response['status'] ?? null);
+        } finally {
+            if ($previousEnv !== null) {
+                putenv("APP_ENV={$previousEnv}");
+                $_ENV['APP_ENV'] = $previousEnv;
+            } else {
+                putenv('APP_ENV');
+                unset($_ENV['APP_ENV']);
+            }
+        }
+    }
+
+    public function testReturnsBrandCentralUnavailableForOfficialStoreEndpoint(): void
+    {
+        $previousEnv = $_ENV['APP_ENV'] ?? null;
+
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+
+        try {
+            $client = $this->makeClientWithMockedTransport([
+                new Response(404, ['Content-Type' => 'application/json'], json_encode([
+                    'message' => 'not found',
+                    'status' => 404,
+                ])),
+            ]);
+            $this->setAuthenticatedState($client);
+
+            $response = $client->get('/users/123/brands_official_store');
+
+            $this->assertSame('brand_central_unavailable', $response['error'] ?? null);
+            $this->assertSame('brand_central', $response['feature'] ?? null);
+            $this->assertTrue($response['optional_feature'] ?? false);
+            $this->assertSame(404, $response['status'] ?? null);
+        } finally {
+            if ($previousEnv !== null) {
+                putenv("APP_ENV={$previousEnv}");
+                $_ENV['APP_ENV'] = $previousEnv;
+            } else {
+                putenv('APP_ENV');
+                unset($_ENV['APP_ENV']);
             }
         }
     }

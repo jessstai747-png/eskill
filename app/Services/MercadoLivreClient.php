@@ -20,6 +20,35 @@ class MercadoLivreClient
         '#^/sites/[^/]+/search$#',
     ];
 
+    /**
+     * Features opcionais/autorizadas por capability do seller/app.
+     *
+     * @var array<int, array{pattern: string, status_codes: array<int, int>, error: string, feature: string, message: string}>
+     */
+    private const OPTIONAL_FEATURE_ENDPOINTS = [
+        [
+            'pattern' => '#^/users/[^/]+/listings_quality$#',
+            'status_codes' => [403, 404],
+            'error' => 'listings_quality_unavailable',
+            'feature' => 'listings_quality',
+            'message' => 'A conta não possui acesso ao score oficial de qualidade do Mercado Livre.',
+        ],
+        [
+            'pattern' => '#^/users/[^/]+/brands_official_store$#',
+            'status_codes' => [403, 404],
+            'error' => 'brand_central_unavailable',
+            'feature' => 'brand_central',
+            'message' => 'A conta não possui loja oficial ou acesso ao Brand Central.',
+        ],
+        [
+            'pattern' => '#^/brands_official_store(?:/|$)#',
+            'status_codes' => [403, 404],
+            'error' => 'brand_central_unavailable',
+            'feature' => 'brand_central',
+            'message' => 'A conta não possui loja oficial ou acesso ao Brand Central.',
+        ],
+    ];
+
     protected string $accessToken = '';
     protected string $refreshToken = '';
     protected ?string $tokenExpiresAt = null;
@@ -696,6 +725,46 @@ class MercadoLivreClient
             || (str_contains($haystack, 'policy') && str_contains($haystack, 'unauthorized'));
     }
 
+    /**
+     * @return array{pattern: string, status_codes: array<int, int>, error: string, feature: string, message: string}|null
+     */
+    private function matchOptionalFeatureEndpoint(string $endpoint, ?int $status): ?array
+    {
+        if ($status === null) {
+            return null;
+        }
+
+        foreach (self::OPTIONAL_FEATURE_ENDPOINTS as $definition) {
+            if (preg_match($definition['pattern'], $endpoint) !== 1) {
+                continue;
+            }
+
+            if (!in_array($status, $definition['status_codes'], true)) {
+                continue;
+            }
+
+            return $definition;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array{pattern: string, status_codes: array<int, int>, error: string, feature: string, message: string} $definition
+     */
+    private function optionalFeatureUnavailableResponse(string $method, string $endpoint, int $status, array $definition): array
+    {
+        return $this->decorateLegacyResponse([
+            'error' => $definition['error'],
+            'message' => $definition['message'],
+            'feature' => $definition['feature'],
+            'optional_feature' => true,
+            'status' => $status,
+            'method' => $method,
+            'endpoint' => $endpoint,
+        ]);
+    }
+
     private function normalizeHttpError(string $method, string $endpoint, ?int $status, ?string $body, string $fallbackMessage): array
     {
         $payload = [];
@@ -907,6 +976,18 @@ class MercadoLivreClient
             // Se o endpoint exige auth e não há token, padroniza erro.
             if ($status === 401 && $requiresAuth && !$this->hasAccessToken) {
                 return $this->decorateLegacyResponse($this->missingTokenError($endpoint));
+            }
+
+            $optionalFeature = $this->matchOptionalFeatureEndpoint($endpoint, $status);
+            if ($optionalFeature !== null) {
+                log_warning('ML optional feature unavailable for this account/app', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'status' => $status,
+                    'feature' => $optionalFeature['feature'],
+                ]);
+
+                return $this->optionalFeatureUnavailableResponse($method, $endpoint, $status, $optionalFeature);
             }
 
             if (

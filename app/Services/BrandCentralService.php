@@ -44,8 +44,18 @@ class BrandCentralService extends MercadoLivreClient
             $response = $this->get("/users/{$userId}/brands_official_store");
 
             if (isset($response['error'])) {
+                if (($response['error'] ?? '') === 'brand_central_unavailable') {
+                    return [
+                        'success' => true,
+                        'available' => false,
+                        'message' => $response['message'] ?? 'Conta sem loja oficial ou sem acesso ao Brand Central.',
+                        'data' => $this->getEmptyStore(),
+                    ];
+                }
+
                 return [
                     'success' => false,
+                    'available' => false,
                     'error' => $response['message'] ?? 'Erro ao obter loja oficial',
                     'data' => $this->getEmptyStore(),
                 ];
@@ -53,6 +63,7 @@ class BrandCentralService extends MercadoLivreClient
 
             return [
                 'success' => true,
+                'available' => true,
                 'data' => [
                     'id' => $response['id'] ?? null,
                     'name' => $response['name'] ?? '',
@@ -73,6 +84,7 @@ class BrandCentralService extends MercadoLivreClient
             log_error('Erro ao obter loja oficial', ['service' => 'BrandCentralService', 'error' => $e->getMessage()]);
             return [
                 'success' => false,
+                'available' => false,
                 'error' => $e->getMessage(),
                 'data' => $this->getEmptyStore(),
             ];

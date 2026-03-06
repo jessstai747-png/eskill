@@ -3416,6 +3416,9 @@ class AccountHealthService
             $shippingPrefs = null;
             try {
                 $shippingPrefs = $this->client->get("/users/{$sellerId}/shipping_preferences");
+                if (is_array($shippingPrefs) && isset($shippingPrefs['error'])) {
+                    $shippingPrefs = null;
+                }
             } catch (\Exception $e) {
                 // Optional endpoint
             }
@@ -3424,7 +3427,9 @@ class AccountHealthService
             $isOfficialStore = false;
             try {
                 $officialStore = $this->client->get("/users/{$sellerId}/brands_official_store");
-                $isOfficialStore = !empty($officialStore);
+                $isOfficialStore = is_array($officialStore)
+                    && !isset($officialStore['error'])
+                    && !empty($officialStore);
             } catch (\Exception $e) {
                 // Not an official store
             }

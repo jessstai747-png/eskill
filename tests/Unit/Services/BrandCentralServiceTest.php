@@ -116,6 +116,28 @@ class BrandCentralServiceTest extends TestCase
         $this->assertSame(0, $result['brand_loyalty_score']);
     }
 
+    public function testGetBrandStoreReturnsUnavailableStateWhenBrandCentralIsNotEnabled(): void
+    {
+        $service = $this->getMockBuilder(BrandCentralService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getSellerId', 'get'])
+            ->getMock();
+
+        $service->method('getSellerId')->willReturn('123');
+        $service->method('get')->willReturn([
+            'error' => 'brand_central_unavailable',
+            'message' => 'A conta não possui loja oficial ou acesso ao Brand Central.',
+            'optional_feature' => true,
+        ]);
+
+        $result = $service->getBrandStore();
+
+        $this->assertTrue($result['success']);
+        $this->assertFalse($result['available']);
+        $this->assertSame('', $result['data']['name']);
+        $this->assertStringContainsString('Brand Central', $result['message']);
+    }
+
     private function invokePrivate(string $method, array $args = []): mixed
     {
         $m = $this->reflection->getMethod($method);
