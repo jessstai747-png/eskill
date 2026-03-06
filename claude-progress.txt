@@ -6,6 +6,22 @@
 
 ---
 
+## Sessão 2026-03-06 (16) — AUDIT-ML-02: Harden refresh disconnect and retry flow
+
+### O que foi feito
+- Isolada a mudança funcional real do núcleo de auth em `MercadoLivreAuthService.php`, separando-a do ruído de whitespace presente em outros arquivos abertos no workspace
+- Endurecido o fluxo de `refreshToken()` para desconectar a conta quando o refresh token não puder ser descriptografado ou estiver vazio, evitando chamadas inúteis à API do Mercado Livre
+- Mantido o retry apenas para falhas transientes no refresh, com logging estruturado antes do backoff e encerramento limpo para falhas irrecuperáveis como `invalid_grant`
+- Validado o arquivo com `php -l` e com PHPUnit focal em `tests/Unit/MercadoLivreAuthServiceUnitTest.php` e `tests/Unit/Services/MercadoLivreAuthServiceTest.php`
+
+### Arquivos alterados
+1. **`app/Services/MercadoLivreAuthService.php`** — fluxo de refresh mais defensivo para refresh token inválido/vazio e retry coerente
+
+### Resultado
+- O auth refresh falha mais cedo e com motivo explícito quando a conta não tem mais condição de renovar token
+- A API do ML deixa de ser chamada em cenários sabidamente irrecuperáveis
+- Validação focal: **8 testes, 19 assertions, tudo OK**
+
 ## Sessão 2026-03-06 (15) — ENV-AUTO-04: Normalize kit README tables
 
 ### O que foi feito

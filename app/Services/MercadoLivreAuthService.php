@@ -603,252 +603,252 @@ class MercadoLivreAuthService
                 $expiresAtBefore
             );
 
-        $refreshToken = $row['refresh_token'];
-        if ($row['tokens_encrypted']) {
-            try {
-                $enc = new EncryptionService();
-                $refreshToken = $enc->decrypt($refreshToken);
-            } catch (\Throwable $e) {
-                $logger = new StructuredLogService();
-                $logger->error('Failed to decrypt refresh token', ['error' => $e->getMessage()]);
+            $refreshToken = $row['refresh_token'];
+            if ($row['tokens_encrypted']) {
+                try {
+                    $enc = new EncryptionService();
+                    $refreshToken = $enc->decrypt($refreshToken);
+                } catch (\Throwable $e) {
+                    $logger = new StructuredLogService();
+                    $logger->error('Failed to decrypt refresh token', ['error' => $e->getMessage()]);
 
-                $executionTime = (int)((microtime(true) - $startTime) * 1000);
-                $this->markAccountDisconnected(
-                    $accountId,
-                    'decrypt_failed: falha ao descriptografar refresh token',
-                    null,
-                    null,
-                    $expiresAtBefore,
-                    $executionTime
-                );
+                    $executionTime = (int)((microtime(true) - $startTime) * 1000);
+                    $this->markAccountDisconnected(
+                        $accountId,
+                        'decrypt_failed: falha ao descriptografar refresh token',
+                        null,
+                        null,
+                        $expiresAtBefore,
+                        $executionTime
+                    );
 
-                return false;
-            }
-        }
-
-        // Bail early: sem refresh token, não adianta tentar a API
-        if (empty($refreshToken)) {
-            $logger = new StructuredLogService();
-            $logger->warning('Refresh token vazio - conta desconectada', [
-                'account_id' => $accountId,
-            ]);
-
-            $executionTime = (int)((microtime(true) - $startTime) * 1000);
-            $this->markAccountDisconnected(
-                $accountId,
-                'missing_refresh_token: refresh token vazio',
-                null,
-                null,
-                $expiresAtBefore,
-                $executionTime
-            );
-
-            return false;
-        }
-
-        $ml = $this->getMercadoLivreConfig();
-        $tokenUrl = $this->getMercadoLivreTokenUrl();
-        $clientId = $ml['app_id'] ?? '';
-        $clientSecret = $ml['client_secret'] ?? '';
-
-        $post = [
-            'grant_type' => 'refresh_token',
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-            'refresh_token' => $refreshToken
-        ];
-
-        $attempt = 0;
-        $success = false;
-        $resp = null;
-        $httpCode = 0;
-        $curlError = '';
-        $disconnectReason = null;
-
-        while ($attempt < $maxRetries && !$success) {
-            $attempt++;
-
-            $ch = curl_init($tokenUrl);
-            $curlOptions = [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => http_build_query($post),
-                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_USERAGENT => 'SEO-Optimizer/1.0',
-            ];
-            $this->applyCurlProxyOptions($curlOptions);
-            curl_setopt_array($ch, $curlOptions);
-
-            $resp = curl_exec($ch);
-            $curlError = $resp === false ? curl_error($ch) : '';
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            // Sucesso HTTP 200
-            if ($resp !== false && $httpCode === 200) {
-                $success = true;
-                break;
-            }
-
-            // Falha fatal (invalid_grant), não adianta tentar de novo
-            if ($httpCode === 400 || $httpCode === 401) {
-                $data = json_decode($resp, true);
-                if (isset($data['error']) && $data['error'] === 'invalid_grant') {
-                    $disconnectReason = 'invalid_grant: ' . (string)($data['message'] ?? 'refresh token inválido');
-                    break;
+                    return false;
                 }
             }
 
-            if ($attempt < $maxRetries && $this->shouldRetryTokenRequest($httpCode, $curlError)) {
-                $sleepSeconds = $this->calculateTokenRetryDelaySeconds($attempt);
+            // Bail early: sem refresh token, não adianta tentar a API
+            if (empty($refreshToken)) {
                 $logger = new StructuredLogService();
-                $logger->warning('Retry de refresh token ML agendado', [
+                $logger->warning('Refresh token vazio - conta desconectada', [
                     'account_id' => $accountId,
-                    'attempt' => $attempt,
-                    'max_retries' => $maxRetries,
-                    'http_code' => $httpCode,
-                    'curl_error' => $curlError !== '' ? $curlError : null,
-                    'sleep_seconds' => $sleepSeconds,
-                ]);
-                sleep($sleepSeconds);
-                continue;
-            }
-
-            break;
-        }
-
-        if (!$success) {
-            $executionTime = (int)((microtime(true) - $startTime) * 1000);
-
-            // Falha irrecuperável: invalid_grant => conta precisa reconectar via OAuth
-            if (is_string($disconnectReason) && $disconnectReason !== '') {
-                $logger = new StructuredLogService();
-                $logger->warning('Conta ML desconectada (invalid_grant no refresh)', [
-                    'account_id' => $accountId,
-                    'status' => $httpCode,
-                    'response_preview' => substr($resp ?? '', 0, 200),
                 ]);
 
-                $this->markAccountDisconnected(
-                    $accountId,
-                    $disconnectReason,
-                    $httpCode,
-                    ['attempts' => $attempt, 'response_preview' => substr($resp ?? '', 0, 200)],
-                    $expiresAtBefore,
-                    $executionTime
-                );
-
-                return false;
-            }
-
-            $logger = new StructuredLogService();
-            $logger->error('Falha refresh token ML após tentativas', [
-                'attempts' => $attempt,
-                'status' => $httpCode,
-                'response' => $resp,
-                'curl_error' => $curlError,
-                'account_id' => $accountId
-            ]);
-
-            $this->logAuditEvent(
-                $accountId,
-                'refresh_failed',
-                ['attempts' => $attempt, 'response_preview' => substr((string)($resp ?? ''), 0, 200), 'curl_error' => $curlError !== '' ? $curlError : null],
-                $httpCode,
-                "Falha após {$attempt} tentativas",
-                $expiresAtBefore,
-                null,
-                $executionTime
-            );
-
-            // Atualizar contador de falhas e último erro
-            $this->pdo()->prepare(
-                'UPDATE ml_accounts 
-                SET refresh_failure_count = refresh_failure_count + 1, 
-                    last_refresh_error = :error,
-                    updated_at = NOW()
-                WHERE id = :id'
-            )->execute([
-                'error' => trim("HTTP {$httpCode}: " . substr((string)($resp ?? ''), 0, 500) . ($curlError !== '' ? ' | cURL: ' . $curlError : '')),
-                'id' => $accountId
-            ]);
-
-            return false;
-        }
-
-        $data = json_decode($resp, true);
-        if (!isset($data['access_token'])) {
-            $logger = new StructuredLogService();
-            $logger->error('Resposta inválida ao renovar token ML', ['response' => $resp]);
-            return false;
-        }
-
-        $accessToken = $data['access_token'];
-        $newRefresh = $data['refresh_token'] ?? $refreshToken;
-        $expiresIn = (int)($data['expires_in'] ?? 21600);
-        $expiresAt = date('Y-m-d H:i:s', time() + $expiresIn);
-
-        // Criptografar tokens - OBRIGATÓRIO em produção
-        $storeAccess = $accessToken;
-        $storeRefresh = $newRefresh;
-        $tokensEncrypted = $row['tokens_encrypted'] ? 1 : 0;
-        try {
-            $enc = new EncryptionService();
-            $storeAccess = $enc->encrypt($accessToken);
-            $storeRefresh = $enc->encrypt($newRefresh);
-            $tokensEncrypted = 1;
-        } catch (\Throwable $e) {
-            $appEnv = $_ENV['APP_ENV'] ?? 'production';
-            $logger = new StructuredLogService();
-            $logger->critical('Falha ao criptografar tokens no refresh', [
-                'account_id' => $accountId,
-                'error' => $e->getMessage(),
-            ]);
-            if ($appEnv === 'production' || $appEnv === 'staging') {
                 $executionTime = (int)((microtime(true) - $startTime) * 1000);
                 $this->markAccountDisconnected(
                     $accountId,
-                    'encryption_failed: ' . substr($e->getMessage(), 0, 200),
+                    'missing_refresh_token: refresh token vazio',
                     null,
                     null,
                     $expiresAtBefore,
                     $executionTime
                 );
+
                 return false;
             }
-        }
 
-        $upd = $this->pdo()->prepare('UPDATE ml_accounts SET access_token = :access_token, refresh_token = :refresh_token, token_expires_at = :expires_at, tokens_encrypted = :tokens_encrypted, status = :status, last_refresh_at = NOW(), refresh_failure_count = 0, last_refresh_error = NULL, updated_at = NOW() WHERE id = :id');
-        $upd->execute([
-            'access_token' => $storeAccess,
-            'refresh_token' => $storeRefresh,
-            'expires_at' => $expiresAt,
-            'tokens_encrypted' => $tokensEncrypted,
-            'status' => 'active',
-            'id' => $accountId
-        ]);
+            $ml = $this->getMercadoLivreConfig();
+            $tokenUrl = $this->getMercadoLivreTokenUrl();
+            $clientId = $ml['app_id'] ?? '';
+            $clientSecret = $ml['client_secret'] ?? '';
 
-        $executionTime = (int)((microtime(true) - $startTime) * 1000);
+            $post = [
+                'grant_type' => 'refresh_token',
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'refresh_token' => $refreshToken
+            ];
 
-        $logger = new StructuredLogService();
-        $logger->info('Token ML renovado com sucesso', [
-            'account_id' => $accountId,
-            'expires_at' => $expiresAt,
-            'attempts' => $attempt
-        ]);
+            $attempt = 0;
+            $success = false;
+            $resp = null;
+            $httpCode = 0;
+            $curlError = '';
+            $disconnectReason = null;
 
-        // Logar sucesso de refresh com tempos de expiração
-        $this->logAuditEvent(
-            $accountId,
-            'refresh_success',
-            ['attempts' => $attempt],
-            200,
-            null,
-            $expiresAtBefore,
-            $expiresAt,
-            $executionTime
-        );
+            while ($attempt < $maxRetries && !$success) {
+                $attempt++;
+
+                $ch = curl_init($tokenUrl);
+                $curlOptions = [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => http_build_query($post),
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_USERAGENT => 'SEO-Optimizer/1.0',
+                ];
+                $this->applyCurlProxyOptions($curlOptions);
+                curl_setopt_array($ch, $curlOptions);
+
+                $resp = curl_exec($ch);
+                $curlError = $resp === false ? curl_error($ch) : '';
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                // Sucesso HTTP 200
+                if ($resp !== false && $httpCode === 200) {
+                    $success = true;
+                    break;
+                }
+
+                // Falha fatal (invalid_grant), não adianta tentar de novo
+                if ($httpCode === 400 || $httpCode === 401) {
+                    $data = json_decode($resp, true);
+                    if (isset($data['error']) && $data['error'] === 'invalid_grant') {
+                        $disconnectReason = 'invalid_grant: ' . (string)($data['message'] ?? 'refresh token inválido');
+                        break;
+                    }
+                }
+
+                if ($attempt < $maxRetries && $this->shouldRetryTokenRequest($httpCode, $curlError)) {
+                    $sleepSeconds = $this->calculateTokenRetryDelaySeconds($attempt);
+                    $logger = new StructuredLogService();
+                    $logger->warning('Retry de refresh token ML agendado', [
+                        'account_id' => $accountId,
+                        'attempt' => $attempt,
+                        'max_retries' => $maxRetries,
+                        'http_code' => $httpCode,
+                        'curl_error' => $curlError !== '' ? $curlError : null,
+                        'sleep_seconds' => $sleepSeconds,
+                    ]);
+                    sleep($sleepSeconds);
+                    continue;
+                }
+
+                break;
+            }
+
+            if (!$success) {
+                $executionTime = (int)((microtime(true) - $startTime) * 1000);
+
+                // Falha irrecuperável: invalid_grant => conta precisa reconectar via OAuth
+                if (is_string($disconnectReason) && $disconnectReason !== '') {
+                    $logger = new StructuredLogService();
+                    $logger->warning('Conta ML desconectada (invalid_grant no refresh)', [
+                        'account_id' => $accountId,
+                        'status' => $httpCode,
+                        'response_preview' => substr($resp ?? '', 0, 200),
+                    ]);
+
+                    $this->markAccountDisconnected(
+                        $accountId,
+                        $disconnectReason,
+                        $httpCode,
+                        ['attempts' => $attempt, 'response_preview' => substr($resp ?? '', 0, 200)],
+                        $expiresAtBefore,
+                        $executionTime
+                    );
+
+                    return false;
+                }
+
+                $logger = new StructuredLogService();
+                $logger->error('Falha refresh token ML após tentativas', [
+                    'attempts' => $attempt,
+                    'status' => $httpCode,
+                    'response' => $resp,
+                    'curl_error' => $curlError,
+                    'account_id' => $accountId
+                ]);
+
+                $this->logAuditEvent(
+                    $accountId,
+                    'refresh_failed',
+                    ['attempts' => $attempt, 'response_preview' => substr((string)($resp ?? ''), 0, 200), 'curl_error' => $curlError !== '' ? $curlError : null],
+                    $httpCode,
+                    "Falha após {$attempt} tentativas",
+                    $expiresAtBefore,
+                    null,
+                    $executionTime
+                );
+
+                // Atualizar contador de falhas e último erro
+                $this->pdo()->prepare(
+                    'UPDATE ml_accounts
+                SET refresh_failure_count = refresh_failure_count + 1,
+                    last_refresh_error = :error,
+                    updated_at = NOW()
+                WHERE id = :id'
+                )->execute([
+                    'error' => trim("HTTP {$httpCode}: " . substr((string)($resp ?? ''), 0, 500) . ($curlError !== '' ? ' | cURL: ' . $curlError : '')),
+                    'id' => $accountId
+                ]);
+
+                return false;
+            }
+
+            $data = json_decode($resp, true);
+            if (!isset($data['access_token'])) {
+                $logger = new StructuredLogService();
+                $logger->error('Resposta inválida ao renovar token ML', ['response' => $resp]);
+                return false;
+            }
+
+            $accessToken = $data['access_token'];
+            $newRefresh = $data['refresh_token'] ?? $refreshToken;
+            $expiresIn = (int)($data['expires_in'] ?? 21600);
+            $expiresAt = date('Y-m-d H:i:s', time() + $expiresIn);
+
+            // Criptografar tokens - OBRIGATÓRIO em produção
+            $storeAccess = $accessToken;
+            $storeRefresh = $newRefresh;
+            $tokensEncrypted = $row['tokens_encrypted'] ? 1 : 0;
+            try {
+                $enc = new EncryptionService();
+                $storeAccess = $enc->encrypt($accessToken);
+                $storeRefresh = $enc->encrypt($newRefresh);
+                $tokensEncrypted = 1;
+            } catch (\Throwable $e) {
+                $appEnv = $_ENV['APP_ENV'] ?? 'production';
+                $logger = new StructuredLogService();
+                $logger->critical('Falha ao criptografar tokens no refresh', [
+                    'account_id' => $accountId,
+                    'error' => $e->getMessage(),
+                ]);
+                if ($appEnv === 'production' || $appEnv === 'staging') {
+                    $executionTime = (int)((microtime(true) - $startTime) * 1000);
+                    $this->markAccountDisconnected(
+                        $accountId,
+                        'encryption_failed: ' . substr($e->getMessage(), 0, 200),
+                        null,
+                        null,
+                        $expiresAtBefore,
+                        $executionTime
+                    );
+                    return false;
+                }
+            }
+
+            $upd = $this->pdo()->prepare('UPDATE ml_accounts SET access_token = :access_token, refresh_token = :refresh_token, token_expires_at = :expires_at, tokens_encrypted = :tokens_encrypted, status = :status, last_refresh_at = NOW(), refresh_failure_count = 0, last_refresh_error = NULL, updated_at = NOW() WHERE id = :id');
+            $upd->execute([
+                'access_token' => $storeAccess,
+                'refresh_token' => $storeRefresh,
+                'expires_at' => $expiresAt,
+                'tokens_encrypted' => $tokensEncrypted,
+                'status' => 'active',
+                'id' => $accountId
+            ]);
+
+            $executionTime = (int)((microtime(true) - $startTime) * 1000);
+
+            $logger = new StructuredLogService();
+            $logger->info('Token ML renovado com sucesso', [
+                'account_id' => $accountId,
+                'expires_at' => $expiresAt,
+                'attempts' => $attempt
+            ]);
+
+            // Logar sucesso de refresh com tempos de expiração
+            $this->logAuditEvent(
+                $accountId,
+                'refresh_success',
+                ['attempts' => $attempt],
+                200,
+                null,
+                $expiresAtBefore,
+                $expiresAt,
+                $executionTime
+            );
 
             return (bool)$upd->rowCount();
         } finally {
