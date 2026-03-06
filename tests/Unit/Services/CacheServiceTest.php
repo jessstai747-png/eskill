@@ -268,4 +268,51 @@ class CacheServiceTest extends TestCase
         $this->assertNotFalse($docComment);
         $this->assertStringContainsString('Cache', $docComment);
     }
+
+    // =============================
+    // TESTES DE DELETE PATTERN
+    // =============================
+
+    public function testDeletePatternRemovesMatchingKeys(): void
+    {
+        $this->cache->set('sales_data_1_7d', 'value1');
+        $this->cache->set('sales_data_1_30d', 'value2');
+        $this->cache->set('sales_data_2_7d', 'value3');
+
+        $result = $this->cache->deletePattern('sales_data_1_*');
+
+        $this->assertTrue($result);
+        $this->assertNull($this->cache->get('sales_data_1_7d'));
+        $this->assertNull($this->cache->get('sales_data_1_30d'));
+
+        // Cleanup non-matching key
+        $this->cache->forget('sales_data_2_7d');
+    }
+
+    public function testDeletePatternReturnsTrueWhenNoMatchingKeys(): void
+    {
+        $result = $this->cache->deletePattern('nonexistent_pattern_*');
+        $this->assertTrue($result);
+    }
+
+    public function testDeletePatternDoesNotAffectNonMatchingKeys(): void
+    {
+        $this->cache->set('keep_this_key', 'preserved');
+        $this->cache->set('delete_me_1', 'gone');
+
+        $this->cache->deletePattern('delete_me_*');
+
+        $this->assertEquals('preserved', $this->cache->get('keep_this_key'));
+
+        // Cleanup
+        $this->cache->forget('keep_this_key');
+    }
+
+    public function testDeletePatternMethodExists(): void
+    {
+        $this->assertTrue(
+            method_exists($this->cache, 'deletePattern'),
+            'CacheService should have deletePattern method'
+        );
+    }
 }
