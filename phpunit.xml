@@ -156,6 +156,11 @@
             <file>tests/Unit/Services/Financial/ShippingCostServiceTest.php</file>
             <file>tests/Unit/Services/Quality/HealthCheckServiceTest.php</file>
             <file>tests/Unit/Services/Quality/QualityScoreServiceTest.php</file>
+            <!-- Batch 6: AI Core + AdvancedCache tests -->
+            <file>tests/Unit/Services/AI/Core/PromptBuilderTest.php</file>
+            <file>tests/Unit/Services/AI/Core/RetryServiceTest.php</file>
+            <file>tests/Unit/Services/AI/Prompts/SEOPromptsTest.php</file>
+            <file>tests/Unit/Services/AdvancedCacheServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
