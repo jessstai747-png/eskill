@@ -27,6 +27,13 @@ class MercadoLivreClient
      */
     private const OPTIONAL_FEATURE_ENDPOINTS = [
         [
+            'pattern' => '#^/users/[^/]+/shipping_preferences$#',
+            'status_codes' => [403, 404],
+            'error' => 'shipping_preferences_unavailable',
+            'feature' => 'shipping_preferences',
+            'message' => 'A conta não possui configuração de preferências de envio disponível via API.',
+        ],
+        [
             'pattern' => '#^/users/[^/]+/listings_quality$#',
             'status_codes' => [403, 404],
             'error' => 'listings_quality_unavailable',

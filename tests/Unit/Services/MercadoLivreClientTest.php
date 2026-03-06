@@ -433,4 +433,37 @@ class MercadoLivreClientTest extends TestCase
             }
         }
     }
+
+    public function testReturnsShippingPreferencesUnavailableForOptionalShippingEndpoint(): void
+    {
+        $previousEnv = $_ENV['APP_ENV'] ?? null;
+
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+
+        try {
+            $client = $this->makeClientWithMockedTransport([
+                new Response(403, ['Content-Type' => 'application/json'], json_encode([
+                    'message' => 'forbidden',
+                    'status' => 403,
+                ])),
+            ]);
+            $this->setAuthenticatedState($client);
+
+            $response = $client->get('/users/123/shipping_preferences');
+
+            $this->assertSame('shipping_preferences_unavailable', $response['error'] ?? null);
+            $this->assertSame('shipping_preferences', $response['feature'] ?? null);
+            $this->assertTrue($response['optional_feature'] ?? false);
+            $this->assertSame(403, $response['status'] ?? null);
+        } finally {
+            if ($previousEnv !== null) {
+                putenv("APP_ENV={$previousEnv}");
+                $_ENV['APP_ENV'] = $previousEnv;
+            } else {
+                putenv('APP_ENV');
+                unset($_ENV['APP_ENV']);
+            }
+        }
+    }
 }

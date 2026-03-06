@@ -18,7 +18,10 @@ use PHPUnit\Framework\TestCase;
  */
 class ShippingServiceTest extends TestCase
 {
-    private function createMockClient(array $getMap = [], array $postMap = [], array $putMap = [], ?string $sellerId = '12345'): MockObject
+    /**
+     * @return MercadoLivreClient&MockObject
+     */
+    private function createMockClient(array $getMap = [], array $postMap = [], array $putMap = [], ?string $sellerId = '12345'): MercadoLivreClient
     {
         $client = $this->createMock(MercadoLivreClient::class);
         $client->method('getSellerId')->willReturn($sellerId);
@@ -65,7 +68,10 @@ class ShippingServiceTest extends TestCase
         return $client;
     }
 
-    private function createMockDb(?array $fetchResult = null, ?array $fetchAllResult = null, int $fetchColumn = 0): MockObject
+    /**
+     * @return PDO&MockObject
+     */
+    private function createMockDb(?array $fetchResult = null, ?array $fetchAllResult = null, int $fetchColumn = 0): PDO
     {
         $stmt = $this->createMock(PDOStatement::class);
         $stmt->method('execute')->willReturn(true);
@@ -91,7 +97,7 @@ class ShippingServiceTest extends TestCase
         return $db;
     }
 
-    private function buildService(?MockObject $client = null, ?MockObject $db = null): ShippingService
+    private function buildService(?MercadoLivreClient $client = null, ?PDO $db = null): ShippingService
     {
         return new ShippingService(
             accountId: 1,
@@ -156,6 +162,8 @@ class ShippingServiceTest extends TestCase
         $this->assertEquals('custom', $result['cost_rule']);
         $this->assertEquals(48, $result['handling_time']['value']);
         $this->assertTrue($result['local_pickup']);
+        $this->assertTrue($result['available']);
+        $this->assertSame('mercado_livre', $result['source']);
     }
 
     public function testGetShippingPreferencesApiError(): void
@@ -170,6 +178,25 @@ class ShippingServiceTest extends TestCase
         // Returns default preferences on error
         $this->assertEquals('default', $result['cost_rule']);
         $this->assertEquals(24, $result['handling_time']['value']);
+        $this->assertFalse($result['available']);
+        $this->assertSame('default', $result['source']);
+    }
+
+    public function testGetShippingPreferencesReturnsUnavailableMetadataWhenCapabilityIsMissing(): void
+    {
+        $client = $this->createMockClient([
+            '/shipping_preferences' => [
+                'error' => 'shipping_preferences_unavailable',
+                'message' => 'A conta não possui configuração de preferências de envio disponível via API.',
+            ],
+        ]);
+
+        $service = $this->buildService(client: $client);
+        $result = $service->getShippingPreferences();
+
+        $this->assertFalse($result['available']);
+        $this->assertSame('feature_unavailable', $result['source']);
+        $this->assertStringContainsString('preferências de envio', mb_strtolower($result['message']));
     }
 
     // -------------------------------------------------------
@@ -200,6 +227,23 @@ class ShippingServiceTest extends TestCase
         $result = $service->updateShippingPreferences(['handling_time' => ['value' => 1]]);
 
         $this->assertFalse($result['success']);
+    }
+
+    public function testUpdateShippingPreferencesReturnsFeatureUnavailableMetadata(): void
+    {
+        $client = $this->createMockClient([], [], [
+            '/shipping_preferences' => [
+                'error' => 'shipping_preferences_unavailable',
+                'message' => 'A conta não possui configuração de preferências de envio disponível via API.',
+            ],
+        ]);
+
+        $service = $this->buildService(client: $client);
+        $result = $service->updateShippingPreferences(['handling_time' => ['value' => 1]]);
+
+        $this->assertFalse($result['success']);
+        $this->assertTrue($result['feature_unavailable']);
+        $this->assertSame('shipping_preferences', $result['feature']);
     }
 
     // -------------------------------------------------------

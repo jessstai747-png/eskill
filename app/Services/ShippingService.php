@@ -56,6 +56,14 @@ class ShippingService
             $response = $this->client->get("/users/{$userId}/shipping_preferences");
 
             if (isset($response['error'])) {
+                if (($response['error'] ?? '') === 'shipping_preferences_unavailable') {
+                    return array_merge($this->getDefaultPreferences(), [
+                        'available' => false,
+                        'source' => 'feature_unavailable',
+                        'message' => $response['message'] ?? 'Preferências de envio indisponíveis para esta conta.',
+                    ]);
+                }
+
                 return $this->getDefaultPreferences();
             }
 
@@ -74,6 +82,9 @@ class ShippingService
                     'default_length' => $response['dimensions']['default_length'] ?? null,
                     'default_weight' => $response['dimensions']['default_weight'] ?? null,
                 ],
+                'available' => true,
+                'source' => 'mercado_livre',
+                'message' => null,
             ];
         } catch (\Exception $e) {
             log_error('Erro ao obter preferências de envio', [
@@ -98,6 +109,15 @@ class ShippingService
             $response = $this->client->put("/users/{$userId}/shipping_preferences", $payload);
 
             if (isset($response['error'])) {
+                if (($response['error'] ?? '') === 'shipping_preferences_unavailable') {
+                    return [
+                        'success' => false,
+                        'feature_unavailable' => true,
+                        'feature' => 'shipping_preferences',
+                        'error' => $response['message'] ?? 'Preferências de envio indisponíveis para esta conta.',
+                    ];
+                }
+
                 return [
                     'success' => false,
                     'error' => $response['message'] ?? 'Erro ao atualizar preferências',
@@ -132,6 +152,15 @@ class ShippingService
             $response = $this->client->put("/users/{$userId}/shipping_preferences", $payload);
 
             if (isset($response['error'])) {
+                if (($response['error'] ?? '') === 'shipping_preferences_unavailable') {
+                    return [
+                        'success' => false,
+                        'feature_unavailable' => true,
+                        'feature' => 'shipping_preferences',
+                        'error' => $response['message'] ?? 'Preferências de envio indisponíveis para esta conta.',
+                    ];
+                }
+
                 return ['success' => false, 'error' => $response['message'] ?? 'Erro'];
             }
 
@@ -329,6 +358,15 @@ class ShippingService
             $response = $this->client->put("/users/{$userId}/shipping_preferences", $payload);
 
             if (isset($response['error'])) {
+                if (($response['error'] ?? '') === 'shipping_preferences_unavailable') {
+                    return [
+                        'success' => false,
+                        'feature_unavailable' => true,
+                        'feature' => 'shipping_preferences',
+                        'error' => $response['message'] ?? 'Preferências de envio indisponíveis para esta conta.',
+                    ];
+                }
+
                 return ['success' => false, 'error' => $response['message'] ?? 'Erro'];
             }
 
@@ -721,6 +759,9 @@ class ShippingService
                 'default_length' => 10,
                 'default_weight' => 500,
             ],
+            'available' => false,
+            'source' => 'default',
+            'message' => null,
         ];
     }
 

@@ -6,6 +6,30 @@
 
 ---
 
+## Sessão 2026-03-06 (6) — FIX-006: shipping_preferences como capability opcional real
+
+**Commit:** registrado no HEAD desta sessão
+**Testes:** PHPUnit completo 2926 pass, 0 fail, 34 skipped | `ShippingServiceTest.php`: 42 testes, 0 fail | `MercadoLivreClientTest.php`: 9 testes, 0 fail, 3 skipped | **Codacy:** 0 issues
+
+### Problema
+- O endpoint autenticado `/users/{id}/shipping_preferences` pode não estar disponível para certas contas/capabilities
+- O cliente ainda tratava esse caso como erro genérico
+- `ShippingService` caía para defaults sem distinguir entre fallback técnico e indisponibilidade real da feature
+
+### Correção aplicada
+- `MercadoLivreClient.php`
+   - `/users/{id}/shipping_preferences` passou a ser classificado como capability opcional
+   - 403/404 agora retornam `shipping_preferences_unavailable`
+- `ShippingService.php`
+   - `getShippingPreferences()` agora informa `available`, `source` e `message`
+   - `updateShippingPreferences()`, `configureFreeShipping()` e `setHandlingTime()` retornam `feature_unavailable=true` quando a conta não possui essa capability
+- `MercadoLivreClientTest.php`
+   - novo teste para `shipping_preferences_unavailable`
+- `ShippingServiceTest.php`
+   - cobertura para leitura com capability indisponível
+   - cobertura para update com `feature_unavailable`
+   - tipagem dos helpers de mock ajustada para ficar limpa na análise estática
+
 ## Sessão 2026-03-06 (5) — FIX-005: features opcionais ML com fallback real
 
 **Commit:** registrado no HEAD desta sessão
