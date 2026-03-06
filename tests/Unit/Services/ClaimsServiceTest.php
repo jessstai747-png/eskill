@@ -484,6 +484,70 @@ class ClaimsServiceTest extends TestCase
 
         $result = $this->service->sendMessage('CLM_CLOSED', 'Test');
         $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Cannot send message', $result['error']);
+    }
+
+    public function testSendMessageApiErrorWithoutMessage(): void
+    {
+        $this->mockClient->expects($this->once())
+            ->method('post')
+            ->willReturn(['error' => 'claim_closed']);
+
+        $result = $this->service->sendMessage('CLM_CLOSED', 'Test');
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('claim_closed', $result['error']);
+    }
+
+    public function testSendMessageReturnsErrorOnException(): void
+    {
+        $this->mockClient->expects($this->once())
+            ->method('post')
+            ->willThrowException(new \RuntimeException('Network failure'));
+
+        $result = $this->service->sendMessage('CLM123', 'Hello');
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Network failure', $result['error']);
+    }
+
+    // ── getClaim error handling ─────────────────────────────────────
+
+    public function testGetClaimReturnsErrorOnException(): void
+    {
+        $this->mockClient->expects($this->once())
+            ->method('get')
+            ->willThrowException(new \RuntimeException('Connection refused'));
+
+        $result = $this->service->getClaim('CLM_FAIL');
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Connection refused', $result['error']);
+    }
+
+    public function testGetClaimReturnsErrorOnApiErrorWithMessage(): void
+    {
+        $this->mockClient->expects($this->once())
+            ->method('get')
+            ->willReturn(['error' => 'forbidden', 'message' => 'Access denied']);
+
+        $this->mockDb->expects($this->never())
+            ->method('prepare');
+
+        $result = $this->service->getClaim('CLM_FORBIDDEN');
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Access denied', $result['error']);
+    }
+
+    public function testGetClaimReturnsErrorOnApiErrorWithoutMessage(): void
+    {
+        $this->mockClient->expects($this->once())
+            ->method('get')
+            ->willReturn(['error' => 'not_found']);
+
+        $this->mockDb->expects($this->never())
+            ->method('prepare');
+
+        $result = $this->service->getClaim('CLM_404');
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('not_found', $result['error']);
     }
 
     public function testSyncClaimReturnsFalseOnEmptyResponse(): void

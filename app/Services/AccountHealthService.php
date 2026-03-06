@@ -1575,7 +1575,8 @@ class AccountHealthService
                     'limit' => 1,
                 ]);
 
-                if (isset($recentOrders['error'])
+                if (
+                    isset($recentOrders['error'])
                     && $recentOrders['error'] === 'orders_access_unavailable'
                     && ($recentOrders['feature'] ?? null) === 'orders'
                     && ($recentOrders['optional_feature'] ?? false) === true
@@ -2065,7 +2066,8 @@ class AccountHealthService
             // Primeiro request para pegar o total
             $response = $this->client->get('/orders/search', $params);
 
-            if (isset($response['error'])
+            if (
+                isset($response['error'])
                 && $response['error'] === 'orders_access_unavailable'
                 && ($response['feature'] ?? null) === 'orders'
                 && ($response['optional_feature'] ?? false) === true

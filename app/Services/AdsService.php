@@ -653,6 +653,11 @@ class AdsService extends MercadoLivreClient
                 ]);
             }, $cached);
         } catch (\Exception $e) {
+            log_warning('Erro ao buscar campanhas do cache', [
+                'service' => 'AdsService',
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
             return [];
         }
     }
@@ -682,7 +687,11 @@ class AdsService extends MercadoLivreClient
                 'campaign_id' => $campaignId
             ]);
         } catch (\Exception $e) {
-            // Ignore
+            log_warning('Erro ao atualizar budget local de campanha', [
+                'service' => 'AdsService',
+                'campaign_id' => $campaignId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -703,7 +712,11 @@ class AdsService extends MercadoLivreClient
                 'campaign_id' => $campaignId
             ]);
         } catch (\Exception $e) {
-            // Ignore
+            log_warning('Erro ao atualizar status local de campanha', [
+                'service' => 'AdsService',
+                'campaign_id' => $campaignId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -796,7 +809,11 @@ class AdsService extends MercadoLivreClient
                 ];
             }
         } catch (\Exception $e) {
-            // Ignore
+            log_warning('Erro ao buscar relatório do cache', [
+                'service' => 'AdsService',
+                'campaign_id' => $campaignId,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $this->getEmptyReport();
@@ -835,6 +852,11 @@ class AdsService extends MercadoLivreClient
                 'impressions' => (int)($result['impressions'] ?? 0),
             ];
         } catch (\Exception $e) {
+            log_warning('Erro ao buscar métricas do cache', [
+                'service' => 'AdsService',
+                'period' => $period,
+                'error' => $e->getMessage(),
+            ]);
             return [];
         }
     }

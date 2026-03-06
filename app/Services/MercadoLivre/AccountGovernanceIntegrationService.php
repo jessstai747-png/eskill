@@ -454,7 +454,8 @@ class AccountGovernanceIntegrationService
                     'limit' => $limit,
                 ]);
 
-                if (isset($response['error'])
+                if (
+                    isset($response['error'])
                     && $response['error'] === 'orders_access_unavailable'
                     && ($response['feature'] ?? null) === 'orders'
                     && ($response['optional_feature'] ?? false) === true

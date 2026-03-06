@@ -36,7 +36,7 @@ class SalesAnalyticsService
     public function getSalesData(string $period = '30d'): array
     {
         $cacheKey = "sales_data_{$this->accountId}_{$period}";
-        
+
         // Tentar cache primeiro
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
@@ -58,16 +58,16 @@ class SalesAnalyticsService
                 $result['error'] = 'orders_access_unavailable';
                 return $result;
             }
-            
+
             // Calcular métricas
             $metrics = $this->calculateSalesMetrics($orders);
-            
+
             // Dados por período
             $salesByPeriod = $this->groupSalesByPeriod($orders, $days);
-            
+
             // Top produtos
             $topProducts = $this->getTopProducts($orders);
-            
+
             // Vendas por categoria
             $salesByCategory = $this->getSalesByCategory($orders);
 
@@ -89,14 +89,13 @@ class SalesAnalyticsService
             $this->cache->set($cacheKey, $result, self::CACHE_TTL);
 
             return $result;
-
         } catch (Exception $e) {
             log_error('Erro no SalesAnalyticsService', [
                 'service' => 'SalesAnalyticsService',
                 'period' => $period,
                 'error' => $e->getMessage(),
             ]);
-            
+
             // Retornar estrutura vazia em caso de erro
             return $this->getEmptyStructure($period);
         }
@@ -135,7 +134,7 @@ class SalesAnalyticsService
             if (isset($response['results'])) {
                 $orders = array_merge($orders, $response['results']);
                 $offset += $limit;
-                
+
                 // Parar se não houver mais resultados ou atingir limite
                 if (count($response['results']) < $limit || count($orders) >= $maxOrders) {
                     break;
@@ -171,7 +170,7 @@ class SalesAnalyticsService
         }
 
         $averageTicket = $paidOrders > 0 ? $totalSales / $paidOrders : 0;
-        
+
         // Conversão = pedidos pagos / total de pedidos
         $conversionRate = $totalOrders > 0 ? ($paidOrders / $totalOrders) * 100 : 0;
 
@@ -192,7 +191,7 @@ class SalesAnalyticsService
     private function groupSalesByPeriod(array $orders, int $days): array
     {
         $salesByDate = [];
-        
+
         // Inicializar todos os dias com zero
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = date('Y-m-d', strtotime("-{$i} days"));
@@ -210,7 +209,7 @@ class SalesAnalyticsService
             }
 
             $date = date('Y-m-d', strtotime($order['date_created']));
-            
+
             if (isset($salesByDate[$date])) {
                 $salesByDate[$date]['sales'] += $order['total_amount'] ?? 0;
                 $salesByDate[$date]['orders']++;
@@ -275,7 +274,7 @@ class SalesAnalyticsService
 
             foreach ($order['order_items'] as $item) {
                 $categoryId = $item['item']['category_id'] ?? 'unknown';
-                
+
                 if (!isset($categories[$categoryId])) {
                     $categories[$categoryId] = [
                         'category_id' => $categoryId,
@@ -303,7 +302,7 @@ class SalesAnalyticsService
     private function getEmptyStructure(string $period): array
     {
         $days = (int) filter_var($period, FILTER_SANITIZE_NUMBER_INT);
-        
+
         return [
             'total_sales' => 0.00,
             'total_orders' => 0,
@@ -366,7 +365,6 @@ class SalesAnalyticsService
                 'period' => '7d',
                 'metrics' => $metrics
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,

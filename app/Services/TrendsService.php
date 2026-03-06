@@ -166,6 +166,11 @@ class TrendsService extends MercadoLivreClient
                 'timestamp' => time(),
             ];
         } catch (\Exception $e) {
+            log_warning('Erro ao buscar produtos em alta', [
+                'service' => 'TrendsService',
+                'filters' => $filters,
+                'error' => $e->getMessage(),
+            ]);
             return ['total' => 0, 'products' => []];
         }
     }
@@ -441,7 +446,10 @@ class TrendsService extends MercadoLivreClient
                 ];
             }
         } catch (\Exception $e) {
-            // Ignore
+            log_warning('Erro ao calcular crescimento YoY', [
+                'service' => 'TrendsService',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return null;

@@ -6,6 +6,30 @@
 
 ---
 
+## Sessão 2026-03-06 (9) — FIX-009: Fix silent error handling across ML services
+
+**Testes:** PHPUnit completo 2958 pass, 0 fail, 34 skipped (+5 novos)
+
+### Problema
+- 4 serviços ML tinham catch blocks vazios ou silenciosos (catch + // Ignore), swallowing erros sem logging
+- ClaimsService: getClaim() e sendMessage() sem try/catch nem validação de resposta de erro da API
+
+### Correção aplicada
+- **ClaimsService** — Adicionado try/catch + verificação `isset($response['error'])` em getClaim() e sendMessage()
+- **AdsService** — 5 catch blocks silenciosos substituídos por log_warning() com contexto (getCachedCampaigns, updateCampaignLocalBudget, updateCampaignLocalStatus, getCachedReport, getCachedMetrics)
+- **PromotionService** — 2 catch blocks silenciosos substituídos por log_warning() em listCoupons() e listCoParticipationCampaigns()
+- **TrendsService** — 2 catch blocks silenciosos substituídos por log_warning() em getHotProducts() e calculateYoYGrowth()
+
+### Testes criados
+- ClaimsServiceTest: +5 novos testes de error handling (exception + API error com/sem message para getClaim e sendMessage), +1 assertion atualizada
+- Total ClaimsServiceTest: 29/29 pass, 90 assertions
+
+### Padrão aplicado
+- Replace `catch (\Exception $e) { /* silêncio */ }` → `catch (\Exception $e) { log_warning('msg', ['service' => 'X', 'context' => ..., 'error' => $e->getMessage()]); }`
+- Graceful degradation mantida (retornos existentes preservados), com observabilidade adicionada
+
+---
+
 ## Sessão 2026-03-06 (8) — FIX-008: hardening de capability em consumidores de /orders/search
 
 **Testes:** PHPUnit completo 2953 pass, 0 fail, 34 skipped (+25 novos)

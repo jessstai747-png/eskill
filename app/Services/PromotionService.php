@@ -184,6 +184,10 @@ class PromotionService extends MercadoLivreClient
                 'coupons' => $this->formatCoupons($response['results'] ?? []),
             ];
         } catch (\Exception $e) {
+            log_warning('Erro ao listar cupons', [
+                'service' => 'PromotionService',
+                'error' => $e->getMessage(),
+            ]);
             return ['total' => 0, 'coupons' => []];
         }
     }
@@ -311,6 +315,10 @@ class PromotionService extends MercadoLivreClient
                 'campaigns' => $this->formatCampaigns($response['results'] ?? []),
             ];
         } catch (\Exception $e) {
+            log_warning('Erro ao listar campanhas de co-participação', [
+                'service' => 'PromotionService',
+                'error' => $e->getMessage(),
+            ]);
             return ['total' => 0, 'campaigns' => []];
         }
     }

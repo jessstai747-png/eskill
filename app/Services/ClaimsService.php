@@ -65,14 +65,21 @@ class ClaimsService
      */
     public function getClaim(string $claimId): array
     {
-         // API Fetch
-         $response = $this->client->get("/v1/claims/{$claimId}");
-         
-         if (isset($response['id'])) {
-             $this->syncClaimToDatabase($response);
-         }
-         
-         return $response;
+        try {
+            $response = $this->client->get("/v1/claims/{$claimId}");
+
+            if (isset($response['error'])) {
+                return ['error' => $response['message'] ?? $response['error'] ?? 'Failed to fetch claim'];
+            }
+
+            if (isset($response['id'])) {
+                $this->syncClaimToDatabase($response);
+            }
+
+            return $response;
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
     }
 
     /**
@@ -92,14 +99,23 @@ class ClaimsService
      */
     public function sendMessage(string $claimId, string $message, array $attachments = []): array
     {
-        // /v1/claims/{claimId}/messages
-        $payload = [
-            'receiver_role' => 'complainant', // or mediator? defaulting to replying to buyer
-            'message' => $message,
-            'attachments' => $attachments
-        ];
-        
-        return $this->client->post("/v1/claims/{$claimId}/messages", $payload);
+        try {
+            $payload = [
+                'receiver_role' => 'complainant',
+                'message' => $message,
+                'attachments' => $attachments
+            ];
+
+            $response = $this->client->post("/v1/claims/{$claimId}/messages", $payload);
+
+            if (isset($response['error'])) {
+                return ['error' => $response['message'] ?? $response['error'] ?? 'Failed to send message'];
+            }
+
+            return $response;
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
     }
 
     private function syncClaimToDatabase(array $claim): void

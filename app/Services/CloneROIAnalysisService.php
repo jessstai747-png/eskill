@@ -11,7 +11,7 @@ use Throwable;
 
 /**
  * Clone ROI Analysis Service
- * 
+ *
  * Análise comparativa de desempenho entre itens clonados e originais:
  * - Métricas de vendas e conversão
  * - Comparação de performance
@@ -68,7 +68,7 @@ class CloneROIAnalysisService
     private function getClonedItemsWithMetrics(string $startDate, array $filters): array
     {
         $sql = "
-            SELECT 
+            SELECT
                 ci.id,
                 ci.source_item_id,
                 ci.target_item_id,
@@ -135,12 +135,12 @@ class CloneROIAnalysisService
             }
         }
 
-        $avgConversion = count($conversionRates) > 0 
-            ? array_sum($conversionRates) / count($conversionRates) 
+        $avgConversion = count($conversionRates) > 0
+            ? array_sum($conversionRates) / count($conversionRates)
             : 0;
 
-        $overallConversion = $totalVisits > 0 
-            ? ($totalSales / $totalVisits) * 100 
+        $overallConversion = $totalVisits > 0
+            ? ($totalSales / $totalVisits) * 100
             : 0;
 
         return [
@@ -151,11 +151,11 @@ class CloneROIAnalysisService
             'total_revenue' => round($totalRevenue, 2),
             'avg_conversion_rate' => round($avgConversion, 2),
             'overall_conversion_rate' => round($overallConversion, 2),
-            'avg_revenue_per_item' => $withMetrics > 0 
-                ? round($totalRevenue / $withMetrics, 2) 
+            'avg_revenue_per_item' => $withMetrics > 0
+                ? round($totalRevenue / $withMetrics, 2)
                 : 0,
-            'avg_sales_per_item' => $withMetrics > 0 
-                ? round($totalSales / $withMetrics, 2) 
+            'avg_sales_per_item' => $withMetrics > 0
+                ? round($totalSales / $withMetrics, 2)
                 : 0,
         ];
     }
@@ -172,7 +172,7 @@ class CloneROIAnalysisService
 
         $topPerformers = array_slice($withMetrics, 0, $limit);
 
-        return array_map(function($item) {
+        return array_map(function ($item) {
             return [
                 'target_item_id' => $item['target_item_id'],
                 'source_item_id' => $item['source_item_id'],
@@ -193,7 +193,7 @@ class CloneROIAnalysisService
     private function identifyUnderperformers(array $items, int $limit = 10): array
     {
         // Itens com visitas mas sem vendas ou conversão muito baixa
-        $candidates = array_filter($items, function($item) {
+        $candidates = array_filter($items, function ($item) {
             $visits = intval($item['visits'] ?? 0);
             $sales = intval($item['sales'] ?? 0);
             $conversion = floatval($item['conversion_rate'] ?? 0);
@@ -206,7 +206,7 @@ class CloneROIAnalysisService
 
         $underperformers = array_slice($candidates, 0, $limit);
 
-        return array_map(function($item) {
+        return array_map(function ($item) {
             return [
                 'target_item_id' => $item['target_item_id'],
                 'source_item_id' => $item['source_item_id'],
@@ -275,7 +275,7 @@ class CloneROIAnalysisService
     {
         // Buscar dados do clone
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 ci.*,
                 cim.visits, cim.sales, cim.revenue, cim.conversion_rate
             FROM cloned_items ci
@@ -450,7 +450,7 @@ class CloneROIAnalysisService
     {
         // Encontrar ID do clone
         $stmt = $this->db->prepare("
-            SELECT id FROM cloned_items 
+            SELECT id FROM cloned_items
             WHERE target_item_id = :item_id AND account_id = :account_id
         ");
         $stmt->execute([
@@ -464,9 +464,9 @@ class CloneROIAnalysisService
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO clone_item_metrics 
+            INSERT INTO clone_item_metrics
             (cloned_item_id, visits, sales, revenue, conversion_rate, avg_position, updated_at)
-            VALUES 
+            VALUES
             (:cloned_id, :visits, :sales, :revenue, :conversion, :position, NOW())
             ON DUPLICATE KEY UPDATE
             visits = :visits2,
@@ -569,7 +569,8 @@ class CloneROIAnalysisService
                             'sort' => 'date_desc',
                         ]);
 
-                        if (isset($ordersData['error'])
+                        if (
+                            isset($ordersData['error'])
                             && $ordersData['error'] === 'orders_access_unavailable'
                             && ($ordersData['feature'] ?? null) === 'orders'
                             && ($ordersData['optional_feature'] ?? false) === true
@@ -673,7 +674,7 @@ class CloneROIAnalysisService
     {
         $daysSql = max(1, min(365, (int) $days));
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(ci.cloned_at) as date,
                 COUNT(*) as items_cloned,
                 COALESCE(SUM(cim.sales), 0) as total_sales,
