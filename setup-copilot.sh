@@ -3,7 +3,7 @@
 # 🚀 Setup — Copilot Agent Autônomo
 # ============================================================
 # Uso: bash setup-copilot.sh /caminho/do/seu/projeto
-# 
+#
 # Este script copia todos os arquivos de configuração do Copilot
 # para o seu projeto. Execute uma vez por workspace.
 # ============================================================
@@ -42,6 +42,8 @@ EXTENSIONS_SOURCE="$ASSET_BASE/.vscode/extensions.json"
 MCP_DOC_SOURCE="$ASSET_BASE/.vscode/MCP_CONFIG.md"
 DEVCONTAINER_SOURCE="$ASSET_BASE/.devcontainer/devcontainer.json"
 POST_CREATE_SOURCE="$ASSET_BASE/.devcontainer/post-create.sh"
+ML_MCP_START_SOURCE="$ASSET_BASE/bin/mcp-ml-start.sh"
+ML_MCP_TOKEN_SOURCE="$ASSET_BASE/bin/mcp-ml-token.php"
 
 if [ ! -d "$PROJECT_DIR" ]; then
     echo -e "${RED}❌ Erro: Diretório '$PROJECT_DIR' não existe${NC}"
@@ -59,6 +61,10 @@ if [ ! -f "$SETTINGS_SOURCE" ]; then
 fi
 
 PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
+
+AGENT_COUNT="$(find "$ASSET_BASE/.github/agents" -maxdepth 1 -type f -name '*.agent.md' | wc -l | tr -d ' ')"
+INSTRUCTION_COUNT="$(find "$ASSET_BASE/.github/instructions" -maxdepth 1 -type f -name '*.instructions.md' | wc -l | tr -d ' ')"
+PROMPT_COUNT="$(find "$ASSET_BASE/.github/prompts" -maxdepth 1 -type f -name '*.prompt.md' | wc -l | tr -d ' ')"
 
 copy_file() {
     local source="$1"
@@ -85,6 +91,7 @@ mkdir -p "$PROJECT_DIR/.github/instructions"
 mkdir -p "$PROJECT_DIR/.github/prompts"
 mkdir -p "$PROJECT_DIR/.vscode"
 mkdir -p "$PROJECT_DIR/.devcontainer"
+mkdir -p "$PROJECT_DIR/bin"
 
 # Copiar AGENTS.md
 echo -e "${GREEN}✅ AGENTS.md${NC}"
@@ -95,15 +102,15 @@ echo -e "${GREEN}✅ .github/copilot-instructions.md${NC}"
 copy_file "$ASSET_BASE/.github/copilot-instructions.md" "$PROJECT_DIR/.github/copilot-instructions.md"
 
 # Copiar agents
-echo -e "${GREEN}✅ .github/agents/ (5 agents)${NC}"
+echo -e "${GREEN}✅ .github/agents/ (${AGENT_COUNT} agents)${NC}"
 cp "$ASSET_BASE/.github/agents/"*.agent.md "$PROJECT_DIR/.github/agents/"
 
 # Copiar instructions
-echo -e "${GREEN}✅ .github/instructions/ (4 instruction files)${NC}"
+echo -e "${GREEN}✅ .github/instructions/ (${INSTRUCTION_COUNT} instruction files)${NC}"
 cp "$ASSET_BASE/.github/instructions/"*.instructions.md "$PROJECT_DIR/.github/instructions/"
 
 # Copiar prompts
-echo -e "${GREEN}✅ .github/prompts/ (6 prompt files)${NC}"
+echo -e "${GREEN}✅ .github/prompts/ (${PROMPT_COUNT} prompt files)${NC}"
 cp "$ASSET_BASE/.github/prompts/"*.prompt.md "$PROJECT_DIR/.github/prompts/"
 
 # Copiar VS Code workspace settings
@@ -136,6 +143,18 @@ if [ -f "$POST_CREATE_SOURCE" ]; then
     chmod +x "$PROJECT_DIR/.devcontainer/post-create.sh"
 fi
 
+if [ -f "$ML_MCP_START_SOURCE" ]; then
+    echo -e "${GREEN}✅ bin/mcp-ml-start.sh${NC}"
+    copy_file "$ML_MCP_START_SOURCE" "$PROJECT_DIR/bin/mcp-ml-start.sh"
+    chmod +x "$PROJECT_DIR/bin/mcp-ml-start.sh"
+fi
+
+if [ -f "$ML_MCP_TOKEN_SOURCE" ]; then
+    echo -e "${GREEN}✅ bin/mcp-ml-token.php${NC}"
+    copy_file "$ML_MCP_TOKEN_SOURCE" "$PROJECT_DIR/bin/mcp-ml-token.php"
+    chmod +x "$PROJECT_DIR/bin/mcp-ml-token.php"
+fi
+
 echo ""
 echo -e "${BLUE}============================================================${NC}"
 echo -e "${GREEN}✅ Setup completo!${NC}"
@@ -147,6 +166,7 @@ echo "  .github/copilot-instructions.md        → Instruções globais do Copil
 echo "  .vscode/settings.json                  → Settings do workspace com auto-approve"
 echo "  .vscode/mcp.json                       → MCPs configurados para o projeto"
 echo "  .devcontainer/devcontainer.json        → Ambiente isolado para máxima autonomia"
+echo "  bin/mcp-ml-start.sh                    → Wrapper do MCP do Mercado Livre"
 echo ""
 echo "  .github/agents/implementador.agent.md  → Agent que implementa código real"
 echo "  .github/agents/revisor.agent.md        → Agent que revisa código"

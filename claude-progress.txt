@@ -6,6 +6,26 @@
 
 ---
 
+## Sessão 2026-03-06 (14) — ENV-AUTO-03: Complete ML MCP kit artifacts and fix inventory drift
+
+### O que foi feito
+- Corrigidos os dois `setup-copilot.sh` para também copiar os helpers `bin/mcp-ml-start.sh` e `bin/mcp-ml-token.php`, necessários para a entrada `mercadolibre-mcp-server` do `mcp.json`
+- Removidas contagens hardcoded dos scripts; agora o output reflete a quantidade real de agents, instruction files e prompts presentes no kit
+- Atualizados `README.md` e `vscode-copilot-autonomo/README.md` para refletir o inventário real do kit (7 agents, 10 prompts, 5 instructions) e documentar os arquivos opcionais do MCP do Mercado Livre
+- Documentado que projetos sem integração Mercado Livre podem remover a entrada `mercadolibre-mcp-server` do `mcp.json` e ignorar os helpers `bin/mcp-ml-*`
+- Validado o fluxo executando ambos os scripts em `storage/copilot-setup-validation-2/project`, confirmando geração de `.vscode/mcp.json`, `.devcontainer/post-create.sh`, `bin/mcp-ml-start.sh` e `bin/mcp-ml-token.php`
+
+### Arquivos alterados
+1. **`setup-copilot.sh`** — setup raiz agora provisiona os helpers do MCP do Mercado Livre e mostra contagens reais do kit
+2. **`vscode-copilot-autonomo/setup-copilot.sh`** — kit espelhado alinhado ao mesmo comportamento
+3. **`README.md`** — inventário e instruções ajustados ao estado real do kit
+4. **`vscode-copilot-autonomo/README.md`** — documentação espelhada atualizada
+
+### Resultado
+- O setup agora entrega todos os arquivos necessários para o `mercadolibre-mcp-server` funcionar no projeto de destino
+- A documentação deixou de prometer números/arquivos desatualizados
+- Shell check, diagnostics, análise local e validação funcional: **sem issues**
+
 ## Sessão 2026-03-06 (13) — ENV-AUTO-02: Automate setup kit provisioning
 
 ### O que foi feito
