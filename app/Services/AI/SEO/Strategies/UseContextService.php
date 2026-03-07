@@ -511,7 +511,7 @@ class UseContextService
             }
 
             $newTitle = $enriched . ' ' . $keyword;
-            if (strlen($newTitle) <= $maxLength) {
+            if (mb_strlen($newTitle) <= $maxLength) {
                 $enriched = $newTitle;
                 $added[] = $keyword;
             } else {

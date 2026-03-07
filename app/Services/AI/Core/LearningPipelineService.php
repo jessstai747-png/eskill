@@ -383,7 +383,7 @@ class LearningPipelineService
         $patterns[] = "word_count_" . ($wordCount <= 5 ? 'short' : ($wordCount <= 8 ? 'medium' : 'long'));
 
         // Character length pattern
-        $charCount = strlen($title);
+        $charCount = mb_strlen($title);
         $patterns[] = "char_length_" . ($charCount <= 40 ? 'short' : ($charCount <= 55 ? 'optimal' : 'long'));
 
         // Starts with brand
@@ -462,7 +462,7 @@ class LearningPipelineService
         $patterns = [];
 
         // Length categories
-        $length = strlen($description);
+        $length = mb_strlen($description);
         $patterns[] = "length_" . ($length < 500 ? 'short' : ($length < 1000 ? 'medium' : 'long'));
 
         // Has bullet points

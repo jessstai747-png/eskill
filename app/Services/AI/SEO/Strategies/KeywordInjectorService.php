@@ -109,8 +109,8 @@ class KeywordInjectorService
             'injected_keywords' => $newKeywords,
             'keywords_already_present' => $currentKeywords,
             'length' => [
-                'original' => strlen($title),
-                'optimized' => strlen($optimizedTitle),
+                'original' => mb_strlen($title),
+                'optimized' => mb_strlen($optimizedTitle),
                 'max' => $maxLength
             ],
             'analysis' => $analysis
@@ -140,7 +140,7 @@ class KeywordInjectorService
         $wordCount = str_word_count($description);
 
         // Se descrição muito curta, expandir primeiro
-        if (strlen($description) < $minLength) {
+        if (mb_strlen($description) < $minLength) {
             $description = $this->expandDescription($description, $keywords, $minLength);
         }
 
@@ -182,8 +182,8 @@ class KeywordInjectorService
                 'optimized' => str_word_count($optimizedDescription)
             ],
             'length' => [
-                'original' => strlen($description),
-                'optimized' => strlen($optimizedDescription)
+                'original' => mb_strlen($description),
+                'optimized' => mb_strlen($optimizedDescription)
             ]
         ];
     }
@@ -379,7 +379,7 @@ class KeywordInjectorService
         $keywordPrefix = implode(' ', $keywords);
         
         // Verificar se cabe
-        if (strlen($keywordPrefix . ' ' . $title) <= $maxLength) {
+        if (mb_strlen($keywordPrefix . ' ' . $title) <= $maxLength) {
             return $keywordPrefix . ' ' . $title;
         }
 
@@ -387,7 +387,7 @@ class KeywordInjectorService
         $result = $title;
         foreach ($keywords as $kw) {
             $newResult = $kw . ' ' . $result;
-            if (strlen($newResult) <= $maxLength) {
+            if (mb_strlen($newResult) <= $maxLength) {
                 $result = $newResult;
             } else {
                 break;

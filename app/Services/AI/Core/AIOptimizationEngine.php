@@ -270,7 +270,7 @@ class AIOptimizationEngine
         }
 
         // Description score (20 points max) - simplified for now
-        $descLength = strlen($listingData['description'] ?? '');
+        $descLength = mb_strlen($listingData['description'] ?? '');
         if ($descLength >= 1500) {
             $scores['description'] = 20;
         } elseif ($descLength >= 800) {

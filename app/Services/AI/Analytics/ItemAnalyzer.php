@@ -69,7 +69,7 @@ class ItemAnalyzer
         }
         
         // 2. Current quality issues (0-25 points)
-        $titleLength = strlen($item['title'] ?? '');
+        $titleLength = mb_strlen($item['title'] ?? '');
         if ($titleLength < 30) {
             $score += 15; // Very poor title
         } elseif ($titleLength < 50) {
@@ -79,7 +79,7 @@ class ItemAnalyzer
         $hasDescription = !empty($item['description']);
         if (!$hasDescription) {
             $score += 10; // No description
-        } elseif (strlen($item['description']) < 100) {
+        } elseif (mb_strlen($item['description']) < 100) {
             $score += 5; // Short description
         }
         
@@ -187,12 +187,12 @@ class ItemAnalyzer
         $cost = 0;
         
         // Title optimization
-        if (empty($item['title']) || strlen($item['title']) < 50) {
+        if (empty($item['title']) || mb_strlen($item['title']) < 50) {
             $cost += 0.03;
         }
         
         // Description optimization
-        if (empty($item['description']) || strlen($item['description']) < 200) {
+        if (empty($item['description']) || mb_strlen($item['description']) < 200) {
             $cost += 0.05;
         }
         
@@ -216,7 +216,7 @@ class ItemAnalyzer
         $issues = [];
         
         // Title issues
-        $titleLength = strlen($item['title'] ?? '');
+        $titleLength = mb_strlen($item['title'] ?? '');
         if ($titleLength == 0) {
             $issues[] = [
                 'type' => 'critical',
@@ -241,7 +241,7 @@ class ItemAnalyzer
         }
         
         // Description issues
-        $descLength = strlen($item['description'] ?? '');
+        $descLength = mb_strlen($item['description'] ?? '');
         if ($descLength == 0) {
             $issues[] = [
                 'type' => 'critical',

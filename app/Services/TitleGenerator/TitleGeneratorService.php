@@ -228,7 +228,7 @@ class TitleGeneratorService
                 if (empty($title)) continue;
 
                 $titles[] = $title;
-                $lengths[] = strlen($title);
+                $lengths[] = mb_strlen($title);
 
                 // Extrair padrões (ex: "Marca Modelo Especificação")
                 $words = explode(' ', $title);
@@ -314,7 +314,7 @@ class TitleGeneratorService
             // Adicionar specs até o limite
             foreach ($specs as $spec) {
                 $testTitle = "$baseTitle $spec";
-                if (strlen($testTitle) <= self::MAX_LENGTH) {
+                if (mb_strlen($testTitle) <= self::MAX_LENGTH) {
                     $baseTitle = $testTitle;
                 }
             }
@@ -336,14 +336,14 @@ class TitleGeneratorService
             
             foreach ($specs as $spec) {
                 $testTitle = "$keywordTitle $spec";
-                if (strlen($testTitle) <= self::MAX_LENGTH) {
+                if (mb_strlen($testTitle) <= self::MAX_LENGTH) {
                     $keywordTitle = $testTitle;
                 } else {
                     break;
                 }
             }
 
-            if (strlen($keywordTitle) >= self::OPTIMAL_MIN) {
+            if (mb_strlen($keywordTitle) >= self::OPTIMAL_MIN) {
                 $titles[] = $keywordTitle;
             }
 
@@ -356,11 +356,11 @@ class TitleGeneratorService
             if ($brand) $specsTitle .= " $brand";
             if ($model) {
                 $testTitle = "$specsTitle $model";
-                if (strlen($testTitle) <= self::MAX_LENGTH) {
+                if (mb_strlen($testTitle) <= self::MAX_LENGTH) {
                     $specsTitle = $testTitle;
                 }
             }
-            if (strlen($specsTitle) >= self::OPTIMAL_MIN) {
+            if (mb_strlen($specsTitle) >= self::OPTIMAL_MIN) {
                 $titles[] = $specsTitle;
             }
         }

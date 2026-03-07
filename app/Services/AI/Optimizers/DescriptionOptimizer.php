@@ -106,7 +106,7 @@ class DescriptionOptimizer
             'success' => true,
             'description' => $aiData['description'],
             'score' => $aiData['score'] ?? 0,
-            'char_count' => $aiData['char_count'] ?? strlen($aiData['description']),
+            'char_count' => $aiData['char_count'] ?? mb_strlen($aiData['description']),
             'keywords_used' => $aiData['keywords_used'] ?? [],
             'highlights' => $aiData['highlights'] ?? [],
             'structure_compliance' => $aiData['structure_compliance'] ?? [],

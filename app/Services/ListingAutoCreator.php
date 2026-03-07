@@ -325,7 +325,7 @@ class ListingAutoCreator
         // Validar título
         if (empty($draft['title'])) {
             $errors[] = 'Título é obrigatório';
-        } elseif (strlen($draft['title']) > 60) {
+        } elseif (mb_strlen($draft['title']) > 60) {
             $warnings[] = 'Título será truncado para 60 caracteres';
         }
 

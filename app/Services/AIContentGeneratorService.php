@@ -233,7 +233,7 @@ class AIContentGeneratorService
                 'title' => $validated['title'],
                 'original_title' => $title,
                 'adjustments_made' => $validated['adjustments'],
-                'character_count' => strlen($validated['title']),
+                'character_count' => mb_strlen($validated['title']),
                 'seo_keywords' => $keywords,
                 'model_used' => $model
             ];
@@ -437,8 +437,8 @@ class AIContentGeneratorService
         $finalTitle = implode(' ', $titleParts);
         
         // Limitar a 60 caracteres
-        if (strlen($finalTitle) > 60) {
-            $finalTitle = substr($finalTitle, 0, 57) . '...';
+        if (mb_strlen($finalTitle) > 60) {
+            $finalTitle = mb_substr($finalTitle, 0, 57) . '...';
         }
         
         return $finalTitle;

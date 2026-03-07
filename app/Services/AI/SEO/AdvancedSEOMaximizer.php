@@ -146,7 +146,7 @@ class AdvancedSEOMaximizer
 
         // Estratégia 4: Otimizar para mobile (limitar a 60 caracteres)
         $mobileOptimized = $this->optimizeForMobile($optimized['optimized_title']);
-        if (strlen($mobileOptimized) <= 60 && $mobileOptimized !== $optimized['optimized_title']) {
+        if (mb_strlen($mobileOptimized) <= 60 && $mobileOptimized !== $optimized['optimized_title']) {
             $optimized['changes'][] = "Otimizar para mobile (≤60 chars)";
             $optimized['optimized_title'] = $mobileOptimized;
         }
@@ -523,7 +523,7 @@ class AdvancedSEOMaximizer
         }
 
         // Adicionar 1-2 power words sem exceder limite de caracteres
-        if (!empty($relevantWords) && strlen($title) < 55) {
+        if (!empty($relevantWords) && mb_strlen($title) < 55) {
             $title .= ' ' . $relevantWords[0];
         }
 
@@ -568,8 +568,8 @@ class AdvancedSEOMaximizer
     private function optimizeForMobile(string $title): string
     {
         // Limitar a 60 caracteres para mobile
-        if (strlen($title) > 60) {
-            return substr($title, 0, 57) . '...';
+        if (mb_strlen($title) > 60) {
+            return mb_substr($title, 0, 57) . '...';
         }
         return $title;
     }
@@ -760,7 +760,7 @@ class AdvancedSEOMaximizer
         $score = 0;
 
         // Comprimento ideal (45-58 chars)
-        $length = strlen($title);
+        $length = mb_strlen($title);
         if ($length >= 45 && $length <= 58) {
             $score += 30;
         } elseif ($length >= 35 && $length <= 68) {
@@ -790,9 +790,9 @@ class AdvancedSEOMaximizer
         $score = 0;
 
         // Comprimento mínimo (500+ chars)
-        if (strlen($description) >= 500) {
+        if (mb_strlen($description) >= 500) {
             $score += 30;
-        } elseif (strlen($description) >= 300) {
+        } elseif (mb_strlen($description) >= 300) {
             $score += 20;
         } else {
             $score += 10;
@@ -1057,7 +1057,7 @@ class AdvancedSEOMaximizer
         if ((int)($competitor['sold_quantity'] ?? 0) > 50) {
             $strengths[] = 'Alto volume de vendas (' . $competitor['sold_quantity'] . ' vendidos)';
         }
-        if (strlen($competitor['title'] ?? '') >= 45 && strlen($competitor['title'] ?? '') <= 60) {
+        if (mb_strlen($competitor['title'] ?? '') >= 45 && mb_strlen($competitor['title'] ?? '') <= 60) {
             $strengths[] = 'Título com comprimento ideal para SEO';
         }
 
@@ -1073,8 +1073,8 @@ class AdvancedSEOMaximizer
         if ($compPrice > 0 && $myPrice > 0 && $compPrice > $myPrice * 1.1) {
             $weaknesses[] = 'Preço ' . round(($compPrice / $myPrice - 1) * 100) . '% mais caro';
         }
-        if (strlen($competitor['title'] ?? '') > 60) {
-            $weaknesses[] = 'Título muito longo (' . strlen($competitor['title']) . ' chars)';
+        if (mb_strlen($competitor['title'] ?? '') > 60) {
+            $weaknesses[] = 'Título muito longo (' . mb_strlen($competitor['title']) . ' chars)';
         }
         if ((int)($competitor['available_quantity'] ?? 0) < 3) {
             $weaknesses[] = 'Estoque reduzido';

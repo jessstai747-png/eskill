@@ -87,7 +87,7 @@ class TitleOptimizer
             'score' => $aiData['score'],
             'improvements' => $aiData['improvements'] ?? [],
             'keywords_used' => $aiData['keywords_used'] ?? [],
-            'char_count' => $aiData['char_count'] ?? strlen($aiData['optimized_title']),
+            'char_count' => $aiData['char_count'] ?? mb_strlen($aiData['optimized_title']),
             'alternatives' => $aiData['alternatives'] ?? [],
             'ai_model' => $response['model'],
             'ai_provider' => $response['provider'],

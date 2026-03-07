@@ -619,7 +619,7 @@ class PdfController extends BaseController
         $recommendations = [];
 
         // Título (20 pontos)
-        $titleLength = strlen($listing['title'] ?? '');
+        $titleLength = mb_strlen($listing['title'] ?? '');
         if ($titleLength >= 45 && $titleLength <= 60) {
             $components['titulo'] = 100;
         } elseif ($titleLength >= 30) {
@@ -639,7 +639,7 @@ class PdfController extends BaseController
         }
 
         // Descrição (20 pontos)
-        $descLength = strlen($listing['description'] ?? '');
+        $descLength = mb_strlen($listing['description'] ?? '');
         if ($descLength >= 500) {
             $components['descricao'] = 100;
         } elseif ($descLength >= 200) {
