@@ -11,13 +11,13 @@ use Exception;
 
 /**
  * Serviço de Geração de Conteúdo por IA
- * 
+ *
  * Sistema avançado para geração automática de:
  * - Descrições de produtos otimizadas
  * - Títulos SEO-friendly
  * - Bullets points atrativos
  * - Conteúdo personalizado por categoria
- * 
+ *
  * @author Sistema ML Manager V8.0
  * @version 8.0.0
  */
@@ -56,16 +56,16 @@ class AIContentGeneratorService
     {
         $type = $params['type'];
         $product = $params['product'];
-        
+
         // Build Prompt Context
         $context = $this->buildContextPrompt($product, $params);
-        
+
         switch ($type) {
             case 'product_description':
                 $system = "Você é o maior especialista em Neuro-Copywriting para Marketplaces do Brasil. " .
                          "Sua missão é transformar visitantes em compradores usando gatilhos mentais de Escassez, Autoridade e Prova Social. " .
                          "Escreva textos altamente persuasivos, estruturados para leitura rápida (escaneabilidade), destacando benefícios emocionais e especificações técnicas com clareza absoluta.";
-                
+
                 $prompt = "Crie uma descrição de ALTA CONVERSÃO para o produto abaixo. Use a estrutura:\n" .
                           "1. **Gancho Inicial Irresistível**: Uma frase que conecte a dor/desejo do cliente à solução.\n" .
                           "2. **Lista de Benefícios (Bullets)**: Use emojis e negrito para destacar o 'porquê' comprar.\n" .
@@ -75,26 +75,26 @@ class AIContentGeneratorService
                           "Dados do Produto:\n{$context}\n\n" .
                           "Tom de voz: Profissional, Seguro e Empático.\n" .
                           "Formatação: Markdown limpo.";
-                
+
                 $result = $this->llm->generate($prompt, $system, 'advanced');
                 if (empty($result['success'])) {
                     throw new Exception($result['error'] ?? 'Falha ao gerar descrição');
                 }
                 return $result['content'];
-                
+
             case 'product_title':
                 $system = "Especialista em SEO para Marketplaces (Mercado Livre). " .
                          "Crie títulos de alta conversão com até 60 caracteres. Sem enrolação.";
-                         
+
                 $prompt = "Gere UM título otimizado para:\n{$context}\n" .
                          "Regra: Max 60 chars. Priorize: Produto + Marca + Modelo + Atributo chave.";
-                
+
                 $result = $this->llm->generate($prompt, $system, 'basic');
                 if (empty($result['success'])) {
                     throw new Exception($result['error'] ?? 'Falha ao gerar título');
                 }
                 return trim($result['content'], '"');
-                
+
             default:
                 throw new Exception('Tipo de conteúdo não suportado');
         }
@@ -106,13 +106,13 @@ class AIContentGeneratorService
         $txt .= "Marca: " . ($product['brand'] ?? '') . "\n";
         $txt .= "Preço: R$ " . ($product['price'] ?? '') . "\n";
         $txt .= "Atributos: " . json_encode($product['attributes'] ?? []) . "\n";
-        
+
         // Gap Keywords
         if (!empty($params['options']['gap_keywords'])) {
             $txt .= "PALAVRAS-CHAVE OBRIGATÓRIAS (SEO): " . implode(', ', $params['options']['gap_keywords']) . "\n";
             $txt .= "ATENÇÃO: O texto DEVE focar nessas palavras-chave para cobrir lacunas de mercado.";
         }
-        
+
         return $txt;
     }
 
@@ -132,10 +132,10 @@ class AIContentGeneratorService
 
             // Análise do produto
             $analysis = $this->analyzeProduct($productData);
-            
+
             // Seleção do modelo de IA apropriado
             $model = $this->selectBestModel($productData, 'description');
-            
+
             // Geração da descrição
             $description = $this->generateWithAI($model, [
                 'type' => 'product_description',
@@ -146,17 +146,17 @@ class AIContentGeneratorService
 
             // Otimização SEO
             $optimized = $this->optimizeForSEO($description, $productData);
-            
+
             // Validação de qualidade
             $quality = $this->validateContentQuality($optimized);
-            
+
             $result = [
                 'success' => true,
                 'description' => $optimized,
                 'quality_score' => $quality['score'],
                 'metrics' => [
                     'word_count' => str_word_count($optimized),
-                    'character_count' => strlen($optimized),
+                    'character_count' => mb_strlen($optimized),
                     'seo_score' => $quality['seo_score'],
                     'readability_score' => $quality['readability_score']
                 ],
@@ -167,7 +167,7 @@ class AIContentGeneratorService
 
             // Cache por 1 hora
             $this->cache->set($cacheKey, $result, 'ai_content', 3600);
-            
+
             // Log da geração
             $this->logger->info('AI description generated', [
                 'product_id' => $productData['id'] ?? null,
@@ -201,7 +201,7 @@ class AIContentGeneratorService
             'system' => 'Ecommerce Expert',
             'complexity' => 'advanced'
         ];
-        
+
         $jobId = $jobService->dispatch('ai_generation', $payload);
         return (string)$jobId;
     }
@@ -214,9 +214,9 @@ class AIContentGeneratorService
         try {
             $analysis = $this->analyzeProduct($productData);
             $keywords = $this->extractKeywords($productData, $analysis);
-            
+
             $model = $this->selectBestModel($productData, 'title');
-            
+
             $title = $this->generateWithAI($model, [
                 'type' => 'product_title',
                 'product' => $productData,
@@ -227,7 +227,7 @@ class AIContentGeneratorService
 
             // Validação de limites ML
             $validated = $this->validateMLTitle($title, $productData);
-            
+
             return [
                 'success' => true,
                 'title' => $validated['title'],
@@ -254,9 +254,9 @@ class AIContentGeneratorService
         try {
             $analysis = $this->analyzeProduct($productData);
             $features = $this->extractFeatures($productData, $analysis);
-            
+
             $model = $this->selectBestModel($productData, 'bullets');
-            
+
             $bullets = $this->generateWithAI($model, [
                 'type' => 'bullet_points',
                 'product' => $productData,
@@ -306,23 +306,23 @@ class AIContentGeneratorService
     private function extractKeywords(array $productData, array $analysis): array
     {
         $keywords = [];
-        
+
         // Keywords da categoria
         if (isset($analysis['category_insights']['keywords'])) {
             $keywords = array_merge($keywords, $analysis['category_insights']['keywords']);
         }
-        
+
         // Keywords da marca
         if (isset($productData['brand'])) {
             $keywords[] = $productData['brand'];
         }
-        
+
         // Keywords do título
         if (isset($productData['title'])) {
             $titleWords = $this->extractImportantWords($productData['title']);
             $keywords = array_merge($keywords, $titleWords);
         }
-        
+
         // Keywords dos atributos
         foreach ($productData['attributes'] ?? [] as $attr) {
             if (isset($attr['value'])) {
@@ -342,7 +342,7 @@ class AIContentGeneratorService
     {
         $category = $productData['category_id'] ?? 'default';
         $complexity = $this->assessComplexity($productData);
-        
+
         // Lógica de seleção baseada em categoria e complexidade
         if ($complexity > 0.8) {
             return $this->aiModels['advanced'][$contentType] ?? $this->aiModels['default'];
@@ -365,15 +365,15 @@ class AIContentGeneratorService
         $brand = $product['brand'] ?? 'Produto';
         $title = $product['title'] ?? 'Item';
         $category = $params['analysis']['category_insights']['name'] ?? 'categoria';
-        
+
         // Gap Keywords Integration
         $gapKeywords = $params['options']['gap_keywords'] ?? [];
         $gapPhrase = !empty($gapKeywords) ? implode(' ', array_slice($gapKeywords, 0, 2)) : '';
 
         $description = "🔥 **{$brand} {$title}** - {$gapPhrase} Ideal para {$category}!\n\n";
-        
+
         if (!empty($gapPhrase)) {
-             $description .= "🚀 **OPORTUNIDADE EXCLUSIVA**: Projetado especificamente para quem busca **" . strtoupper($gapPhrase) . "** com qualidade superior.\n\n";
+             $description .= "🚀 **OPORTUNIDADE EXCLUSIVA**: Projetado especificamente para quem busca **" . mb_strtoupper($gapPhrase) . "** com qualidade superior.\n\n";
         }
 
         $description .= "✨ **CARACTERÍSTICAS PRINCIPAIS:**\n";
@@ -382,12 +382,12 @@ class AIContentGeneratorService
                 $description .= "• **{$attr['name']}**: {$attr['value']}\n";
             }
         }
-        
+
         $description .= "\n🎯 **POR QUE ESCOLHER ESTE PRODUTO:**\n";
         $description .= "• Qualidade premium garantida\n";
         $description .= "• Melhor custo-benefício do mercado\n";
         $description .= "• Entrega rápida e segura\n";
-        
+
         // Add SEO keywords naturally
         if (!empty($gapKeywords)) {
             foreach(array_slice($gapKeywords, 2, 3) as $k) {
@@ -396,13 +396,13 @@ class AIContentGeneratorService
         }
 
         $description .= "• Suporte técnico especializado\n\n";
-        
+
         $description .= "🛒 **COMPRE AGORA** e aproveite nossas condições especiais!\n";
         $description .= "💳 Aceitamos todas as formas de pagamento\n";
         $description .= "🚚 Frete GRÁTIS para todo o Brasil*\n\n";
-        
+
         $description .= "*Consulte condições na página do produto.";
-        
+
         return $description;
     }
 
@@ -414,33 +414,33 @@ class AIContentGeneratorService
         $brand = $product['brand'] ?? '';
         $mainTitle = $product['title'] ?? 'Produto';
         $keywords = $params['keywords'] ?? [];
-        
+
         // Limpar título existente
         $cleanTitle = preg_replace('/\s+/', ' ', trim($mainTitle));
-        
+
         // Adicionar palavras-chave importantes no início se não estiverem
         $importantKeywords = array_slice($keywords, 0, 2);
         $titleParts = [];
-        
+
         if ($brand && stripos($cleanTitle, $brand) === false) {
             $titleParts[] = $brand;
         }
-        
+
         $titleParts[] = $cleanTitle;
-        
+
         foreach ($importantKeywords as $keyword) {
             if (stripos(implode(' ', $titleParts), $keyword) === false) {
                 $titleParts[] = $keyword;
             }
         }
-        
+
         $finalTitle = implode(' ', $titleParts);
-        
+
         // Limitar a 60 caracteres
         if (mb_strlen($finalTitle) > 60) {
             $finalTitle = mb_substr($finalTitle, 0, 57) . '...';
         }
-        
+
         return $finalTitle;
     }
 
@@ -452,37 +452,37 @@ class AIContentGeneratorService
     private function validateContentQuality(string $content): array
     {
         $wordCount = str_word_count($content);
-        $charCount = strlen($content);
-        
+        $charCount = mb_strlen($content);
+
         // Score baseado em múltiplos fatores
         $score = 0;
-        
+
         // Tamanho apropriado (500-2000 caracteres)
         if ($charCount >= 500 && $charCount <= 2000) {
             $score += 25;
         } elseif ($charCount >= 300) {
             $score += 15;
         }
-        
+
         // Presença de elementos estruturais
         if (strpos($content, '**') !== false) $score += 10; // Negrito
         if (strpos($content, '•') !== false || strpos($content, '-') !== false) $score += 10; // Bullets
         if (strpos($content, '\n') !== false) $score += 10; // Quebras de linha
-        
+
         // Palavras-chave relevantes
         $keywordDensity = $this->calculateKeywordDensity($content);
         if ($keywordDensity > 0.02 && $keywordDensity < 0.08) {
             $score += 15;
         }
-        
+
         // Legibilidade
         $readabilityScore = $this->calculateReadabilityScore($content);
         $score += min(20, $readabilityScore);
-        
+
         // SEO Score
         $seoScore = $this->calculateSEOScore($content);
         $score += min(10, $seoScore);
-        
+
         return [
             'score' => min(100, $score),
             'seo_score' => $seoScore,
@@ -525,23 +525,23 @@ class AIContentGeneratorService
     private function assessComplexity(array $productData): float
     {
         $complexity = 0.5; // Base higher to favor better models
-        
+
         // Atributos
         $attrCount = count($productData['attributes'] ?? []);
         $complexity += min(0.3, $attrCount * 0.05);
-        
+
         // Categoria técnica
         $technicalCategories = ['MLB1648', 'MLB1000', 'MLB1051']; // Exemplos
         if (in_array($productData['category_id'] ?? '', $technicalCategories)) {
             $complexity += 0.3;
         }
-        
+
         // Preço alto (produtos premium)
         $price = $productData['price'] ?? 0;
         if ($price > 200) { // Lower threshold for premium
             $complexity += 0.2;
         }
-        
+
         return min(1.0, $complexity);
     }
 

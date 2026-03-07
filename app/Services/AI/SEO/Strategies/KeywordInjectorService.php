@@ -8,16 +8,16 @@ namespace App\Services\AI\SEO\Strategies;
 
 /**
  * 💉 E3: Keyword Injector Service
- * 
+ *
  * Injeta keywords naturalmente em títulos e descrições
  * sem parecer spam, mantendo legibilidade humana.
- * 
+ *
  * Técnicas:
  * - Injeção natural no fluxo do texto
  * - Controle de densidade (0.5% - 3%)
  * - Distribuição balanceada por seção
  * - Variação de sinônimos para evitar repetição
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class KeywordInjectorService
@@ -25,7 +25,7 @@ class KeywordInjectorService
     private ?int $accountId;
     private SemanticScoreService $scoreService;
     private SynonymExpansionService $synonymService;
-    
+
     /**
      * Limites de densidade de keywords
      */
@@ -66,15 +66,15 @@ class KeywordInjectorService
 
     /**
      * Injeta keywords em um título de forma natural
-     * 
+     *
      * @param string $title Título original
      * @param array $keywords Keywords a injetar
      * @param string|null $categoryId ID da categoria
      * @return array Título otimizado com análise
      */
     public function injectInTitle(
-        string $title, 
-        array $keywords, 
+        string $title,
+        array $keywords,
         ?string $categoryId = null
     ): array {
         $config = self::INJECTION_PATTERNS['title'];
@@ -119,7 +119,7 @@ class KeywordInjectorService
 
     /**
      * Injeta keywords em uma descrição mantendo naturalidade
-     * 
+     *
      * @param string $description Descrição original
      * @param array $keywords Keywords a injetar
      * @param string|null $categoryId ID da categoria
@@ -127,8 +127,8 @@ class KeywordInjectorService
      * @return array Descrição otimizada
      */
     public function injectInDescription(
-        string $description, 
-        array $keywords, 
+        string $description,
+        array $keywords,
         ?string $categoryId = null,
         array $options = []
     ): array {
@@ -151,14 +151,14 @@ class KeywordInjectorService
 
         // Preparar keywords para injeção (com sinônimos para variar)
         $keywordsToInject = $this->prepareKeywordsForInjection(
-            $keywords, 
-            $keywordsToAdd, 
+            $keywords,
+            $keywordsToAdd,
             $categoryId
         );
 
         // Injetar de forma distribuída
         $optimizedDescription = $this->distributeKeywords(
-            $description, 
+            $description,
             $keywordsToInject,
             $targetDensity
         );
@@ -192,15 +192,15 @@ class KeywordInjectorService
      * Injeta keywords no campo MODEL
      */
     public function injectInModel(
-        string $model, 
-        array $keywords, 
+        string $model,
+        array $keywords,
         ?string $categoryId = null
     ): array {
         $config = self::INJECTION_PATTERNS['model'];
         $maxLength = $config['max_length'];
 
         $currentWords = $this->tokenize($model);
-        
+
         // Filtrar keywords já presentes
         $newKeywords = array_filter($keywords, function($kw) use ($currentWords) {
             return !$this->wordExistsIn($kw, $currentWords);
@@ -213,7 +213,7 @@ class KeywordInjectorService
         $optimizedModel = trim($model);
         foreach ($newKeywords as $kw) {
             $addition = ' ' . $kw;
-            if (strlen($optimizedModel . $addition) <= $maxLength) {
+            if (mb_strlen($optimizedModel . $addition) <= $maxLength) {
                 $optimizedModel .= $addition;
             }
         }
@@ -223,8 +223,8 @@ class KeywordInjectorService
             'optimized' => $optimizedModel,
             'injected_keywords' => $newKeywords,
             'length' => [
-                'original' => strlen($model),
-                'optimized' => strlen($optimizedModel),
+                'original' => mb_strlen($model),
+                'optimized' => mb_strlen($optimizedModel),
                 'max' => $maxLength
             ]
         ];
@@ -276,11 +276,11 @@ class KeywordInjectorService
 
         foreach ($sentences as $index => $sentence) {
             $sentenceKeywords = $this->countKeywordsIn($sentence, $keywords);
-            
+
             if ($sentenceKeywords === 0) {
                 // Esta sentença é candidata para injeção
                 $availableKeywords = array_diff($keywords, $usedKeywords);
-                
+
                 if (!empty($availableKeywords)) {
                     $keywordToInject = reset($availableKeywords);
                     $suggestions[] = [
@@ -306,8 +306,8 @@ class KeywordInjectorService
      * Otimiza um texto completo para SEO
      */
     public function optimizeText(
-        string $text, 
-        array $keywords, 
+        string $text,
+        array $keywords,
         string $fieldType = 'description',
         ?string $categoryId = null
     ): array {
@@ -354,11 +354,11 @@ class KeywordInjectorService
         $keywords = [];
 
         // Filtrar stopwords
-        $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na', 
+        $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na',
                       'e', 'ou', 'um', 'uma', 'os', 'as', 'que', 'por'];
-        
+
         foreach ($words as $word) {
-            if (strlen($word) > 2 && !in_array($word, $stopWords)) {
+            if (mb_strlen($word) > 2 && !in_array($word, $stopWords)) {
                 $keywords[] = $word;
             }
         }
@@ -369,7 +369,7 @@ class KeywordInjectorService
     private function buildOptimizedTitle(string $title, array $keywords, int $maxLength): string
     {
         $title = trim($title);
-        
+
         // Se não há keywords para adicionar, retornar original
         if (empty($keywords)) {
             return $title;
@@ -377,7 +377,7 @@ class KeywordInjectorService
 
         // Estratégia: Adicionar keywords importantes no início
         $keywordPrefix = implode(' ', $keywords);
-        
+
         // Verificar se cabe
         if (mb_strlen($keywordPrefix . ' ' . $title) <= $maxLength) {
             return $keywordPrefix . ' ' . $title;
@@ -403,7 +403,7 @@ class KeywordInjectorService
         if ($wordCount === 0) return 0;
 
         $keywordCount = $this->countKeywordsIn($text, $keywords);
-        
+
         return ($keywordCount / $wordCount) * 100;
     }
 
@@ -415,7 +415,7 @@ class KeywordInjectorService
         foreach ($keywords as $keyword) {
             $keyword = mb_strtolower(trim($keyword));
             if (empty($keyword)) continue;
-            
+
             $count += substr_count($text, $keyword);
         }
 
@@ -429,8 +429,8 @@ class KeywordInjectorService
     }
 
     private function prepareKeywordsForInjection(
-        array $keywords, 
-        int $count, 
+        array $keywords,
+        int $count,
         ?string $categoryId
     ): array {
         $prepared = [];
@@ -448,7 +448,7 @@ class KeywordInjectorService
                     'levels' => [2],
                     'limit_per_level' => 1
                 ]);
-                
+
                 if (!empty($synonyms['synonyms'])) {
                     $syn = $synonyms['synonyms'][0]['word'] ?? null;
                     if ($syn && !in_array($syn, $prepared)) {
@@ -463,8 +463,8 @@ class KeywordInjectorService
     }
 
     private function distributeKeywords(
-        string $text, 
-        array $keywords, 
+        string $text,
+        array $keywords,
         float $targetDensity
     ): string {
         if (empty($keywords)) {
@@ -474,7 +474,7 @@ class KeywordInjectorService
         $sentences = $this->splitIntoSentences($text);
         $keywordIndex = 0;
         $totalSentences = count($sentences);
-        
+
         // Distribuir keywords uniformemente
         $interval = max(1, (int) floor($totalSentences / count($keywords)));
 
@@ -486,7 +486,7 @@ class KeywordInjectorService
             // Injetar a cada N sentenças
             if ($index % $interval === 0) {
                 $keyword = $keywords[$keywordIndex];
-                
+
                 // Verificar se keyword já existe na sentença
                 if (stripos($sentence, $keyword) === false) {
                     $sentence = $this->injectInSentence($sentence, $keyword);
@@ -562,12 +562,12 @@ class KeywordInjectorService
         $keywordIndex = 0;
 
         foreach ($templates as $template) {
-            if (strlen($expanded) >= $minLength) {
+            if (mb_strlen($expanded) >= $minLength) {
                 break;
             }
 
             $line = $template;
-            
+
             // Substituir placeholders
             if (strpos($line, '{keyword}') !== false && isset($keywords[$keywordIndex])) {
                 $line = str_replace('{keyword}', $keywords[$keywordIndex], $line);
@@ -593,12 +593,12 @@ class KeywordInjectorService
         foreach ($keywords as $keyword) {
             $keyword = mb_strtolower(trim($keyword));
             if (empty($keyword)) continue;
-            
+
             $count = substr_count($text, $keyword);
             $breakdown[$keyword] = [
                 'count' => $count,
-                'density' => str_word_count($text) > 0 
-                    ? round(($count / str_word_count($text)) * 100, 2) 
+                'density' => str_word_count($text) > 0
+                    ? round(($count / str_word_count($text)) * 100, 2)
                     : 0
             ];
         }
@@ -613,7 +613,7 @@ class KeywordInjectorService
 
         return [
             'density_change' => round($optimizedDensity - $originalDensity, 2),
-            'length_change' => strlen($optimized) - strlen($original),
+            'length_change' => mb_strlen($optimized) - mb_strlen($original),
             'word_count_change' => str_word_count($optimized) - str_word_count($original),
             'improvement_score' => $this->calculateImprovementScore($originalDensity, $optimizedDensity)
         ];
@@ -626,7 +626,7 @@ class KeywordInjectorService
         $originalDistance = abs(self::DENSITY_OPTIMAL - $original);
 
         if ($originalDistance === 0) return 50; // Já estava no ideal
-        
+
         $improvement = (($originalDistance - $optimalDistance) / $originalDistance) * 50;
         return (int) min(100, max(0, 50 + $improvement));
     }

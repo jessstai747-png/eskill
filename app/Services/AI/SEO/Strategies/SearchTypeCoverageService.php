@@ -780,9 +780,10 @@ class SearchTypeCoverageService
     private function generateBrandVariations(string $brand): array
     {
         $variations = [];
-        $variations[] = strtoupper($brand);
-        $variations[] = strtolower($brand);
-        $variations[] = ucfirst(strtolower($brand));
+        $variations[] = mb_strtoupper($brand);
+        $variations[] = mb_strtolower($brand);
+        $lowerBrand = mb_strtolower($brand);
+        $variations[] = mb_strtoupper(mb_substr($lowerBrand, 0, 1)) . mb_substr($lowerBrand, 1);
         $variations[] = preg_replace('/[^a-zA-Z0-9]/', '', $brand);
         return array_unique($variations);
     }

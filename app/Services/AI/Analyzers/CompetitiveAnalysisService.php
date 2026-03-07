@@ -14,16 +14,16 @@ class CompetitiveAnalysisService
 {
     private MercadoLivreClient $mlClient;
     private ?int $accountId;
-    
+
     public function __construct(?int $accountId = null)
     {
         $this->accountId = $accountId;
         $this->mlClient = new MercadoLivreClient($accountId);
     }
-    
+
     /**
      * Analyze competitor listings for a product
-     * 
+     *
      * @param string $query Search query
      * @param array $options Analysis options
      * @return array Competitive insights
@@ -32,17 +32,17 @@ class CompetitiveAnalysisService
     {
         $limit = $options['limit'] ?? 10;
         $categoryId = $options['category_id'] ?? null;
-        
+
         // Search for top competitors
         $competitors = $this->findTopCompetitors($query, $categoryId, $limit);
-        
+
         if (empty($competitors)) {
             return [
                 'error' => 'No competitors found',
                 'query' => $query,
             ];
         }
-        
+
         // Analyze their listings
         $analysis = [
             'total_analyzed' => count($competitors),
@@ -51,31 +51,31 @@ class CompetitiveAnalysisService
             'insights' => [],
             'recommendations' => [],
         ];
-        
+
         // Extract top performers
         $analysis['top_performers'] = array_slice($competitors, 0, 3);
-        
+
         // Analyze titles
         $titleAnalysis = $this->analyzeTitles($competitors);
         $analysis['insights']['titles'] = $titleAnalysis;
-        
+
         // Analyze pricing
         $priceAnalysis = $this->analyzePricing($competitors);
         $analysis['insights']['pricing'] = $priceAnalysis;
-        
+
         // Analyze attributes
         $attributeAnalysis = $this->analyzeAttributes($competitors);
         $analysis['insights']['attributes'] = $attributeAnalysis;
-        
+
         // Generate recommendations
         $analysis['recommendations'] = $this->generateRecommendations($analysis['insights']);
-        
+
         return $analysis;
     }
-    
+
     /**
      * Find top performing competitor listings
-     * 
+     *
      * @param string $query
      * @param string|null $categoryId
      * @param int $limit
@@ -89,23 +89,23 @@ class CompetitiveAnalysisService
                 'limit' => $limit,
                 'sort' => 'relevance', // or 'sold_quantity'
             ];
-            
+
             if ($categoryId) {
                 $params['category'] = $categoryId;
             }
-            
+
             $response = $this->mlClient->get('/sites/MLB/search', $params);
-            
+
             if (isset($response['error']) || empty($response['results'])) {
                 return [];
             }
-            
+
             $competitors = [];
-            
+
             foreach ($response['results'] as $item) {
                 // Get full item details
                 $itemDetails = $this->mlClient->get("/items/{$item['id']}");
-                
+
                 if (!isset($itemDetails['error'])) {
                     $competitors[] = [
                         'id' => $item['id'],
@@ -119,27 +119,27 @@ class CompetitiveAnalysisService
                         'seller_reputation' => $item['seller']['seller_reputation'] ?? [],
                     ];
                 }
-                
+
                 // Rate limiting
                 usleep(100000); // 100ms delay
             }
-            
+
             // Sort by sold quantity
             usort($competitors, function($a, $b) {
                 return $b['sold_quantity'] <=> $a['sold_quantity'];
             });
-            
+
             return $competitors;
-            
+
         } catch (\Exception $e) {
             log_warning('Error finding competitors', ['service' => 'CompetitiveAnalysisService', 'error' => $e->getMessage()]);
             return [];
         }
     }
-    
+
     /**
      * Analyze competitor titles
-     * 
+     *
      * @param array $competitors
      * @return array
      */
@@ -148,28 +148,28 @@ class CompetitiveAnalysisService
         $lengths = [];
         $commonWords = [];
         $patterns = [];
-        
+
         foreach ($competitors as $comp) {
             $title = $comp['title'];
             $lengths[] = mb_strlen($title);
-            
+
             // Extract words
             $words = explode(' ', mb_strtolower($title));
             foreach ($words as $word) {
-                if (strlen($word) > 3) {
+                if (mb_strlen($word) > 3) {
                     $commonWords[] = $word;
                 }
             }
-            
+
             // Detect patterns (e.g., Brand + Model + Features)
             if (preg_match('/^([A-Z][a-z]+)\s+([A-Z0-9]+)/', $title)) {
                 $patterns['brand_model_first']++;
             }
         }
-        
+
         $wordFrequency = array_count_values($commonWords);
         arsort($wordFrequency);
-        
+
         return [
             'avg_length' => round(array_sum($lengths) / max(count($lengths), 1)),
             'min_length' => min($lengths),
@@ -178,28 +178,28 @@ class CompetitiveAnalysisService
             'patterns' => $patterns,
         ];
     }
-    
+
     /**
      * Analyze competitor pricing
-     * 
+     *
      * @param array $competitors
      * @return array
      */
     private function analyzePricing(array $competitors): array
     {
         $prices = array_column($competitors, 'price');
-        
+
         if (empty($prices)) {
             return ['error' => 'No pricing data'];
         }
-        
+
         sort($prices);
-        
+
         $count = count($prices);
         $median = $count % 2 === 0
             ? ($prices[(int) ($count / 2) - 1] + $prices[(int) ($count / 2)]) / 2
             : $prices[(int) floor($count / 2)];
-        
+
         return [
             'min' => min($prices),
             'max' => max($prices),
@@ -216,10 +216,10 @@ class CompetitiveAnalysisService
             ],
         ];
     }
-    
+
     /**
      * Analyze competitor attributes
-     * 
+     *
      * @param array $competitors
      * @return array
      */
@@ -227,12 +227,12 @@ class CompetitiveAnalysisService
     {
         $attributeFrequency = [];
         $attributeValues = [];
-        
+
         foreach ($competitors as $comp) {
             foreach ($comp['attributes'] as $attr) {
                 $attrId = $attr['id'];
                 $attrValue = $attr['value_name'] ?? $attr['value'] ?? '';
-                
+
                 // Count frequency
                 if (!isset($attributeFrequency[$attrId])) {
                     $attributeFrequency[$attrId] = [
@@ -241,9 +241,9 @@ class CompetitiveAnalysisService
                         'values' => [],
                     ];
                 }
-                
+
                 $attributeFrequency[$attrId]['count']++;
-                
+
                 // Track values
                 if (!isset($attributeValues[$attrId][$attrValue])) {
                     $attributeValues[$attrId][$attrValue] = 0;
@@ -251,7 +251,7 @@ class CompetitiveAnalysisService
                 $attributeValues[$attrId][$attrValue]++;
             }
         }
-        
+
         // Calculate usage percentage
         $totalCompetitors = count($competitors);
         foreach ($attributeFrequency as $attrId => &$data) {
@@ -260,10 +260,10 @@ class CompetitiveAnalysisService
             arsort($data['most_common_values']);
             $data['most_common_values'] = array_slice($data['most_common_values'], 0, 5, true);
         }
-        
+
         // Sort by usage
         uasort($attributeFrequency, fn($a, $b) => $b['usage_percentage'] <=> $a['usage_percentage']);
-        
+
         return [
             'total_unique_attributes' => count($attributeFrequency),
             'avg_attributes_per_listing' => round(
@@ -272,17 +272,17 @@ class CompetitiveAnalysisService
             'attribute_usage' => array_slice($attributeFrequency, 0, 15, true),
         ];
     }
-    
+
     /**
      * Generate recommendations based on insights
-     * 
+     *
      * @param array $insights
      * @return array
      */
     private function generateRecommendations(array $insights): array
     {
         $recommendations = [];
-        
+
         // Title recommendations
         if (isset($insights['titles'])) {
             $avgLen = $insights['titles']['avg_length'];
@@ -292,7 +292,7 @@ class CompetitiveAnalysisService
                 'recommendation' => "Use títulos com aproximadamente {$avgLen} caracteres (média dos concorrentes)",
                 'impact' => 'Melhora relevância nos resultados de busca',
             ];
-            
+
             if (!empty($insights['titles']['most_common_words'])) {
                 $topWords = array_keys(array_slice($insights['titles']['most_common_words'], 0, 3));
                 $recommendations[] = [
@@ -303,7 +303,7 @@ class CompetitiveAnalysisService
                 ];
             }
         }
-        
+
         // Price recommendations
         if (isset($insights['pricing'])) {
             $pricing = $insights['pricing'];
@@ -319,11 +319,11 @@ class CompetitiveAnalysisService
                 'impact' => 'Posicionamento competitivo no mercado',
             ];
         }
-        
+
         // Attribute recommendations
         if (isset($insights['attributes'])) {
             $topAttributes = array_slice($insights['attributes']['attribute_usage'], 0, 5);
-            
+
             foreach ($topAttributes as $attr) {
                 if ($attr['usage_percentage'] >= 70) {
                     $recommendations[] = [
@@ -335,7 +335,7 @@ class CompetitiveAnalysisService
                 }
             }
         }
-        
+
         return $recommendations;
     }
 }

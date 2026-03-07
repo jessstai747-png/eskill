@@ -435,7 +435,7 @@ class SemanticScoreService
         foreach ($titleParts as $titlePart) {
             foreach ($wordParts as $wordPart) {
                 $distance = levenshtein($titlePart, $wordPart);
-                $maxLen = max(strlen($titlePart), strlen($wordPart));
+                $maxLen = max(mb_strlen($titlePart), mb_strlen($wordPart));
                 if ($maxLen > 0 && $distance / $maxLen < 0.3) {
                     return 0.5; // Similaridade moderada
                 }

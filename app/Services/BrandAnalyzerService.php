@@ -1237,7 +1237,7 @@ class BrandAnalyzerService
      */
     private function normalizeTitle(string $title): string
     {
-        $title = strtolower($title);
+        $title = mb_strtolower($title);
         $title = preg_replace('/\s+/', ' ', $title);
         $title = preg_replace('/[^a-z0-9\s]/', '', $title);
         return trim($title);

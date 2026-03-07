@@ -10,7 +10,7 @@ use Exception;
 
 /**
  * Clone SEO Integration Service
- * 
+ *
  * Aplica otimizações SEO automaticamente durante o fluxo de clonagem:
  * - Otimização de títulos
  * - Melhoria de descrições
@@ -124,7 +124,7 @@ class CloneSEOIntegrationService
         // 3. Adicionar marca se não presente e disponível
         $brand = $this->extractBrand($item);
         if ($brand && stripos($optimized, $brand) === false) {
-            if (strlen($optimized) + strlen($brand) + 3 <= 60) {
+            if (mb_strlen($optimized) + mb_strlen($brand) + 3 <= 60) {
                 $optimized = $brand . ' - ' . $optimized;
                 $modifications[] = 'added_brand';
             }
@@ -134,7 +134,7 @@ class CloneSEOIntegrationService
         if ($level === self::LEVEL_AGGRESSIVE) {
             $model = $this->extractModel($item);
             if ($model && stripos($optimized, $model) === false) {
-                if (strlen($optimized) + strlen($model) + 1 <= 60) {
+                if (mb_strlen($optimized) + mb_strlen($model) + 1 <= 60) {
                     $optimized .= ' ' . $model;
                     $modifications[] = 'added_model';
                 }
@@ -142,7 +142,7 @@ class CloneSEOIntegrationService
         }
 
         // 5. Garantir tamanho ideal (45-58 caracteres)
-        if (strlen($optimized) > 60) {
+        if (mb_strlen($optimized) > 60) {
             $optimized = $this->truncateTitle($optimized, 58);
             $modifications[] = 'truncated';
         }
@@ -159,8 +159,8 @@ class CloneSEOIntegrationService
             'original' => $original,
             'changed' => $optimized !== $original,
             'modifications' => $modifications,
-            'length' => strlen($optimized),
-            'ideal_length' => strlen($optimized) >= 45 && strlen($optimized) <= 58,
+            'length' => mb_strlen($optimized),
+            'ideal_length' => mb_strlen($optimized) >= 45 && mb_strlen($optimized) <= 58,
         ];
     }
 
@@ -229,7 +229,7 @@ class CloneSEOIntegrationService
 
         foreach ($words as $i => $word) {
             // Manter siglas em maiúsculas
-            if (strlen($word) <= 4 && ctype_upper(str_replace(['-', '/'], '', $word))) {
+            if (mb_strlen($word) <= 4 && ctype_upper(str_replace(['-', '/'], '', $word))) {
                 $result[] = $word;
             }
             // Manter marcas/modelos conhecidos
@@ -262,7 +262,7 @@ class CloneSEOIntegrationService
         $modifications = [];
 
         // Se descrição muito curta, expandir
-        if (strlen($description) < 500) {
+        if (mb_strlen($description) < 500) {
             $description = $this->expandDescription($description, $item);
             $modifications[] = 'expanded';
         }
@@ -293,7 +293,7 @@ class CloneSEOIntegrationService
             'original' => $original,
             'changed' => $description !== $original,
             'modifications' => $modifications,
-            'length' => strlen($description),
+            'length' => mb_strlen($description),
         ];
     }
 
@@ -348,7 +348,7 @@ class CloneSEOIntegrationService
         $structured .= "✅ DESTAQUES:\n";
 
         foreach (array_slice($sentences, 0, 6) as $sentence) {
-            if (strlen($sentence) > 10) {
+            if (mb_strlen($sentence) > 10) {
                 $structured .= "• " . ucfirst($sentence) . "\n";
             }
         }
@@ -457,7 +457,7 @@ class CloneSEOIntegrationService
 
         // 1. Título (30 pontos)
         $title = $item['title'] ?? '';
-        $titleLength = strlen($title);
+        $titleLength = mb_strlen($title);
         $titleScore = 0;
 
         if ($titleLength >= 45 && $titleLength <= 58) {
@@ -479,7 +479,7 @@ class CloneSEOIntegrationService
 
         // 2. Descrição (25 pontos)
         $description = $item['description'] ?? '';
-        $descLength = strlen($description);
+        $descLength = mb_strlen($description);
         $descScore = 0;
 
         if ($descLength >= 1000) {
@@ -576,8 +576,8 @@ class CloneSEOIntegrationService
     public function getUserOptimizationLevel(): string
     {
         $stmt = $this->db->prepare("
-            SELECT seo_optimization_level 
-            FROM clone_user_settings 
+            SELECT seo_optimization_level
+            FROM clone_user_settings
             WHERE account_id = :account_id
         ");
         $stmt->execute([':account_id' => $this->accountId]);
@@ -616,7 +616,7 @@ class CloneSEOIntegrationService
     public function getOptimizationStats(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total_optimizations,
                 AVG(seo_score_before) as avg_score_before,
                 AVG(seo_score_after) as avg_score_after
@@ -643,9 +643,9 @@ class CloneSEOIntegrationService
     public function logOptimization(string $itemId, int $scoreBefore, int $scoreAfter, string $level): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO clone_seo_optimizations 
+            INSERT INTO clone_seo_optimizations
             (account_id, item_id, seo_score_before, seo_score_after, optimization_level, created_at)
-            VALUES 
+            VALUES
             (:account_id, :item_id, :before, :after, :level, NOW())
         ");
         $stmt->execute([

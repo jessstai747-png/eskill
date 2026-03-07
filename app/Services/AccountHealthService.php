@@ -3842,7 +3842,7 @@ class AccountHealthService
         $titles = [];
 
         foreach ($items as $item) {
-            $title = strtolower(trim($item['title'] ?? ''));
+            $title = mb_strtolower(trim($item['title'] ?? ''));
             if (empty($title)) continue;
 
             // Simple similarity: remove numbers and special chars

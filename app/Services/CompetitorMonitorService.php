@@ -311,7 +311,7 @@ class CompetitorMonitorService
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'em', 'por', 'e', 'ou', 'a', 'o', 'as', 'os', 'um', 'uma'];
         $words = preg_split('/[\s\-\/\|\(\)]+/', mb_strtolower($title));
         $words = array_filter($words, function ($word) use ($stopWords) {
-            return strlen($word) > 2 && !in_array($word, $stopWords) && !is_numeric($word);
+            return mb_strlen($word) > 2 && !in_array($word, $stopWords) && !is_numeric($word);
         });
 
         // Pegar as 5 primeiras palavras mais relevantes
@@ -702,7 +702,7 @@ class CompetitorMonitorService
         $premiumSellers = count(array_filter(
             $competitors,
             fn($c) =>
-            str_contains(strtolower($c['competitor_seller_reputation'] ?? ''), 'mercadolíder')
+            str_contains(mb_strtolower($c['competitor_seller_reputation'] ?? ''), 'mercadolíder')
         ));
 
         // Distribuição de preços por faixa

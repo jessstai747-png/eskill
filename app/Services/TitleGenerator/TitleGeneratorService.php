@@ -11,7 +11,7 @@ use App\Services\SeoAnalyzerService;
 
 /**
  * Title Generator Service - Geração Inteligente de Títulos
- * 
+ *
  * Gera títulos otimizados para SEO baseado em:
  * - Análise de categoria e atributos
  * - Pesquisa de keywords de alta conversão
@@ -52,7 +52,7 @@ class TitleGeneratorService
 
     /**
      * Gera títulos otimizados baseado em dados do produto
-     * 
+     *
      * @param array $productData {
      *   category_id: string,
      *   brand?: string,
@@ -276,7 +276,7 @@ class TitleGeneratorService
         // Extrair especificações relevantes
         $specs = [];
         $specPriority = ['INTERNAL_MEMORY', 'RAM', 'COLOR', 'SIZE', 'CAPACITY', 'MATERIAL'];
-        
+
         foreach ($specPriority as $attrId) {
             foreach ($attributes as $attr) {
                 if (($attr['id'] ?? '') === $attrId) {
@@ -310,7 +310,7 @@ class TitleGeneratorService
         // Pattern 1: Marca Modelo Especificações
         if ($brand && $model) {
             $baseTitle = "$brand $model";
-            
+
             // Adicionar specs até o limite
             foreach ($specs as $spec) {
                 $testTitle = "$baseTitle $spec";
@@ -326,14 +326,14 @@ class TitleGeneratorService
             if (is_array($keyword)) {
                 $keyword = $keyword['keyword'] ?? $keyword['term'] ?? '';
             }
-            
+
             if (empty($keyword)) continue;
 
             $keywordTitle = trim($keyword);
             if ($brand && !str_contains(mb_strtolower($keywordTitle), mb_strtolower($brand))) {
                 $keywordTitle .= " $brand";
             }
-            
+
             foreach ($specs as $spec) {
                 $testTitle = "$keywordTitle $spec";
                 if (mb_strlen($testTitle) <= self::MAX_LENGTH) {
@@ -370,7 +370,7 @@ class TitleGeneratorService
             // Substituir partes do pattern com nossos dados
             $customPattern = $pattern;
             if ($brand) $customPattern = preg_replace('/\b[A-Z][a-z]+\b/', $brand, $customPattern, 1);
-            if (strlen($customPattern) <= self::MAX_LENGTH && strlen($customPattern) >= self::OPTIMAL_MIN) {
+            if (mb_strlen($customPattern) <= self::MAX_LENGTH && mb_strlen($customPattern) >= self::OPTIMAL_MIN) {
                 $titles[] = $customPattern;
             }
         }
@@ -393,7 +393,7 @@ class TitleGeneratorService
             // Variação 1: Com modificadores de qualidade
             foreach ($modifiers as $modifier) {
                 $withModifier = "$title $modifier";
-                if (strlen($withModifier) <= self::MAX_LENGTH) {
+                if (mb_strlen($withModifier) <= self::MAX_LENGTH) {
                     $variations[] = $withModifier;
                 }
             }
@@ -404,14 +404,14 @@ class TitleGeneratorService
                 // Mover última palavra para frente
                 $reordered = array_pop($words);
                 $reordered .= ' ' . implode(' ', $words);
-                if (strlen($reordered) <= self::MAX_LENGTH) {
+                if (mb_strlen($reordered) <= self::MAX_LENGTH) {
                     $variations[] = $reordered;
                 }
             }
 
             // Variação 3: Abreviações para economizar espaço
             $abbreviated = $this->abbreviateTitle($title);
-            if ($abbreviated !== $title && strlen($abbreviated) <= self::MAX_LENGTH) {
+            if ($abbreviated !== $title && mb_strlen($abbreviated) <= self::MAX_LENGTH) {
                 $variations[] = $abbreviated;
             }
         }
@@ -445,7 +445,7 @@ class TitleGeneratorService
         $issues = [];
         $suggestions = [];
 
-        $length = strlen($title);
+        $length = mb_strlen($title);
 
         // 1. Comprimento (peso 20%)
         $lengthScore = 0;
@@ -591,7 +591,7 @@ class TitleGeneratorService
 
         // Boa estrutura: Marca Modelo Especificações
         $words = explode(' ', $title);
-        
+
         // Primeira palavra capitalizada
         if (preg_match('/^[A-Z]/', $title)) {
             $score += 20;
@@ -678,7 +678,7 @@ class TitleGeneratorService
     private function parseTitleIntoComponents(string $title): array
     {
         $words = explode(' ', $title);
-        
+
         return [
             'brand' => $words[0] ?? '',
             'model' => $words[1] ?? '',

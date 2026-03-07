@@ -701,12 +701,12 @@ class CloneAutomationService
             }
         }
 
-        $title = strtolower((string) ($item['title'] ?? ''));
+        $title = mb_strtolower((string) ($item['title'] ?? ''));
 
         $excludeKeywords = $filters['exclude_keywords'] ?? [];
         if (is_array($excludeKeywords)) {
             foreach ($excludeKeywords as $kw) {
-                $needle = strtolower((string) $kw);
+                $needle = mb_strtolower((string) $kw);
                 if ($needle !== '' && strpos($title, $needle) !== false) {
                     return false;
                 }
@@ -717,7 +717,7 @@ class CloneAutomationService
         if (is_array($includeKeywords) && $includeKeywords !== []) {
             $included = false;
             foreach ($includeKeywords as $kw) {
-                $needle = strtolower((string) $kw);
+                $needle = mb_strtolower((string) $kw);
                 if ($needle !== '' && strpos($title, $needle) !== false) {
                     $included = true;
                     break;

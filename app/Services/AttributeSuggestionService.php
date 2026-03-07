@@ -430,7 +430,7 @@ class AttributeSuggestionService
      */
     private function hasRealChange(string $before, string $after): bool
     {
-        $normalize = fn($s) => strtolower(trim(preg_replace('/\s+/', ' ', $s)));
+        $normalize = fn($s) => mb_strtolower(trim(preg_replace('/\s+/', ' ', $s)));
         return $normalize($before) !== $normalize($after);
     }
 

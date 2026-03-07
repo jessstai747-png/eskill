@@ -623,8 +623,8 @@ class AdvancedSEOMaximizer
 
         // Fallback: palavras do título que não são stopwords
         $stopwords = ['de', 'da', 'do', 'para', 'com', 'em', 'e', 'a', 'o', 'os', 'as'];
-        $words = preg_split('/\W+/', strtolower($itemData['title'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
-        return array_values(array_filter($words, fn($w) => strlen($w) > 3 && !in_array($w, $stopwords)));
+        $words = preg_split('/\W+/', mb_strtolower($itemData['title'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+        return array_values(array_filter($words, fn($w) => mb_strlen($w) > 3 && !in_array($w, $stopwords)));
     }
 
     private function injectLSIKeywords(string $description, array $lsiKeywords): string
@@ -960,8 +960,8 @@ class AdvancedSEOMaximizer
         // Extrair palavras-base do título
         $stopwords = ['de', 'da', 'do', 'para', 'com', 'em', 'e', 'a', 'o', 'os', 'as', 'um', 'uma'];
         $words = array_filter(
-            preg_split('/\W+/', strtolower($title), -1, PREG_SPLIT_NO_EMPTY) ?? [],
-            fn($w) => strlen($w) > 3 && !in_array($w, $stopwords)
+            preg_split('/\W+/', mb_strtolower($title), -1, PREG_SPLIT_NO_EMPTY) ?? [],
+            fn($w) => mb_strlen($w) > 3 && !in_array($w, $stopwords)
         );
         $baseWords = array_values($words);
 

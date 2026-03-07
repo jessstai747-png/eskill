@@ -464,8 +464,8 @@ class TitleVariationsService
      */
     private function wordsReordered(string $str1, string $str2): bool
     {
-        $words1 = explode(' ', strtolower($str1));
-        $words2 = explode(' ', strtolower($str2));
+        $words1 = explode(' ', mb_strtolower($str1));
+        $words2 = explode(' ', mb_strtolower($str2));
         
         sort($words1);
         sort($words2);

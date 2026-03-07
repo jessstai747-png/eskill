@@ -8,22 +8,22 @@ use App\Database;
 
 /**
  * 🎯 E6: Use Context Service
- * 
+ *
  * Gerencia contextos de uso para enriquecer anúncios:
  * - PROFISSIONAL: delivery, motoboy, trabalho, ifood, uber eats
  * - LAZER: viagem, passeio, turismo, trilha
  * - URBANO: cidade, dia a dia, diário
  * - CARGA: capacete, transporte, bagagem, compras
- * 
+ *
  * Cada contexto adiciona keywords relevantes e aumenta
  * a cobertura de buscas específicas.
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class UseContextService
 {
     private ?int $accountId;
-    
+
     /**
      * Definição dos contextos de uso e suas keywords
      */
@@ -129,7 +129,7 @@ class UseContextService
     public function getAvailableContexts(): array
     {
         $contexts = [];
-        
+
         foreach (self::USE_CONTEXTS as $id => $context) {
             $contexts[$id] = [
                 'id' => $id,
@@ -153,11 +153,11 @@ class UseContextService
     public function getContextsForCategory(string $categoryId): array
     {
         $db = Database::getInstance();
-        
+
         // Buscar contextos customizados do banco
         $stmt = $db->prepare("
-            SELECT context_type, keyword, weight 
-            FROM seo_use_contexts 
+            SELECT context_type, keyword, weight
+            FROM seo_use_contexts
             WHERE category_id = :category_id AND is_active = 1
         ");
         $stmt->execute(['category_id' => $categoryId]);
@@ -203,7 +203,7 @@ class UseContextService
         foreach (self::USE_CONTEXTS as $contextId => $context) {
             $matches = [];
             $totalWeight = 0;
-            
+
             foreach ($context['keywords'] as $keyword => $weight) {
                 if (stripos($text, $keyword) !== false) {
                     $matches[] = $keyword;
@@ -237,12 +237,12 @@ class UseContextService
      * Gera keywords de contexto para enriquecer anúncio
      */
     public function generateContextKeywords(
-        array $contexts, 
+        array $contexts,
         ?string $categoryId = null,
         int $limit = 10
     ): array {
         $keywords = [];
-        
+
         // Se houver categoria, buscar customizados primeiro
         if ($categoryId) {
             $customData = $this->getContextsForCategory($categoryId);
@@ -295,7 +295,7 @@ class UseContextService
      * Gera frases de contexto para descrição
      */
     public function generateContextPhrases(
-        array $contexts, 
+        array $contexts,
         int $limit = 4
     ): array {
         $phrases = [];
@@ -314,7 +314,7 @@ class UseContextService
         // Limitar e diversificar (uma de cada contexto se possível)
         $selected = [];
         $usedContexts = [];
-        
+
         foreach ($phrases as $p) {
             if (!in_array($p['context'], $usedContexts)) {
                 $selected[] = $p;
@@ -352,7 +352,7 @@ class UseContextService
 
         // Concatenar texto para análise
         $fullText = implode(' ', [$title, $description, $brand]);
-        
+
         // Detectar contextos no texto atual
         $detected = $this->detectContexts($fullText);
 
@@ -362,15 +362,15 @@ class UseContextService
             if (!isset($detected['detected_contexts'][$contextId])) {
                 // Calcular relevância potencial
                 $relevance = $this->calculateContextRelevance($contextId, $categoryId);
-                
+
                 if ($relevance > 0.3) {
                     $suggestions[] = [
                         'context' => $contextId,
                         'name' => $context['name'],
                         'relevance' => round($relevance, 2),
                         'suggested_keywords' => array_slice(
-                            array_keys($context['keywords']), 
-                            0, 
+                            array_keys($context['keywords']),
+                            0,
                             3
                         ),
                         'reason' => $this->getSuggestionReason($contextId, $categoryId)
@@ -393,7 +393,7 @@ class UseContextService
      * Enriquece um anúncio com contextos
      */
     public function enrichWithContexts(
-        array $itemData, 
+        array $itemData,
         array $contexts,
         ?string $categoryId = null
     ): array {
@@ -403,7 +403,7 @@ class UseContextService
 
         // Gerar keywords de contexto
         $contextKeywords = $this->generateContextKeywords($contexts, $categoryId);
-        
+
         // Gerar frases de contexto
         $contextPhrases = $this->generateContextPhrases($contexts);
 
@@ -433,11 +433,11 @@ class UseContextService
      * Salva contextos customizados para categoria
      */
     public function saveContextsForCategory(
-        string $categoryId, 
+        string $categoryId,
         array $contexts
     ): array {
         $db = Database::getInstance();
-        
+
         $stmt = $db->prepare("
             INSERT INTO seo_use_contexts (category_id, context_type, keyword, weight)
             VALUES (:category_id, :context_type, :keyword, :weight)
@@ -504,7 +504,7 @@ class UseContextService
 
         foreach ($keywords as $kw) {
             $keyword = $kw['keyword'];
-            
+
             // Verificar se keyword já existe
             if (stripos($title, $keyword) !== false) {
                 continue;
@@ -523,7 +523,7 @@ class UseContextService
             'original' => $title,
             'enriched' => $enriched,
             'keywords_added' => $added,
-            'length' => strlen($enriched)
+            'length' => mb_strlen($enriched)
         ];
     }
 
@@ -533,9 +533,9 @@ class UseContextService
         $added = [];
 
         // Adicionar seção de uso se não existir
-        if (stripos($description, 'uso:') === false && 
+        if (stripos($description, 'uso:') === false &&
             stripos($description, 'ideal para') === false) {
-            
+
             $useSection = "\n\n✅ **Ideal para:**\n";
             foreach ($phrases as $p) {
                 $useSection .= "• " . ucfirst($p['phrase']) . "\n";
@@ -549,7 +549,7 @@ class UseContextService
             'original' => $description,
             'enriched' => $enriched,
             'phrases_added' => $added,
-            'length' => strlen($enriched)
+            'length' => mb_strlen($enriched)
         ];
     }
 
@@ -562,16 +562,16 @@ class UseContextService
         // Adicionar keywords de contexto no modelo
         foreach ($keywords as $kw) {
             $keyword = $kw['keyword'];
-            
+
             if (stripos($model, $keyword) !== false) {
                 continue;
             }
 
             $newModel = $enriched . ' ' . $keyword;
-            if (strlen($newModel) <= $maxLength) {
+            if (mb_strlen($newModel) <= $maxLength) {
                 $enriched = $newModel;
                 $added[] = $keyword;
-                
+
                 // Limitar a 3 keywords no modelo
                 if (count($added) >= 3) break;
             }
@@ -581,7 +581,7 @@ class UseContextService
             'original' => $model,
             'enriched' => $enriched,
             'keywords_added' => $added,
-            'length' => strlen($enriched)
+            'length' => mb_strlen($enriched)
         ];
     }
 }

@@ -211,7 +211,7 @@ class TechSheetOptimizer
             // Partial match
             $words = explode(' ', $valueName);
             foreach ($words as $word) {
-                if (strlen($word) > 3 && mb_strpos($contextText, $word) !== false) {
+                if (mb_strlen($word) > 3 && mb_strpos($contextText, $word) !== false) {
                     $matches[] = [
                         'value' => $value['name'],
                         'value_id' => $value['id'] ?? null,

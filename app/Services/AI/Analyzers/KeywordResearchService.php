@@ -308,7 +308,7 @@ class KeywordResearchService
         foreach ($words as $word) {
             $word = trim($word, '.,;:!?()[]{}');
             
-            if (strlen($word) >= 3 && !in_array($word, $stopwords)) {
+            if (mb_strlen($word) >= 3 && !in_array($word, $stopwords)) {
                 $keywords[] = $word;
             }
         }

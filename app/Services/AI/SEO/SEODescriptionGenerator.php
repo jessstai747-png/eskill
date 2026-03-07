@@ -469,7 +469,7 @@ class SEODescriptionGenerator
         }
         
         // Verificar estrutura
-        if (!mb_strpos($description, '•') && !mb_strpos($description, '-')) {
+        if (mb_strpos($description, '•') === false && mb_strpos($description, '-') === false) {
             $score -= 15; // Sem bullet points
         }
         

@@ -81,13 +81,13 @@ class AISEOOptimizerService
 
             // Score geral de SEO
             $overallScore = $this->calculateOverallSEOScore($analyses);
-            
+
             // Oportunidades de melhoria
             $opportunities = $this->identifyOptimizationOpportunities($analyses);
-            
+
             // Plano de ação automatizado
             $actionPlan = $this->generateActionPlan($analyses, $opportunities);
-            
+
             // Previsão de impacto
             $impactPrediction = $this->predictOptimizationImpact($analyses, $actionPlan, $productData);
 
@@ -105,7 +105,7 @@ class AISEOOptimizerService
 
             // Cache por 2 horas
             $this->cache->set($cacheKey, $result, 'ai_seo', 7200);
-            
+
             // Log da análise
             $this->logger->info('AI SEO analysis completed', [
                 'product_id' => $productData['id'] ?? null,
@@ -133,39 +133,39 @@ class AISEOOptimizerService
         try {
             // Análise prévia
             $analysis = $this->analyzeSEO($productData, ['force_refresh' => true]);
-            
+
             if (!$analysis['success']) {
                 return $analysis;
             }
 
             $optimizations = [];
-            
+
             // Otimização de título
             if ($analysis['detailed_analysis']['title_analysis']['score'] < 80) {
                 $titleOpt = $this->optimizeTitle($productData, $analysis);
                 $optimizations['title'] = $titleOpt;
             }
-            
+
             // Otimização de descrição
             if ($analysis['detailed_analysis']['description_analysis']['score'] < 75) {
                 $descOpt = $this->optimizeDescription($productData, $analysis);
                 $optimizations['description'] = $descOpt;
             }
-            
+
             // Otimização de keywords
             $keywordOpt = $this->optimizeKeywords($productData, $analysis);
             $optimizations['keywords'] = $keywordOpt;
-            
+
             // Otimização de atributos
             $attrOpt = $this->optimizeAttributes($productData, $analysis);
             $optimizations['attributes'] = $attrOpt;
 
             // Produto otimizado
             $optimizedProduct = $this->applyOptimizations($productData, $optimizations);
-            
+
             // Nova análise pós-otimização
             $postAnalysis = $this->analyzeSEO($optimizedProduct, ['force_refresh' => true]);
-            
+
             $result = [
                 'success' => true,
                 'original_product' => $productData,
@@ -175,7 +175,7 @@ class AISEOOptimizerService
                 'after_score' => $postAnalysis['overall_seo_score'],
                 'improvement' => $postAnalysis['overall_seo_score'] - $analysis['overall_seo_score'],
                 'estimated_visibility_increase' => $this->calculateVisibilityIncrease(
-                    $analysis['overall_seo_score'], 
+                    $analysis['overall_seo_score'],
                     $postAnalysis['overall_seo_score']
                 ),
                 'optimization_summary' => $this->generateOptimizationSummary($optimizations),
@@ -309,7 +309,7 @@ class AISEOOptimizerService
 
         $analysis = [
             'title' => $title,
-            'length' => strlen($title),
+            'length' => mb_strlen($title),
             'word_count' => str_word_count($title),
             'keywords_found' => [],
             'readability' => $this->calculateTextReadability($title),
@@ -448,7 +448,7 @@ class AISEOOptimizerService
         $description = $productData['description'] ?? '';
 
         $analysis = [
-            'description_length' => strlen($description),
+            'description_length' => mb_strlen($description),
             'word_count' => str_word_count($description),
             'keyword_density' => [],
             'structure_score' => 0,
@@ -665,33 +665,33 @@ class AISEOOptimizerService
         $currentTitle = $productData['title'] ?? '';
         $category = $productData['category_id'] ?? null;
         $brand = $productData['brand'] ?? '';
-        
+
         // Extrair elementos importantes
         $importantKeywords = array_slice($analysis['detailed_analysis']['keywords_analysis']['primary_keywords'], 0, 3);
         $trendingKeywords = array_slice($analysis['detailed_analysis']['keywords_analysis']['trending_keywords'], 0, 2);
-        
+
         // Construir novo título
         $titleParts = [];
-        
+
         // Adicionar marca se não estiver
         if ($brand && stripos($currentTitle, $brand) === false) {
             $titleParts[] = $brand;
         }
-        
+
         // Título base
         $baseTitle = trim(str_replace($brand, '', $currentTitle));
         $titleParts[] = $baseTitle;
-        
+
         // Adicionar keywords trending se houver espaço
         foreach ($trendingKeywords as $keyword) {
             $testTitle = implode(' ', array_merge($titleParts, [$keyword]));
-            if (strlen($testTitle) <= 55) {
+            if (mb_strlen($testTitle) <= 55) {
                 $titleParts[] = $keyword;
             }
         }
-        
+
         $optimizedTitle = implode(' ', $titleParts);
-        
+
         // Limitar a 60 caracteres
         if (mb_strlen($optimizedTitle) > 60) {
             $optimizedTitle = mb_substr($optimizedTitle, 0, 57) . '...';
@@ -703,14 +703,14 @@ class AISEOOptimizerService
             $brand,
             $trendingKeywords
         );
-        
+
         return [
             'original' => $currentTitle,
             'optimized' => $optimizedTitle,
             'changes_made' => [
                 'added_brand' => $brand && stripos($currentTitle, $brand) === false,
                 'added_keywords' => array_diff($titleParts, explode(' ', $currentTitle)),
-                'length_adjusted' => strlen($optimizedTitle) !== strlen($currentTitle)
+                'length_adjusted' => mb_strlen($optimizedTitle) !== mb_strlen($currentTitle)
             ],
             'expected_improvement' => $expectedImprovement
         ];
@@ -723,12 +723,12 @@ class AISEOOptimizerService
     {
         $currentDesc = $productData['description'] ?? '';
         $keywords = $analysis['detailed_analysis']['keywords_analysis']['primary_keywords'];
-        
+
         // Se não há descrição, gerar uma
         if (empty($currentDesc)) {
             $aiContent = new AIContentGeneratorService();
             $generated = $aiContent->generateProductDescription($productData);
-            
+
             return [
                 'original' => $currentDesc,
                 'optimized' => $generated['description'],
@@ -736,12 +736,12 @@ class AISEOOptimizerService
                 'expected_improvement' => 40
             ];
         }
-        
+
         // Melhorar descrição existente
         $optimizedDesc = $currentDesc;
         $structureAdded = false;
         $ctaAdded = false;
-        
+
         // Adicionar estrutura se não houver
         if (strpos($optimizedDesc, '•') === false && strpos($optimizedDesc, '-') === false) {
             $optimizedDesc .= "\n\n✨ CARACTERÍSTICAS PRINCIPAIS:\n";
@@ -752,7 +752,7 @@ class AISEOOptimizerService
             }
             $structureAdded = true;
         }
-        
+
         // Adicionar call-to-action se não houver
         if (!$analysis['detailed_analysis']['description_analysis']['call_to_action']) {
             $optimizedDesc .= "\n🛒 COMPRE AGORA e garanta o seu!";
@@ -766,10 +766,10 @@ class AISEOOptimizerService
         if ($ctaAdded) {
             $expectedImprovement += 5;
         }
-        if (strlen($optimizedDesc) > strlen($currentDesc)) {
+        if (mb_strlen($optimizedDesc) > mb_strlen($currentDesc)) {
             $expectedImprovement += 5;
         }
-        
+
         return [
             'original' => $currentDesc,
             'optimized' => $optimizedDesc,
@@ -809,7 +809,7 @@ class AISEOOptimizerService
     private function identifyOptimizationOpportunities(array $analyses): array
     {
         $opportunities = [];
-        
+
         // Oportunidades baseadas nos scores
         foreach ($analyses as $type => $analysis) {
             if (($analysis['score'] ?? 0) < 70) {
@@ -822,7 +822,7 @@ class AISEOOptimizerService
                 ];
             }
         }
-        
+
         return $opportunities;
     }
 
@@ -845,7 +845,7 @@ class AISEOOptimizerService
 
     private function scoreTitleLength(string $title): int
     {
-        $len = strlen($title);
+        $len = mb_strlen($title);
         $ideal = 60;
         $diff = abs($ideal - $len);
 
@@ -900,8 +900,8 @@ class AISEOOptimizerService
         try {
             // Buscar categorias populares do banco
             $stmt = $this->db->query("
-                SELECT DISTINCT category_id 
-                FROM items 
+                SELECT DISTINCT category_id
+                FROM items
                 WHERE category_id IS NOT NULL AND category_id != ''
                 ORDER BY RAND()
                 LIMIT 20
@@ -976,7 +976,7 @@ class AISEOOptimizerService
         $qualityScore = 0;
         foreach ($attributes as $attr) {
             $value = $attr['value_name'] ?? $attr['value'] ?? '';
-            if (!empty($value) && strlen($value) > 2) {
+            if (!empty($value) && mb_strlen($value) > 2) {
                 $qualityScore += 10;
             }
         }
@@ -1253,7 +1253,7 @@ Retorne um JSON com a seguinte estrutura:
         $relevanceScore = 0;
 
         // Title length (good for algorithm)
-        if (strlen($title) >= 30 && strlen($title) <= 60) {
+        if (mb_strlen($title) >= 30 && mb_strlen($title) <= 60) {
             $relevanceScore += 20;
             $analysis['relevance_factors'][] = 'Título com comprimento ideal';
         } else {
@@ -1262,7 +1262,7 @@ Retorne um JSON com a seguinte estrutura:
         }
 
         // Description length (good for algorithm)
-        if (strlen($description) >= 200) {
+        if (mb_strlen($description) >= 200) {
             $relevanceScore += 15;
             $analysis['relevance_factors'][] = 'Descrição com bom comprimento';
         } else {
@@ -1368,7 +1368,7 @@ Retorne um JSON com a seguinte estrutura:
         try {
             // Try to fetch from ML API (if available) or use enhanced fallback
             $forbiddenWords = $this->fetchForbiddenWordsFromML();
-            
+
             if (!empty($forbiddenWords)) {
                 // Cache for 24 hours
                 $this->cache->set($cacheKey, $forbiddenWords, 'seo_config', 86400);
@@ -1391,16 +1391,16 @@ Retorne um JSON com a seguinte estrutura:
     {
         // ML doesn't have a public API for forbidden words list
         // But we can use AI to compile from official regulations + recent rejections
-        
+
         try {
-            $prompt = "Liste as palavras e frases PROIBIDAS no Mercado Livre Brasil segundo as políticas oficiais de 2024-2026. 
+            $prompt = "Liste as palavras e frases PROIBIDAS no Mercado Livre Brasil segundo as políticas oficiais de 2024-2026.
             Inclua:
             1. Superlativos não comprovados
             2. Termos de urgência falsa
             3. Garantias não verificáveis
             4. Comparações diretas com concorrentes
             5. Termos médicos sem comprovação
-            
+
             Retorne APENAS um array JSON com as expressões, sem explicações:
             [\"termo1\", \"termo2\", ...]";
 
@@ -1412,15 +1412,15 @@ Retorne um JSON com a seguinte estrutura:
 
             if ($result['success']) {
                 $aiResponse = $result['content'];
-                
+
                 // Extract JSON array from response
                 $jsonStart = strpos($aiResponse, '[');
                 $jsonEnd = strrpos($aiResponse, ']');
-                
+
                 if ($jsonStart !== false && $jsonEnd !== false) {
                     $jsonStr = substr($aiResponse, $jsonStart, $jsonEnd - $jsonStart + 1);
                     $parsed = json_decode($jsonStr, true);
-                    
+
                     if (is_array($parsed) && count($parsed) > 10) {
                         $this->logger->info('Successfully fetched forbidden words from AI', [
                             'count' => count($parsed)
@@ -1538,7 +1538,7 @@ Retorne um JSON com a seguinte estrutura:
         $keywords = [];
         foreach ($words as $word) {
             $word = trim($word);
-            if (strlen($word) > 2 && !in_array($word, $stopWords)) {
+            if (mb_strlen($word) > 2 && !in_array($word, $stopWords)) {
                 $keywords[] = $word;
             }
         }
@@ -1727,7 +1727,7 @@ Retorne um JSON com a seguinte estrutura:
         $importance = 0.5; // Base importance
 
         // Boost for certain patterns
-        if (strlen($keyword) > 3 && strlen($keyword) < 20) {
+        if (mb_strlen($keyword) > 3 && mb_strlen($keyword) < 20) {
             $importance += 0.1;
         }
 
@@ -1775,43 +1775,43 @@ Retorne um JSON com a seguinte estrutura:
         if ($cached !== null) {
             return (int)($cached['value'] ?? $cached);
         }
-    
+
         try {
             // Try Google Keyword Planner API first (REAL DATA)
             if ($this->keywordPlanner->isConfigured()) {
                 $metrics = $this->keywordPlanner->getKeywordMetrics($keyword, 'BR', 'pt');
-                    
+
                 if ($metrics && isset($metrics['volume'])) {
                     $volume = (int)$metrics['volume'];
-                        
+
                     // Cache the result
                     $this->cache->set($cacheKey, ['value' => $volume, 'source' => 'google_keyword_planner'], 'keywords', 172800); // 48 hours
-                        
+
                     $this->logger->info('seo', "Google Keyword Planner: Real volume data for '{$keyword}': {$volume}");
                     return $volume;
                 }
             }
-                
+
             // Fallback to AI estimation
             $prompt = "Estime o volume de buscas mensais para a palavra-chave '{$keyword}' no Brasil. Responda apenas com um número inteiro aproximado.";
-    
+
             $result = $this->retryService->execute(
                 fn() => $this->ai->generate($prompt, "Você é um especialista em pesquisa de mercado e SEO com conhecimento sobre volumes de busca no Brasil.", 'basic'),
                 'get_keyword_volume',
                 ['timeout', 'rate limit', 'service unavailable']
             );
-    
+
             if ($result['success']) {
                 $aiResponse = trim($result['content']);
-    
+
                 // Extract number from response
                 if (is_numeric($aiResponse)) {
                     $volume = (int)$aiResponse;
                     $volume = max(0, $volume); // Ensure non-negative
-    
+
                     // Cache the result
                     $this->cache->set($cacheKey, ['value' => $volume, 'source' => 'ai_estimation'], 'keywords', 172800); // 48 hours
-    
+
                     return $volume;
                 }
             }
@@ -1821,7 +1821,7 @@ Retorne um JSON com a seguinte estrutura:
                 'keyword' => $keyword
             ]);
         }
-    
+
         // Final fallback: return a reasonable estimate
         $estimatedVolume = $this->estimateKeywordVolumeFallback($keyword);
         $this->cache->set($cacheKey, ['value' => $estimatedVolume, 'source' => 'fallback'], 'keywords', 172800);
@@ -1844,18 +1844,18 @@ Retorne um JSON com a seguinte estrutura:
             // Try Google Keyword Planner API first (REAL DATA)
             if ($this->keywordPlanner->isConfigured()) {
                 $metrics = $this->keywordPlanner->getKeywordMetrics($keyword, 'BR', 'pt');
-                
+
                 if ($metrics && isset($metrics['competition'])) {
                     $competition = $metrics['competition'];
-                    
+
                     // Cache the result
                     $this->cache->set($cacheKey, ['value' => $competition, 'source' => 'google_keyword_planner'], 'keywords', 172800); // 48 hours
-                    
+
                     $this->logger->info('seo', "Google Keyword Planner: Real competition data for '{$keyword}': {$competition}");
                     return $competition;
                 }
             }
-            
+
             // Fallback to AI estimation
             $prompt = "Para a palavra-chave '{$keyword}', qual o nível de concorrência no mercado brasileiro? Responda apenas com uma das opções: 'very_low', 'low', 'medium', 'high', 'very_high'.";
 
@@ -1866,7 +1866,7 @@ Retorne um JSON com a seguinte estrutura:
             );
 
             if ($result['success']) {
-                $aiResponse = trim(strtolower($result['content']));
+                $aiResponse = trim(mb_strtolower($result['content']));
 
                 // Validate response
                 $validLevels = ['very_low', 'low', 'medium', 'high', 'very_high'];
@@ -2115,13 +2115,13 @@ Retorne um JSON com a seguinte estrutura:
     private function predictOptimizationImpact(array $analyses, array $actionPlan, array $productData = []): array
     {
         $impactFactor = 1.0;
-        
+
         // 1. Try to use Advanced Predictive Analytics via Unified AI
         if (!empty($productData) && isset($this->unifiedAi)) {
             try {
                 // Call predictive analytics
                 $prediction = $this->unifiedAi->processAIRequest('predict_performance', $productData);
-                
+
                 if ($prediction['success'] && isset($prediction['result']['predictions'])) {
                     // Adjust impact factor based on predicted demand growth
                     $demandForecast = $prediction['result']['predictions']['demand_forecast'] ?? [];
@@ -2151,7 +2151,7 @@ Retorne um JSON com a seguinte estrutura:
             $visibilityIncrease += $impact * $priorityMultiplier * 0.3;
             $rankingImprovement += ($impact * $priorityMultiplier * 0.1);
         }
-        
+
         // Apply ML Prediction Factor
         $visibilityIncrease *= $impactFactor;
 
@@ -2190,20 +2190,20 @@ Retorne um JSON com a seguinte estrutura:
         try {
             // Fetch REAL competitors from ML API
             $competitors = $this->fetchRealCompetitors($category, $title);
-            
+
             if (!empty($competitors) && count($competitors) >= 3) {
                 // Calculate REAL benchmarks from actual competitor data
                 $benchmarks = $this->calculateRealBenchmarks($competitors);
-                
+
                 // Cache the result for 6 hours
                 $this->cache->set($cacheKey, $benchmarks, 'seo_competition', 21600);
-                
+
                 $this->logger->info('Calculated real competitor benchmarks', [
                     'category' => $category,
                     'competitors_analyzed' => count($competitors),
                     'avg_title_length' => $benchmarks['benchmark_metrics']['title_length_avg']
                 ]);
-                
+
                 return $benchmarks;
             }
         } catch (\Exception $e) {
@@ -2230,11 +2230,11 @@ Retorne um JSON com a seguinte estrutura:
             }
 
             $mlClient = new MercadoLivreClient($accountId);
-            
+
             // Extract main keywords from title for search
             $keywords = $this->extractMainKeywords($title);
             $searchQuery = implode(' ', array_slice($keywords, 0, 3)); // Top 3 keywords
-            
+
             // Search for competitors in same category
             $searchParams = [
                 'q' => $searchQuery,
@@ -2244,9 +2244,9 @@ Retorne um JSON com a seguinte estrutura:
                 'buying_mode' => 'buy_it_now',
                 'official_store_id' => 'all'
             ];
-            
+
             $response = $mlClient->get('/sites/MLB/search', $searchParams);
-            
+
             if (!$response['success'] || empty($response['body']['results'])) {
                 $this->logger->warning('ML search returned no competitors', [
                     'query' => $searchQuery,
@@ -2254,14 +2254,14 @@ Retorne um JSON com a seguinte estrutura:
                 ]);
                 return [];
             }
-            
+
             $competitors = [];
             foreach ($response['body']['results'] as $item) {
                 // Skip if missing essential data
                 if (empty($item['title']) || empty($item['id'])) {
                     continue;
                 }
-                
+
                 $competitors[] = [
                     'id' => $item['id'],
                     'title' => $item['title'],
@@ -2274,21 +2274,21 @@ Retorne um JSON com a seguinte estrutura:
                     'official_store_id' => $item['official_store_id'] ?? null,
                     'permalink' => $item['permalink'] ?? ''
                 ];
-                
+
                 // Limit to top 10 competitors
                 if (count($competitors) >= 10) {
                     break;
                 }
             }
-            
+
             $this->logger->info('Fetched real competitors from ML', [
                 'category' => $category,
                 'query' => $searchQuery,
                 'found' => count($competitors)
             ]);
-            
+
             return $competitors;
-            
+
         } catch (\Exception $e) {
             $this->logger->error('Failed to fetch real competitors', [
                 'error' => $e->getMessage(),
@@ -2318,15 +2318,15 @@ Retorne um JSON com a seguinte estrutura:
             $titleLengths[] = mb_strlen($comp['title']);
             $prices[] = $comp['price'];
             $soldQuantities[] = $comp['sold_quantity'];
-            
+
             if ($comp['shipping_free']) {
                 $freeShippingCount++;
             }
-            
+
             if ($comp['official_store_id']) {
                 $officialStoreCount++;
             }
-            
+
             if (in_array($comp['seller_reputation'], ['5_green', '4_light_green'])) {
                 $topReputationCount++;
             }
@@ -2336,7 +2336,7 @@ Retorne um JSON com a seguinte estrutura:
         $avgTitleLength = $count > 0 ? round(array_sum($titleLengths) / $count) : 45;
         $avgPrice = $count > 0 ? round(array_sum($prices) / $count, 2) : 0;
         $avgSoldQuantity = $count > 0 ? round(array_sum($soldQuantities) / $count) : 0;
-        
+
         // Calculate percentages
         $freeShippingPercent = $count > 0 ? round(($freeShippingCount / $count) * 100) : 0;
         $officialStorePercent = $count > 0 ? round(($officialStoreCount / $count) * 100) : 0;
@@ -2376,17 +2376,17 @@ Retorne um JSON com a seguinte estrutura:
     {
         // Remove common stop words and get meaningful keywords
         $stopWords = ['de', 'da', 'do', 'dos', 'das', 'a', 'o', 'e', 'para', 'com', 'em', 'por', 'no', 'na'];
-        
-        $words = explode(' ', strtolower($title));
+
+        $words = explode(' ', mb_strtolower($title));
         $keywords = [];
-        
+
         foreach ($words as $word) {
             $word = trim($word);
-            if (strlen($word) > 3 && !in_array($word, $stopWords)) {
+            if (mb_strlen($word) > 3 && !in_array($word, $stopWords)) {
                 $keywords[] = $word;
             }
         }
-        
+
         return array_slice($keywords, 0, 5); // Return top 5
     }
 
@@ -2586,7 +2586,7 @@ Retorne um JSON com a seguinte estrutura:
         // Cap at 1.0
         return min(1.0, $score);
     }
-    
+
     /**
      * Fallback method for estimating keyword volume
      * Used when Google Keyword Planner and AI fail
@@ -2594,8 +2594,8 @@ Retorne um JSON com a seguinte estrutura:
     private function estimateKeywordVolumeFallback(string $keyword): int
     {
         $wordCount = str_word_count($keyword);
-        $length = strlen($keyword);
-        
+        $length = mb_strlen($keyword);
+
         // Estimate volume based on keyword characteristics (no rand())
         if ($wordCount <= 2) {
             // Short keywords typically have higher volume
@@ -2607,30 +2607,30 @@ Retorne um JSON com a seguinte estrutura:
             // Long-tail keywords
             $baseVolume = 300;
         }
-        
+
         // Adjust based on common high-volume patterns
         $highVolumeIndicators = ['celular', 'iphone', 'notebook', 'tv', 'sapato', 'camiseta', 'calça'];
         $lowVolumeIndicators = ['especializado', 'artesanal', 'personalizado', 'niche', 'profissional'];
-        
+
         $multiplier = 1.0;
-        
+
         foreach ($highVolumeIndicators as $indicator) {
             if (stripos($keyword, $indicator) !== false) {
                 $multiplier = 2.0;
                 break;
             }
         }
-        
+
         foreach ($lowVolumeIndicators as $indicator) {
             if (stripos($keyword, $indicator) !== false) {
                 $multiplier = 0.5;
                 break;
             }
         }
-        
+
         return (int)($baseVolume * $multiplier);
     }
-    
+
     /**
      * Fallback method for estimating keyword competition
      * Used when Google Keyword Planner and AI fail
@@ -2638,8 +2638,8 @@ Retorne um JSON com a seguinte estrutura:
     private function estimateKeywordCompetitionFallback(string $keyword): string
     {
         $wordCount = str_word_count($keyword);
-        $length = strlen($keyword);
-        
+        $length = mb_strlen($keyword);
+
         // Estimate competition based on keyword characteristics
         if ($wordCount <= 2 && $length <= 15) {
             // Short, common keywords = high competition

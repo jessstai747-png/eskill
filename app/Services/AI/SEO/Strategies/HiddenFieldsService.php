@@ -110,7 +110,7 @@ class HiddenFieldsService
                 'max_length' => $config['max_length'],
                 'is_filled' => !empty($currentValue),
                 'usage_percent' => $currentValue 
-                    ? round((strlen($currentValue) / $config['max_length']) * 100, 1) 
+                    ? round((mb_strlen($currentValue) / $config['max_length']) * 100, 1) 
                     : 0,
                 'weight' => $config['weight'],
                 'description' => $config['description']
@@ -267,9 +267,9 @@ class HiddenFieldsService
         return [
             'field_id' => 'KEYWORDS',
             'value' => $value,
-            'length' => strlen($value),
+            'length' => mb_strlen($value),
             'max_length' => $maxLength,
-            'usage_percent' => round((strlen($value) / $maxLength) * 100, 1),
+            'usage_percent' => round((mb_strlen($value) / $maxLength) * 100, 1),
             'keywords_used' => explode(' ', $value)
         ];
     }
@@ -294,21 +294,21 @@ class HiddenFieldsService
             $mpn = $this->cleanForMpn($model);
             
             // Adicionar prefixo da marca se houver espaço
-            if ($brand && strlen($mpn) + strlen($brand) + 1 <= $maxLength) {
-                $mpn = strtoupper(substr($brand, 0, 3)) . '-' . $mpn;
+            if ($brand && mb_strlen($mpn) + mb_strlen($brand) + 1 <= $maxLength) {
+                $mpn = mb_strtoupper(mb_substr($brand, 0, 3)) . '-' . $mpn;
             }
         }
 
         // Verificar código de fabricante em outros atributos
         $partNumber = $this->findAttributeValue($attributes, 'PART_NUMBER');
-        if ($partNumber && strlen($partNumber) <= $maxLength) {
+        if ($partNumber && mb_strlen($partNumber) <= $maxLength) {
             $mpn = $partNumber;
         }
 
         return [
             'field_id' => 'MPN',
-            'value' => substr($mpn, 0, $maxLength),
-            'length' => strlen($mpn),
+            'value' => mb_substr($mpn, 0, $maxLength),
+            'length' => mb_strlen($mpn),
             'max_length' => $maxLength,
             'source' => $existingMpn ? 'existing' : 'generated'
         ];
@@ -355,8 +355,8 @@ class HiddenFieldsService
 
         return [
             'field_id' => 'LINE',
-            'value' => substr($line, 0, $maxLength),
-            'length' => strlen($line),
+            'value' => mb_substr($line, 0, $maxLength),
+            'length' => mb_strlen($line),
             'max_length' => $maxLength
         ];
     }

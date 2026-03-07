@@ -79,7 +79,7 @@ class NegotiationService
     private function extractOfferValue(string $text): ?float
     {
         // Normalize
-        $text = strtolower($text);
+        $text = mb_strtolower($text);
         
         // Regex for "faz x", "aceita x", "fecha em x"
         // Matches: "faz 200", "faz R$ 200", "aceita 200,00"

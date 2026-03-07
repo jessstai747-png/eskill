@@ -253,7 +253,7 @@ class SynonymExpansionService
         foreach ($synonyms as $synonym) {
             // Limite de 255 caracteres para campo MODELO
             $testModel = implode(' ', array_merge($modelParts, [$synonym['word']]));
-            if (strlen($testModel) <= 250) {
+            if (mb_strlen($testModel) <= 250) {
                 $modelParts[] = $synonym['word'];
                 $synonymsUsed[] = $synonym;
             }
@@ -265,7 +265,7 @@ class SynonymExpansionService
             'success' => true,
             'model' => $model,
             'synonyms_used' => $synonymsUsed,
-            'character_count' => strlen($model),
+            'character_count' => mb_strlen($model),
             'word_count' => count($modelParts),
             'score' => $this->calculateModelScore($synonymsUsed)
         ];
@@ -681,7 +681,7 @@ class SynonymExpansionService
         $stopwords = ['de', 'da', 'do', 'e', 'para', 'com', 'em', 'a', 'o', 'um', 'uma'];
 
         $words = preg_split('/\s+/', mb_strtolower($title));
-        $words = array_filter($words, fn($w) => !in_array($w, $stopwords) && strlen($w) > 2);
+        $words = array_filter($words, fn($w) => !in_array($w, $stopwords) && mb_strlen($w) > 2);
 
         return array_values($words);
     }
