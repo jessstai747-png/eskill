@@ -330,7 +330,7 @@ class TitleGeneratorService
             if (empty($keyword)) continue;
 
             $keywordTitle = trim($keyword);
-            if ($brand && !str_contains(strtolower($keywordTitle), strtolower($brand))) {
+            if ($brand && !str_contains(mb_strtolower($keywordTitle), mb_strtolower($brand))) {
                 $keywordTitle .= " $brand";
             }
             

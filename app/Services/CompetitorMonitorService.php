@@ -309,7 +309,7 @@ class CompetitorMonitorService
     {
         // Remover palavras comuns e caracteres especiais
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'em', 'por', 'e', 'ou', 'a', 'o', 'as', 'os', 'um', 'uma'];
-        $words = preg_split('/[\s\-\/\|\(\)]+/', strtolower($title));
+        $words = preg_split('/[\s\-\/\|\(\)]+/', mb_strtolower($title));
         $words = array_filter($words, function ($word) use ($stopWords) {
             return strlen($word) > 2 && !in_array($word, $stopWords) && !is_numeric($word);
         });

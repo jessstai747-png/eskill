@@ -422,14 +422,14 @@ class AIContentGeneratorService
         $importantKeywords = array_slice($keywords, 0, 2);
         $titleParts = [];
         
-        if ($brand && !stripos($cleanTitle, $brand)) {
+        if ($brand && stripos($cleanTitle, $brand) === false) {
             $titleParts[] = $brand;
         }
         
         $titleParts[] = $cleanTitle;
         
         foreach ($importantKeywords as $keyword) {
-            if (!stripos(implode(' ', $titleParts), $keyword)) {
+            if (stripos(implode(' ', $titleParts), $keyword) === false) {
                 $titleParts[] = $keyword;
             }
         }

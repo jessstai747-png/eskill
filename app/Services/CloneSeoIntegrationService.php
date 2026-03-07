@@ -378,7 +378,7 @@ class CloneSeoIntegrationService
         }
 
         // Adicionar call-to-action sutil
-        if (!stripos($description, 'dúvida')) {
+        if (stripos($description, 'dúvida') === false) {
             $description .= "\n\n❓ Ficou com alguma dúvida? Entre em contato!";
         }
 
