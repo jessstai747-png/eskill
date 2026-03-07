@@ -476,7 +476,7 @@ class ItemMetricsService extends MercadoLivreClient
         $attributes = $item['attributes'] ?? [];
 
         // Título
-        $titleLength = strlen($title);
+        $titleLength = mb_strlen($title);
         if ($titleLength >= 45 && $titleLength <= 60) $score += 20;
         elseif ($titleLength >= 30) $score += 10;
 

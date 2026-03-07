@@ -508,7 +508,7 @@ Responda APENAS em JSON válido.";
         // Enhance with keywords if space allows
         foreach ($keywords as $kw) {
             if (mb_stripos($title, $kw) === false && mb_strlen($title) + mb_strlen($kw) + 1 <= 60) {
-                $title .= ' ' . ucfirst($kw);
+                $title .= ' ' . mb_strtoupper(mb_substr($kw, 0, 1)) . mb_substr($kw, 1);
                 break;
             }
         }

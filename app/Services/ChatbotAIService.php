@@ -124,7 +124,7 @@ class ChatbotAIService extends MercadoLivreClient
      */
     private function detectIntent(string $text): array
     {
-        $text = strtolower($this->normalizeText($text));
+        $text = mb_strtolower($this->normalizeText($text));
         $words = explode(' ', $text);
         
         $scores = [];
@@ -134,7 +134,7 @@ class ChatbotAIService extends MercadoLivreClient
             $matches = 0;
             
             foreach ($intentData['patterns'] as $pattern) {
-                $pattern = strtolower($pattern);
+                $pattern = mb_strtolower($pattern);
                 
                 // Match exato
                 if (strpos($text, $pattern) !== false) {
@@ -144,7 +144,7 @@ class ChatbotAIService extends MercadoLivreClient
                 
                 // Match parcial (palavras)
                 foreach ($words as $word) {
-                    if (strlen($word) > 3 && strpos($pattern, $word) !== false) {
+                    if (mb_strlen($word) > 3 && strpos($pattern, $word) !== false) {
                         $score += 0.3;
                     }
                 }
@@ -446,7 +446,7 @@ class ChatbotAIService extends MercadoLivreClient
         $text = str_replace(
             ['á', 'à', 'ã', 'â', 'é', 'ê', 'í', 'ó', 'ô', 'õ', 'ú', 'ü', 'ç'],
             ['a', 'a', 'a', 'a', 'e', 'e', 'i', 'o', 'o', 'o', 'u', 'u', 'c'],
-            strtolower($text)
+            mb_strtolower($text)
         );
         
         return trim($text);

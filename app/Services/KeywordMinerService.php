@@ -206,7 +206,7 @@ class KeywordMinerService
             if (!empty($attr['values']) && is_array($attr['values'])) {
                 foreach ($attr['values'] as $value) {
                     $valueName = $value['name'] ?? '';
-                    if ($valueName && strlen($valueName) > 1) {
+                    if ($valueName && mb_strlen($valueName) > 1) {
                         // Calcular relevância baseada no tipo de atributo
                         $relevance = 70;
                         if (in_array($attrId, ['BRAND', 'MODEL'])) {
@@ -253,7 +253,7 @@ class KeywordMinerService
 
             // Adicionar keywords únicas
             foreach (array_merge($catKeywords, $attrKeywords) as $kw) {
-                $key = strtolower($kw['keyword']);
+                $key = mb_strtolower($kw['keyword']);
                 if (!isset($seenKeywords[$key])) {
                     $seenKeywords[$key] = true;
                     $allUniqueKeywords[] = $kw;
@@ -274,7 +274,7 @@ class KeywordMinerService
                     
                     // Adicionar keywords únicas das subcategorias
                     foreach ($subAttrKw as $subKw) {
-                        $key = strtolower($subKw['keyword']);
+                        $key = mb_strtolower($subKw['keyword']);
                         if (!isset($seenKeywords[$key])) {
                             $seenKeywords[$key] = true;
                             $allUniqueKeywords[] = $subKw;
@@ -338,10 +338,10 @@ class KeywordMinerService
             );
             $title = preg_replace('/\s+/', ' ', trim($title));
             
-            if (strlen($title) <= 60 && strlen($title) >= 20) {
+            if (mb_strlen($title) <= 60 && mb_strlen($title) >= 20) {
                 $suggestions[] = [
                     'title' => $title,
-                    'length' => strlen($title),
+                    'length' => mb_strlen($title),
                     'keywords_used' => array_filter([$brand, $model, $attributes[0] ?? null]),
                 ];
             }
@@ -360,7 +360,7 @@ class KeywordMinerService
 
         foreach (['domain_keywords', 'category_keywords', 'attribute_keywords'] as $group) {
             foreach ($keywordGroups[$group] ?? [] as $kw) {
-                $keyword = strtolower($kw['keyword'] ?? '');
+                $keyword = mb_strtolower($kw['keyword'] ?? '');
                 if (!$keyword || isset($seen[$keyword])) {
                     continue;
                 }

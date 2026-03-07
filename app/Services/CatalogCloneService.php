@@ -1865,7 +1865,7 @@ class CatalogCloneService
     private function resolveSellerByNickname(MercadoLivreClient $client, string $nickname): ?string
     {
         // Normalizar nickname: remover espaços, converter para uppercase (ML usa uppercase)
-        $nickname = strtoupper(trim($nickname));
+        $nickname = mb_strtoupper(trim($nickname));
 
         // 1) Tentar busca direta por nickname (endpoint mais preciso)
         try {
@@ -1881,7 +1881,7 @@ class CatalogCloneService
                 // Validar que o nickname confere
                 $sellerInfo = $client->get("/users/{$foundId}", [], null, false);
                 if (!isset($sellerInfo['error'])) {
-                    $foundNick = strtoupper($sellerInfo['nickname'] ?? '');
+                    $foundNick = mb_strtoupper($sellerInfo['nickname'] ?? '');
                     if ($foundNick === $nickname) {
                         return $foundId;
                     }
@@ -1906,7 +1906,7 @@ class CatalogCloneService
             ], null, false);
 
             foreach ($fallbackResult['results'] ?? [] as $item) {
-                $sellerNick = strtoupper($item['seller']['nickname'] ?? '');
+                $sellerNick = mb_strtoupper($item['seller']['nickname'] ?? '');
                 if ($sellerNick === $nickname) {
                     return (string)$item['seller']['id'];
                 }

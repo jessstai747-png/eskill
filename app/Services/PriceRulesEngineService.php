@@ -1017,7 +1017,7 @@ class PriceRulesEngineService
         // Remover palavras comuns
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'sem', 'e', 'ou', 'a', 'o', 'um', 'uma'];
         $words = preg_split('/\s+/', strtolower($title));
-        $keywords = array_filter($words, fn($w) => strlen($w) > 2 && !in_array($w, $stopWords));
+        $keywords = array_filter($words, fn($w) => mb_strlen($w) > 2 && !in_array($w, $stopWords));
 
         return implode(' ', array_slice($keywords, 0, 5));
     }

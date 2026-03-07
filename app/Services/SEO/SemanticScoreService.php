@@ -76,11 +76,11 @@ class SemanticScoreService
      */
     public function hasUseContext(string $word): bool
     {
-        $wordLower = strtolower($word);
+        $wordLower = mb_strtolower($word);
         
         foreach ($this->useContexts as $contextGroup) {
             foreach ($contextGroup as $contextWord) {
-                if (strtolower($contextWord) === $wordLower) {
+                if (mb_strtolower($contextWord) === $wordLower) {
                     return true;
                 }
             }
@@ -127,8 +127,8 @@ class SemanticScoreService
      */
     private function getScoreComponents(string $word, string $title): array
     {
-        $wordLower = strtolower($word);
-        $titleLower = strtolower($title);
+        $wordLower = mb_strtolower($word);
+        $titleLower = mb_strtolower($title);
         
         return [
             'relevance' => [
@@ -173,7 +173,7 @@ class SemanticScoreService
         $count = 0;
         
         foreach ($wordsInTitle as $titleWord) {
-            if (strtolower($titleWord) === $word) {
+            if (mb_strtolower($titleWord) === $word) {
                 $count++;
             }
         }

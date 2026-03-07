@@ -282,13 +282,13 @@ class GoogleKeywordPlannerService
         
         foreach ($response['results'] as $idea) {
             $keywordText = $idea['keyword']['text'] ?? '';
-            if (strtolower($keywordText) === strtolower($originalKeyword)) {
+            if (mb_strtolower($keywordText) === mb_strtolower($originalKeyword)) {
                 $bestMatch = $idea;
                 break;
             }
             
             // Calculate similarity distance
-            $distance = levenshtein(strtolower($keywordText), strtolower($originalKeyword));
+            $distance = levenshtein(mb_strtolower($keywordText), mb_strtolower($originalKeyword));
             if ($distance < $lowestDistance) {
                 $lowestDistance = $distance;
                 $bestMatch = $idea;

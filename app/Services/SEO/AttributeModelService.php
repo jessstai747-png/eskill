@@ -613,14 +613,14 @@ Extraia informações de modelo e retorne JSON:
 
     private function extractKeywords(string $text): array
     {
-        $text = strtolower($text);
+        $text = mb_strtolower($text);
         $text = preg_replace('/[^a-z0-9\s]/', ' ', $text);
         $words = preg_split('/\s+/', trim($text));
         
         $stopWords = ['de', 'da', 'do', 'em', 'para', 'com', 'sem', 'a', 'o', 'as', 'os', 'e', 'ou'];
         
         return array_filter($words, function($word) use ($stopWords) {
-            return strlen($word) > 2 && !in_array($word, $stopWords);
+            return mb_strlen($word) > 2 && !in_array($word, $stopWords);
         });
     }
 

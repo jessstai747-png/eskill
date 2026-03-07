@@ -190,7 +190,7 @@ class SEOTechnicalSpecGenerator
         // Marca (palavras com letra maiúscula no início)
         if (preg_match('/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/', $title, $matches)) {
             $brand = $matches[1];
-            if (!in_array($brand, ['Produto', 'Kit', 'Set', 'Novo', 'Original']) && strlen($brand) <= 20) {
+            if (!in_array($brand, ['Produto', 'Kit', 'Set', 'Novo', 'Original']) && mb_strlen($brand) <= 20) {
                 $specs[] = [
                     'id' => 'BRAND',
                     'value_name' => $brand

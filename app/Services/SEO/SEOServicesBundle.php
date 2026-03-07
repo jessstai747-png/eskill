@@ -17,8 +17,8 @@ class SemanticScoreService
 
     public function calculateScore(string $word, string $title, string $categoryId): float
     {
-        $titleLower = strtolower($title);
-        $wordLower = strtolower($word);
+        $titleLower = mb_strtolower($title);
+        $wordLower = mb_strtolower($word);
         
         if (strpos($titleLower, $wordLower) !== false) {
             return 1.0;

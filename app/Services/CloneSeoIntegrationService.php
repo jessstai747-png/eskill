@@ -347,7 +347,8 @@ class CloneSeoIntegrationService
 
         // Remover CAPS LOCK excessivo
         $description = preg_replace_callback('/\b[A-Z]{4,}\b/', function ($matches) {
-            return ucfirst(mb_strtolower($matches[0]));
+            $lower = mb_strtolower($matches[0]);
+            return mb_strtoupper(mb_substr($lower, 0, 1)) . mb_substr($lower, 1);
         }, $description);
 
         // Remover repetições de pontuação

@@ -259,7 +259,7 @@ class SEODescriptionGenerator
         // Features baseadas em keywords secundárias
         foreach ($secondaryKeywords as $keyword) {
             if (mb_strlen($keyword) >= 4 && mb_strlen($keyword) <= 30) {
-                $features[] = ucfirst($keyword);
+                $features[] = mb_strtoupper(mb_substr($keyword, 0, 1)) . mb_substr($keyword, 1);
             }
         }
         
@@ -678,8 +678,8 @@ class SEODescriptionGenerator
         
         // Usar gaps como diferenciais
         foreach ($gaps as $gap) {
-            if (strlen($gap) <= 40) {
-                $points[] = ucfirst($gap);
+            if (mb_strlen($gap) <= 40) {
+                $points[] = mb_strtoupper(mb_substr($gap, 0, 1)) . mb_substr($gap, 1);
             }
         }
         

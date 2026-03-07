@@ -271,7 +271,7 @@ class CloneSlackDiscordNotificationService
             'Job de Clonagem Falhou',
             "Job **{$jobName}** (#{$jobId}) falhou durante execução",
             [
-                ['name' => 'Erro', 'value' => substr($errorMessage, 0, 200), 'inline' => false],
+                ['name' => 'Erro', 'value' => mb_substr($errorMessage, 0, 200), 'inline' => false],
                 ['name' => 'Itens Processados', 'value' => number_format($processedItems), 'inline' => true],
                 ['name' => 'Ação Recomendada', 'value' => 'Verificar logs e reprocessar', 'inline' => false],
             ],

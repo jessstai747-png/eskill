@@ -1871,7 +1871,7 @@ class TechSheetService
                 }
 
                 $value = $kw['keyword'] ?? '';
-                if (empty($value) || strlen($value) < 2) {
+                if (empty($value) || mb_strlen($value) < 2) {
                     continue;
                 }
 
@@ -2038,7 +2038,7 @@ class TechSheetService
 
                 // Verificar se é uma correspondência parcial (ex: "Preto" em "Preto Fosco")
                 if (
-                    strlen($normalizedValue) >= 4 &&
+                    mb_strlen($normalizedValue) >= 4 &&
                     (str_contains($allowedName, $normalizedValue) || str_contains($normalizedValue, $allowedName))
                 ) {
                     return $gap;
@@ -2079,7 +2079,7 @@ class TechSheetService
             }
 
             // Match parcial
-            if (strlen($normalizedValue) >= 3) {
+            if (mb_strlen($normalizedValue) >= 3) {
                 if (str_contains($allowedName, $normalizedValue) || str_contains($normalizedValue, $allowedName)) {
                     return $allowedId ?? $allowed['name'];
                 }

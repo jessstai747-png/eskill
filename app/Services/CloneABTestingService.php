@@ -658,7 +658,7 @@ class CloneABTestingService
         
         // Variação 1: Adicionar palavras de urgência
         $urgencyPrefixes = ['OFERTA!', 'PROMOÇÃO!', 'IMPERDÍVEL!'];
-        if (strlen($originalTitle) < 50) {
+        if (mb_strlen($originalTitle) < 50) {
             $prefixIndex = abs(crc32($originalTitle . 'urgency')) % count($urgencyPrefixes);
             $variations[] = [
                 'name' => 'Com Urgência',
@@ -686,7 +686,7 @@ class CloneABTestingService
         
         // Variação 3: Adicionar benefício
         $benefits = ['Frete Grátis', 'Envio Rápido', 'Garantia', 'Qualidade'];
-        if (strlen($originalTitle) < 45) {
+        if (mb_strlen($originalTitle) < 45) {
             $benefitIndex = abs(crc32($originalTitle . 'benefit')) % count($benefits);
             $benefit = $benefits[$benefitIndex];
             $variations[] = [

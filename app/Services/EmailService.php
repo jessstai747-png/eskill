@@ -354,7 +354,7 @@ class EmailService
             default => '#6c757d'
         };
         
-        $subject = "{$statusIcon} Alerta de Tokens ML - Status: " . strtoupper($healthStatus);
+        $subject = "{$statusIcon} Alerta de Tokens ML - Status: " . mb_strtoupper($healthStatus);
         
         // Construir lista de problemas críticos
         $criticalHtml = '';
@@ -441,7 +441,7 @@ class EmailService
             <div class='container'>
                 <div class='header'>
                     <h1>{$statusIcon} Alerta de Saúde dos Tokens ML</h1>
-                    <p style='margin: 10px 0 0 0; font-size: 14px;'>Status: " . strtoupper($healthStatus) . "</p>
+                    <p style='margin: 10px 0 0 0; font-size: 14px;'>Status: " . mb_strtoupper($healthStatus) . "</p>
                 </div>
                 <div class='content'>
                     <h2>📈 Métricas Gerais</h2>

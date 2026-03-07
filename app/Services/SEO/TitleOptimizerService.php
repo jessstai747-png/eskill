@@ -170,7 +170,7 @@ Analise e retorne JSON:
         return [
             'visible_gaps' => [
                 'missing_keywords' => array_unique($missingKeywords),
-                'character_optimization' => strlen($title) > 60 ? 'too_long' : (strlen($title) < 45 ? 'too_short' : 'optimal'),
+                'character_optimization' => mb_strlen($title) > 60 ? 'too_long' : (mb_strlen($title) < 45 ? 'too_short' : 'optimal'),
                 'brand_position' => strpos($title, $brand ?? '') !== false ? 'present' : 'missing'
             ],
             'hidden_gaps' => [
@@ -330,10 +330,10 @@ Retorne JSON semântico:
     {
         // Remove palavras irrelevantes e extrai keywords
         $stopWords = ['de', 'da', 'do', 'em', 'para', 'com', 'sem', 'a', 'o', 'as', 'os', 'e', 'ou'];
-        $words = preg_split('/[\s,\-\/]+/', strtolower(trim($text)));
+        $words = preg_split('/[\s,\-\/]+/', mb_strtolower(trim($text)));
         
         return array_filter($words, function($word) use ($stopWords) {
-            return strlen($word) > 2 && !in_array($word, $stopWords);
+            return mb_strlen($word) > 2 && !in_array($word, $stopWords);
         });
     }
 
@@ -400,7 +400,7 @@ Retorne JSON semântico:
         foreach ($competitors as $competitor) {
             foreach ($competitor['attributes'] ?? [] as $attr) {
                 $value = $attr['value_name'] ?? '';
-                if (stripos($title, $value) === false && strlen($value) > 1) {
+                if (stripos($title, $value) === false && mb_strlen($value) > 1) {
                     $missingAttributes[] = $value;
                 }
             }
@@ -417,7 +417,7 @@ Retorne JSON semântico:
         $score = 50; // Base
         
         // Fatores que aumentam oportunidade
-        if (strlen($title) < 45 || strlen($title) > 60) $score += 15;
+        if (mb_strlen($title) < 45 || mb_strlen($title) > 60) $score += 15;
         if (count($this->extractKeywords($title)) < 3) $score += 20;
         if (!preg_match('/[0-9]/', $title)) $score += 10; // Especificidades numéricas
         
@@ -491,7 +491,7 @@ Retorne JSON semântico:
                 foreach ($item['attributes'] ?? [] as $attr) {
                     $name = $attr['name'] ?? '';
                     $value = $attr['value_name'] ?? '';
-                    if (!empty($name) && !empty($value) && strlen($value) > 1) {
+                    if (!empty($name) && !empty($value) && mb_strlen($value) > 1) {
                         $popularAttributes[$name] = $popularAttributes[$name] ?? [];
                         $popularAttributes[$name][] = $value;
                     }
@@ -500,7 +500,7 @@ Retorne JSON semântico:
                 // Identificar padrões de título (termos recorrentes nos top results)
                 $words = $this->extractKeywords($itemTitle);
                 foreach ($words as $word) {
-                    if (strlen($word) > 2) {
+                    if (mb_strlen($word) > 2) {
                         $recommendedPatterns[$word] = ($recommendedPatterns[$word] ?? 0) + 1;
                     }
                 }

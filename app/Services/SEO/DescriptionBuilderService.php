@@ -85,7 +85,7 @@ class DescriptionBuilderService
     public function validateDescription(string $description): array
     {
         $wordCount = str_word_count($description);
-        $charCount = strlen($description);
+        $charCount = mb_strlen($description);
         
         return [
             'is_valid' => $wordCount >= 50 && $charCount <= 50000,

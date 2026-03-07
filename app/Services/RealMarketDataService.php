@@ -424,14 +424,14 @@ class RealMarketDataService
         foreach ($attributes as $attr) {
             // Nome do atributo
             $name = $attr['name'] ?? '';
-            if ($name && strlen($name) >= 3) {
+            if ($name && mb_strlen($name) >= 3) {
                 $keywords[] = $name;
             }
 
             // Valores dos atributos (marcas, modelos, etc)
             foreach (($attr['values'] ?? []) as $value) {
                 $valueName = $value['name'] ?? '';
-                if ($valueName && strlen($valueName) >= 3 && strlen($valueName) <= 50) {
+                if ($valueName && mb_strlen($valueName) >= 3 && mb_strlen($valueName) <= 50) {
                     $keywords[] = $valueName;
                 }
             }

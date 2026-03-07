@@ -1555,13 +1555,13 @@ class TechSheetSEOIntegrationService
     private function generateMPN(string $brand, string $model, string $title): string
     {
         // Gerar MPN a partir de brand + model ou extrair do título
-        $mpn = strtoupper(substr($brand, 0, 3)) . '-' . preg_replace('/[^A-Z0-9]/i', '', $model);
+        $mpn = mb_strtoupper(mb_substr($brand, 0, 3)) . '-' . preg_replace('/[^A-Z0-9]/i', '', $model);
         return $mpn;
     }
 
     private function generateLine(string $brand, string $model): string
     {
-        return ucfirst($brand) . ' ' . ucfirst($model);
+        return (mb_strtoupper(mb_substr($brand, 0, 1)) . mb_substr($brand, 1)) . ' ' . (mb_strtoupper(mb_substr($model, 0, 1)) . mb_substr($model, 1));
     }
 
     private function getAttributeName(string $attrId): string

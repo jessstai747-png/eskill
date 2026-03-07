@@ -281,7 +281,7 @@ class CompatibilityService
             foreach ($brandModels as $m) {
                 $formatted[] = [
                     'value' => $m,
-                    'brand' => ucfirst($brand)
+                    'brand' => mb_strtoupper(mb_substr($brand, 0, 1)) . mb_substr($brand, 1)
                 ];
             }
         }

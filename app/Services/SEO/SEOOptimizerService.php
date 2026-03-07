@@ -382,7 +382,7 @@ Faça análise competitiva e retorne JSON:
 
         // 3. Gerar descrição (se solicitado ou se descrição atual é fraca)
         $currentDesc = $product['description'] ?? '';
-        if (empty($currentDesc) || strlen($currentDesc) < 200 || ($analysis['description_analysis']['score'] ?? 100) < 60) {
+        if (empty($currentDesc) || mb_strlen($currentDesc) < 200 || ($analysis['description_analysis']['score'] ?? 100) < 60) {
             $descResult = $this->generateDescription($product);
 
             if ($descResult['success']) {

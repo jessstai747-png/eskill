@@ -408,8 +408,8 @@ class FAQOptimizerService
         );
 
         // Truncar se muito longo
-        if (strlen($question) > 100) {
-            $question = substr($question, 0, 97) . '...?';
+        if (mb_strlen($question) > 100) {
+            $question = mb_substr($question, 0, 97) . '...?';
         }
 
         return $question;
@@ -506,7 +506,7 @@ Formato de resposta (JSON):
             // Encontrar ponto de inserção natural
             if (preg_match('/\.\s/', $result, $matches, PREG_OFFSET_CAPTURE)) {
                 $pos = $matches[0][1] + 2;
-                $result = substr($result, 0, $pos) . ucfirst($keyword) . '. ' . substr($result, $pos);
+                $result = substr($result, 0, $pos) . mb_strtoupper(mb_substr($keyword, 0, 1)) . mb_substr($keyword, 1) . '. ' . substr($result, $pos);
                 $injected++;
             }
         }
@@ -579,7 +579,7 @@ HTML;
         
         foreach (array_slice($commonQuestions, 0, 5, true) as $question => $count) {
             $suggestions[] = [
-                'question' => ucfirst($question) . '?',
+                'question' => mb_strtoupper(mb_substr($question, 0, 1)) . mb_substr($question, 1) . '?',
                 'frequency' => $count,
                 'recommendation' => 'Incluir esta FAQ - alta frequência entre concorrentes'
             ];

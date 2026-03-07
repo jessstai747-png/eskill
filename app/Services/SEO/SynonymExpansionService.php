@@ -211,7 +211,7 @@ class SynonymExpansionService
     private function buildFallbackSynonyms(string $title): array
     {
         $keywords = $this->extractKeywords($title);
-        $keywordsText = strtolower(implode(' ', $keywords));
+        $keywordsText = mb_strtolower(implode(' ', $keywords));
         $isMoto = str_contains($keywordsText, 'moto') || str_contains($keywordsText, 'bauleto') || str_contains($keywordsText, 'bau');
 
         return [

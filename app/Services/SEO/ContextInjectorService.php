@@ -103,11 +103,11 @@ class ContextInjectorService
         $description = is_string($description) ? $description : (string) $description;
         $categoryId = $item['category_id'] ?? '';
         
-        $combinedText = strtolower($title . ' ' . $description);
+        $combinedText = mb_strtolower($title . ' ' . $description);
         
         foreach (self::CONTEXTS as $contextType => $contextData) {
             foreach ($contextData['keywords'] as $keyword) {
-                if (strpos($combinedText, strtolower($keyword)) !== false) {
+                if (strpos($combinedText, mb_strtolower($keyword)) !== false) {
                     if (!in_array($contextType, $contexts)) {
                         $contexts[] = $contextType;
                     }
@@ -157,8 +157,8 @@ class ContextInjectorService
      */
     private function containsRelatedConcept(string $text, string $phrase): bool
     {
-        $textLower = strtolower($text);
-        $phraseLower = strtolower($phrase);
+        $textLower = mb_strtolower($text);
+        $phraseLower = mb_strtolower($phrase);
         
         // Simple check for overlapping words
         $phraseWords = explode(' ', $phraseLower);
@@ -166,7 +166,7 @@ class ContextInjectorService
         $totalPhraseWords = count($phraseWords);
         
         foreach ($phraseWords as $word) {
-            if (strlen($word) > 3 && strpos($textLower, $word) !== false) { // Only check words longer than 3 chars
+            if (mb_strlen($word) > 3 && strpos($textLower, $word) !== false) { // Only check words longer than 3 chars
                 $overlapCount++;
             }
         }

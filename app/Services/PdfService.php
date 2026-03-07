@@ -975,8 +975,8 @@ class PdfService
             'cancelled' => 'Cancelado',
         ];
 
-        $statusClass = 'status-' . strtolower($status);
-        $label = $statusLabels[strtolower($status)] ?? ucfirst($status);
+        $statusClass = 'status-' . mb_strtolower($status);
+        $label = $statusLabels[mb_strtolower($status)] ?? ucfirst($status);
 
         return '<span class="status-badge ' . $statusClass . '">' . $label . '</span>';
     }

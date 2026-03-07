@@ -1776,7 +1776,7 @@ class AIRecommendationEngineService
 
         // Penalizar por descrição muito longa
         $description = $product['description'] ?? '';
-        if (strlen($description) > 5000) {
+        if (mb_strlen($description) > 5000) {
             $score -= 0.1;
         }
 

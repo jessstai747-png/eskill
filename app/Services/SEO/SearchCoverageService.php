@@ -169,14 +169,14 @@ class SearchCoverageService
 
     private function isGenericCovered(array $item): bool
     {
-        $title = strtolower($this->normalizeTextField($item['title'] ?? ''));
+        $title = mb_strtolower($this->normalizeTextField($item['title'] ?? ''));
         return $title !== '' && str_word_count($title) >= 2;
     }
 
     private function isQualifiedCovered(array $item): bool
     {
-        $title = strtolower($this->normalizeTextField($item['title'] ?? ''));
-        $model = strtolower($this->normalizeTextField($item['model'] ?? ''));
+        $title = mb_strtolower($this->normalizeTextField($item['title'] ?? ''));
+        $model = mb_strtolower($this->normalizeTextField($item['model'] ?? ''));
         return (str_word_count($title) >= 3 || str_word_count($model) >= 2);
     }
 
@@ -212,7 +212,7 @@ class SearchCoverageService
             }
 
             $id = strtoupper($attr['id'] ?? '');
-            $name = strtolower($attr['name'] ?? '');
+            $name = mb_strtolower($attr['name'] ?? '');
             $value = $attr['value_name'] ?? ($attr['value'] ?? null);
 
             if (!empty($value) && (in_array($id, $brandIds, true) || in_array($name, $brandNames, true))) {
@@ -234,14 +234,14 @@ class SearchCoverageService
                     $value = $value['plain_text'] ?? ($value['text'] ?? '');
                 }
                 $value = is_string($value) ? $value : (string) $value;
-                $keywords = array_merge($keywords, preg_split('/\s+/', strtolower($value)));
+                $keywords = array_merge($keywords, preg_split('/\s+/', mb_strtolower($value)));
             }
         }
 
         if (!empty($item['attributes']) && is_array($item['attributes'])) {
             foreach ($item['attributes'] as $attr) {
                 if (is_string($attr)) {
-                    $keywords = array_merge($keywords, preg_split('/\s+/', strtolower($attr)));
+                    $keywords = array_merge($keywords, preg_split('/\s+/', mb_strtolower($attr)));
                     continue;
                 }
 
@@ -251,7 +251,7 @@ class SearchCoverageService
 
                 foreach (['value_name', 'value', 'name'] as $key) {
                     if (!empty($attr[$key])) {
-                        $keywords = array_merge($keywords, preg_split('/\s+/', strtolower((string)$attr[$key])));
+                        $keywords = array_merge($keywords, preg_split('/\s+/', mb_strtolower((string)$attr[$key])));
                     }
                 }
             }

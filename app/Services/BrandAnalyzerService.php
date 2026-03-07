@@ -514,7 +514,7 @@ class BrandAnalyzerService
                 $result['current_value'] = $attr['value_name'] ?? null;
 
                 if ($result['current_value']) {
-                    $normalizedValue = strtoupper(trim($result['current_value']));
+                    $normalizedValue = mb_strtoupper(trim($result['current_value']));
                     $normalizedValue = str_replace(['.', ' '], '', $normalizedValue);
                     $result['normalized_value'] = $normalizedValue;
 

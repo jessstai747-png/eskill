@@ -385,7 +385,7 @@ class SearchService
             // Critérios de "Baixa Qualidade"
             
             // 1. Título Curto ou Mal Otimizado (< 40 chars)
-            if (strlen($item['title']) < 40) {
+            if (mb_strlen($item['title']) < 40) {
                 $score += 2;
                 $reasons[] = 'Título curto/pouco descritivo';
             }

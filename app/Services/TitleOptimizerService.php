@@ -249,15 +249,16 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
         $result = [];
 
         foreach ($words as $i => $word) {
+            $lower = mb_strtolower($word);
             if ($i === 0) {
                 // First word should be capitalized
-                $result[] = ucfirst(strtolower($word));
+                $result[] = mb_strtoupper(mb_substr($lower, 0, 1)) . mb_substr($lower, 1);
             } else {
                 // Check if it's a connector that should stay lowercase
-                if (in_array(strtolower($word), self::CONNECTORS)) {
-                    $result[] = strtolower($word);
+                if (in_array($lower, self::CONNECTORS)) {
+                    $result[] = $lower;
                 } else {
-                    $result[] = ucfirst(strtolower($word));
+                    $result[] = mb_strtoupper(mb_substr($lower, 0, 1)) . mb_substr($lower, 1);
                 }
             }
         }
@@ -519,7 +520,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
         
         foreach ($knownBrands as $brand) {
             if (mb_strpos($titleLower, $brand) !== false) {
-                return ucfirst($brand);
+                return mb_strtoupper(mb_substr($brand, 0, 1)) . mb_substr($brand, 1);
             }
         }
         

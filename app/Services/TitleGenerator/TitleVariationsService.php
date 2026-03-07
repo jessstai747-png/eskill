@@ -102,7 +102,7 @@ class TitleVariationsService
         // Avaliar todas variações
         $evaluated = [];
         foreach ($variations as $variation) {
-            if (strlen($variation) > 60) continue; // Skip títulos muito longos
+            if (mb_strlen($variation) > 60) continue; // Skip títulos muito longos
 
             $analysis = $this->analyzer->analyzeTitle($variation, $categoryId);
             
@@ -110,7 +110,7 @@ class TitleVariationsService
                 $evaluated[] = [
                     'title' => $variation,
                     'score' => $analysis['overall_score'],
-                    'length' => strlen($variation),
+                    'length' => mb_strlen($variation),
                     'strategy' => $this->identifyStrategy($title, $variation),
                     'improvements' => $this->compareToOriginal($title, $variation, $categoryId),
                 ];
@@ -160,7 +160,7 @@ class TitleVariationsService
             if (!empty($components['model'])) {
                 $keywordFirst .= ' ' . $components['model'];
             }
-            if (strlen($keywordFirst) <= 60) {
+            if (mb_strlen($keywordFirst) <= 60) {
                 $variations[] = [
                     'type' => 'A',
                     'title' => $keywordFirst,
@@ -178,7 +178,7 @@ class TitleVariationsService
                 $brandFirst .= ' ' . $components['model'];
             }
             foreach ($components['specs'] as $spec) {
-                if (strlen($brandFirst . ' ' . $spec) <= 60) {
+                if (mb_strlen($brandFirst . ' ' . $spec) <= 60) {
                     $brandFirst .= ' ' . $spec;
                 }
             }
@@ -196,7 +196,7 @@ class TitleVariationsService
             if (!empty($components['brand'])) {
                 $specsHeavy .= ' ' . $components['brand'];
             }
-            if (strlen($specsHeavy) <= 60) {
+            if (mb_strlen($specsHeavy) <= 60) {
                 $variations[] = [
                     'type' => 'C',
                     'title' => $specsHeavy,
@@ -210,7 +210,7 @@ class TitleVariationsService
         foreach ($variations as &$variation) {
             $analysis = $this->analyzer->analyzeTitle($variation['title'], $categoryId);
             $variation['score'] = $analysis['overall_score'];
-            $variation['length'] = strlen($variation['title']);
+            $variation['length'] = mb_strlen($variation['title']);
             $variation['estimated_ctr'] = $analysis['performance_estimate']['click_through_rate_estimate'];
             $variation['ranking_potential'] = $analysis['performance_estimate']['ranking_potential'];
         }
@@ -335,7 +335,7 @@ class TitleVariationsService
         $variations = [];
 
         // Só adicionar se tiver espaço (< 55 caracteres)
-        if (strlen($title) >= 55) {
+        if (mb_strlen($title) >= 55) {
             return $variations;
         }
 
@@ -343,7 +343,7 @@ class TitleVariationsService
             foreach ($modList as $modifier) {
                 // Adicionar no final
                 $withModifier = "$title $modifier";
-                if (strlen($withModifier) <= 60) {
+                if (mb_strlen($withModifier) <= 60) {
                     $variations[] = $withModifier;
                 }
 
@@ -354,7 +354,7 @@ class TitleVariationsService
                         $components['brand'] . ' ' . $modifier,
                         $title
                     );
-                    if (strlen($withModifierAfterBrand) <= 60) {
+                    if (mb_strlen($withModifierAfterBrand) <= 60) {
                         $variations[] = $withModifierAfterBrand;
                     }
                 }
@@ -379,7 +379,7 @@ class TitleVariationsService
             $variation = preg_replace('/\s+/', ' ', $variation); // Limpar espaços duplos
             $variation = trim($variation);
             
-            if ($variation !== $title && strlen($variation) >= 30) {
+            if ($variation !== $title && mb_strlen($variation) >= 30) {
                 $variations[] = $variation;
             }
         }
@@ -397,7 +397,7 @@ class TitleVariationsService
         foreach (self::ABBREVIATIONS as $full => $abbr) {
             if (str_contains($title, $abbr)) {
                 $expanded = str_replace($abbr, $full, $title);
-                if (strlen($expanded) <= 60) {
+                if (mb_strlen($expanded) <= 60) {
                     $variations[] = $expanded;
                 }
             }
@@ -434,7 +434,7 @@ class TitleVariationsService
                 if (!empty($components['specs'])) {
                     $withConnector .= ' ' . implode(' ', array_slice($components['specs'], 0, 2));
                 }
-                if (strlen($withConnector) <= 60) {
+                if (mb_strlen($withConnector) <= 60) {
                     $variations[] = trim($withConnector);
                 }
             }
@@ -448,9 +448,9 @@ class TitleVariationsService
      */
     private function identifyStrategy(string $original, string $variation): string
     {
-        if (strlen($variation) < strlen($original) - 5) {
+        if (mb_strlen($variation) < mb_strlen($original) - 5) {
             return 'compression';
-        } elseif (strlen($variation) > strlen($original) + 5) {
+        } elseif (mb_strlen($variation) > mb_strlen($original) + 5) {
             return 'expansion';
         } elseif ($this->wordsReordered($original, $variation)) {
             return 'reorder';
@@ -483,7 +483,7 @@ class TitleVariationsService
 
         return [
             'score_change' => $variationAnalysis['overall_score'] - $originalAnalysis['overall_score'],
-            'length_change' => strlen($variation) - strlen($original),
+            'length_change' => mb_strlen($variation) - mb_strlen($original),
             'improvements' => array_diff(
                 $variationAnalysis['seo_analysis']['factors'] ?? [],
                 $originalAnalysis['seo_analysis']['factors'] ?? []

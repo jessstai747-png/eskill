@@ -63,7 +63,7 @@ class CompatibilityService
      */
     public function detectFromTitle(string $title): array
     {
-        $titleLower = strtolower($title);
+        $titleLower = mb_strtolower($title);
         $detectedCompatibility = [];
 
         foreach (self::MOTO_BRANDS as $brand => $models) {
@@ -73,7 +73,7 @@ class CompatibilityService
 
                 // Check for specific models
                 foreach ($models as $model) {
-                    if (strpos($titleLower, strtolower($model)) !== false) {
+                    if (strpos($titleLower, mb_strtolower($model)) !== false) {
                         $detectedCompatibility[$brand][] = $model;
                     }
                 }
@@ -161,7 +161,7 @@ class CompatibilityService
 
     private function formatBrandName(string $brand): string
     {
-        return ucfirst($brand);
+        return mb_strtoupper(mb_substr($brand, 0, 1)) . mb_substr($brand, 1);
     }
 
     private function detectModelsWithoutBrand(string $titleLower): array
@@ -170,7 +170,7 @@ class CompatibilityService
 
         foreach (self::MOTO_BRANDS as $brand => $models) {
             foreach ($models as $model) {
-                if (strpos($titleLower, strtolower($model)) !== false) {
+                if (strpos($titleLower, mb_strtolower($model)) !== false) {
                     $detected[$brand][] = $model;
                 }
             }

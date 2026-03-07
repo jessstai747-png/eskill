@@ -337,7 +337,7 @@ class SEOAuditService
                     if (($itemAttr['id'] ?? '') === ($catAttr['id'] ?? '')) {
                         $value = $itemAttr['value_name'] ?? $itemAttr['value_id'] ?? '';
                         // Check for placeholder values
-                        if (!empty($value) && !in_array(strtolower($value), ['n/a', 'não se aplica', 'outro'])) {
+                        if (!empty($value) && !in_array(mb_strtolower($value), ['n/a', 'não se aplica', 'outro'])) {
                             $isFilled = true;
                         }
                         break;

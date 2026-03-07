@@ -673,7 +673,7 @@ class FieldWeightService
         
         $value = implode(' ', $keywords);
         if ($config['max_length']) {
-            $value = substr($value, 0, $config['max_length']);
+            $value = mb_substr($value, 0, $config['max_length']);
         }
 
         return [

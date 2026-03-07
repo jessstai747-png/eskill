@@ -170,12 +170,12 @@ class CompetitorAnalysisService
 
         // Extract key terms (remove common words)
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'em', 'o', 'a', 'e', 'ou'];
-        $words = explode(' ', strtolower($title));
+        $words = explode(' ', mb_strtolower($title));
         $keywords = [];
 
         foreach ($words as $word) {
             $word = trim($word);
-            if (strlen($word) > 3 && !in_array($word, $stopWords)) {
+            if (mb_strlen($word) > 3 && !in_array($word, $stopWords)) {
                 $keywords[] = $word;
             }
         }
@@ -234,8 +234,8 @@ class CompetitorAnalysisService
      */
     private function calculateTitleSimilarity(string $title1, string $title2): float
     {
-        $words1 = array_unique(explode(' ', strtolower($title1)));
-        $words2 = array_unique(explode(' ', strtolower($title2)));
+        $words1 = array_unique(explode(' ', mb_strtolower($title1)));
+        $words2 = array_unique(explode(' ', mb_strtolower($title2)));
 
         $intersection = array_intersect($words1, $words2);
         $union = array_unique(array_merge($words1, $words2));
@@ -453,10 +453,10 @@ class CompetitorAnalysisService
             $lengths[] = mb_strlen($title);
 
             // Extract words
-            $words = explode(' ', strtolower($title));
+            $words = explode(' ', mb_strtolower($title));
             foreach ($words as $word) {
                 $word = trim($word);
-                if (strlen($word) > 3) {
+                if (mb_strlen($word) > 3) {
                     if (!isset($commonWords[$word])) {
                         $commonWords[$word] = 0;
                     }

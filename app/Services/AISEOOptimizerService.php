@@ -2181,7 +2181,7 @@ Retorne um JSON com a seguinte estrutura:
         }
 
         // Check cache first (6h TTL)
-        $cacheKey = 'competitor_benchmarks_' . md5($category . '_' . substr($title, 0, 30));
+        $cacheKey = 'competitor_benchmarks_' . md5($category . '_' . mb_substr($title, 0, 30));
         $cached = $this->cache->get($cacheKey, 'seo_competition');
         if ($cached && is_array($cached)) {
             return $cached;

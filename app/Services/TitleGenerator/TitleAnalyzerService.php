@@ -88,7 +88,7 @@ class TitleAnalyzerService
     {
         $analysis = [
             'title' => $title,
-            'length' => strlen($title),
+            'length' => mb_strlen($title),
             'word_count' => str_word_count($title),
             'category_id' => $categoryId,
         ];
@@ -125,7 +125,7 @@ class TitleAnalyzerService
      */
     private function analyzeLengthOptimization(string $title): array
     {
-        $length = strlen($title);
+        $length = mb_strlen($title);
         $wordCount = str_word_count($title);
 
         $score = 0;
@@ -453,7 +453,7 @@ class TitleAnalyzerService
         }
 
         // Comprimento otimizado
-        $length = strlen($title);
+        $length = mb_strlen($title);
         if ($length >= 45 && $length <= 58) {
             $seoScore += 20;
             $seoFactors[] = 'Comprimento ótimo (+20)';
@@ -485,7 +485,7 @@ class TitleAnalyzerService
         return [
             'score' => $seoScore,
             'factors' => $seoFactors,
-            'keyword_position' => stripos($title, ' ') ?: strlen($title),
+            'keyword_position' => stripos($title, ' ') ?: mb_strlen($title),
             'has_technical_specs' => preg_match('/\d+/', $title) === 1,
             'optimization_level' => $seoScore >= 80 ? 'excellent' : ($seoScore >= 60 ? 'good' : 'needs_improvement'),
         ];
@@ -697,7 +697,7 @@ class TitleAnalyzerService
         $hasBrand = preg_match('/^[A-Z]/', $words[0]);
 
         // Segunda palavra é modelo ou produto
-        $hasModel = strlen($words[1]) >= 2;
+        $hasModel = mb_strlen($words[1]) >= 2;
 
         // Terceira+ palavras são especificações
         $hasSpecs = count($words) >= 3;
@@ -711,7 +711,7 @@ class TitleAnalyzerService
     private function calculateReadability(string $title): string
     {
         $wordCount = str_word_count($title);
-        $avgWordLength = strlen(str_replace(' ', '', $title)) / max(1, $wordCount);
+        $avgWordLength = mb_strlen(str_replace(' ', '', $title)) / max(1, $wordCount);
 
         if ($wordCount >= 4 && $wordCount <= 8 && $avgWordLength <= 8) {
             return 'easy';

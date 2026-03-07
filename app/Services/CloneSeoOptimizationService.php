@@ -134,13 +134,13 @@ class CloneSeoOptimizationService
     {
         $result = [
             'original' => $title,
-            'length' => strlen($title),
+            'length' => mb_strlen($title),
             'score' => 0,
             'issues' => [],
             'suggestions' => []
         ];
         
-        $length = strlen($title);
+        $length = mb_strlen($title);
         
         // Comprimento ideal: 45-58 caracteres
         if ($length >= 45 && $length <= 58) {
@@ -196,13 +196,13 @@ class CloneSeoOptimizationService
     private function analyzeDescription(string $description): array
     {
         $result = [
-            'length' => strlen($description),
+            'length' => mb_strlen($description),
             'score' => 0,
             'issues' => [],
             'suggestions' => []
         ];
         
-        $length = strlen($description);
+        $length = mb_strlen($description);
         
         // Mínimo recomendado: 500 caracteres
         if ($length >= 1000) {

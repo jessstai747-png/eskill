@@ -742,7 +742,7 @@ class SearchTypeCoverageService
         }
         
         $result = implode(' ', $hidden);
-        return substr($result, 0, 60);
+        return mb_substr($result, 0, 60);
     }
 
     // ========================================================================

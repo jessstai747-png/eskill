@@ -239,7 +239,7 @@ class LearningEngine
             
             foreach ($successfulTitles as $title) {
                 $content = $title['optimized_content'];
-                $patterns['avg_length'] += strlen($content);
+                $patterns['avg_length'] += mb_strlen($content);
                 $patterns['avg_word_count'] += str_word_count($content);
                 
                 if (preg_match('/\d+/', $content)) {
@@ -247,9 +247,9 @@ class LearningEngine
                 }
                 
                 // Count word frequency
-                $words = preg_split('/\s+/', strtolower($content));
+                $words = preg_split('/\s+/', mb_strtolower($content));
                 foreach ($words as $word) {
-                    if (strlen($word) > 3) {
+                    if (mb_strlen($word) > 3) {
                         $wordFrequency[$word] = ($wordFrequency[$word] ?? 0) + 1;
                     }
                 }
@@ -310,7 +310,7 @@ class LearningEngine
             
             foreach ($descriptions as $desc) {
                 $content = $desc['optimized_content'];
-                $patterns['avg_length'] += strlen($content);
+                $patterns['avg_length'] += mb_strlen($content);
                 
                 if (preg_match('/[•\-\*]/', $content)) {
                     $patterns['has_bullets']++;

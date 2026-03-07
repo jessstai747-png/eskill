@@ -538,7 +538,7 @@ class UseContextService
 
             $useSection = "\n\n✅ **Ideal para:**\n";
             foreach ($phrases as $p) {
-                $useSection .= "• " . ucfirst($p['phrase']) . "\n";
+                $useSection .= "• " . mb_strtoupper(mb_substr($p['phrase'], 0, 1)) . mb_substr($p['phrase'], 1) . "\n";
                 $added[] = $p['phrase'];
             }
 

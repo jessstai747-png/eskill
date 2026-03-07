@@ -238,7 +238,8 @@ class CloneSEOIntegrationService
             }
             // Primeira palavra sempre capitalizada
             elseif ($i === 0) {
-                $result[] = ucfirst(mb_strtolower($word));
+                $lower = mb_strtolower($word);
+                $result[] = mb_strtoupper(mb_substr($lower, 0, 1)) . mb_substr($lower, 1);
             }
             // Palavras de ligação em minúsculas
             elseif (in_array(mb_strtolower($word), $skipWords)) {
@@ -246,7 +247,8 @@ class CloneSEOIntegrationService
             }
             // Resto capitalizado
             else {
-                $result[] = ucfirst(mb_strtolower($word));
+                $lower = mb_strtolower($word);
+                $result[] = mb_strtoupper(mb_substr($lower, 0, 1)) . mb_substr($lower, 1);
             }
         }
 
@@ -349,7 +351,7 @@ class CloneSEOIntegrationService
 
         foreach (array_slice($sentences, 0, 6) as $sentence) {
             if (mb_strlen($sentence) > 10) {
-                $structured .= "• " . ucfirst($sentence) . "\n";
+                $structured .= "• " . mb_strtoupper(mb_substr($sentence, 0, 1)) . mb_substr($sentence, 1) . "\n";
             }
         }
 

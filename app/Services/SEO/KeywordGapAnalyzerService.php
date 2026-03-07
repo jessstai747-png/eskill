@@ -237,14 +237,14 @@ class KeywordGapAnalyzerService
 
         // 3. Keywords da descrição (limitado)
         if (!empty($product['description'])) {
-            $descKeywords = $this->extractBasicKeywords(substr($product['description'], 0, 500));
+            $descKeywords = $this->extractBasicKeywords(mb_substr($product['description'], 0, 500));
             $keywords = array_merge($keywords, $descKeywords);
         }
 
         // Remove duplicatas e filtra
         $keywords = array_unique($keywords);
         $keywords = array_filter($keywords, function ($keyword) {
-            return strlen($keyword) > 2 && !in_array(strtolower($keyword), $this->getStopWords());
+            return mb_strlen($keyword) > 2 && !in_array(mb_strtolower($keyword), $this->getStopWords());
         });
 
         return array_values($keywords);
@@ -448,12 +448,12 @@ Retorne JSON com oportunidades de cauda longa:
      */
     private function extractBasicKeywords(string $text): array
     {
-        $text = strtolower($text);
+        $text = mb_strtolower($text);
         $text = preg_replace('/[^a-z0-9\s]/', ' ', $text);
         $words = preg_split('/\s+/', trim($text));
 
         return array_filter($words, function ($word) {
-            return strlen($word) > 2 && !in_array($word, $this->getStopWords());
+            return mb_strlen($word) > 2 && !in_array($word, $this->getStopWords());
         });
     }
 
@@ -567,7 +567,7 @@ Retorne JSON com oportunidades de cauda longa:
             $keywords = $productKeywords[$pid] ?? [];
 
             foreach ($keywords as $keyword) {
-                $kw = strtolower($keyword);
+                $kw = mb_strtolower($keyword);
                 if (!isset($keywordSales[$kw])) {
                     $keywordSales[$kw] = ['total_sales' => 0, 'product_count' => 0, 'products' => []];
                 }

@@ -1558,7 +1558,7 @@ class CompetitorIntelligenceService
         $score = 0.0;
 
         // Title length
-        $titleLen = strlen($product['title'] ?? '');
+        $titleLen = mb_strlen($product['title'] ?? '');
         if ($titleLen >= 45 && $titleLen <= 60) {
             $score += 3.0;
         } elseif ($titleLen >= 30) {

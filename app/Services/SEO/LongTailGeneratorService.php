@@ -175,11 +175,11 @@ class LongTailGeneratorService
             'cg 160', 'titan', 'fan', 'bros', 'cb 300', 'factor', 'fazer', 'xtz'
         ];
         
-        $titleLower = strtolower($title);
+        $titleLower = mb_strtolower($title);
         
         foreach ($commonBrands as $brand) {
             if (strpos($titleLower, $brand) !== false) {
-                $compatibilities[] = ucfirst($brand);
+                $compatibilities[] = mb_strtoupper(mb_substr($brand, 0, 1)) . mb_substr($brand, 1);
             }
         }
 
@@ -192,7 +192,7 @@ class LongTailGeneratorService
     private function extractContexts(string $title, string $categoryId): array
     {
         $contexts = [];
-        $titleLower = strtolower($title);
+        $titleLower = mb_strtolower($title);
         
         // Common context indicators
         $contextIndicators = [
@@ -234,7 +234,7 @@ class LongTailGeneratorService
 
     private function normalizeTitleWords(string $title): array
     {
-        $clean = strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $title));
+        $clean = mb_strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $title));
         $words = preg_split('/\s+/', $clean, -1, PREG_SPLIT_NO_EMPTY);
 
         $filtered = [];

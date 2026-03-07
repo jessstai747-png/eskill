@@ -564,7 +564,7 @@ class CloneNotificationService
                 
             case self::EVENT_JOB_FAILED:
                 $fields[] = ['name' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'inline' => true];
-                $fields[] = ['name' => 'Erro', 'value' => substr($payload['error'] ?? 'Desconhecido', 0, 1024), 'inline' => false];
+                $fields[] = ['name' => 'Erro', 'value' => mb_substr($payload['error'] ?? 'Desconhecido', 0, 1024), 'inline' => false];
                 break;
                 
             case self::EVENT_BATCH_PROGRESS:
@@ -574,7 +574,7 @@ class CloneNotificationService
                 
             case self::EVENT_ALERT_CRITICAL:
                 $fields[] = ['name' => 'Tipo', 'value' => $payload['alert_type'] ?? 'N/A', 'inline' => true];
-                $fields[] = ['name' => 'Mensagem', 'value' => substr($payload['message'] ?? 'N/A', 0, 1024), 'inline' => false];
+                $fields[] = ['name' => 'Mensagem', 'value' => mb_substr($payload['message'] ?? 'N/A', 0, 1024), 'inline' => false];
                 break;
                 
             case self::EVENT_METRICS_DAILY:

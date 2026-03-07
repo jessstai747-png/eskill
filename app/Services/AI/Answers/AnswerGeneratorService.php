@@ -80,7 +80,7 @@ class AnswerGeneratorService
     {
         $context = "Product: " . ($item['title'] ?? 'N/A') . "\n";
         $context .= "Price: " . ($item['price'] ?? 'N/A') . "\n";
-        $context .= "Description: " . substr(($item['description'] ?? ''), 0, 800) . "...\n"; // Increased limit
+        $context .= "Description: " . mb_substr(($item['description'] ?? ''), 0, 800) . "...\n"; // Increased limit
         
         // Add Attributes if available
         if (!empty($item['attributes'])) {

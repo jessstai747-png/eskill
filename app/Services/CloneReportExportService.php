@@ -422,7 +422,7 @@ class CloneReportExportService
         $pdf->SetFont('helvetica', '', 7);
         foreach ($jobs as $job) {
             $pdf->Cell(15, 5, $job['job_id'], 1, 0, 'C');
-            $pdf->Cell(40, 5, substr($job['account_name'] ?? 'N/A', 0, 18), 1);
+            $pdf->Cell(40, 5, mb_substr($job['account_name'] ?? 'N/A', 0, 18), 1);
             $pdf->Cell(20, 5, $job['status'], 1, 0, 'C');
             $pdf->Cell(20, 5, $job['items_total'], 1, 0, 'C');
             $pdf->Cell(20, 5, $job['items_completed'], 1, 0, 'C');

@@ -200,7 +200,7 @@ class KeywordResearchService
         
         // Add singular/plural variations if applicable
         foreach ($words as $word) {
-            if (substr($word, -1) === 's') {
+            if (mb_substr($word, -1) === 's') {
                 // Word ends in 's', might be plural
                 $singular = rtrim($word, 's');
                 $variations[] = str_replace($word, $singular, $baseKeyword);
@@ -247,7 +247,7 @@ class KeywordResearchService
      */
     private function classifySingleKeyword(string $keyword, string $categoryId): string
     {
-        $keywordLower = strtolower($keyword);
+        $keywordLower = mb_strtolower($keyword);
         
         // Core keywords are typically the main product terms
         $coreTerms = ['produto', 'item', 'modelo', 'marca'];

@@ -426,8 +426,8 @@ class HiddenFieldsService
 
         return [
             'field_id' => 'ALPHANUMERIC_MODEL',
-            'value' => substr($value, 0, $maxLength),
-            'length' => strlen($value),
+            'value' => mb_substr($value, 0, $maxLength),
+            'length' => mb_strlen($value),
             'max_length' => $maxLength,
             'source' => 'generated'
         ];
@@ -687,7 +687,7 @@ class HiddenFieldsService
     {
         $value = trim($value);
         $value = preg_replace('/\s+/', ' ', $value);
-        return substr($value, 0, $maxLength);
+        return mb_substr($value, 0, $maxLength);
     }
 
     private function calculateImpact(float $weight): string
