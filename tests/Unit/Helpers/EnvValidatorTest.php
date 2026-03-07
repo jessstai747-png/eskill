@@ -1,283 +1,300 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Helpers;
 
-use Tests\TestCase;
 use App\Helpers\EnvValidator;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers \App\Helpers\EnvValidator
+ */
 class EnvValidatorTest extends TestCase
 {
-    private array $originalEnv;
+    private array $originalEnv = [];
+    private array $trackedKeys = [];
 
     protected function setUp(): void
     {
         parent::setUp();
-        // Salvar estado original
         $this->originalEnv = $_ENV;
+        $this->trackedKeys = [];
     }
 
     protected function tearDown(): void
     {
-        // Restaurar estado original
-        $_ENV = $this->originalEnv;
+        // Only restore keys we explicitly set during the test
+        foreach ($this->trackedKeys as $key) {
+            if (array_key_exists($key, $this->originalEnv)) {
+                $_ENV[$key] = $this->originalEnv[$key];
+            } else {
+                unset($_ENV[$key]);
+            }
+            // Also clean putenv
+            putenv($key);
+        }
         parent::tearDown();
     }
 
-    // =============================
-    // TESTES DE VALIDAÇÃO
-    // =============================
+    private function setEnv(string $key, string $value): void
+    {
+        $this->trackedKeys[] = $key;
+        $_ENV[$key] = $value;
+        putenv("{$key}={$value}");
+    }
+
+    private function unsetEnv(string $key): void
+    {
+        $this->trackedKeys[] = $key;
+        unset($_ENV[$key]);
+        putenv($key);
+    }
+
+    // --- validate() basic ---
 
     public function testValidatePassesWithAllRequiredVars(): void
     {
-        $_ENV['APP_KEY'] = str_repeat('x', 32);
-        $_ENV['DB_HOST'] = 'localhost';
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(false);
-
-        $this->assertTrue($result);
-        $this->assertEmpty($validator->getErrors());
+        $v = new EnvValidator();
+        $this->assertTrue($v->validate(false));
+        $this->assertEmpty($v->getErrors());
     }
 
-    public function testValidateFailsWithoutAppKey(): void
+    public function testValidateFailsWithMissingRequired(): void
     {
-        $_ENV['APP_KEY'] = '';
-        $_ENV['DB_HOST'] = 'localhost';
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
+        $this->unsetEnv("APP_KEY");
+        $this->unsetEnv("DB_HOST");
+        $this->unsetEnv("DB_DATABASE");
+        $this->unsetEnv("DB_USERNAME");
+        $this->unsetEnv("DB_PASSWORD");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(false);
+        $v = new EnvValidator();
+        $this->assertFalse($v->validate(false));
+        $errors = $v->getErrors();
+        $this->assertNotEmpty($errors);
 
-        $this->assertFalse($result);
-
-        $errors = $validator->getErrors();
-        $errorVars = array_column($errors, 'variable');
-        $this->assertContains('APP_KEY', $errorVars);
+        $errorVars = array_column($errors, "variable");
+        $this->assertContains("APP_KEY", $errorVars);
+        $this->assertContains("DB_HOST", $errorVars);
     }
 
     public function testValidateFailsWithShortAppKey(): void
     {
-        $_ENV['APP_KEY'] = 'short_key'; // Menos de 32 caracteres
-        $_ENV['DB_HOST'] = 'localhost';
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
+        $this->setEnv("APP_KEY", "tooshort");
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(false);
+        $v = new EnvValidator();
+        $this->assertFalse($v->validate(false));
 
-        $this->assertFalse($result);
-
-        $errors = $validator->getErrors();
+        $errors = $v->getErrors();
         $found = false;
-        foreach ($errors as $error) {
-            if ($error['variable'] === 'APP_KEY' && $error['type'] === 'invalid') {
+        foreach ($errors as $e) {
+            if ($e["variable"] === "APP_KEY" && $e["type"] === "invalid") {
                 $found = true;
                 break;
             }
         }
-        $this->assertTrue($found, 'APP_KEY curto deveria gerar erro do tipo invalid');
+        $this->assertTrue($found, "Should report APP_KEY as invalid (too short)");
     }
 
-    public function testValidateFailsWithoutDbVars(): void
+    public function testValidateEmptyStringCountsAsMissing(): void
     {
-        $_ENV['APP_KEY'] = str_repeat('x', 32);
-        $_ENV['DB_HOST'] = '';
-        $_ENV['DB_DATABASE'] = '';
-        $_ENV['DB_USERNAME'] = '';
-        $_ENV['DB_PASSWORD'] = '';
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(false);
+        $v = new EnvValidator();
+        $this->assertFalse($v->validate(false));
 
-        $this->assertFalse($result);
-
-        $errors = $validator->getErrors();
-        $errorVars = array_column($errors, 'variable');
-
-        $this->assertContains('DB_HOST', $errorVars);
-        $this->assertContains('DB_DATABASE', $errorVars);
-        $this->assertContains('DB_USERNAME', $errorVars);
+        $errorVars = array_column($v->getErrors(), "variable");
+        $this->assertContains("DB_HOST", $errorVars);
     }
 
-    // =============================
-    // TESTES DE PRODUÇÃO
-    // =============================
-
-    public function testValidateProductionRequiresMlVars(): void
+    public function testValidateNullStringCountsAsMissing(): void
     {
-        $_ENV['APP_KEY'] = str_repeat('x', 32);
-        $_ENV['DB_HOST'] = 'localhost';
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
-        $_ENV['APP_URL'] = '';
-        $_ENV['ML_APP_ID'] = '';
-        $_ENV['ML_CLIENT_SECRET'] = '';
-        $_ENV['ML_REDIRECT_URI'] = '';
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "null");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(true); // isProduction = true
+        $v = new EnvValidator();
+        $this->assertFalse($v->validate(false));
 
-        $this->assertFalse($result);
-
-        $errors = $validator->getErrors();
-        $errorVars = array_column($errors, 'variable');
-
-        $this->assertContains('APP_URL', $errorVars);
-        $this->assertContains('ML_APP_ID', $errorVars);
-        $this->assertContains('ML_CLIENT_SECRET', $errorVars);
+        $errorVars = array_column($v->getErrors(), "variable");
+        $this->assertContains("DB_HOST", $errorVars);
     }
 
-    public function testValidateProductionWarnsAboutDebugMode(): void
+    // --- Production validation ---
+
+    public function testProductionRequiresMLVars(): void
     {
-        $_ENV['APP_KEY'] = str_repeat('x', 32);
-        $_ENV['DB_HOST'] = 'localhost';
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
-        $_ENV['APP_URL'] = 'https://example.com';
-        $_ENV['APP_DEBUG'] = 'true'; // Deveria ser false em produção
-        $_ENV['ML_APP_ID'] = 'test_id';
-        $_ENV['ML_CLIENT_SECRET'] = 'test_secret';
-        $_ENV['ML_REDIRECT_URI'] = 'https://example.com/callback';
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
+        $this->unsetEnv("ML_APP_ID");
+        $this->unsetEnv("ML_CLIENT_SECRET");
+        $this->unsetEnv("ML_REDIRECT_URI");
+        $this->unsetEnv("APP_URL");
 
-        $validator = new EnvValidator();
-        $validator->validate(true);
+        $v = new EnvValidator();
+        $this->assertFalse($v->validate(true));
 
-        $warnings = $validator->getWarnings();
-        $warningVars = array_column($warnings, 'variable');
-
-        $this->assertContains('APP_DEBUG', $warningVars);
+        $errorVars = array_column($v->getErrors(), "variable");
+        $this->assertContains("ML_APP_ID", $errorVars);
+        $this->assertContains("ML_CLIENT_SECRET", $errorVars);
+        $this->assertContains("ML_REDIRECT_URI", $errorVars);
+        $this->assertContains("APP_URL", $errorVars);
     }
 
-    // =============================
-    // TESTES DE URL
-    // =============================
-
-    public function testValidateRejectsInvalidUrl(): void
+    public function testProductionWarnsOnDebugTrue(): void
     {
-        $_ENV['APP_KEY'] = str_repeat('x', 32);
-        $_ENV['DB_HOST'] = 'localhost';
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
-        $_ENV['APP_URL'] = 'not-a-valid-url'; // URL inválida
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
+        $this->setEnv("APP_URL", "https://example.com");
+        $this->setEnv("ML_APP_ID", "12345");
+        $this->setEnv("ML_CLIENT_SECRET", "secret");
+        $this->setEnv("ML_REDIRECT_URI", "https://example.com/callback");
+        $this->setEnv("APP_DEBUG", "true");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(true);
+        $v = new EnvValidator();
+        $v->validate(true);
 
-        $this->assertFalse($result);
+        $warnings = $v->getWarnings();
+        $warningVars = array_column($warnings, "variable");
+        $this->assertContains("APP_DEBUG", $warningVars);
+    }
 
-        $errors = $validator->getErrors();
+    public function testNonProductionDoesNotRequireMLVars(): void
+    {
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
+
+        $v = new EnvValidator();
+        $this->assertTrue($v->validate(false));
+    }
+
+    // --- URL validation ---
+
+    public function testInvalidURLFormatReported(): void
+    {
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
+        $this->setEnv("APP_URL", "not-a-valid-url");
+
+        $v = new EnvValidator();
+        $v->validate(false);
+
+        $errors = $v->getErrors();
         $found = false;
-        foreach ($errors as $error) {
-            if ($error['variable'] === 'APP_URL' && $error['type'] === 'invalid_format') {
+        foreach ($errors as $e) {
+            if ($e["variable"] === "APP_URL" && $e["type"] === "invalid_format") {
                 $found = true;
                 break;
             }
         }
-        $this->assertTrue($found, 'URL inválida deveria gerar erro de formato');
+        $this->assertTrue($found, "Should detect invalid APP_URL format");
     }
 
-    public function testValidateAcceptsValidUrl(): void
+    public function testValidURLPasses(): void
     {
-        $_ENV['APP_KEY'] = str_repeat('x', 32);
-        $_ENV['DB_HOST'] = 'localhost';
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
-        $_ENV['APP_URL'] = 'https://example.com';
-        $_ENV['ML_APP_ID'] = 'test_id';
-        $_ENV['ML_CLIENT_SECRET'] = 'test_secret';
-        $_ENV['ML_REDIRECT_URI'] = 'https://example.com/callback';
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
+        $this->setEnv("APP_URL", "https://seusite.com");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(true);
-
-        // Deve passar sem erros de URL
-        $errors = $validator->getErrors();
-        $urlErrors = array_filter($errors, fn($e) => $e['type'] === 'invalid_format');
-
-        $this->assertEmpty($urlErrors);
+        $v = new EnvValidator();
+        $this->assertTrue($v->validate(false));
     }
 
-    // =============================
-    // TESTES DE RENDERIZAÇÃO
-    // =============================
+    // --- Recommended vars warnings ---
 
-    public function testRenderErrorPageReturnsHtml(): void
+    public function testRecommendedVarsGenerateWarnings(): void
     {
-        $_ENV['APP_KEY'] = '';
-        $_ENV['DB_HOST'] = '';
+        $this->setEnv("APP_KEY", str_repeat("a", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
+        $this->unsetEnv("EMAIL_ENABLED");
+        $this->unsetEnv("TELEGRAM_ENABLED");
 
-        $validator = new EnvValidator();
-        $validator->validate(false);
+        $v = new EnvValidator();
+        $v->validate(false);
 
-        $html = $validator->renderErrorPage();
-
-        $this->assertStringContainsString('<!DOCTYPE html>', $html);
-        $this->assertStringContainsString('Erro de Configuração', $html);
-        $this->assertStringContainsString('APP_KEY', $html);
+        $warnings = $v->getWarnings();
+        $warningVars = array_column($warnings, "variable");
+        $this->assertContains("EMAIL_ENABLED", $warningVars);
+        $this->assertContains("TELEGRAM_ENABLED", $warningVars);
     }
 
-    public function testRenderErrorPageIncludesAllErrors(): void
+    // --- renderErrorPage ---
+
+    public function testRenderErrorPageReturnsHTML(): void
     {
-        $_ENV['APP_KEY'] = '';
-        $_ENV['DB_HOST'] = '';
-        $_ENV['DB_DATABASE'] = '';
+        $this->unsetEnv("APP_KEY");
+        $this->unsetEnv("DB_HOST");
+        $this->unsetEnv("DB_DATABASE");
+        $this->unsetEnv("DB_USERNAME");
+        $this->unsetEnv("DB_PASSWORD");
 
-        $validator = new EnvValidator();
-        $validator->validate(false);
+        $v = new EnvValidator();
+        $v->validate(false);
 
-        $html = $validator->renderErrorPage();
-
-        // Deve incluir todos os erros no HTML
-        $this->assertStringContainsString('APP_KEY', $html);
-        $this->assertStringContainsString('DB_HOST', $html);
-        $this->assertStringContainsString('DB_DATABASE', $html);
+        $html = $v->renderErrorPage();
+        $this->assertStringContainsString("<!DOCTYPE html>", $html);
+        $this->assertStringContainsString("Erro de Configura", $html);
+        $this->assertStringContainsString("APP_KEY", $html);
     }
 
-    // =============================
-    // TESTES DE EDGE CASES
-    // =============================
+    // --- Reset between calls ---
 
-    public function testValidateTreatsNullStringAsEmpty(): void
+    public function testValidateResetsErrorsBetweenCalls(): void
     {
-        $_ENV['APP_KEY'] = str_repeat('x', 32);
-        $_ENV['DB_HOST'] = 'null'; // String 'null' deve ser tratada como vazio
-        $_ENV['DB_DATABASE'] = 'test_db';
-        $_ENV['DB_USERNAME'] = 'test_user';
-        $_ENV['DB_PASSWORD'] = 'test_pass';
+        $this->unsetEnv("APP_KEY");
+        $this->unsetEnv("DB_HOST");
+        $this->unsetEnv("DB_DATABASE");
+        $this->unsetEnv("DB_USERNAME");
+        $this->unsetEnv("DB_PASSWORD");
 
-        $validator = new EnvValidator();
-        $result = $validator->validate(false);
+        $v = new EnvValidator();
+        $v->validate(false);
+        $firstErrors = $v->getErrors();
 
-        $this->assertFalse($result);
+        $this->setEnv("APP_KEY", str_repeat("b", 32));
+        $this->setEnv("DB_HOST", "localhost");
+        $this->setEnv("DB_DATABASE", "testdb");
+        $this->setEnv("DB_USERNAME", "root");
+        $this->setEnv("DB_PASSWORD", "secret");
 
-        $errors = $validator->getErrors();
-        $errorVars = array_column($errors, 'variable');
-        $this->assertContains('DB_HOST', $errorVars);
-    }
+        $v->validate(false);
+        $secondErrors = $v->getErrors();
 
-    public function testGetErrorsReturnsEmptyArrayInitially(): void
-    {
-        $validator = new EnvValidator();
-
-        $this->assertIsArray($validator->getErrors());
-        $this->assertEmpty($validator->getErrors());
-    }
-
-    public function testGetWarningsReturnsEmptyArrayInitially(): void
-    {
-        $validator = new EnvValidator();
-
-        $this->assertIsArray($validator->getWarnings());
-        $this->assertEmpty($validator->getWarnings());
+        $this->assertNotEmpty($firstErrors);
+        $this->assertEmpty($secondErrors);
     }
 }

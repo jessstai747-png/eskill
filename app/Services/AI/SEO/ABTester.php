@@ -169,8 +169,8 @@ class ABTester
             // Calculate which one should be active TODAY
             $shouldBeB = (floor($daysRunning) % 2) == 0; // Toggle everyday
             
-            $dataA = json_decode($test['variant_a_data'], true)['value'];
-            $dataB = json_decode($test['variant_b_data'], true)['value'];
+            $dataA = (json_decode($test['variant_a_data'], true) ?? [])['value'] ?? null;
+            $dataB = (json_decode($test['variant_b_data'], true) ?? [])['value'] ?? null;
             
             $valToApply = $shouldBeB ? $dataB : $dataA;
             
@@ -312,7 +312,7 @@ class ABTester
         if (!$test) return ['error' => 'Teste não encontrado'];
         
         // Revert to Variant A
-        $dataA = json_decode($test['variant_a_data'], true)['value'];
+        $dataA = (json_decode($test['variant_a_data'], true) ?? [])['value'] ?? null;
         $this->applyVariant($test['item_id'], $test['type'], $dataA);
         
         $this->db->prepare("UPDATE seo_ab_tests SET status = 'stopped', end_date = NOW() WHERE id = ?")

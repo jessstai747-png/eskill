@@ -167,6 +167,10 @@
             <!-- Batch 8: AccountGovernance + MLStatisticsHelper tests -->
             <file>tests/Unit/Services/AccountGovernanceServiceTest.php</file>
             <file>tests/Unit/Helpers/MLStatisticsHelperTest.php</file>
+            <!-- Batch 9: ML DTOs, Exception, MercadoLivreHelper, EnvValidator tests -->
+            <file>tests/Unit/Services/MercadoLivre/CategoryDTOsTest.php</file>
+            <file>tests/Unit/Helpers/MercadoLivreHelperTest.php</file>
+            <file>tests/Unit/Helpers/EnvValidatorTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
