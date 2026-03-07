@@ -6,6 +6,28 @@
 
 ---
 
+## Sessão 2026-03-07 (23) — Float-key array bugs + AccountGovernance + MLStatistics tests
+
+### O que foi feito
+- **Discovered and fixed critical PHP float-key array bug** — found 4 instances where float values used as PHP array keys (e.g., `[0.90 => 1.645, 0.95 => 1.96, 0.99 => 2.576]`) were silently truncated to int 0, making all lookups return wrong values:
+  1. `MLStatisticsHelper::confidenceInterval()` — z-value lookup always returned 2.576 regardless of confidence level. Fixed with `match()`.
+  2. `AdvancedPricingEngine::calculatePsychologicalFactor()` — price ending scores all reduced to 0.5 instead of 0.9/0.8/0.7. Fixed with `match()`.
+  3. `AdvancedPricingEngine::calculatePsychologicalScore()` — charm pricing scores always added 1.5 instead of 3.0/2.5/2.0/1.5. Fixed with `match()`.
+  4. `DeepDemandPredictor::getZScoreForServiceLevel()` — always returned 2.33 regardless of service level. Fixed with tuple array.
+- **New: AccountGovernanceServiceTest** — 72 tests, 199 assertions covering all 15 public methods of this "pure computation engine" (1216 lines, no DB, no API). Tests: validateInput validation/exceptions, calculateAccountMetrics (active/paused/OOS/conversion counting), calculateFlags (11 flags: traffic share, stock, sales, conversion, trend, stale), calculateItemScore (penalties, margin, clamping), classifyItem (8 classifications: SEM_ESTOQUE→ANCHOR), classifyAccount (5 statuses: TRAVADA→FORTE), generateActions (8 action types with priorities), applyGuardrails (pause limits), detectDensityRisks (HIGH_DENSITY + GLOBAL_CONTAMINATION), generateRecoveryPlan (3 phases), identifyTopCauses (sorted by impact, max 5), generateWeekPlan (7 days), generateExecutiveSummary, buildSuccessCriteria, runFullDiagnostic (full pipeline).
+- **New: MLStatisticsHelperTest** — 40 tests, 91 assertions for pure math/statistics helper (773 lines). Tests: linearRegression (perfect fit, noise, edge cases), exponentialSmoothing (basic, empty, flat forecast, associative data), holtLinearTrend (upward/downward/single point), holtWintersSeasonal (seasonal patterns, fallback), tTest (one-sample, two-sample, similar/insufficient), variance/standardDeviation (constants, calculation, single), confidenceInterval (95%, single element, CI comparison), correlation (perfect positive/negative, no relation), detectOutliers (extreme values, uniform, edge), detectChangePoints (shift, flat, too short), seasonalDecomposition (structure, short data), movingAverage, ensembleForecast (model combination, trend).
+
+### Bugs encontrados e corrigidos
+1. **Float-key array bug** (4 files) — PHP silently truncates float array keys to int. This caused wrong confidence intervals, wrong pricing scores, and wrong z-scores in demand prediction.
+
+### Métricas
+- Total: 3235 tests, 7523 assertions, 51 skipped, 0 errors
+- Tests criados nesta sessão: +112 tests (+290 assertions)
+- Bugs corrigidos nesta sessão: 4 float-key array bugs
+- Git: `64b03e1` — "fix: float-key array bugs + new tests for AccountGovernance and MLStatistics"
+
+---
+
 ## Sessão 2026-03-06 (20) — ExceptionHandler integration + Setup de produção
 
 ### O que foi feito

@@ -379,8 +379,8 @@ class CategoryLearningService
         sort($prices);
         $count = count($prices);
         $median = $count % 2 === 0
-            ? ($prices[$count / 2 - 1] + $prices[$count / 2]) / 2
-            : $prices[floor($count / 2)];
+            ? ($prices[(int) ($count / 2) - 1] + $prices[(int) ($count / 2)]) / 2
+            : $prices[(int) floor($count / 2)];
 
         return [
             'min' => min($prices),

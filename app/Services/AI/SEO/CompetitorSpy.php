@@ -132,7 +132,7 @@ class CompetitorSpy
                     'min' => min($allPrices) ?: 0,
                     'max' => max($allPrices) ?: 0,
                     'avg' => count($allPrices) ? round(array_sum($allPrices) / count($allPrices), 2) : 0,
-                    'median' => $allPrices[floor(count($allPrices) / 2)] ?? 0,
+                    'median' => $allPrices[(int) floor(count($allPrices) / 2)] ?? 0,
                     'recommended_range' => [
                         'low' => round(min($allPrices) * 0.95, 2),
                         'high' => round(max($allPrices) * 1.05, 2),
