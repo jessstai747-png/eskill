@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -100,7 +102,7 @@ class PriceRulesEngineService
             'end_date' => $data['end_date'] ?? null
         ]);
 
-        $ruleId = $this->db->lastInsertId();
+        $ruleId = (int) $this->db->lastInsertId();
 
         $this->logRuleAction($ruleId, 'created', $data);
 

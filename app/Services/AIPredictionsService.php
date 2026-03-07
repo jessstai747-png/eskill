@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database;
@@ -487,7 +489,7 @@ class AIPredictionsService extends MercadoLivreClient
      */
     private function detectTrend(array $data): string
     {
-        $half = floor(count($data) / 2);
+        $half = (int) floor(count($data) / 2);
         $firstHalf = array_slice($data, 0, $half);
         $secondHalf = array_slice($data, $half);
 

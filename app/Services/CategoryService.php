@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\MercadoLivreClient;
@@ -16,7 +18,7 @@ class CategoryService
     public function __construct(?int $accountId = null)
     {
         $config = \App\Core\Config::getInstance()->all();
-        $this->siteId = $config['mercadolivre']['site_id'];
+        $this->siteId = ($config['mercadolivre']['site_id'] ?? null) ?: 'MLB';
         $this->client = new MercadoLivreClient($accountId);
         $this->cache = new CacheService();
     }

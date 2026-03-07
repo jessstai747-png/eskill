@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\MercadoLivreClient;
@@ -1988,7 +1990,7 @@ class DeepResearchService
 
         // Filtrar apenas os top 20% mais vendidos (estimado por sold_quantity)
         // Como sold_quantity nem sempre é exato, usamos também a posição na busca (relevância)
-        $topItems = array_slice($items, 0, ceil(count($items) * 0.2));
+        $topItems = array_slice($items, 0, (int) ceil(count($items) * 0.2));
 
         $text = '';
         foreach ($topItems as $item) {
