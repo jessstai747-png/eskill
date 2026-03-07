@@ -1238,8 +1238,8 @@ class BrandAnalyzerService
     private function normalizeTitle(string $title): string
     {
         $title = mb_strtolower($title);
-        $title = preg_replace('/\s+/', ' ', $title);
-        $title = preg_replace('/[^a-z0-9\s]/', '', $title);
+        $title = preg_replace('/\s+/u', ' ', $title);
+        $title = preg_replace('/[^\p{L}\p{N}\s]/u', '', $title);
         return trim($title);
     }
 

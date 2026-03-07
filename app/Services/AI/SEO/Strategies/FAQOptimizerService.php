@@ -8,18 +8,18 @@ use App\Services\LLMService;
 
 /**
  * ❓ E11: FAQ Optimizer Service
- * 
+ *
  * Gera e otimiza FAQs para SEO:
  * - Geração automática de perguntas frequentes
  * - Otimização com keywords estratégicas
  * - Schema.org FAQ markup
  * - Integração com descrição do produto
- * 
+ *
  * FAQs bem estruturadas aumentam:
  * - Tempo na página
  * - Conversão
  * - Featured snippets
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class FAQOptimizerService
@@ -124,7 +124,7 @@ class FAQOptimizerService
             foreach ($questions as $question) {
                 $processedQ = $this->processQuestion($question, $productData);
                 $answer = $this->generateAnswer($type, $productData);
-                
+
                 $faqs[] = [
                     'question' => $processedQ,
                     'answer' => $answer,
@@ -151,12 +151,12 @@ class FAQOptimizerService
     {
         try {
             $llm = new LLMService();
-            
+
             $prompt = $this->buildFAQPrompt($productData, $count);
             $response = $llm->generate($prompt);
-            
+
             $faqs = $this->parseFAQResponse($response);
-            
+
             return [
                 'faqs' => $faqs,
                 'source' => 'ai',
@@ -232,7 +232,7 @@ class FAQOptimizerService
         if ($style === 'accordion') {
             return $this->generateAccordionHTML($faqs);
         }
-        
+
         return $this->generateSimpleHTML($faqs);
     }
 
@@ -262,13 +262,13 @@ class FAQOptimizerService
 
         foreach ($competitorData as $competitor) {
             $faqs = $competitor['faqs'] ?? [];
-            
+
             foreach ($faqs as $faq) {
                 $question = mb_strtolower($faq['question'] ?? '');
-                
+
                 // Normalizar pergunta
                 $normalized = $this->normalizeQuestion($question);
-                
+
                 if (!isset($commonQuestions[$normalized])) {
                     $commonQuestions[$normalized] = 0;
                 }
@@ -348,7 +348,7 @@ class FAQOptimizerService
     public function suggestForCategory(string $categoryId): array
     {
         $templates = self::FAQ_TEMPLATES[$categoryId] ?? self::FAQ_TEMPLATES['default'];
-        
+
         $suggestions = [];
         foreach ($templates as $type => $questions) {
             foreach ($questions as $q) {
@@ -436,7 +436,7 @@ class FAQOptimizerService
     {
         $stopWords = ['o', 'a', 'os', 'as', 'um', 'uma', 'de', 'da', 'do', 'para', 'com', 'em', 'que', 'é', 'são'];
         $words = preg_split('/\s+/', mb_strtolower($text));
-        
+
         $keywords = [];
         foreach ($words as $word) {
             $word = preg_replace('/[^\p{L}\p{N}]/u', '', $word);
@@ -475,7 +475,7 @@ Formato de resposta (JSON):
     {
         // Tentar extrair JSON
         preg_match('/\[[\s\S]*\]/', $response, $matches);
-        
+
         if (!empty($matches[0])) {
             $faqs = json_decode($matches[0], true);
             if (is_array($faqs)) {
@@ -493,13 +493,13 @@ Formato de resposta (JSON):
 
         foreach ($keywords as $keyword) {
             if ($injected >= $maxInject) break;
-            
+
             // Garantir que keyword é string
             if (is_array($keyword)) {
                 $keyword = $keyword['keyword'] ?? $keyword['word'] ?? $keyword[0] ?? '';
             }
             if (empty($keyword) || !is_string($keyword)) continue;
-            
+
             // Não injetar se já existe
             if (stripos($result, $keyword) !== false) continue;
 
@@ -528,7 +528,7 @@ Formato de resposta (JSON):
     private function generateAccordionHTML(array $faqs): string
     {
         $html = '<div class="faq-accordion">';
-        
+
         foreach ($faqs as $i => $faq) {
             $id = 'faq-' . $i;
             $html .= <<<HTML
@@ -551,7 +551,7 @@ HTML;
     private function generateSimpleHTML(array $faqs): string
     {
         $html = '<div class="faq-list">';
-        
+
         foreach ($faqs as $faq) {
             $html .= <<<HTML
 <div class="faq-item">
@@ -576,7 +576,7 @@ HTML;
     private function generateSuggestionsFromAnalysis(array $commonQuestions): array
     {
         $suggestions = [];
-        
+
         foreach (array_slice($commonQuestions, 0, 5, true) as $question => $count) {
             $suggestions[] = [
                 'question' => mb_strtoupper(mb_substr($question, 0, 1)) . mb_substr($question, 1) . '?',

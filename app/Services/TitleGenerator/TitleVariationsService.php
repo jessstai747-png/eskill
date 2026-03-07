@@ -6,7 +6,7 @@ namespace App\Services\TitleGenerator;
 
 /**
  * Title Variations Service - Geração de Variações de Títulos
- * 
+ *
  * Cria variações criativas e otimizadas de títulos existentes usando:
  * - Reordenação de componentes
  * - Substituição de sinônimos
@@ -105,7 +105,7 @@ class TitleVariationsService
             if (mb_strlen($variation) > 60) continue; // Skip títulos muito longos
 
             $analysis = $this->analyzer->analyzeTitle($variation, $categoryId);
-            
+
             if ($analysis['overall_score'] >= $minScore) {
                 $evaluated[] = [
                     'title' => $variation,
@@ -145,7 +145,7 @@ class TitleVariationsService
     public function generateABTestingVariations(string $title, array $options = []): array
     {
         $categoryId = $options['category_id'] ?? '';
-        
+
         $components = $this->parseTitle($title);
 
         // Criar 3 variações distintas para A/B testing
@@ -229,7 +229,7 @@ class TitleVariationsService
     private function parseTitle(string $title): array
     {
         $words = explode(' ', $title);
-        
+
         $components = [
             'brand' => '',
             'model' => '',
@@ -260,7 +260,7 @@ class TitleVariationsService
                     break;
                 }
             }
-            
+
             if (!$isModifier) {
                 $components['specs'][] = $word;
             }
@@ -370,7 +370,7 @@ class TitleVariationsService
     private function removeUnnecessaryWords(string $title, array $components): array
     {
         $variations = [];
-        
+
         // Palavras que podem ser removidas
         $unnecessary = ['com', 'para', 'de', 'em', 'da', 'do', 'e'];
 
@@ -378,7 +378,7 @@ class TitleVariationsService
             $variation = preg_replace('/\b' . $word . '\b/i', '', $title);
             $variation = preg_replace('/\s+/', ' ', $variation); // Limpar espaços duplos
             $variation = trim($variation);
-            
+
             if ($variation !== $title && mb_strlen($variation) >= 30) {
                 $variations[] = $variation;
             }
@@ -466,10 +466,10 @@ class TitleVariationsService
     {
         $words1 = explode(' ', mb_strtolower($str1));
         $words2 = explode(' ', mb_strtolower($str2));
-        
+
         sort($words1);
         sort($words2);
-        
+
         return $words1 === $words2;
     }
 

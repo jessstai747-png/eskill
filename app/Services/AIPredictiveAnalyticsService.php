@@ -346,7 +346,7 @@ class AIPredictiveAnalyticsService
         } elseif ($count >= 2) {
             // Fallback simplistic trend
             $first = reset($values);
-            $trend = ($lastValue - $first) / $first;
+            $trend = $first != 0 ? ($lastValue - $first) / $first : 0;
         }
 
         // Daily trend projection (linearized)

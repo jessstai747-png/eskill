@@ -8,24 +8,24 @@ use App\Services\MercadoLivreClient;
 
 /**
  * 🔒 E2: Hidden Fields Service
- * 
+ *
  * Gerencia campos ocultos do Mercado Livre que são indexados
  * mas não exibidos diretamente na listagem.
- * 
+ *
  * Campos Ocultos Suportados:
  * - KEYWORDS: Palavras-chave ocultas (máx 60 chars)
  * - MPN: Manufacturer Part Number (código do fabricante)
  * - LINE: Linha do produto
  * - GTIN: Global Trade Item Number (EAN/UPC)
  * - ALPHANUMERIC_MODEL: Código alfanumérico do modelo
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class HiddenFieldsService
 {
     private ?int $accountId;
     private ?MercadoLivreClient $client;
-    
+
     /**
      * Mapa de campos ocultos com suas configurações
      */
@@ -75,7 +75,7 @@ class HiddenFieldsService
 
     /**
      * Analisa campos ocultos de um item
-     * 
+     *
      * @param string $itemId ID do item MLB
      * @return array Análise completa dos campos ocultos
      */
@@ -87,7 +87,7 @@ class HiddenFieldsService
 
         $item = $this->client->get("/items/{$itemId}");
         $attributes = $item['attributes'] ?? [];
-        
+
         $analysis = [
             'item_id' => $itemId,
             'category_id' => $item['category_id'] ?? null,
@@ -103,14 +103,14 @@ class HiddenFieldsService
         foreach (self::HIDDEN_FIELDS as $fieldId => $config) {
             $currentValue = $this->findAttributeValue($attributes, $fieldId);
             $totalWeight += $config['weight'];
-            
+
             $fieldAnalysis = [
                 'id' => $fieldId,
                 'current_value' => $currentValue,
                 'max_length' => $config['max_length'],
                 'is_filled' => !empty($currentValue),
-                'usage_percent' => $currentValue 
-                    ? round((mb_strlen($currentValue) / $config['max_length']) * 100, 1) 
+                'usage_percent' => $currentValue
+                    ? round((mb_strlen($currentValue) / $config['max_length']) * 100, 1)
                     : 0,
                 'weight' => $config['weight'],
                 'description' => $config['description']
@@ -135,8 +135,8 @@ class HiddenFieldsService
         foreach ($analysis['hidden_fields'] as $field) {
             $filledWeight += $field['weight'];
         }
-        $analysis['optimization_score'] = $totalWeight > 0 
-            ? round(($filledWeight / $totalWeight) * 100) 
+        $analysis['optimization_score'] = $totalWeight > 0
+            ? round(($filledWeight / $totalWeight) * 100)
             : 0;
 
         // Adicionar recomendações de otimização para campos existentes
@@ -156,7 +156,7 @@ class HiddenFieldsService
 
     /**
      * Gera sugestões otimizadas para campos ocultos
-     * 
+     *
      * @param array $productData Dados do produto
      * @param string|null $categoryId ID da categoria
      * @return array Sugestões para cada campo oculto
@@ -171,16 +171,16 @@ class HiddenFieldsService
 
         // 1. KEYWORDS - Sinônimos e variações não usados no título
         $suggestions['KEYWORDS'] = $this->generateKeywordsSuggestion(
-            $title, 
-            $brand, 
-            $model, 
+            $title,
+            $brand,
+            $model,
             $categoryId
         );
 
         // 2. MPN - Código do fabricante
         $suggestions['MPN'] = $this->generateMpnSuggestion(
-            $model, 
-            $brand, 
+            $model,
+            $brand,
             $attributes
         );
 
@@ -212,9 +212,9 @@ class HiddenFieldsService
      * Gera sugestão otimizada para campo KEYWORDS
      */
     private function generateKeywordsSuggestion(
-        string $title, 
-        string $brand, 
-        string $model, 
+        string $title,
+        string $brand,
+        string $model,
         ?string $categoryId
     ): array {
         $maxLength = self::HIDDEN_FIELDS['KEYWORDS']['max_length'];
@@ -224,7 +224,7 @@ class HiddenFieldsService
         if ($categoryId) {
             $synonymService = new SynonymExpansionService($this->accountId);
             $titleWords = array_map('mb_strtolower', explode(' ', $title));
-            
+
             // Extrair keyword principal do título
             $mainKeyword = $this->extractMainKeyword($title);
             if ($mainKeyword) {
@@ -240,7 +240,7 @@ class HiddenFieldsService
                         $word = (string)$synonym;
                     }
                     if (empty($word)) continue;
-                    
+
                     $word = mb_strtolower($word);
                     if (!in_array($word, $titleWords)) {
                         $keywords[] = $word;
@@ -278,8 +278,8 @@ class HiddenFieldsService
      * Gera sugestão para campo MPN
      */
     private function generateMpnSuggestion(
-        string $model, 
-        string $brand, 
+        string $model,
+        string $brand,
         array $attributes
     ): array {
         $maxLength = self::HIDDEN_FIELDS['MPN']['max_length'];
@@ -292,7 +292,7 @@ class HiddenFieldsService
         } elseif ($model) {
             // Construir MPN a partir do modelo
             $mpn = $this->cleanForMpn($model);
-            
+
             // Adicionar prefixo da marca se houver espaço
             if ($brand && mb_strlen($mpn) + mb_strlen($brand) + 1 <= $maxLength) {
                 $mpn = mb_strtoupper(mb_substr($brand, 0, 3)) . '-' . $mpn;
@@ -367,7 +367,7 @@ class HiddenFieldsService
     private function extractGtin(array $attributes): array
     {
         $maxLength = self::HIDDEN_FIELDS['GTIN']['max_length'];
-        
+
         // Procurar em diferentes atributos
         $gtinFields = ['GTIN', 'EAN', 'UPC', 'ISBN', 'JAN'];
         $gtin = '';
@@ -393,12 +393,12 @@ class HiddenFieldsService
      * Gera código alfanumérico do modelo
      */
     private function generateAlphanumericModel(
-        string $model, 
-        string $brand, 
+        string $model,
+        string $brand,
         array $attributes
     ): array {
         $maxLength = self::HIDDEN_FIELDS['ALPHANUMERIC_MODEL']['max_length'];
-        
+
         // Verificar se já existe
         $existing = $this->findAttributeValue($attributes, 'ALPHANUMERIC_MODEL');
         if ($existing) {
@@ -413,7 +413,7 @@ class HiddenFieldsService
 
         // Gerar a partir do modelo
         $alphaModel = $this->cleanForMpn($model);
-        
+
         // Incluir variações
         $variations = [];
         if ($model) {
@@ -435,7 +435,7 @@ class HiddenFieldsService
 
     /**
      * Aplica campos ocultos otimizados a um item
-     * 
+     *
      * @param string $itemId ID do item
      * @param array $fields Campos a atualizar
      * @param bool $dryRun Se true, apenas simula
@@ -552,7 +552,7 @@ class HiddenFieldsService
                 'category_id' => $categoryId,
                 'fields' => $available,
                 'total_available' => count(array_filter(
-                    $available, 
+                    $available,
                     fn($f) => $f['available_in_category'] ?? true
                 ))
             ];
@@ -584,13 +584,13 @@ class HiddenFieldsService
         // Remove palavras comuns e pega a primeira significativa
         $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na', 'e', 'ou'];
         $words = preg_split('/\s+/', mb_strtolower($title));
-        
+
         foreach ($words as $word) {
             if (strlen($word) > 3 && !in_array($word, $stopWords)) {
                 return $word;
             }
         }
-        
+
         return $words[0] ?? null;
     }
 
@@ -624,17 +624,17 @@ class HiddenFieldsService
     private function buildOptimizedString(array $words, int $maxLength): string
     {
         $result = '';
-        
+
         foreach ($words as $word) {
             $word = trim($word);
             if (empty($word)) continue;
-            
+
             $addition = ($result ? ' ' : '') . $word;
             if (strlen($result . $addition) <= $maxLength) {
                 $result .= $addition;
             }
         }
-        
+
         return $result;
     }
 

@@ -1,612 +1,1012 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
-use Tests\TestCase;
 use App\Services\ValidationService;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers \App\Services\ValidationService
+ */
 class ValidationServiceTest extends TestCase
 {
-    // =============================
-    // TESTES BÁSICOS
-    // =============================
-
-    public function testCanBeInstantiated(): void
+    protected function setUp(): void
     {
-        $validator = new ValidationService();
-        $this->assertInstanceOf(ValidationService::class, $validator);
+        parent::setUp();
+        // Reset static custom validators between tests
+        $ref = new \ReflectionClass(ValidationService::class);
+        $prop = $ref->getProperty('customValidators');
+        $prop->setAccessible(true);
+        $prop->setValue(null, []);
     }
 
-    public function testEmptyDataWithNoRulesPass(): void
+    private function createValidator(array $data, array $rules, array $messages = []): ValidationService
     {
-        $validator = new ValidationService([], []);
-        $this->assertTrue($validator->validate());
+        return new ValidationService($data, $rules, $messages);
     }
 
-    // =============================
-    // TESTES DE REQUIRED
-    // =============================
+    // =========================================
+    // required
+    // =========================================
 
     public function testRequiredPassesWithValue(): void
     {
-        $validator = ValidationService::make(
-            ['name' => 'John'],
-            ['name' => 'required']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['name' => 'Jess'], ['name' => 'required']);
+        $this->assertTrue($v->validate());
     }
 
     public function testRequiredFailsWithNull(): void
     {
-        $validator = ValidationService::make(
-            ['name' => null],
-            ['name' => 'required']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('name', $validator->errors());
+        $v = $this->createValidator(['name' => null], ['name' => 'required']);
+        $this->assertFalse($v->validate());
+        $this->assertArrayHasKey('name', $v->errors());
     }
 
     public function testRequiredFailsWithEmptyString(): void
     {
-        $validator = ValidationService::make(
-            ['name' => ''],
-            ['name' => 'required']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertNotEmpty($validator->errors());
+        $v = $this->createValidator(['name' => ''], ['name' => 'required']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testRequiredFailsWithWhitespaceOnly(): void
+    {
+        $v = $this->createValidator(['name' => '   '], ['name' => 'required']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testRequiredFailsWithEmptyArray(): void
+    {
+        $v = $this->createValidator(['tags' => []], ['tags' => 'required']);
+        $this->assertFalse($v->validate());
     }
 
     public function testRequiredFailsWithMissingField(): void
     {
-        $validator = ValidationService::make(
-            [],
-            ['name' => 'required']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('name', $validator->errors());
+        $v = $this->createValidator([], ['name' => 'required']);
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE EMAIL
-    // =============================
+    // =========================================
+    // email
+    // =========================================
 
     public function testEmailPassesWithValidEmail(): void
     {
-        $validator = ValidationService::make(
-            ['email' => 'test@example.com'],
-            ['email' => 'email']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['email' => 'user@example.com'], ['email' => 'email']);
+        $this->assertTrue($v->validate());
     }
 
     public function testEmailFailsWithInvalidEmail(): void
     {
-        $validator = ValidationService::make(
-            ['email' => 'not-an-email'],
-            ['email' => 'email']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('email', $validator->errors());
+        $v = $this->createValidator(['email' => 'not-an-email'], ['email' => 'email']);
+        $this->assertFalse($v->validate());
     }
 
-    public function testEmailSkipsWhenEmpty(): void
+    public function testEmailFailsWithMissingAtSign(): void
     {
-        $validator = ValidationService::make(
-            ['email' => ''],
-            ['email' => 'email']
-        );
-        // Não é required, então empty passa
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['email' => 'user.example.com'], ['email' => 'email']);
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE URL
-    // =============================
+    // =========================================
+    // url
+    // =========================================
 
     public function testUrlPassesWithValidUrl(): void
     {
-        $validator = ValidationService::make(
-            ['website' => 'https://example.com'],
-            ['website' => 'url']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['site' => 'https://eskill.com.br'], ['site' => 'url']);
+        $this->assertTrue($v->validate());
     }
 
     public function testUrlFailsWithInvalidUrl(): void
     {
-        $validator = ValidationService::make(
-            ['website' => 'not-a-url'],
-            ['website' => 'url']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('website', $validator->errors());
+        $v = $this->createValidator(['site' => 'not a url'], ['site' => 'url']);
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE MIN/MAX
-    // =============================
+    // =========================================
+    // numeric
+    // =========================================
 
-    public function testMinPassesWithSufficientLength(): void
+    public function testNumericPassesWithInteger(): void
     {
-        $validator = ValidationService::make(
-            ['password' => 'secret123'],
-            ['password' => 'min:6']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['price' => 42], ['price' => 'numeric']);
+        $this->assertTrue($v->validate());
     }
 
-    public function testMinFailsWithShortString(): void
+    public function testNumericPassesWithFloatString(): void
     {
-        $validator = ValidationService::make(
-            ['password' => 'abc'],
-            ['password' => 'min:6']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('password', $validator->errors());
+        $v = $this->createValidator(['price' => '3.14'], ['price' => 'numeric']);
+        $this->assertTrue($v->validate());
     }
 
-    public function testMaxPassesWithShortString(): void
+    public function testNumericFailsWithLetters(): void
     {
-        $validator = ValidationService::make(
-            ['title' => 'Short Title'],
-            ['title' => 'max:50']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['price' => 'abc'], ['price' => 'numeric']);
+        $this->assertFalse($v->validate());
     }
 
-    public function testMaxFailsWithLongString(): void
+    // =========================================
+    // integer
+    // =========================================
+
+    public function testIntegerPassesWithInt(): void
     {
-        $validator = ValidationService::make(
-            ['title' => str_repeat('a', 100)],
-            ['title' => 'max:50']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('title', $validator->errors());
+        $v = $this->createValidator(['qty' => 10], ['qty' => 'integer']);
+        $this->assertTrue($v->validate());
     }
 
-    public function testMinWithNumericValue(): void
+    public function testIntegerPassesWithIntString(): void
     {
-        $validator = ValidationService::make(
-            ['age' => 25],
-            ['age' => 'min:18']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    public function testMaxWithNumericValue(): void
-    {
-        $validator = ValidationService::make(
-            ['quantity' => 5],
-            ['quantity' => 'max:10']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    // =============================
-    // TESTES DE BETWEEN
-    // =============================
-
-    public function testBetweenPassesWithValueInRange(): void
-    {
-        $validator = ValidationService::make(
-            ['age' => 25],
-            ['age' => 'between:18,65']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    public function testBetweenFailsWithValueOutOfRange(): void
-    {
-        $validator = ValidationService::make(
-            ['age' => 10],
-            ['age' => 'between:18,65']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('age', $validator->errors());
-    }
-
-    // =============================
-    // TESTES DE IN/NOT_IN
-    // =============================
-
-    public function testInPassesWithValidValue(): void
-    {
-        $validator = ValidationService::make(
-            ['status' => 'active'],
-            ['status' => 'in:active,inactive,pending']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    public function testInFailsWithInvalidValue(): void
-    {
-        $validator = ValidationService::make(
-            ['status' => 'unknown'],
-            ['status' => 'in:active,inactive,pending']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('status', $validator->errors());
-    }
-
-    public function testNotInPassesWithValueNotInList(): void
-    {
-        $validator = ValidationService::make(
-            ['role' => 'admin'],
-            ['role' => 'notIn:banned,suspended']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    // =============================
-    // TESTES DE NUMERIC/INTEGER
-    // =============================
-
-    public function testNumericPassesWithNumber(): void
-    {
-        $validator = ValidationService::make(
-            ['price' => '19.99'],
-            ['price' => 'numeric']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    public function testIntegerPassesWithInteger(): void
-    {
-        $validator = ValidationService::make(
-            ['quantity' => '42'],
-            ['quantity' => 'integer']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['qty' => '10'], ['qty' => 'integer']);
+        $this->assertTrue($v->validate());
     }
 
     public function testIntegerFailsWithFloat(): void
     {
-        $validator = ValidationService::make(
-            ['quantity' => '3.14'],
-            ['quantity' => 'integer']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('quantity', $validator->errors());
+        $v = $this->createValidator(['qty' => '3.14'], ['qty' => 'integer']);
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE DATE
-    // =============================
+    // =========================================
+    // min
+    // =========================================
+
+    public function testMinPassesForStringLength(): void
+    {
+        $v = $this->createValidator(['name' => 'Jessica'], ['name' => 'min:3']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMinFailsForShortString(): void
+    {
+        $v = $this->createValidator(['name' => 'AB'], ['name' => 'min:3']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testMinPassesForNumericValue(): void
+    {
+        $v = $this->createValidator(['age' => 18], ['age' => 'min:18']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMinFailsForSmallNumericValue(): void
+    {
+        $v = $this->createValidator(['age' => 15], ['age' => 'min:18']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testMinPassesForArrayCount(): void
+    {
+        $v = $this->createValidator(['items' => [1, 2, 3]], ['items' => 'min:2']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMinFailsForSmallArray(): void
+    {
+        $v = $this->createValidator(['items' => [1]], ['items' => 'min:2']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // max
+    // =========================================
+
+    public function testMaxPassesForStringLength(): void
+    {
+        $v = $this->createValidator(['name' => 'AB'], ['name' => 'max:5']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMaxFailsForLongString(): void
+    {
+        $v = $this->createValidator(['name' => 'ABCDEF'], ['name' => 'max:5']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testMaxPassesForNumericValue(): void
+    {
+        $v = $this->createValidator(['qty' => 100], ['qty' => 'max:100']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMaxFailsForLargeNumericValue(): void
+    {
+        $v = $this->createValidator(['qty' => 101], ['qty' => 'max:100']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testMaxPassesForArrayCount(): void
+    {
+        $v = $this->createValidator(['tags' => ['a', 'b']], ['tags' => 'max:3']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMaxFailsForLargeArray(): void
+    {
+        $v = $this->createValidator(['tags' => ['a', 'b', 'c', 'd']], ['tags' => 'max:3']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // between
+    // =========================================
+
+    public function testBetweenPassesWhenInRange(): void
+    {
+        $v = $this->createValidator(['age' => 25], ['age' => 'between:18,65']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testBetweenFailsWhenBelowRange(): void
+    {
+        $v = $this->createValidator(['age' => 10], ['age' => 'between:18,65']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testBetweenFailsWhenAboveRange(): void
+    {
+        $v = $this->createValidator(['age' => 70], ['age' => 'between:18,65']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // in
+    // =========================================
+
+    public function testInPassesWithAllowedValue(): void
+    {
+        $v = $this->createValidator(['status' => 'active'], ['status' => 'in:active,inactive,pending']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testInFailsWithDisallowedValue(): void
+    {
+        $v = $this->createValidator(['status' => 'deleted'], ['status' => 'in:active,inactive,pending']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // notIn
+    // =========================================
+
+    public function testNotInPassesWithNonBlacklistedValue(): void
+    {
+        $v = $this->createValidator(['role' => 'editor'], ['role' => 'notIn:admin,superadmin']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testNotInFailsWithBlacklistedValue(): void
+    {
+        $v = $this->createValidator(['role' => 'admin'], ['role' => 'notIn:admin,superadmin']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // regex
+    // =========================================
+
+    public function testRegexPassesWithMatch(): void
+    {
+        $v = $this->createValidator(['code' => 'ABC-123'], ['code' => 'regex:/^[A-Z]{3}-\d{3}$/']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testRegexFailsWithNoMatch(): void
+    {
+        $v = $this->createValidator(['code' => 'abc123'], ['code' => 'regex:/^[A-Z]{3}-\d{3}$/']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // alpha
+    // =========================================
+
+    public function testAlphaPassesWithLettersOnly(): void
+    {
+        $v = $this->createValidator(['name' => 'João'], ['name' => 'alpha']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testAlphaFailsWithNumbers(): void
+    {
+        $v = $this->createValidator(['name' => 'abc123'], ['name' => 'alpha']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // alphaNum
+    // =========================================
+
+    public function testAlphaNumPassesWithLettersAndDigits(): void
+    {
+        $v = $this->createValidator(['user' => 'user123'], ['user' => 'alphaNum']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testAlphaNumFailsWithSpecialChars(): void
+    {
+        $v = $this->createValidator(['user' => 'user@123'], ['user' => 'alphaNum']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // alphaDash
+    // =========================================
+
+    public function testAlphaDashPassesWithDashesAndUnderscores(): void
+    {
+        $v = $this->createValidator(['slug' => 'my-slug_01'], ['slug' => 'alphaDash']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testAlphaDashFailsWithSpaces(): void
+    {
+        $v = $this->createValidator(['slug' => 'my slug'], ['slug' => 'alphaDash']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // date
+    // =========================================
 
     public function testDatePassesWithValidDate(): void
     {
-        $validator = ValidationService::make(
-            ['birthday' => '1990-05-15'],
-            ['birthday' => 'date']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['dob' => '2024-01-15'], ['dob' => 'date']);
+        $this->assertTrue($v->validate());
     }
 
-    public function testDateFormatPasses(): void
+    public function testDateFailsWithInvalidDate(): void
     {
-        $validator = ValidationService::make(
-            ['date' => '15/05/1990'],
-            ['date' => 'dateFormat:d/m/Y']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['dob' => 'not-a-date-xyz'], ['dob' => 'date']);
+        $this->assertFalse($v->validate());
     }
 
-    public function testDateFormatFails(): void
+    // =========================================
+    // dateFormat
+    // =========================================
+
+    public function testDateFormatPassesWithCorrectFormat(): void
     {
-        $validator = ValidationService::make(
-            ['date' => '1990-05-15'],
-            ['date' => 'dateFormat:d/m/Y']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('date', $validator->errors());
+        $v = $this->createValidator(['date' => '2024-06-15'], ['date' => 'dateFormat:Y-m-d']);
+        $this->assertTrue($v->validate());
     }
 
-    // =============================
-    // TESTES DE CPF
-    // =============================
-
-    public function testCpfPassesWithValid(): void
+    public function testDateFormatFailsWithWrongFormat(): void
     {
-        // CPF válido para teste
-        $validator = ValidationService::make(
-            ['cpf' => '529.982.247-25'],
-            ['cpf' => 'cpf']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['date' => '15/06/2024'], ['date' => 'dateFormat:Y-m-d']);
+        $this->assertFalse($v->validate());
     }
 
-    public function testCpfFailsWithInvalid(): void
+    // =========================================
+    // before / after
+    // =========================================
+
+    public function testBeforePassesWithEarlierDate(): void
     {
-        $validator = ValidationService::make(
-            ['cpf' => '111.111.111-11'],
-            ['cpf' => 'cpf']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('cpf', $validator->errors());
+        $v = $this->createValidator(['start' => '2020-01-01'], ['start' => 'before:2025-01-01']);
+        $this->assertTrue($v->validate());
     }
 
-    public function testCpfFailsWithWrongLength(): void
+    public function testBeforeFailsWithLaterDate(): void
     {
-        $validator = ValidationService::make(
-            ['cpf' => '123456'],
-            ['cpf' => 'cpf']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('cpf', $validator->errors());
+        $v = $this->createValidator(['start' => '2030-01-01'], ['start' => 'before:2025-01-01']);
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE CNPJ
-    // =============================
-
-    public function testCnpjPassesWithValid(): void
+    public function testAfterPassesWithLaterDate(): void
     {
-        // CNPJ válido para teste
-        $validator = ValidationService::make(
-            ['cnpj' => '11.222.333/0001-81'],
-            ['cnpj' => 'cnpj']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['end' => '2030-01-01'], ['end' => 'after:2025-01-01']);
+        $this->assertTrue($v->validate());
     }
 
-    public function testCnpjFailsWithInvalid(): void
+    public function testAfterFailsWithEarlierDate(): void
     {
-        $validator = ValidationService::make(
-            ['cnpj' => '11.111.111/1111-11'],
-            ['cnpj' => 'cnpj']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('cnpj', $validator->errors());
+        $v = $this->createValidator(['end' => '2020-01-01'], ['end' => 'after:2025-01-01']);
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE CEP E PHONE
-    // =============================
+    // =========================================
+    // confirmed
+    // =========================================
 
-    public function testCepPasses(): void
+    public function testConfirmedPassesWhenFieldsMatch(): void
     {
-        $validator = ValidationService::make(
-            ['cep' => '01310-100'],
-            ['cep' => 'cep']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    public function testPhonePasses(): void
-    {
-        $validator = ValidationService::make(
-            ['phone' => '(11) 99999-9999'],
-            ['phone' => 'phone']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    // =============================
-    // TESTES DE JSON E BOOLEAN
-    // =============================
-
-    public function testJsonPasses(): void
-    {
-        $validator = ValidationService::make(
-            ['data' => '{"key": "value"}'],
-            ['data' => 'json']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    public function testJsonFails(): void
-    {
-        $validator = ValidationService::make(
-            ['data' => '{invalid}'],
-            ['data' => 'json']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('data', $validator->errors());
-    }
-
-    public function testBooleanPasses(): void
-    {
-        $validator = ValidationService::make(
-            ['active' => true],
-            ['active' => 'boolean']
-        );
-        $this->assertTrue($validator->passes());
-    }
-
-    // =============================
-    // TESTES DE CONFIRMED/SAME
-    // =============================
-
-    public function testConfirmedPasses(): void
-    {
-        $validator = ValidationService::make(
-            [
-                'password' => 'secret123',
-                'password_confirmation' => 'secret123'
-            ],
+        $v = $this->createValidator(
+            ['password' => 'secret123', 'password_confirmation' => 'secret123'],
             ['password' => 'confirmed']
         );
-        $this->assertTrue($validator->passes());
+        $this->assertTrue($v->validate());
     }
 
-    public function testConfirmedFails(): void
+    public function testConfirmedFailsWhenFieldsDiffer(): void
     {
-        $validator = ValidationService::make(
-            [
-                'password' => 'secret123',
-                'password_confirmation' => 'different'
-            ],
+        $v = $this->createValidator(
+            ['password' => 'secret123', 'password_confirmation' => 'other'],
             ['password' => 'confirmed']
         );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('password', $validator->errors());
+        $this->assertFalse($v->validate());
     }
 
-    public function testSamePasses(): void
+    public function testConfirmedFailsWhenConfirmationMissing(): void
     {
-        $validator = ValidationService::make(
-            ['email' => 'test@test.com', 'email2' => 'test@test.com'],
-            ['email' => 'same:email2']
+        $v = $this->createValidator(
+            ['password' => 'secret123'],
+            ['password' => 'confirmed']
         );
-        $this->assertTrue($validator->passes());
+        $this->assertFalse($v->validate());
     }
 
-    public function testDifferentPasses(): void
+    // =========================================
+    // same / different
+    // =========================================
+
+    public function testSamePassesWhenFieldsEqual(): void
     {
-        $validator = ValidationService::make(
-            ['old_password' => 'old123', 'new_password' => 'new456'],
-            ['new_password' => 'different:old_password']
+        $v = $this->createValidator(
+            ['a' => 'xyz', 'b' => 'xyz'],
+            ['a' => 'same:b']
         );
-        $this->assertTrue($validator->passes());
+        $this->assertTrue($v->validate());
     }
 
-    // =============================
-    // TESTES DE ALPHA
-    // =============================
-
-    public function testAlphaPasses(): void
+    public function testSameFailsWhenFieldsDiffer(): void
     {
-        $validator = ValidationService::make(
-            ['name' => 'JohnDoe'],
-            ['name' => 'alpha']
+        $v = $this->createValidator(
+            ['a' => 'xyz', 'b' => 'abc'],
+            ['a' => 'same:b']
         );
-        $this->assertTrue($validator->passes());
+        $this->assertFalse($v->validate());
     }
 
-    public function testAlphaNumPasses(): void
+    public function testDifferentPassesWhenFieldsDiffer(): void
     {
-        $validator = ValidationService::make(
-            ['username' => 'user123'],
-            ['username' => 'alphaNum']
+        $v = $this->createValidator(
+            ['a' => 'xyz', 'b' => 'abc'],
+            ['a' => 'different:b']
         );
-        $this->assertTrue($validator->passes());
+        $this->assertTrue($v->validate());
     }
 
-    public function testAlphaDashPasses(): void
+    public function testDifferentFailsWhenFieldsEqual(): void
     {
-        $validator = ValidationService::make(
-            ['slug' => 'my-slug_123'],
-            ['slug' => 'alphaDash']
+        $v = $this->createValidator(
+            ['a' => 'xyz', 'b' => 'xyz'],
+            ['a' => 'different:b']
         );
-        $this->assertTrue($validator->passes());
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE MÚLTIPLAS REGRAS
-    // =============================
+    // =========================================
+    // array
+    // =========================================
 
-    public function testMultipleRulesPass(): void
+    public function testArrayPassesWithArray(): void
     {
-        $validator = ValidationService::make(
-            ['email' => 'test@example.com'],
-            ['email' => 'required|email|max:255']
-        );
-        $this->assertTrue($validator->passes());
+        $v = $this->createValidator(['items' => [1, 2]], ['items' => 'array']);
+        $this->assertTrue($v->validate());
     }
 
-    public function testMultipleRulesFailOnOne(): void
+    public function testArrayFailsWithString(): void
     {
-        $validator = ValidationService::make(
-            ['email' => 'not-an-email'],
-            ['email' => 'required|email|max:255']
-        );
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('email', $validator->errors());
+        $v = $this->createValidator(['items' => 'not array'], ['items' => 'array']);
+        $this->assertFalse($v->validate());
     }
 
-    // =============================
-    // TESTES DE MENSAGENS PERSONALIZADAS
-    // =============================
+    // =========================================
+    // boolean
+    // =========================================
 
-    public function testCustomMessage(): void
+    public function testBooleanPassesWithTrueValue(): void
     {
-        $validator = ValidationService::make(
-            ['name' => ''],
-            ['name' => 'required'],
-            ['name.required' => 'Por favor, informe seu nome.']
-        );
-        $validator->validate();
-
-        $errors = $validator->firstErrors();
-        $this->assertEquals('Por favor, informe seu nome.', $errors['name']);
+        $v = $this->createValidator(['active' => true], ['active' => 'boolean']);
+        $this->assertTrue($v->validate());
     }
 
-    // =============================
-    // TESTES DE MÉTODOS AUXILIARES
-    // =============================
-
-    public function testValidatedReturnsOnlyValidatedFields(): void
+    public function testBooleanPassesWithFalseValue(): void
     {
-        $validator = ValidationService::make(
-            ['name' => 'John', 'email' => 'john@example.com', 'extra' => 'ignored'],
-            ['name' => 'required', 'email' => 'email']
-        );
-        $validator->validate();
+        $v = $this->createValidator(['active' => false], ['active' => 'boolean']);
+        $this->assertTrue($v->validate());
+    }
 
-        $validated = $validator->validated();
+    public function testBooleanPassesWithZeroString(): void
+    {
+        $v = $this->createValidator(['active' => '0'], ['active' => 'boolean']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testBooleanPassesWithOneInt(): void
+    {
+        $v = $this->createValidator(['active' => 1], ['active' => 'boolean']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testBooleanFailsWithRandomString(): void
+    {
+        $v = $this->createValidator(['active' => 'yes'], ['active' => 'boolean']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // json
+    // =========================================
+
+    public function testJsonPassesWithValidJson(): void
+    {
+        $v = $this->createValidator(['payload' => '{"key":"value"}'], ['payload' => 'json']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testJsonPassesWithJsonArray(): void
+    {
+        $v = $this->createValidator(['payload' => '[1,2,3]'], ['payload' => 'json']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testJsonFailsWithInvalidJson(): void
+    {
+        $v = $this->createValidator(['payload' => '{bad json}'], ['payload' => 'json']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testJsonFailsWithNonString(): void
+    {
+        $v = $this->createValidator(['payload' => 123], ['payload' => 'json']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // phone
+    // =========================================
+
+    public function testPhonePassesWithValidMobile(): void
+    {
+        $v = $this->createValidator(['phone' => '(16) 99123-4567'], ['phone' => 'phone']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testPhonePassesWithLandline(): void
+    {
+        $v = $this->createValidator(['phone' => '(16) 3301-1234'], ['phone' => 'phone']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testPhoneFailsWithShortNumber(): void
+    {
+        $v = $this->createValidator(['phone' => '12345'], ['phone' => 'phone']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testPhoneFailsWithTooLong(): void
+    {
+        $v = $this->createValidator(['phone' => '123456789012'], ['phone' => 'phone']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // cpf
+    // =========================================
+
+    public function testCpfValidWithKnownGoodCpf(): void
+    {
+        $v = $this->createValidator(['cpf' => '529.982.247-25'], ['cpf' => 'cpf']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testCpfValidWithDigitsOnly(): void
+    {
+        $v = $this->createValidator(['cpf' => '52998224725'], ['cpf' => 'cpf']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testCpfFailsWithAllSameDigits(): void
+    {
+        $v = $this->createValidator(['cpf' => '111.111.111-11'], ['cpf' => 'cpf']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testCpfFailsWithWrongCheckDigits(): void
+    {
+        $v = $this->createValidator(['cpf' => '123.456.789-00'], ['cpf' => 'cpf']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testCpfFailsWithShortString(): void
+    {
+        $v = $this->createValidator(['cpf' => '123'], ['cpf' => 'cpf']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // cnpj
+    // =========================================
+
+    public function testCnpjValidWithKnownGoodCnpj(): void
+    {
+        $v = $this->createValidator(['cnpj' => '11.222.333/0001-81'], ['cnpj' => 'cnpj']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testCnpjValidWithDigitsOnly(): void
+    {
+        $v = $this->createValidator(['cnpj' => '11222333000181'], ['cnpj' => 'cnpj']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testCnpjFailsWithAllSameDigits(): void
+    {
+        $v = $this->createValidator(['cnpj' => '11.111.111/1111-11'], ['cnpj' => 'cnpj']);
+        $this->assertFalse($v->validate());
+    }
+
+    public function testCnpjFailsWithShortString(): void
+    {
+        $v = $this->createValidator(['cnpj' => '12345'], ['cnpj' => 'cnpj']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // cep
+    // =========================================
+
+    public function testCepPassesWithFormattedCep(): void
+    {
+        $v = $this->createValidator(['cep' => '14801-000'], ['cep' => 'cep']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testCepPassesWithDigitsOnly(): void
+    {
+        $v = $this->createValidator(['cep' => '14801000'], ['cep' => 'cep']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testCepFailsWithWrongLength(): void
+    {
+        $v = $this->createValidator(['cep' => '1234'], ['cep' => 'cep']);
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // errors(), firstErrors(), validated()
+    // =========================================
+
+    public function testErrorsReturnsArrayKeyedByField(): void
+    {
+        $v = $this->createValidator(
+            ['email' => 'bad', 'name' => ''],
+            ['email' => 'email', 'name' => 'required']
+        );
+        $v->validate();
+        $errors = $v->errors();
+
+        $this->assertArrayHasKey('email', $errors);
+        $this->assertArrayHasKey('name', $errors);
+        $this->assertIsArray($errors['email']);
+    }
+
+    public function testErrorsEmptyWhenValidationPasses(): void
+    {
+        $v = $this->createValidator(['name' => 'Jess'], ['name' => 'required']);
+        $v->validate();
+        $this->assertEmpty($v->errors());
+    }
+
+    public function testFirstErrorsReturnsOnePerField(): void
+    {
+        $v = $this->createValidator(
+            ['email' => ''],
+            ['email' => 'required|email']
+        );
+        $v->validate();
+        $first = $v->firstErrors();
+
+        $this->assertArrayHasKey('email', $first);
+        $this->assertIsString($first['email']);
+    }
+
+    public function testValidatedReturnsOnlyRuledFields(): void
+    {
+        $v = $this->createValidator(
+            ['name' => 'Jess', 'age' => 30, 'extra' => 'ignored'],
+            ['name' => 'required', 'age' => 'integer']
+        );
+        $v->validate();
+        $validated = $v->validated();
 
         $this->assertArrayHasKey('name', $validated);
-        $this->assertArrayHasKey('email', $validated);
+        $this->assertArrayHasKey('age', $validated);
         $this->assertArrayNotHasKey('extra', $validated);
     }
 
-    public function testFirstErrorsReturnsOnlyFirstError(): void
+    public function testValidatedExcludesNullFields(): void
     {
-        $validator = ValidationService::make(
-            ['password' => 'ab'],
-            ['password' => 'required|min:6|max:20']
+        $v = $this->createValidator(
+            ['name' => 'Jess'],
+            ['name' => 'required', 'missing' => 'required']
         );
-        $validator->validate();
+        $v->validate();
+        $validated = $v->validated();
 
-        $firstErrors = $validator->firstErrors();
-
-        $this->assertArrayHasKey('password', $firstErrors);
-        $this->assertIsString($firstErrors['password']);
+        $this->assertArrayHasKey('name', $validated);
+        $this->assertArrayNotHasKey('missing', $validated);
     }
 
-    // =============================
-    // TESTES DE EXTEND
-    // =============================
+    // =========================================
+    // make() static factory
+    // =========================================
 
-    public function testCustomValidatorCanBeRegistered(): void
+    public function testMakeReturnsValidatorWithAutoValidation(): void
     {
-        ValidationService::extend('customRule', function ($value) {
-            return $value === 'valid';
+        $v = ValidationService::make(
+            ['email' => 'user@example.com'],
+            ['email' => 'required|email']
+        );
+
+        $this->assertInstanceOf(ValidationService::class, $v);
+        $this->assertTrue($v->passes());
+        $this->assertEmpty($v->errors());
+    }
+
+    public function testMakeDetectsErrors(): void
+    {
+        $v = ValidationService::make(
+            ['email' => 'bad'],
+            ['email' => 'email']
+        );
+
+        $this->assertTrue($v->fails());
+        $this->assertNotEmpty($v->errors());
+    }
+
+    public function testMakeAcceptsCustomMessages(): void
+    {
+        $v = ValidationService::make(
+            ['name' => ''],
+            ['name' => 'required'],
+            ['name.required' => 'Fill name']
+        );
+
+        $this->assertSame('Fill name', $v->errors()['name'][0]);
+    }
+
+    // =========================================
+    // passes() / fails()
+    // =========================================
+
+    public function testPassesReturnsTrueWhenNoErrors(): void
+    {
+        $v = $this->createValidator(['name' => 'Jess'], ['name' => 'required']);
+        $v->validate();
+        $this->assertTrue($v->passes());
+        $this->assertFalse($v->fails());
+    }
+
+    public function testFailsReturnsTrueWhenHasErrors(): void
+    {
+        $v = $this->createValidator(['name' => ''], ['name' => 'required']);
+        $v->validate();
+        $this->assertTrue($v->fails());
+        $this->assertFalse($v->passes());
+    }
+
+    // =========================================
+    // extend() custom validators
+    // =========================================
+
+    public function testExtendRegistersCustomValidator(): void
+    {
+        ValidationService::extend('even', function (mixed $value): bool {
+            return is_numeric($value) && (int)$value % 2 === 0;
         });
 
-        $validator = ValidationService::make(
-            ['field' => 'valid'],
-            ['field' => 'customRule']
-        );
-        $this->assertTrue($validator->passes());
-
-        $validator2 = ValidationService::make(
-            ['field' => 'invalid'],
-            ['field' => 'customRule']
-        );
-        $this->assertTrue($validator2->fails());
+        $v = $this->createValidator(['num' => 4], ['num' => 'even']);
+        $this->assertTrue($v->validate());
     }
 
-    // =============================
-    // TESTES DE NESTED DATA (DOT NOTATION)
-    // =============================
-
-    public function testNestedFieldValidation(): void
+    public function testExtendCustomValidatorCanFail(): void
     {
-        $validator = ValidationService::make(
-            ['user' => ['email' => 'test@example.com']],
-            ['user.email' => 'required|email']
-        );
-        $this->assertTrue($validator->passes());
+        ValidationService::extend('even', function (mixed $value): bool {
+            return is_numeric($value) && (int)$value % 2 === 0;
+        });
+
+        $v = $this->createValidator(['num' => 3], ['num' => 'even']);
+        $this->assertFalse($v->validate());
     }
 
-    public function testNestedFieldValidationFails(): void
+    public function testExtendCustomValidatorReceivesParams(): void
     {
-        $validator = ValidationService::make(
-            ['user' => ['email' => 'invalid']],
-            ['user.email' => 'email']
+        ValidationService::extend('divisibleBy', function (mixed $value, array $params): bool {
+            $divisor = (int)($params[0] ?? 1);
+            return is_numeric($value) && (int)$value % $divisor === 0;
+        });
+
+        $v = $this->createValidator(['num' => 15], ['num' => 'divisibleBy:5']);
+        $this->assertTrue($v->validate());
+    }
+
+    // =========================================
+    // Dot notation
+    // =========================================
+
+    public function testDotNotationAccessesNestedData(): void
+    {
+        $v = $this->createValidator(
+            ['address' => ['city' => 'Araraquara']],
+            ['address.city' => 'required']
         );
-        $this->assertTrue($validator->fails());
-        $this->assertNotEmpty($validator->errors());
+        $this->assertTrue($v->validate());
+    }
+
+    public function testDotNotationFailsWhenNestedFieldMissing(): void
+    {
+        $v = $this->createValidator(
+            ['address' => ['state' => 'SP']],
+            ['address.city' => 'required']
+        );
+        $this->assertFalse($v->validate());
+    }
+
+    public function testDotNotationDeepNesting(): void
+    {
+        $v = $this->createValidator(
+            ['user' => ['profile' => ['bio' => 'Hello']]],
+            ['user.profile.bio' => 'required|min:3']
+        );
+        $this->assertTrue($v->validate());
+    }
+
+    public function testDotNotationValidatedIncludesNestedValues(): void
+    {
+        $v = $this->createValidator(
+            ['address' => ['city' => 'SP', 'zip' => '14801']],
+            ['address.city' => 'required']
+        );
+        $v->validate();
+        $validated = $v->validated();
+        $this->assertSame('SP', $validated['address.city']);
+    }
+
+    // =========================================
+    // Multiple rules (pipe-separated)
+    // =========================================
+
+    public function testMultipleRulesAllPass(): void
+    {
+        $v = $this->createValidator(
+            ['email' => 'user@example.com'],
+            ['email' => 'required|email|min:5']
+        );
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMultipleRulesCollectsOnlyRequiredError(): void
+    {
+        $v = $this->createValidator(
+            ['email' => ''],
+            ['email' => 'required|email|min:5']
+        );
+        $v->validate();
+        // required fails; email and min are skipped because value is empty
+        $errors = $v->errors();
+        $this->assertArrayHasKey('email', $errors);
+        $this->assertCount(1, $errors['email']);
+    }
+
+    public function testMultipleRulesCollectsMultipleErrors(): void
+    {
+        $v = $this->createValidator(
+            ['val' => 'ab'],
+            ['val' => 'email|min:5']
+        );
+        $v->validate();
+        $errors = $v->errors();
+        $this->assertArrayHasKey('val', $errors);
+        $this->assertCount(2, $errors['val']);
+    }
+
+    // =========================================
+    // Custom error messages
+    // =========================================
+
+    public function testCustomMessageOverridesDefault(): void
+    {
+        $v = $this->createValidator(
+            ['email' => ''],
+            ['email' => 'required'],
+            ['email.required' => 'Custom msg']
+        );
+        $v->validate();
+        $errors = $v->errors();
+        $this->assertSame('Custom msg', $errors['email'][0]);
+    }
+
+    public function testCustomMessageByFieldOnly(): void
+    {
+        $v = $this->createValidator(
+            ['name' => ''],
+            ['name' => 'required'],
+            ['name' => 'Name is needed']
+        );
+        $v->validate();
+        $errors = $v->errors();
+        $this->assertSame('Name is needed', $errors['name'][0]);
+    }
+
+    // =========================================
+    // Empty field skips non-required validators
+    // =========================================
+
+    public function testEmptyFieldSkipsNonRequiredValidators(): void
+    {
+        $v = $this->createValidator(
+            ['email' => ''],
+            ['email' => 'email']
+        );
+        $this->assertTrue($v->validate());
+    }
+
+    public function testNullFieldSkipsNonRequiredValidators(): void
+    {
+        $v = $this->createValidator(
+            ['phone' => null],
+            ['phone' => 'phone']
+        );
+        $this->assertTrue($v->validate());
+    }
+
+    public function testMissingFieldSkipsNonRequiredValidators(): void
+    {
+        $v = $this->createValidator(
+            [],
+            ['website' => 'url']
+        );
+        $this->assertTrue($v->validate());
+    }
+
+    // =========================================
+    // Rules as array syntax
+    // =========================================
+
+    public function testRulesAcceptArraySyntax(): void
+    {
+        $v = $this->createValidator(
+            ['name' => 'Jess'],
+            ['name' => ['required', 'min:3']]
+        );
+        $this->assertTrue($v->validate());
+    }
+
+    public function testRulesArraySyntaxDetectsFailures(): void
+    {
+        $v = $this->createValidator(
+            ['name' => 'AB'],
+            ['name' => ['required', 'min:3']]
+        );
+        $this->assertFalse($v->validate());
+    }
+
+    // =========================================
+    // Edge cases
+    // =========================================
+
+    public function testEmptyRulesAlwaysPass(): void
+    {
+        $v = $this->createValidator(['any' => 'data'], []);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testBooleanFalseIsNotEmpty(): void
+    {
+        $v = $this->createValidator(['flag' => false], ['flag' => 'boolean']);
+        $this->assertTrue($v->validate());
+    }
+
+    public function testZeroIsNotEmpty(): void
+    {
+        $v = $this->createValidator(['qty' => 0], ['qty' => 'integer']);
+        $this->assertTrue($v->validate());
     }
 }

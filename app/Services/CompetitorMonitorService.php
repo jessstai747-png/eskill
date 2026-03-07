@@ -454,10 +454,10 @@ class CompetitorMonitorService
                 sprintf(
                     'Seu preço (R$ %.2f) está %.1f%% acima da média do mercado (R$ %.2f)',
                     $myPrice,
-                    (($myPrice / $avgPrice) - 1) * 100,
+                    $avgPrice > 0 ? (($myPrice / $avgPrice) - 1) * 100 : 0,
                     $avgPrice
                 ),
-                ['my_price' => $myPrice, 'avg_price' => $avgPrice, 'diff_percent' => (($myPrice / $avgPrice) - 1) * 100]
+                ['my_price' => $myPrice, 'avg_price' => $avgPrice, 'diff_percent' => $avgPrice > 0 ? (($myPrice / $avgPrice) - 1) * 100 : 0]
             );
         }
 
@@ -857,7 +857,7 @@ class CompetitorMonitorService
                 'title' => 'Reduzir preço para aumentar competitividade',
                 'description' => sprintf(
                     'Seu preço está %.1f%% acima da média. Considere reduzir para R$ %.2f',
-                    (($myPrice / $avgPrice) - 1) * 100,
+                    $avgPrice > 0 ? (($myPrice / $avgPrice) - 1) * 100 : 0,
                     $suggestedPrice
                 ),
                 'suggested_price' => $suggestedPrice

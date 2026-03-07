@@ -8,16 +8,16 @@ namespace App\Services\AI\SEO\Strategies;
 
 /**
  * ⚖️ E5: Field Weight Distribution Service
- * 
+ *
  * Distribui keywords pelos campos de acordo com seus pesos de indexação:
- * 
+ *
  * - TÍTULO: 100% peso (máx 60 chars) - Keywords principais
  * - MODELO: 70% peso (máx 255 chars) - Keywords secundárias + specs
  * - DESCRIÇÃO: 50% peso - Keywords terciárias + long-tail
  * - KEYWORDS (oculto): 30% peso (máx 60 chars) - Sinônimos não usados
- * 
+ *
  * Algoritmo otimiza a distribuição para maximizar indexação total.
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class FieldWeightService
@@ -83,14 +83,14 @@ class FieldWeightService
 
     /**
      * Distribui keywords pelos campos de forma otimizada
-     * 
+     *
      * @param array $keywords Lista de keywords para distribuir
      * @param string|null $categoryId ID da categoria
      * @param array $currentValues Valores atuais dos campos
      * @return array Distribuição otimizada
      */
     public function distributeKeywords(
-        array $keywords, 
+        array $keywords,
         ?string $categoryId = null,
         array $currentValues = []
     ): array {
@@ -142,13 +142,13 @@ class FieldWeightService
         foreach (self::FIELD_WEIGHTS as $field => $config) {
             $text = $texts[$field];
             $keywords = $fieldKeywords[$field];
-            
+
             $analysis[$field] = [
                 'weight' => $config['weight'],
                 'max_length' => $config['max_length'],
                 'current_length' => strlen($text),
-                'usage_percent' => $config['max_length'] 
-                    ? round((strlen($text) / $config['max_length']) * 100, 1) 
+                'usage_percent' => $config['max_length']
+                    ? round((strlen($text) / $config['max_length']) * 100, 1)
                     : null,
                 'keyword_count' => count($keywords),
                 'keyword_limit' => $config['keyword_limit'],
@@ -244,8 +244,8 @@ class FieldWeightService
                 'before' => $beforeScore,
                 'after' => $afterScore,
                 'improvement' => $afterScore - $beforeScore,
-                'improvement_percent' => $beforeScore > 0 
-                    ? round((($afterScore - $beforeScore) / $beforeScore) * 100, 1) 
+                'improvement_percent' => $beforeScore > 0
+                    ? round((($afterScore - $beforeScore) / $beforeScore) * 100, 1)
                     : 0
             ]
         ];
@@ -265,7 +265,7 @@ class FieldWeightService
                 // Excesso de keywords - sugerir mover para campo de menor peso
                 $excess = $fieldData['keyword_count'] - $fieldData['keyword_limit'];
                 $targetField = $this->findTargetField($field, $excess);
-                
+
                 if ($targetField) {
                     $suggestions[] = [
                         'type' => 'move',
@@ -311,7 +311,7 @@ class FieldWeightService
     public function calculateIndexingEfficiency(array $itemData): array
     {
         $analysis = $this->analyzeCurrentDistribution($itemData);
-        
+
         $efficiency = [];
         $totalWeight = 0;
         $achievedWeight = 0;
@@ -319,8 +319,8 @@ class FieldWeightService
         foreach (self::FIELD_WEIGHTS as $field => $config) {
             $fieldAnalysis = $analysis['analysis'][$field] ?? [];
             $usage = $fieldAnalysis['usage_percent'] ?? 0;
-            $keywordDensity = isset($fieldAnalysis['keyword_count'], $fieldAnalysis['keyword_limit']) 
-                ? min(100, ($fieldAnalysis['keyword_count'] / $fieldAnalysis['keyword_limit']) * 100) 
+            $keywordDensity = isset($fieldAnalysis['keyword_count'], $fieldAnalysis['keyword_limit'])
+                ? min(100, ($fieldAnalysis['keyword_count'] / $fieldAnalysis['keyword_limit']) * 100)
                 : 0;
 
             // Eficiência = média entre uso de espaço e densidade de keywords
@@ -341,12 +341,12 @@ class FieldWeightService
 
         return [
             'by_field' => $efficiency,
-            'overall_efficiency' => $totalWeight > 0 
-                ? round(($achievedWeight / $totalWeight) * 100, 1) 
+            'overall_efficiency' => $totalWeight > 0
+                ? round(($achievedWeight / $totalWeight) * 100, 1)
                 : 0,
             'max_possible' => 100,
-            'room_for_improvement' => $totalWeight > 0 
-                ? round(100 - ($achievedWeight / $totalWeight) * 100, 1) 
+            'room_for_improvement' => $totalWeight > 0
+                ? round(100 - ($achievedWeight / $totalWeight) * 100, 1)
                 : 100
         ];
     }
@@ -366,13 +366,13 @@ class FieldWeightService
     {
         $analysis = $this->analyzeCurrentDistribution($itemData);
         $efficiency = $this->calculateIndexingEfficiency($itemData);
-        
+
         $strategies = [];
 
         // Priorizar campos de maior peso
         foreach (self::FIELD_WEIGHTS as $field => $config) {
             $fieldEfficiency = $efficiency['by_field'][$field]['efficiency'] ?? 0;
-            
+
             if ($fieldEfficiency < 70) {
                 $strategies[] = [
                     'field' => $field,
@@ -447,8 +447,10 @@ class FieldWeightService
 
                 // Verificar limite de caracteres
                 $keywordLength = strlen($keyword) + 1; // +1 para espaço
-                if ($config['max_length'] && 
-                    $allocation[$field]['length'] + $keywordLength > $config['max_length']) {
+                if (
+                    $config['max_length'] &&
+                    $allocation[$field]['length'] + $keywordLength > $config['max_length']
+                ) {
                     continue;
                 }
 
@@ -506,8 +508,8 @@ class FieldWeightService
             'total_allocated' => $totalAllocated,
             'total_weight' => round($totalWeight, 2),
             'achieved_weight' => round($achievedWeight, 2),
-            'efficiency' => $totalWeight > 0 
-                ? round(($achievedWeight / $totalWeight) * 100, 1) 
+            'efficiency' => $totalWeight > 0
+                ? round(($achievedWeight / $totalWeight) * 100, 1)
                 : 0
         ];
     }
@@ -534,16 +536,35 @@ class FieldWeightService
     private function extractKeywords(string $text): array
     {
         if (empty($text)) return [];
-        
+
         $text = mb_strtolower($text);
         $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
         $words = array_filter(preg_split('/\s+/', $text));
-        
+
         // Filtrar stopwords
-        $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na', 
-                      'e', 'ou', 'um', 'uma', 'os', 'as', 'que', 'por', 'o', 'a'];
-        
-        return array_values(array_filter($words, function($w) use ($stopWords) {
+        $stopWords = [
+            'para',
+            'com',
+            'sem',
+            'de',
+            'da',
+            'do',
+            'em',
+            'no',
+            'na',
+            'e',
+            'ou',
+            'um',
+            'uma',
+            'os',
+            'as',
+            'que',
+            'por',
+            'o',
+            'a'
+        ];
+
+        return array_values(array_filter($words, function ($w) use ($stopWords) {
             return strlen($w) > 2 && !in_array($w, $stopWords);
         }));
     }
@@ -568,12 +589,12 @@ class FieldWeightService
             $fieldData = $analysis[$field] ?? [];
             $maxScore += $config['weight'] * 100;
 
-            $keywordRatio = isset($fieldData['keyword_count'], $fieldData['keyword_limit']) 
-                ? min(1, $fieldData['keyword_count'] / $fieldData['keyword_limit']) 
+            $keywordRatio = isset($fieldData['keyword_count'], $fieldData['keyword_limit'])
+                ? min(1, $fieldData['keyword_count'] / $fieldData['keyword_limit'])
                 : 0;
-            
-            $spaceRatio = isset($fieldData['usage_percent']) 
-                ? min(1, $fieldData['usage_percent'] / 100) 
+
+            $spaceRatio = isset($fieldData['usage_percent'])
+                ? min(1, $fieldData['usage_percent'] / 100)
                 : ($config['max_length'] ? 0 : 1);
 
             $fieldScore = (($keywordRatio + $spaceRatio) / 2) * $config['weight'] * 100;
@@ -591,8 +612,10 @@ class FieldWeightService
             $fieldData = $analysis[$field] ?? [];
 
             // Campo subutilizado (menos de 30% do limite)
-            if (isset($fieldData['keyword_count']) && 
-                $fieldData['keyword_count'] < $config['keyword_limit'] * 0.3) {
+            if (
+                isset($fieldData['keyword_count']) &&
+                $fieldData['keyword_count'] < $config['keyword_limit'] * 0.3
+            ) {
                 $issues[] = [
                     'type' => 'underutilized',
                     'field' => $field,
@@ -603,8 +626,10 @@ class FieldWeightService
             }
 
             // Espaço não utilizado em campos com limite
-            if ($config['max_length'] && isset($fieldData['usage_percent']) && 
-                $fieldData['usage_percent'] < 70) {
+            if (
+                $config['max_length'] && isset($fieldData['usage_percent']) &&
+                $fieldData['usage_percent'] < 70
+            ) {
                 $issues[] = [
                     'type' => 'space_wasted',
                     'field' => $field,
@@ -623,8 +648,10 @@ class FieldWeightService
 
         // Oportunidade de mover keywords de campos de baixo peso para alto peso
         $keywordsInLowWeight = $analysis['keywords']['keywords'] ?? [];
-        if (!empty($keywordsInLowWeight) && 
-            $analysis['title']['keyword_count'] < self::FIELD_WEIGHTS['title']['keyword_limit']) {
+        if (
+            !empty($keywordsInLowWeight) &&
+            $analysis['title']['keyword_count'] < self::FIELD_WEIGHTS['title']['keyword_limit']
+        ) {
             $opportunities[] = [
                 'type' => 'promotion',
                 'description' => 'Mover keywords do campo oculto para o título',
@@ -670,7 +697,7 @@ class FieldWeightService
     {
         $config = self::FIELD_WEIGHTS[$field];
         $keywords = array_column($allocation['keywords'] ?? [], 'keyword');
-        
+
         $value = implode(' ', $keywords);
         if ($config['max_length']) {
             $value = mb_substr($value, 0, $config['max_length']);
@@ -689,9 +716,9 @@ class FieldWeightService
     {
         $injector = new KeywordInjectorService($this->accountId);
         $keywords = array_column($allocation['keywords'] ?? [], 'keyword');
-        
+
         $result = $injector->injectInDescription($currentDesc, $keywords);
-        
+
         return [
             'field' => 'description',
             'value' => $result['optimized'],
@@ -704,12 +731,12 @@ class FieldWeightService
     {
         $fieldOrder = ['title', 'model', 'description', 'keywords'];
         $fromIndex = array_search($fromField, $fieldOrder);
-        
+
         // Procurar campo de menor peso com espaço
         for ($i = $fromIndex + 1; $i < count($fieldOrder); $i++) {
             return $fieldOrder[$i];
         }
-        
+
         return null;
     }
 

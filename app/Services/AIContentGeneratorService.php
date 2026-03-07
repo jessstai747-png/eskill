@@ -63,18 +63,18 @@ class AIContentGeneratorService
         switch ($type) {
             case 'product_description':
                 $system = "Você é o maior especialista em Neuro-Copywriting para Marketplaces do Brasil. " .
-                         "Sua missão é transformar visitantes em compradores usando gatilhos mentais de Escassez, Autoridade e Prova Social. " .
-                         "Escreva textos altamente persuasivos, estruturados para leitura rápida (escaneabilidade), destacando benefícios emocionais e especificações técnicas com clareza absoluta.";
+                    "Sua missão é transformar visitantes em compradores usando gatilhos mentais de Escassez, Autoridade e Prova Social. " .
+                    "Escreva textos altamente persuasivos, estruturados para leitura rápida (escaneabilidade), destacando benefícios emocionais e especificações técnicas com clareza absoluta.";
 
                 $prompt = "Crie uma descrição de ALTA CONVERSÃO para o produto abaixo. Use a estrutura:\n" .
-                          "1. **Gancho Inicial Irresistível**: Uma frase que conecte a dor/desejo do cliente à solução.\n" .
-                          "2. **Lista de Benefícios (Bullets)**: Use emojis e negrito para destacar o 'porquê' comprar.\n" .
-                          "3. **Ficha Técnica Humanizada**: Explique as specs técnicas traduzindo para benefícios reais.\n" .
-                          "4. **Garantia e Segurança**: Reforce a confiança na compra.\n" .
-                          "5. **CTA (Chamada para Ação)**: Convite claro para a compra.\n\n" .
-                          "Dados do Produto:\n{$context}\n\n" .
-                          "Tom de voz: Profissional, Seguro e Empático.\n" .
-                          "Formatação: Markdown limpo.";
+                    "1. **Gancho Inicial Irresistível**: Uma frase que conecte a dor/desejo do cliente à solução.\n" .
+                    "2. **Lista de Benefícios (Bullets)**: Use emojis e negrito para destacar o 'porquê' comprar.\n" .
+                    "3. **Ficha Técnica Humanizada**: Explique as specs técnicas traduzindo para benefícios reais.\n" .
+                    "4. **Garantia e Segurança**: Reforce a confiança na compra.\n" .
+                    "5. **CTA (Chamada para Ação)**: Convite claro para a compra.\n\n" .
+                    "Dados do Produto:\n{$context}\n\n" .
+                    "Tom de voz: Profissional, Seguro e Empático.\n" .
+                    "Formatação: Markdown limpo.";
 
                 $result = $this->llm->generate($prompt, $system, 'advanced');
                 if (empty($result['success'])) {
@@ -84,10 +84,10 @@ class AIContentGeneratorService
 
             case 'product_title':
                 $system = "Especialista em SEO para Marketplaces (Mercado Livre). " .
-                         "Crie títulos de alta conversão com até 60 caracteres. Sem enrolação.";
+                    "Crie títulos de alta conversão com até 60 caracteres. Sem enrolação.";
 
                 $prompt = "Gere UM título otimizado para:\n{$context}\n" .
-                         "Regra: Max 60 chars. Priorize: Produto + Marca + Modelo + Atributo chave.";
+                    "Regra: Max 60 chars. Priorize: Produto + Marca + Modelo + Atributo chave.";
 
                 $result = $this->llm->generate($prompt, $system, 'basic');
                 if (empty($result['success'])) {
@@ -176,7 +176,6 @@ class AIContentGeneratorService
             ]);
 
             return $result;
-
         } catch (Exception $e) {
             $this->logger->error('AI content generation failed', [
                 'error' => $e->getMessage(),
@@ -237,7 +236,6 @@ class AIContentGeneratorService
                 'seo_keywords' => $keywords,
                 'model_used' => $model
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -272,7 +270,6 @@ class AIContentGeneratorService
                 'total_count' => count($list),
                 'model_used' => $model
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -373,7 +370,7 @@ class AIContentGeneratorService
         $description = "🔥 **{$brand} {$title}** - {$gapPhrase} Ideal para {$category}!\n\n";
 
         if (!empty($gapPhrase)) {
-             $description .= "🚀 **OPORTUNIDADE EXCLUSIVA**: Projetado especificamente para quem busca **" . mb_strtoupper($gapPhrase) . "** com qualidade superior.\n\n";
+            $description .= "🚀 **OPORTUNIDADE EXCLUSIVA**: Projetado especificamente para quem busca **" . mb_strtoupper($gapPhrase) . "** com qualidade superior.\n\n";
         }
 
         $description .= "✨ **CARACTERÍSTICAS PRINCIPAIS:**\n";
@@ -390,8 +387,8 @@ class AIContentGeneratorService
 
         // Add SEO keywords naturally
         if (!empty($gapKeywords)) {
-            foreach(array_slice($gapKeywords, 2, 3) as $k) {
-                 $description .= "• Referência em {$k}\n";
+            foreach (array_slice($gapKeywords, 2, 3) as $k) {
+                $description .= "• Referência em {$k}\n";
             }
         }
 
@@ -741,7 +738,7 @@ class AIContentGeneratorService
     {
         $text = mb_strtolower((string)$text);
         $words = preg_split('/\s+/', preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text));
-        $stopwords = ['de','da','do','para','com','sem','e','em','a','o','as','os','um','uma','por','na','no','dos','das'];
+        $stopwords = ['de', 'da', 'do', 'para', 'com', 'sem', 'e', 'em', 'a', 'o', 'as', 'os', 'um', 'uma', 'por', 'na', 'no', 'dos', 'das'];
         $filtered = [];
         foreach ($words as $word) {
             $word = trim($word);

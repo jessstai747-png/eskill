@@ -199,11 +199,11 @@ class SemanticScoreService
     ): bool {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO seo_use_contexts 
+                INSERT INTO seo_use_contexts
                 (category_id, context_type, keyword, weight, is_active, created_at)
                 VALUES (:category_id, :context_type, :keyword, :weight, 1, NOW())
-                ON DUPLICATE KEY UPDATE 
-                    weight = :weight2, 
+                ON DUPLICATE KEY UPDATE
+                    weight = :weight2,
                     is_active = 1
             ");
 
@@ -242,10 +242,10 @@ class SemanticScoreService
     {
         try {
             $stmt = $this->db->prepare("
-                UPDATE seo_use_contexts 
+                UPDATE seo_use_contexts
                 SET is_active = 0
-                WHERE category_id = :category_id 
-                AND context_type = :context_type 
+                WHERE category_id = :category_id
+                AND context_type = :context_type
                 AND keyword = :keyword
             ");
 

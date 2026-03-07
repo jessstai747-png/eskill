@@ -390,12 +390,12 @@ class SynonymExpansionService
             }
 
             $stmt = $this->db->prepare("
-                INSERT INTO seo_synonym_hierarchy 
+                INSERT INTO seo_synonym_hierarchy
                 (category_id, level, word, weight, destination, is_active, created_at)
                 VALUES (:category_id, :level, :word, :weight, :destination, 1, NOW())
-                ON DUPLICATE KEY UPDATE 
-                    weight = :weight2, 
-                    is_active = 1, 
+                ON DUPLICATE KEY UPDATE
+                    weight = :weight2,
+                    is_active = 1,
                     updated_at = NOW()
             ");
 
@@ -431,7 +431,7 @@ class SynonymExpansionService
     {
         try {
             $stmt = $this->db->prepare("
-                UPDATE seo_synonym_hierarchy 
+                UPDATE seo_synonym_hierarchy
                 SET is_active = 0, updated_at = NOW()
                 WHERE category_id = :category_id AND word = :word
             ");
@@ -508,7 +508,7 @@ class SynonymExpansionService
             $stmt = $this->db->prepare("
                 SELECT level, word, weight, destination
                 FROM seo_synonym_hierarchy
-                WHERE category_id = :category_id 
+                WHERE category_id = :category_id
                 AND is_active = 1
                 ORDER BY level, weight DESC
             ");
@@ -693,8 +693,8 @@ class SynonymExpansionService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT config_value 
-                FROM seo_category_config 
+                SELECT config_value
+                FROM seo_category_config
                 WHERE category_id = :category_id AND config_key = 'synonym_hierarchy'
             ");
 

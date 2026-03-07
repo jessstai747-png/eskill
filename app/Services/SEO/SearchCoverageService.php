@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -57,7 +58,7 @@ class SearchCoverageService
 
         $totalWeight = 0;
         $coveredWeight = 0;
-        
+
         foreach ($coverage as $type => $data) {
             $totalWeight += $data['weight'];
 
@@ -66,11 +67,11 @@ class SearchCoverageService
                 $coveredWeight += $data['weight'];
             }
         }
-        
+
         if ($totalWeight === 0) {
             return 0;
         }
-        
+
         return (int)round(($coveredWeight / $totalWeight) * 100);
     }
 
@@ -118,7 +119,7 @@ class SearchCoverageService
             ];
         }
 
-        usort($suggestions, function($a, $b) {
+        usort($suggestions, function ($a, $b) {
             return $b['importance'] <=> $a['importance'];
         });
 

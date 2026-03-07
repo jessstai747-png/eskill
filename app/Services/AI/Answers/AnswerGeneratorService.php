@@ -37,14 +37,14 @@ class AnswerGeneratorService
             // 2. Fetch Item Details for Context
             $item = $this->itemService->getItem($question['item_id']);
             if (isset($item['error'])) {
-                 // Fallback if item not found locally? Maybe fetch from API? 
-                 // For now, fail.
+                // Fallback if item not found locally? Maybe fetch from API?
+                // For now, fail.
                 return ['success' => false, 'error' => 'Item context not found: ' . $item['error']];
             }
 
             // 3. Check Auto-Negotiation (DealMaker)
             $negotiationResult = $this->negotiationService->processNegotiation($question['text'], $question['item_id']);
-            
+
             if ($negotiationResult) {
                 return [
                     'success' => true,
@@ -70,7 +70,6 @@ class AnswerGeneratorService
                 'model' => $result['model'],
                 'source' => 'ai_generation'
             ];
-
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -81,7 +80,7 @@ class AnswerGeneratorService
         $context = "Product: " . ($item['title'] ?? 'N/A') . "\n";
         $context .= "Price: " . ($item['price'] ?? 'N/A') . "\n";
         $context .= "Description: " . mb_substr(($item['description'] ?? ''), 0, 800) . "...\n"; // Increased limit
-        
+
         // Add Attributes if available
         if (!empty($item['attributes'])) {
             $attrs = array_slice($item['attributes'], 0, 15);
@@ -95,10 +94,10 @@ class AnswerGeneratorService
     private function getSystemPrompt(): string
     {
         return "You are an expert E-commerce Support Agent for Mercado Livre Brazil. " .
-               "Answer politely, concisely, and directly in Brazilian Portuguese. " .
-               "Use a professional but friendly tone. " .
-               "If the answer is not in the context, suggest checking the description or asking for specifics. " .
-               "DO NOT hallucinate technical data. " .
-               "Keep answers short (max 3 sentences) unless detailed explanation is needed.";
+            "Answer politely, concisely, and directly in Brazilian Portuguese. " .
+            "Use a professional but friendly tone. " .
+            "If the answer is not in the context, suggest checking the description or asking for specifics. " .
+            "DO NOT hallucinate technical data. " .
+            "Keep answers short (max 3 sentences) unless detailed explanation is needed.";
     }
 }

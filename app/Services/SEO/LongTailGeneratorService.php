@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -152,13 +153,13 @@ class LongTailGeneratorService
             '/(\d+)\s*x\s*(\d+)\s*(litros?|L|l)/i',  // For patterns like "2x41L"
             '/(\d+)\s*(cm³|ml|mL|galão|galao)/i'
         ];
-        
+
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $title, $matches)) {
                 return trim($matches[0]);
             }
         }
-        
+
         return null;
     }
 
@@ -168,15 +169,28 @@ class LongTailGeneratorService
     private function extractCompatibilities(string $title): array
     {
         $compatibilities = [];
-        
+
         // Common motorcycle brands/models that might be in titles
         $commonBrands = [
-            'honda', 'yamaha', 'suzuki', 'dafra', 'kawasaki', 'harley', 'ktm',
-            'cg 160', 'titan', 'fan', 'bros', 'cb 300', 'factor', 'fazer', 'xtz'
+            'honda',
+            'yamaha',
+            'suzuki',
+            'dafra',
+            'kawasaki',
+            'harley',
+            'ktm',
+            'cg 160',
+            'titan',
+            'fan',
+            'bros',
+            'cb 300',
+            'factor',
+            'fazer',
+            'xtz'
         ];
-        
+
         $titleLower = mb_strtolower($title);
-        
+
         foreach ($commonBrands as $brand) {
             if (strpos($titleLower, $brand) !== false) {
                 $compatibilities[] = mb_strtoupper(mb_substr($brand, 0, 1)) . mb_substr($brand, 1);
@@ -193,7 +207,7 @@ class LongTailGeneratorService
     {
         $contexts = [];
         $titleLower = mb_strtolower($title);
-        
+
         // Common context indicators
         $contextIndicators = [
             'delivery' => ['delivery', 'entrega', 'motoboy'],
@@ -202,7 +216,7 @@ class LongTailGeneratorService
             'cidade' => ['cidade', 'urbano', 'dia a dia'],
             'esporte' => ['esporte', 'trilha', 'off road']
         ];
-        
+
         foreach ($contextIndicators as $context => $indicators) {
             foreach ($indicators as $indicator) {
                 if (strpos($titleLower, $indicator) !== false) {

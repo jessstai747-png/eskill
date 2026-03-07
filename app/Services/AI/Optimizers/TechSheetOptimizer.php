@@ -18,7 +18,7 @@ class TechSheetOptimizer
     private CategoryService $categoryService;
     private OpenAIProvider $aiProvider;
     private ?int $accountId;
-    
+
     public function __construct(?int $accountId = null)
     {
         $this->accountId = $accountId;
@@ -26,10 +26,10 @@ class TechSheetOptimizer
         $this->categoryService = new CategoryService($accountId);
         $this->aiProvider = new OpenAIProvider();
     }
-    
+
     /**
      * Analyze and complete missing attributes
-     * 
+     *
      * @param string $itemId ML item ID or category ID
      * @param array $currentAttributes Current attributes
      * @return array Analysis and suggestions
@@ -38,23 +38,23 @@ class TechSheetOptimizer
     {
         // Get category attributes
         $categoryAttrs = $this->categoryService->getCategoryAttributes($itemId);
-        
+
         if (isset($categoryAttrs['error'])) {
             return [
                 'error' => 'Failed to fetch category attributes',
                 'details' => $categoryAttrs,
             ];
         }
-        
+
         // Separate required, recommended and optional
         $required = [];
         $recommended = [];
         $optional = [];
-        
+
         foreach ($categoryAttrs as $attr) {
             $tags = $attr['tags'] ?? [];
             $attrId = $attr['id'];
-            
+
             if (in_array('required', $tags)) {
                 $required[$attrId] = $attr;
             } elseif (in_array('recommended', $tags)) {
@@ -63,27 +63,27 @@ class TechSheetOptimizer
                 $optional[$attrId] = $attr;
             }
         }
-        
+
         // Map current attributes by ID
         $currentMap = [];
         foreach ($currentAttributes as $attr) {
             $currentMap[$attr['id']] = $attr;
         }
-        
+
         // Find missing
         $missingRequired = array_diff_key($required, $currentMap);
         $missingRecommended = array_diff_key($recommended, $currentMap);
-        
+
         // Calculate completeness
         $totalRequired = count($required);
         $filledRequired = count($required) - count($missingRequired);
-        $completeness = $totalRequired > 0 
+        $completeness = $totalRequired > 0
             ? round(($filledRequired / $totalRequired) * 100, 1)
             : 100;
-        
+
         // Try to infer missing values using AI
         $suggestions = [];
-        
+
         foreach ($missingRequired as $attrId => $attr) {
             $suggestion = $this->inferAttributeValue($itemId, $attr, $currentAttributes);
             if ($suggestion) {
@@ -93,7 +93,7 @@ class TechSheetOptimizer
                 ]);
             }
         }
-        
+
         foreach (array_slice($missingRecommended, 0, 5) as $attrId => $attr) {
             $suggestion = $this->inferAttributeValue($itemId, $attr, $currentAttributes);
             if ($suggestion) {
@@ -103,7 +103,7 @@ class TechSheetOptimizer
                 ]);
             }
         }
-        
+
         return [
             'completeness' => $completeness,
             'required' => [
@@ -122,10 +122,10 @@ class TechSheetOptimizer
             'suggestions' => $suggestions,
         ];
     }
-    
+
     /**
      * Infer attribute value using AI and context
-     * 
+     *
      * @param string $itemId
      * @param array $attribute Attribute definition
      * @param array $contextAttributes Other attributes for context
@@ -137,11 +137,11 @@ class TechSheetOptimizer
         $attrName = $attribute['name'];
         $valueType = $attribute['value_type'] ?? 'string';
         $allowedValues = $attribute['values'] ?? [];
-        
+
         // If it has predefined values, try to match from context
         if (!empty($allowedValues)) {
             $inferred = $this->matchFromContext($attrName, $allowedValues, $contextAttributes);
-            
+
             if ($inferred) {
                 return [
                     'attribute_id' => $attrId,
@@ -153,14 +153,14 @@ class TechSheetOptimizer
                 ];
             }
         }
-        
+
         // For common attributes, use simple logic
         $commonDefaults = [
             'BRAND' => $this->extractBrandFromContext($contextAttributes),
             'CONDITION' => ['value_name' => 'Novo', 'confidence' => 0.9],
             'WARRANTY_TYPE' => ['value_name' => 'Garantia do vendedor', 'confidence' => 0.8],
         ];
-        
+
         if (isset($commonDefaults[$attrId])) {
             $default = $commonDefaults[$attrId];
             return [
@@ -171,13 +171,13 @@ class TechSheetOptimizer
                 'method' => 'common_default',
             ];
         }
-        
+
         return null;
     }
-    
+
     /**
      * Match attribute value from context
-     * 
+     *
      * @param string $attrName
      * @param array $allowedValues
      * @param array $contextAttributes
@@ -191,14 +191,14 @@ class TechSheetOptimizer
             $contextText .= ' ' . ($attr['value_name'] ?? $attr['value'] ?? '');
         }
         $contextText = mb_strtolower($contextText);
-        
+
         // Try to find matches
         $matches = [];
         foreach ($allowedValues as $value) {
             $valueName = mb_strtolower($value['name'] ?? '');
-            
+
             if (empty($valueName)) continue;
-            
+
             // Exact match
             if (mb_strpos($contextText, $valueName) !== false) {
                 $matches[] = [
@@ -207,7 +207,7 @@ class TechSheetOptimizer
                     'confidence' => 0.9,
                 ];
             }
-            
+
             // Partial match
             $words = explode(' ', $valueName);
             foreach ($words as $word) {
@@ -221,21 +221,21 @@ class TechSheetOptimizer
                 }
             }
         }
-        
+
         // Return best match
         if (!empty($matches)) {
-            usort($matches, function($a, $b) {
+            usort($matches, function ($a, $b) {
                 return $b['confidence'] <=> $a['confidence'];
             });
             return $matches[0];
         }
-        
+
         return null;
     }
-    
+
     /**
      * Extract brand from existing attributes
-     * 
+     *
      * @param array $attributes
      * @return array|null
      */
@@ -249,13 +249,13 @@ class TechSheetOptimizer
                 ];
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * Validate attributes against category requirements
-     * 
+     *
      * @param array $attributes
      * @param string|null $categoryId
      * @return array Validation result
@@ -264,25 +264,47 @@ class TechSheetOptimizer
     {
         $validAttributes = [];
         $invalidAttributes = [];
-        
+
         // Known valid attribute IDs
         $knownAttributes = [
-            'BRAND', 'MODEL', 'GTIN', 'MPN', 'COLOR', 'SIZE', 'WEIGHT', 'HEIGHT', 'WIDTH', 'LENGTH',
-            'CONDITION', 'WARRANTY_TYPE', 'WARRANTY_TIME', 'MATERIAL', 'CAPACITY', 'VOLTAGE',
-            'PACKAGE_WEIGHT', 'PACKAGE_HEIGHT', 'PACKAGE_WIDTH', 'PACKAGE_LENGTH', 'SELLER_SKU',
-            'EAN', 'UPC', 'ISBN', 'UNITS_PER_PACKAGE', 'ITEM_CONDITION',
+            'BRAND',
+            'MODEL',
+            'GTIN',
+            'MPN',
+            'COLOR',
+            'SIZE',
+            'WEIGHT',
+            'HEIGHT',
+            'WIDTH',
+            'LENGTH',
+            'CONDITION',
+            'WARRANTY_TYPE',
+            'WARRANTY_TIME',
+            'MATERIAL',
+            'CAPACITY',
+            'VOLTAGE',
+            'PACKAGE_WEIGHT',
+            'PACKAGE_HEIGHT',
+            'PACKAGE_WIDTH',
+            'PACKAGE_LENGTH',
+            'SELLER_SKU',
+            'EAN',
+            'UPC',
+            'ISBN',
+            'UNITS_PER_PACKAGE',
+            'ITEM_CONDITION',
         ];
-        
+
         foreach ($attributes as $attr) {
             $attrId = $attr['id'] ?? '';
-            
+
             if (in_array($attrId, $knownAttributes)) {
                 $validAttributes[] = $attrId;
             } else {
                 $invalidAttributes[] = $attrId;
             }
         }
-        
+
         return [
             'valid' => empty($invalidAttributes),
             'valid_attributes' => $validAttributes,
@@ -291,11 +313,11 @@ class TechSheetOptimizer
             'warnings' => [],
         ];
     }
-    
+
     /**
      * Analyze attributes without API call
      * Used for offline analysis of attribute completeness
-     * 
+     *
      * @param array $attributes Current attributes
      * @param array $options Analysis options (total_required, etc.)
      * @return array Analysis result
@@ -304,10 +326,10 @@ class TechSheetOptimizer
     {
         // Essential/required attributes
         $requiredAttributes = ['BRAND', 'MODEL', 'GTIN', 'CONDITION'];
-        
+
         // Recommended attributes
         $recommendedAttributes = ['GTIN', 'MPN', 'WARRANTY_TYPE', 'COLOR', 'SIZE'];
-        
+
         // Map current attributes by ID
         $currentMap = [];
         foreach ($attributes as $attr) {
@@ -316,14 +338,14 @@ class TechSheetOptimizer
                 $currentMap[$id] = $attr;
             }
         }
-        
+
         // Calculate based on options or defaults
         $totalRequired = $options['total_required'] ?? count($requiredAttributes);
-        
+
         // Find filled required
         $filledRequired = 0;
         $missingRequired = [];
-        
+
         foreach ($requiredAttributes as $reqId) {
             if (isset($currentMap[$reqId]) && !empty($currentMap[$reqId]['value'])) {
                 $filledRequired++;
@@ -331,19 +353,19 @@ class TechSheetOptimizer
                 $missingRequired[] = ['id' => $reqId, 'name' => $reqId];
             }
         }
-        
+
         // If total_required is explicitly set, use filled count against it
         if (isset($options['total_required'])) {
-            $filledRequired = count(array_filter($attributes, function($attr) {
+            $filledRequired = count(array_filter($attributes, function ($attr) {
                 return !empty($attr['value']);
             }));
         }
-        
+
         // Calculate completeness
-        $completeness = $totalRequired > 0 
+        $completeness = $totalRequired > 0
             ? round(($filledRequired / $totalRequired) * 100, 1)
             : 0.0;
-        
+
         // Find missing recommended
         $missingRecommended = [];
         foreach ($recommendedAttributes as $recId) {
@@ -351,7 +373,7 @@ class TechSheetOptimizer
                 $missingRecommended[] = ['id' => $recId, 'name' => $recId];
             }
         }
-        
+
         // Generate suggestions
         $suggestions = [];
         foreach ($missingRequired as $missing) {
@@ -366,7 +388,7 @@ class TechSheetOptimizer
                 ];
             }
         }
-        
+
         return [
             'completeness' => (float) $completeness,
             'required' => [
@@ -385,10 +407,10 @@ class TechSheetOptimizer
             'suggested' => $suggestions,
         ];
     }
-    
+
     /**
      * Infer attribute value publicly
-     * 
+     *
      * @param string $attributeId
      * @param array $context
      * @return array Value inference result
@@ -401,17 +423,17 @@ class TechSheetOptimizer
             'WARRANTY_TYPE' => ['value' => 'seller_warranty', 'confidence' => 0.7],
             'ITEM_CONDITION' => ['value' => 'new', 'confidence' => 0.8],
         ];
-        
+
         // Check for default
         if (isset($defaults[$attributeId])) {
             return $defaults[$attributeId];
         }
-        
+
         // Try to extract from title/description
         $title = $context['title'] ?? '';
         $description = $context['description'] ?? '';
         $text = mb_strtolower($title . ' ' . $description);
-        
+
         // Brand extraction
         if ($attributeId === 'BRAND') {
             // Look in existing attributes
@@ -421,7 +443,7 @@ class TechSheetOptimizer
                 }
             }
         }
-        
+
         // Model extraction from title
         if ($attributeId === 'MODEL' && $title) {
             // Try to extract model number pattern
@@ -429,14 +451,14 @@ class TechSheetOptimizer
                 return ['value' => strtoupper($matches[1]), 'confidence' => 0.7];
             }
         }
-        
+
         // No inference possible
         return ['value' => null, 'confidence' => 0];
     }
-    
+
     /**
      * Get attribute priority level
-     * 
+     *
      * @param string $attributeId
      * @return string Priority level (required, recommended, optional)
      */
@@ -444,21 +466,21 @@ class TechSheetOptimizer
     {
         $required = ['BRAND', 'MODEL', 'CONDITION', 'ITEM_CONDITION'];
         $recommended = ['GTIN', 'MPN', 'EAN', 'UPC', 'WARRANTY_TYPE', 'COLOR', 'SIZE', 'MATERIAL'];
-        
+
         if (in_array($attributeId, $required)) {
             return 'required';
         }
-        
+
         if (in_array($attributeId, $recommended)) {
             return 'recommended';
         }
-        
+
         return 'optional';
     }
-    
+
     /**
      * Get competitor analysis for attributes
-     * 
+     *
      * @param string $categoryId
      * @param string $keywords Search keywords
      * @return array Competitor insights
@@ -473,45 +495,44 @@ class TechSheetOptimizer
                 'limit' => 20,
                 'sort' => 'price_desc'
             ]);
-            
+
             if (!$searchResults || empty($searchResults['results'])) {
                 return $this->getFallbackInsights($categoryId);
             }
-            
+
             // Extract attribute patterns from competitors
             $attributeAnalysis = $this->analyzeCompetitorAttributes($searchResults['results']);
-            
+
             // Generate AI-powered recommendations
             $prompt = $this->buildCompetitorInsightsPrompt($searchResults['results'], $keywords, $attributeAnalysis);
-            
+
             $response = $this->aiProvider->complete($prompt, [
                 'temperature' => 0.3,
                 'max_tokens' => 1000
             ]);
-            
+
             if (!isset($response['error']) && !empty($response['content'])) {
                 $aiInsights = $this->parseAIResponse($response['content']);
-                
+
                 return array_merge($attributeAnalysis, [
                     'ai_recommendations' => $aiInsights['recommendations'] ?? [],
                     'competitive_advantages' => $aiInsights['advantages'] ?? [],
                     'market_gaps' => $aiInsights['gaps'] ?? []
                 ]);
             }
-            
+
             // Fallback to analysis-based insights
             return $attributeAnalysis;
-            
         } catch (\Exception $e) {
             return $this->getFallbackInsights($categoryId);
         }
     }
-    
+
     private function analyzeCompetitorAttributes(array $competitors): array
     {
         $attributeCounts = [];
         $totalCompetitors = count($competitors);
-        
+
         foreach ($competitors as $item) {
             if (isset($item['attributes']) && is_array($item['attributes'])) {
                 foreach ($item['attributes'] as $attr) {
@@ -520,7 +541,7 @@ class TechSheetOptimizer
                 }
             }
         }
-        
+
         // Calculate usage percentages and sort
         $mostUsedAttributes = [];
         foreach ($attributeCounts as $id => $count) {
@@ -533,24 +554,24 @@ class TechSheetOptimizer
                 ];
             }
         }
-        
+
         // Sort by usage
         usort($mostUsedAttributes, fn($a, $b) => $b['usage'] <=> $a['usage']);
-        
+
         $avgAttributesCount = array_sum($attributeCounts) / $totalCompetitors;
-        
+
         return [
             'avg_attributes_count' => round($avgAttributesCount, 1),
             'most_used_attributes' => array_slice($mostUsedAttributes, 0, 10),
             'total_competitors_analyzed' => $totalCompetitors
         ];
     }
-    
+
     private function buildCompetitorInsightsPrompt(array $competitors, string $keywords, array $attributeAnalysis): string
     {
         $topCompetitors = array_slice($competitors, 0, 5);
         $competitorData = [];
-        
+
         foreach ($topCompetitors as $item) {
             $competitorData[] = [
                 'title' => $item['title'] ?? '',
@@ -559,25 +580,25 @@ class TechSheetOptimizer
                 'attributes' => array_slice($item['attributes'] ?? [], 0, 10)
             ];
         }
-        
+
         return sprintf(
             "Analyze these top competitors and provide strategic insights:\n\n" .
-            "Keywords: %s\n" .
-            "Competitors Data: %s\n" .
-            "Attribute Analysis: %s\n\n" .
-            "Provide insights in JSON format:\n" .
-            "{\n" .
-            "  \"recommendations\": [\"specific actionable recommendations\"],\n" .
-            "  \"advantages\": [\"identified competitive advantages\"],\n" .
-            "  \"gaps\": [\"market gaps or opportunities\"]\n" .
-            "}\n\n" .
-            "Focus on attribute optimization, positioning, and market differentiation.",
+                "Keywords: %s\n" .
+                "Competitors Data: %s\n" .
+                "Attribute Analysis: %s\n\n" .
+                "Provide insights in JSON format:\n" .
+                "{\n" .
+                "  \"recommendations\": [\"specific actionable recommendations\"],\n" .
+                "  \"advantages\": [\"identified competitive advantages\"],\n" .
+                "  \"gaps\": [\"market gaps or opportunities\"]\n" .
+                "}\n\n" .
+                "Focus on attribute optimization, positioning, and market differentiation.",
             $keywords,
             json_encode($competitorData, JSON_PRETTY_PRINT),
             json_encode($attributeAnalysis, JSON_PRETTY_PRINT)
         );
     }
-    
+
     private function parseAIResponse(string $content): array
     {
         try {
@@ -588,19 +609,19 @@ class TechSheetOptimizer
         } catch (\Exception $e) {
             // Fall through to fallback
         }
-        
+
         // Try to extract insights from plain text
         $insights = [
             'recommendations' => [],
             'advantages' => [],
             'gaps' => []
         ];
-        
+
         $lines = explode("\n", $content);
         foreach ($lines as $line) {
             $line = trim($line);
             if (empty($line)) continue;
-            
+
             if (stripos($line, 'recommend') !== false) {
                 $insights['recommendations'][] = $line;
             } elseif (stripos($line, 'advantage') !== false || stripos($line, 'strength') !== false) {
@@ -609,10 +630,10 @@ class TechSheetOptimizer
                 $insights['gaps'][] = $line;
             }
         }
-        
+
         return $insights;
     }
-    
+
     private function getFallbackInsights(string $categoryId): array
     {
         return [

@@ -449,7 +449,7 @@ Retorne JSON com oportunidades de cauda longa:
     private function extractBasicKeywords(string $text): array
     {
         $text = mb_strtolower($text);
-        $text = preg_replace('/[^a-z0-9\s]/', ' ', $text);
+        $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
         $words = preg_split('/\s+/', trim($text));
 
         return array_filter($words, function ($word) {
@@ -474,7 +474,7 @@ Retorne JSON com oportunidades de cauda longa:
         $score = 0;
 
         // Similaridade de preço
-        $priceDiff = abs($myProduct['price'] - $competitor['price']) / $myProduct['price'];
+        $priceDiff = $myProduct['price'] > 0 ? abs($myProduct['price'] - $competitor['price']) / $myProduct['price'] : 0;
         $score += (1 - $priceDiff) * 30;
 
         // Similaridade de vendas

@@ -1178,7 +1178,7 @@ class DeepResearchService
             'catalog_avg' => round($catalogAvg, 2),
             'common_avg' => round($commonAvg, 2),
             'absolute_gap' => round($catalogAvg - $commonAvg, 2),
-            'percentage_gap' => round((($catalogAvg - $commonAvg) / $commonAvg) * 100, 1),
+            'percentage_gap' => $commonAvg > 0 ? round((($catalogAvg - $commonAvg) / $commonAvg) * 100, 1) : 0,
             'insight' => $catalogAvg > $commonAvg
                 ? 'Catálogo em média mais caro - normal por maior visibilidade'
                 : 'Comum mais caro - oportunidade em catálogo',

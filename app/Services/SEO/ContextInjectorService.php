@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -102,9 +103,9 @@ class ContextInjectorService
         $title = is_string($title) ? $title : (string) $title;
         $description = is_string($description) ? $description : (string) $description;
         $categoryId = $item['category_id'] ?? '';
-        
+
         $combinedText = mb_strtolower($title . ' ' . $description);
-        
+
         foreach (self::CONTEXTS as $contextType => $contextData) {
             foreach ($contextData['keywords'] as $keyword) {
                 if (strpos($combinedText, mb_strtolower($keyword)) !== false) {
@@ -114,7 +115,7 @@ class ContextInjectorService
                 }
             }
         }
-        
+
         if (empty($contexts)) {
             $contexts = $this->getDefaultContextsForCategory($categoryId);
         }
@@ -133,22 +134,22 @@ class ContextInjectorService
         if (!isset(self::CONTEXTS[$context])) {
             return [];
         }
-        
+
         $contextData = self::CONTEXTS[$context];
         $title = $item['title'] ?? 'produto';
         if (is_array($title)) {
             $title = $title['title'] ?? 'produto';
         }
         $title = is_string($title) ? $title : (string) $title;
-        
+
         $generatedPhrases = [];
-        
+
         foreach ($contextData['phrases'] as $phraseTemplate) {
             // Replace placeholder with actual product name
             $phrase = str_replace('{produto}', $title, $phraseTemplate);
             $generatedPhrases[] = $phrase;
         }
-        
+
         return $generatedPhrases;
     }
 
@@ -159,18 +160,18 @@ class ContextInjectorService
     {
         $textLower = mb_strtolower($text);
         $phraseLower = mb_strtolower($phrase);
-        
+
         // Simple check for overlapping words
         $phraseWords = explode(' ', $phraseLower);
         $overlapCount = 0;
         $totalPhraseWords = count($phraseWords);
-        
+
         foreach ($phraseWords as $word) {
             if (mb_strlen($word) > 3 && strpos($textLower, $word) !== false) { // Only check words longer than 3 chars
                 $overlapCount++;
             }
         }
-        
+
         // If more than half the words overlap, consider it a related concept
         return ($overlapCount / $totalPhraseWords) > 0.5;
     }

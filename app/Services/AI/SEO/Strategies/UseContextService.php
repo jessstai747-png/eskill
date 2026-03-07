@@ -533,8 +533,10 @@ class UseContextService
         $added = [];
 
         // Adicionar seção de uso se não existir
-        if (stripos($description, 'uso:') === false &&
-            stripos($description, 'ideal para') === false) {
+        if (
+            stripos($description, 'uso:') === false &&
+            stripos($description, 'ideal para') === false
+        ) {
 
             $useSection = "\n\n✅ **Ideal para:**\n";
             foreach ($phrases as $p) {

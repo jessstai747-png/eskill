@@ -330,7 +330,7 @@ class EmailService
 
     /**
      * Envia alerta crítico sobre saúde dos tokens
-     * 
+     *
      * @param string $to Email de destino
      * @param array $metrics Métricas do sistema (total_accounts, expired_accounts, etc)
      * @param array $issues Problemas detectados (critical, warning, info)
@@ -340,22 +340,22 @@ class EmailService
     public function sendTokenHealthAlert(string $to, array $metrics, array $issues, array $accounts = []): bool
     {
         $healthStatus = $metrics['health_status'] ?? 'unknown';
-        $statusIcon = match($healthStatus) {
+        $statusIcon = match ($healthStatus) {
             'critical' => '🔴',
             'warning' => '⚠️',
             'ok' => '✅',
             default => '❓'
         };
-        
-        $statusColor = match($healthStatus) {
+
+        $statusColor = match ($healthStatus) {
             'critical' => '#dc3545',
             'warning' => '#ffc107',
             'ok' => '#28a745',
             default => '#6c757d'
         };
-        
+
         $subject = "{$statusIcon} Alerta de Tokens ML - Status: " . mb_strtoupper($healthStatus);
-        
+
         // Construir lista de problemas críticos
         $criticalHtml = '';
         if (!empty($issues['critical'])) {
@@ -366,7 +366,7 @@ class EmailService
             }
             $criticalHtml .= '</ul></div>';
         }
-        
+
         // Construir lista de avisos
         $warningHtml = '';
         if (!empty($issues['warning'])) {
@@ -377,7 +377,7 @@ class EmailService
             }
             $warningHtml .= '</ul></div>';
         }
-        
+
         // Construir tabela de contas com problemas
         $accountsHtml = '';
         if (!empty($accounts)) {
@@ -397,10 +397,10 @@ class EmailService
             $accountsHtml .= '</tbody></table>';
             $accountsHtml .= '</div>';
         }
-        
+
         $baseUrl = $this->config['app_url'] ?? 'https://eskill.com.br';
         $dashboardUrl = "{$baseUrl}/tokens/dashboard";
-        
+
         $message = "
         <!DOCTYPE html>
         <html>
@@ -463,15 +463,15 @@ class EmailService
                             <div class='label'>Taxa de Falha 24h</div>
                         </div>
                     </div>
-                    
+
                     {$criticalHtml}
                     {$warningHtml}
                     {$accountsHtml}
-                    
+
                     <div style='text-align: center; margin-top: 30px;'>
                         <a href='{$dashboardUrl}' class='button'>Acessar Dashboard de Tokens</a>
                     </div>
-                    
+
                     <div class='timestamp'>
                         Alerta gerado em: " . date('d/m/Y H:i:s') . "
                     </div>

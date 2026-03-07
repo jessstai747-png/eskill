@@ -22,13 +22,13 @@ use PDO;
 
 /**
  * 🔗 Integração Ficha Técnica + SEO Strategies Engine
- * 
+ *
  * Conecta o módulo de Ficha Técnica com as 12 estratégias SEO:
  * - Enriquece sugestões de atributos com insights SEO
  * - Gera sugestões de campos ocultos (KEYWORDS, MPN, LINE)
  * - Sugere otimizações de título, descrição e compatibilidade
  * - Calcula score SEO consolidado
- * 
+ *
  * @package App\Services
  */
 class TechSheetSEOIntegrationService
@@ -70,7 +70,7 @@ class TechSheetSEOIntegrationService
 
             // Obter dados do item
             $item = $this->mlClient->get("/items/{$itemId}");
-            
+
             if (!$item || isset($item['error']) || empty($item['id'])) {
                 $message = $item['message'] ?? $item['error'] ?? 'Item não encontrado';
                 return ['success' => false, 'error' => $message];
@@ -91,7 +91,7 @@ class TechSheetSEOIntegrationService
                 'item_title' => $item['title'] ?? null,
                 'item_price' => $item['price'] ?? null,
             ];
-            
+
             // Save to cache
             $this->cache->set($itemId, $cacheData);
 
@@ -118,7 +118,7 @@ class TechSheetSEOIntegrationService
         try {
             $item = $this->mlClient->get("/items/{$itemId}");
             $description = $this->getItemDescription($itemId);
-            
+
             $categoryId = $item['category_id'] ?? '';
             $title = $item['title'] ?? '';
             $brand = $this->extractAttribute($item, 'BRAND');
@@ -129,7 +129,7 @@ class TechSheetSEOIntegrationService
             // 1. Sugestões de Campos Ocultos (E2)
             $hiddenService = new HiddenFieldsService($this->accountId);
             $hiddenAnalysis = $hiddenService->analyzeItem($itemId);
-            
+
             if (!empty($hiddenAnalysis['suggestions'])) {
                 foreach ($hiddenAnalysis['suggestions'] as $field => $suggestion) {
                     $suggestions[] = $this->createSuggestion(
@@ -153,7 +153,7 @@ class TechSheetSEOIntegrationService
             $synonyms = $categoryId && $baseKeyword !== ''
                 ? $synonymService->expand($baseKeyword, $categoryId)
                 : ['synonyms' => []];
-            
+
             if (!empty($synonyms['synonyms'])) {
                 $keywordsValue = $this->buildKeywordsValue($synonyms['synonyms'], $title);
                 $suggestions[] = $this->createSuggestion(
@@ -177,13 +177,13 @@ class TechSheetSEOIntegrationService
                 'description' => $description,
                 'category_id' => $categoryId
             ]);
-            
+
             if (!empty($contextSuggestion['suggestions'])) {
                 $contextKeywords = $contextService->generateContextKeywords(
                     array_column($contextSuggestion['suggestions'], 'context'),
                     $categoryId
                 );
-                
+
                 if (!empty($contextKeywords['keywords'])) {
                     $suggestions[] = $this->createSuggestion(
                         $itemId,
@@ -208,7 +208,7 @@ class TechSheetSEOIntegrationService
                 'category_id' => $categoryId,
                 'limit' => 10
             ]);
-            
+
             if (!empty($longTails['long_tails'])) {
                 $longTailKeywords = array_map(fn($lt) => $lt['keyword'], $longTails['long_tails']);
                 $suggestions[] = $this->createSuggestion(
@@ -228,7 +228,7 @@ class TechSheetSEOIntegrationService
             // 5. Sugestões de Compatibilidade (E10)
             $compatService = new CompatibilityService($this->accountId);
             $compatAnalysis = $compatService->analyzeCompatibility($itemId);
-            
+
             if (!empty($compatAnalysis['suggested_expansion']['expanded'])) {
                 $newModels = array_column($compatAnalysis['suggested_expansion']['expanded'], 'model');
                 $suggestions[] = $this->createSuggestion(
@@ -433,7 +433,7 @@ class TechSheetSEOIntegrationService
             $item = $this->mlClient->get("/items/{$itemId}");
             $title = $item['title'] ?? '';
             $categoryId = $item['category_id'] ?? '';
-            
+
             // Análise de cobertura
             $coverageService = new SearchTypeCoverageService($this->accountId);
             $brand = $this->extractAttribute($item, 'BRAND');
@@ -444,7 +444,7 @@ class TechSheetSEOIntegrationService
                 'brand' => $brand,
                 'model' => $model,
             ]);
-            
+
             // Gerar keywords de cobertura faltantes
             $missingTypes = [];
             foreach ($coverage['coverage'] ?? [] as $type => $data) {
@@ -546,7 +546,7 @@ class TechSheetSEOIntegrationService
 
             // Sugerir pontos de injeção
             $injectionPoints = $injectorService->suggestInjectionPoints($description, $keywordList);
-            
+
             $injected = $injectorService->injectInDescription(
                 $description,
                 $keywordList,
@@ -772,7 +772,7 @@ class TechSheetSEOIntegrationService
     public function generateSEOReport(string $itemId): array
     {
         $analysis = $this->analyzeSEO($itemId);
-        
+
         if (!($analysis['success'] ?? false)) {
             return $analysis;
         }
@@ -811,7 +811,7 @@ class TechSheetSEOIntegrationService
 
         foreach ($itemIds as $itemId) {
             $result = $this->generateSEOSuggestions($itemId);
-            
+
             $results[$itemId] = [
                 'success' => $result['success'] ?? false,
                 'suggestions_count' => count($result['suggestions'] ?? [])
@@ -836,11 +836,11 @@ class TechSheetSEOIntegrationService
 
     /**
      * 🔥 Enriquece sugestões da Ficha Técnica com dados de Trends do Mercado Livre
-     * 
+     *
      * Usa os endpoints oficiais:
      * - GET /trends/sites/{site_id} - Tendências gerais
      * - GET /trends/sites/{site_id}/categories/{category_id} - Tendências por categoria
-     * 
+     *
      * @param string $itemId ID do item
      * @return array Dados de trends + sugestões enriquecidas
      */
@@ -848,7 +848,7 @@ class TechSheetSEOIntegrationService
     {
         try {
             $item = $this->mlClient->get("/items/{$itemId}");
-            
+
             if (!$item || isset($item['error'])) {
                 return ['success' => false, 'error' => 'Item não encontrado'];
             }
@@ -859,10 +859,10 @@ class TechSheetSEOIntegrationService
 
             // 1. Buscar tendências gerais do site
             $siteTrends = $this->fetchSiteTrends($siteId);
-            
+
             // 2. Buscar tendências da categoria específica
-            $categoryTrends = $categoryId 
-                ? $this->fetchCategoryTrends($siteId, $categoryId) 
+            $categoryTrends = $categoryId
+                ? $this->fetchCategoryTrends($siteId, $categoryId)
                 : [];
 
             // 3. Minerar keywords das tendências
@@ -1095,7 +1095,7 @@ class TechSheetSEOIntegrationService
         if (!empty($missingKeywords)) {
             // Sugestão de KEYWORDS com termos em tendência
             $trendingKeywords = array_map(fn($o) => $o['keyword'], array_slice($missingKeywords, 0, 5));
-            
+
             $suggestions[] = $this->createSuggestion(
                 $itemId,
                 $categoryId,
@@ -1119,7 +1119,7 @@ class TechSheetSEOIntegrationService
 
             if (!empty($growingTerms)) {
                 $growingKeywords = array_map(fn($o) => $o['keyword'], array_slice($growingTerms, 0, 3));
-                
+
                 $suggestions[] = $this->createSuggestion(
                     $itemId,
                     $categoryId,
@@ -1190,7 +1190,7 @@ class TechSheetSEOIntegrationService
         // Filtrar keywords com trend = growing ou growth_rate > 0
         foreach ($response['keywords'] ?? [] as $kw) {
             if (!is_array($kw)) continue;
-            
+
             $trend = $kw['trend'] ?? '';
             $growthRate = $kw['growth_rate'] ?? $kw['growth'] ?? 0;
 
@@ -1214,12 +1214,12 @@ class TechSheetSEOIntegrationService
         // Calcular baseado em quantidade e qualidade de keywords
         $keywords = $response['keywords'] ?? [];
         $count = count($keywords);
-        
+
         if ($count === 0) return 0;
         if ($count >= 20) return 90;
         if ($count >= 10) return 75;
         if ($count >= 5) return 60;
-        
+
         return 40;
     }
 
@@ -1249,13 +1249,13 @@ class TechSheetSEOIntegrationService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT data, expires_at 
-                FROM cache_items 
+                SELECT data, expires_at
+                FROM cache_items
                 WHERE cache_key = :key AND expires_at > NOW()
             ");
             $stmt->execute(['key' => "trends_{$key}"]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($row && $row['data']) {
                 return json_decode($row['data'], true);
             }
@@ -1271,7 +1271,7 @@ class TechSheetSEOIntegrationService
             $stmt = $this->db->prepare("
                 INSERT INTO cache_items (cache_key, data, expires_at, created_at)
                 VALUES (:key, :data, DATE_ADD(NOW(), INTERVAL :ttl SECOND), NOW())
-                ON DUPLICATE KEY UPDATE 
+                ON DUPLICATE KEY UPDATE
                     data = VALUES(data),
                     expires_at = VALUES(expires_at)
             ");
@@ -1379,7 +1379,7 @@ class TechSheetSEOIntegrationService
     {
         $currentScore = $analysis['consolidated_score'] ?? 0;
         $targetScore = 85;
-        
+
         return max(0, $targetScore - $currentScore);
     }
 
@@ -1452,12 +1452,12 @@ class TechSheetSEOIntegrationService
     private function saveSuggestions(array $suggestions): int
     {
         $saved = 0;
-        
+
         $stmt = $this->db->prepare("
-            INSERT INTO tech_sheet_suggestions 
-            (account_id, item_id, category_id, attribute_id, attribute_name, 
+            INSERT INTO tech_sheet_suggestions
+            (account_id, item_id, category_id, attribute_id, attribute_name,
              suggested_value, source, confidence, status, meta, created_at)
-            VALUES 
+            VALUES
             (:account_id, :item_id, :category_id, :attribute_id, :attribute_name,
              :suggested_value, :source, :confidence, :status, :meta, NOW())
             ON DUPLICATE KEY UPDATE
@@ -1515,7 +1515,7 @@ class TechSheetSEOIntegrationService
     {
         $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na', 'e', 'ou'];
         $words = preg_split('/\s+/', mb_strtolower($title));
-        
+
         $keywords = [];
         foreach ($words as $word) {
             $word = preg_replace('/[^\p{L}\p{N}]/u', '', $word);
@@ -1531,7 +1531,7 @@ class TechSheetSEOIntegrationService
     private function buildKeywordsValue(array $synonyms, string $title): string
     {
         $keywords = [];
-        
+
         // Adicionar sinônimos
         foreach ($synonyms as $syn) {
             $word = is_array($syn) ? ($syn['word'] ?? '') : $syn;

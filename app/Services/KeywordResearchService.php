@@ -10,8 +10,27 @@ namespace App\Services;
 class KeywordResearchService
 {
     public const STOP_WORDS = [
-        'a', 'o', 'e', 'de', 'da', 'do', 'em', 'um', 'uma', 'para', 'com',
-        'sem', 'no', 'na', 'os', 'as', 'ou', 'por', 'que', 'dos', 'das'
+        'a',
+        'o',
+        'e',
+        'de',
+        'da',
+        'do',
+        'em',
+        'um',
+        'uma',
+        'para',
+        'com',
+        'sem',
+        'no',
+        'na',
+        'os',
+        'as',
+        'ou',
+        'por',
+        'que',
+        'dos',
+        'das'
     ];
 
     private MercadoLivreClient $client;
@@ -121,17 +140,17 @@ class KeywordResearchService
     {
         // This would typically call external APIs or database
         // For now, returning a combination of base keyword and related terms
-        
+
         $keywords = [$baseKeyword];
-        
+
         // Add variations and related terms
         $variations = $this->generateKeywordVariations($baseKeyword);
         $keywords = array_merge($keywords, $variations);
-        
+
         // Add category-specific terms
         $categoryTerms = $this->getCategorySpecificTerms($categoryId);
         $keywords = array_merge($keywords, $categoryTerms);
-        
+
         return array_unique($keywords);
     }
 
@@ -147,12 +166,12 @@ class KeywordResearchService
             'tecnica' => [],
             'contexto' => []
         ];
-        
+
         foreach ($keywords as $keyword) {
             $type = $this->classifySingleKeyword($keyword, $categoryId);
             $classification[$type][] = $keyword;
         }
-        
+
         return $classification;
     }
 
@@ -179,14 +198,14 @@ class KeywordResearchService
     public function getWithCompetitionScore(array $keywords): array
     {
         $result = [];
-        
+
         foreach ($keywords as $keyword) {
             $result[] = [
                 'keyword' => $keyword,
                 'competition_score' => $this->estimateCompetition($keyword)
             ];
         }
-        
+
         return $result;
     }
 
@@ -197,7 +216,7 @@ class KeywordResearchService
     {
         $variations = [];
         $words = explode(' ', $baseKeyword);
-        
+
         // Add singular/plural variations if applicable
         foreach ($words as $word) {
             if (mb_substr($word, -1) === 's') {
@@ -210,14 +229,14 @@ class KeywordResearchService
                 $variations[] = str_replace($word, $plural, $baseKeyword);
             }
         }
-        
+
         // Add common modifiers
         $modifiers = ['barato', 'original', 'novo', 'usado', 'premium', 'economico'];
         foreach ($modifiers as $modifier) {
             $variations[] = $modifier . ' ' . $baseKeyword;
             $variations[] = $baseKeyword . ' ' . $modifier;
         }
-        
+
         return $variations;
     }
 
@@ -229,16 +248,29 @@ class KeywordResearchService
         // Define some common category terms
         $categoryTerms = [
             'MLB3530' => [ // Baús/Bagageiros
-                'baú', 'bauleto', 'bagageiro', 'maleiro', 'porta objetos', 'compartimento'
+                'baú',
+                'bauleto',
+                'bagageiro',
+                'maleiro',
+                'porta objetos',
+                'compartimento'
             ],
             'MLB1071' => [ // Capacetes
-                'capacete', 'viseira', 'concha', 'abajur', 'protetor'
+                'capacete',
+                'viseira',
+                'concha',
+                'abajur',
+                'protetor'
             ],
             'MLB1234' => [ // Generic category
-                'produto', 'item', 'artigo', 'equipamento', 'acessório'
+                'produto',
+                'item',
+                'artigo',
+                'equipamento',
+                'acessório'
             ]
         ];
-        
+
         return $categoryTerms[$categoryId] ?? ['produto', 'item', 'artigo'];
     }
 
@@ -248,7 +280,7 @@ class KeywordResearchService
     private function classifySingleKeyword(string $keyword, string $categoryId): string
     {
         $keywordLower = mb_strtolower($keyword);
-        
+
         // Core keywords are typically the main product terms
         $coreTerms = ['produto', 'item', 'modelo', 'marca'];
         foreach ($coreTerms as $term) {
@@ -256,7 +288,7 @@ class KeywordResearchService
                 return 'core';
             }
         }
-        
+
         // Technical keywords describe specifications
         $techTerms = ['medida', 'tamanho', 'capacidade', 'material', 'cor', 'peso', 'dimensão'];
         foreach ($techTerms as $term) {
@@ -264,7 +296,7 @@ class KeywordResearchService
                 return 'tecnica';
             }
         }
-        
+
         // Context keywords relate to usage
         $contextTerms = ['uso', 'aplicação', 'função', 'finalidade'];
         foreach ($contextTerms as $term) {
@@ -272,7 +304,7 @@ class KeywordResearchService
                 return 'contexto';
             }
         }
-        
+
         // Default to support
         return 'suporte';
     }

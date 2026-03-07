@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * Clone Notification Service
- * 
+ *
  * Sistema de notificações para alertas de clonagem:
  * - Slack webhooks
  * - Discord webhooks
@@ -33,7 +33,7 @@ class CloneNotificationService
     public const EVENT_BATCH_PROGRESS = 'batch.progress';
     public const EVENT_ALERT_CRITICAL = 'alert.critical';
     public const EVENT_METRICS_DAILY = 'metrics.daily';
-    
+
     // Severidades
     public const SEVERITY_INFO = 'info';
     public const SEVERITY_WARNING = 'warning';
@@ -45,7 +45,7 @@ class CloneNotificationService
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
         $this->userId = $userId;
-        
+
         $this->config = [
             'timeout' => 10,
             'max_retries' => 3,
@@ -88,10 +88,10 @@ class CloneNotificationService
     private function saveWebhookConfig(string $type, array $config): int
     {
         $this->ensureTableExists();
-        
+
         // Verificar se já existe configuração
         $stmt = $this->db->prepare("
-            SELECT id FROM clone_notification_webhooks 
+            SELECT id FROM clone_notification_webhooks
             WHERE account_id = :account_id AND type = :type
         ");
         $stmt->execute([
@@ -99,10 +99,10 @@ class CloneNotificationService
             ':type' => $type,
         ]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($existing) {
             $stmt = $this->db->prepare("
-                UPDATE clone_notification_webhooks 
+                UPDATE clone_notification_webhooks
                 SET url = :url, config = :config, updated_at = NOW()
                 WHERE id = :id
             ");
@@ -113,11 +113,11 @@ class CloneNotificationService
             ]);
             return (int) $existing['id'];
         }
-        
+
         $stmt = $this->db->prepare("
-            INSERT INTO clone_notification_webhooks 
+            INSERT INTO clone_notification_webhooks
             (account_id, user_id, type, url, config, status, created_at, updated_at)
-            VALUES 
+            VALUES
             (:account_id, :user_id, :type, :url, :config, 'active', NOW(), NOW())
         ");
         $stmt->execute([
@@ -127,7 +127,7 @@ class CloneNotificationService
             ':url' => $config['url'],
             ':config' => json_encode($config),
         ]);
-        
+
         return (int) $this->db->lastInsertId();
     }
 
@@ -152,7 +152,7 @@ class CloneNotificationService
     {
         $success = ($stats['failed'] ?? 0) === 0;
         $severity = $success ? self::SEVERITY_INFO : self::SEVERITY_WARNING;
-        
+
         return $this->notify(self::EVENT_JOB_COMPLETED, $severity, [
             'job_id' => $jobId,
             'total_items' => $stats['total'] ?? 0,
@@ -206,12 +206,12 @@ class CloneNotificationService
     public function notifyBatchProgress(int $jobId, int $processed, int $total): array
     {
         $percentage = $total > 0 ? round(($processed / $total) * 100, 1) : 0;
-        
+
         // Só notifica em marcos específicos: 25%, 50%, 75%
         if (!in_array($percentage, [25, 50, 75])) {
             return ['skipped' => true, 'reason' => 'Not a milestone'];
         }
-        
+
         return $this->notify(self::EVENT_BATCH_PROGRESS, self::SEVERITY_INFO, [
             'job_id' => $jobId,
             'processed' => $processed,
@@ -254,13 +254,13 @@ class CloneNotificationService
     public function notify(string $event, string $severity, array $payload): array
     {
         $webhooks = $this->getActiveWebhooks($event, $severity);
-        
+
         if (empty($webhooks)) {
             return ['skipped' => true, 'reason' => 'No active webhooks'];
         }
-        
+
         $results = [];
-        
+
         foreach ($webhooks as $webhook) {
             $result = $this->sendWebhook($webhook, $event, $severity, $payload);
             $results[] = [
@@ -270,11 +270,11 @@ class CloneNotificationService
                 'status_code' => $result['status_code'] ?? null,
                 'error' => $result['error'] ?? null,
             ];
-            
+
             // Log no banco
             $this->logNotification($webhook['id'], $event, $severity, $result);
         }
-        
+
         return $results;
     }
 
@@ -284,15 +284,15 @@ class CloneNotificationService
     private function getActiveWebhooks(string $event, string $severity): array
     {
         $this->ensureTableExists();
-        
+
         $stmt = $this->db->prepare("
-            SELECT * FROM clone_notification_webhooks 
-            WHERE account_id = :account_id 
+            SELECT * FROM clone_notification_webhooks
+            WHERE account_id = :account_id
             AND status = 'active'
         ");
         $stmt->execute([':account_id' => $this->accountId]);
         $webhooks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $filtered = [];
         $severityOrder = [
             self::SEVERITY_INFO => 1,
@@ -300,25 +300,25 @@ class CloneNotificationService
             self::SEVERITY_ERROR => 3,
             self::SEVERITY_CRITICAL => 4,
         ];
-        
+
         foreach ($webhooks as $webhook) {
             $config = json_decode($webhook['config'], true) ?? [];
-            
+
             // Verificar eventos
             $events = $config['events'] ?? ['*'];
             if (!in_array('*', $events) && !in_array($event, $events)) {
                 continue;
             }
-            
+
             // Verificar severidade mínima
             $minSeverity = $config['min_severity'] ?? self::SEVERITY_INFO;
             if (($severityOrder[$severity] ?? 0) < ($severityOrder[$minSeverity] ?? 0)) {
                 continue;
             }
-            
+
             $filtered[] = $webhook;
         }
-        
+
         return $filtered;
     }
 
@@ -328,15 +328,15 @@ class CloneNotificationService
     private function sendWebhook(array $webhook, string $event, string $severity, array $payload): array
     {
         $config = json_decode($webhook['config'], true) ?? [];
-        
+
         try {
             switch ($webhook['type']) {
                 case 'slack':
                     return $this->sendSlackNotification($webhook['url'], $event, $severity, $payload, $config);
-                    
+
                 case 'discord':
                     return $this->sendDiscordNotification($webhook['url'], $event, $severity, $payload, $config);
-                    
+
                 default:
                     throw new \Exception("Tipo de webhook não suportado: {$webhook['type']}");
             }
@@ -359,12 +359,12 @@ class CloneNotificationService
         array $config
     ): array {
         $message = $this->formatSlackMessage($event, $severity, $payload);
-        
+
         $data = [
             'text' => $message['text'],
             'attachments' => $message['attachments'] ?? [],
         ];
-        
+
         if (!empty($config['channel'])) {
             $data['channel'] = $config['channel'];
         }
@@ -374,7 +374,7 @@ class CloneNotificationService
         if (!empty($config['icon_emoji'])) {
             $data['icon_emoji'] = $config['icon_emoji'];
         }
-        
+
         return $this->sendHttpRequest($webhookUrl, $data);
     }
 
@@ -389,18 +389,18 @@ class CloneNotificationService
         array $config
     ): array {
         $embed = $this->formatDiscordEmbed($event, $severity, $payload);
-        
+
         $data = [
             'embeds' => [$embed],
         ];
-        
+
         if (!empty($config['username'])) {
             $data['username'] = $config['username'];
         }
         if (!empty($config['avatar_url'])) {
             $data['avatar_url'] = $config['avatar_url'];
         }
-        
+
         return $this->sendHttpRequest($webhookUrl, $data);
     }
 
@@ -419,19 +419,19 @@ class CloneNotificationService
             self::EVENT_ALERT_CRITICAL => '🚨 Alerta Crítico',
             self::EVENT_METRICS_DAILY => '📈 Métricas Diárias',
         ];
-        
+
         $severityColors = [
             self::SEVERITY_INFO => '#36a64f',
             self::SEVERITY_WARNING => '#FFA500',
             self::SEVERITY_ERROR => '#FF6B6B',
             self::SEVERITY_CRITICAL => '#dc3545',
         ];
-        
+
         $title = $eventLabels[$event] ?? "Clone Event: $event";
         $color = $severityColors[$severity] ?? '#808080';
-        
+
         $fields = $this->buildSlackFields($event, $payload);
-        
+
         return [
             'text' => $title,
             'attachments' => [
@@ -451,14 +451,14 @@ class CloneNotificationService
     private function buildSlackFields(string $event, array $payload): array
     {
         $fields = [];
-        
+
         switch ($event) {
             case self::EVENT_JOB_STARTED:
                 $fields[] = ['title' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'short' => true];
                 $fields[] = ['title' => 'Itens', 'value' => (string)($payload['items_count'] ?? 0), 'short' => true];
                 $fields[] = ['title' => 'Fonte', 'value' => $payload['source_type'] ?? 'N/A', 'short' => true];
                 break;
-                
+
             case self::EVENT_JOB_COMPLETED:
                 $fields[] = ['title' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'short' => true];
                 $fields[] = ['title' => 'Total', 'value' => (string)($payload['total_items'] ?? 0), 'short' => true];
@@ -466,29 +466,29 @@ class CloneNotificationService
                 $fields[] = ['title' => 'Falhas', 'value' => (string)($payload['failed'] ?? 0), 'short' => true];
                 $fields[] = ['title' => 'Duração', 'value' => $payload['duration'] ?? 'N/A', 'short' => true];
                 break;
-                
+
             case self::EVENT_JOB_FAILED:
                 $fields[] = ['title' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'short' => true];
                 $fields[] = ['title' => 'Erro', 'value' => $payload['error'] ?? 'Desconhecido', 'short' => false];
                 break;
-                
+
             case self::EVENT_BATCH_PROGRESS:
                 $fields[] = ['title' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'short' => true];
                 $fields[] = ['title' => 'Progresso', 'value' => "{$payload['processed']}/{$payload['total']} ({$payload['percentage']}%)", 'short' => true];
                 break;
-                
+
             case self::EVENT_ALERT_CRITICAL:
                 $fields[] = ['title' => 'Tipo', 'value' => $payload['alert_type'] ?? 'N/A', 'short' => true];
                 $fields[] = ['title' => 'Mensagem', 'value' => $payload['message'] ?? 'N/A', 'short' => false];
                 break;
-                
+
             case self::EVENT_METRICS_DAILY:
                 $fields[] = ['title' => 'Data', 'value' => $payload['date'] ?? date('Y-m-d'), 'short' => true];
                 $fields[] = ['title' => 'Jobs', 'value' => (string)($payload['total_jobs'] ?? 0), 'short' => true];
                 $fields[] = ['title' => 'Itens Clonados', 'value' => (string)($payload['items_cloned'] ?? 0), 'short' => true];
                 $fields[] = ['title' => 'Taxa de Sucesso', 'value' => ($payload['success_rate'] ?? 0) . '%', 'short' => true];
                 break;
-                
+
             default:
                 // Campos genéricos
                 foreach ($payload as $key => $value) {
@@ -497,7 +497,7 @@ class CloneNotificationService
                     }
                 }
         }
-        
+
         return $fields;
     }
 
@@ -516,19 +516,19 @@ class CloneNotificationService
             self::EVENT_ALERT_CRITICAL => '🚨 Alerta Crítico',
             self::EVENT_METRICS_DAILY => '📈 Métricas Diárias',
         ];
-        
+
         $severityColors = [
             self::SEVERITY_INFO => 0x36A64F,
             self::SEVERITY_WARNING => 0xFFA500,
             self::SEVERITY_ERROR => 0xFF6B6B,
             self::SEVERITY_CRITICAL => 0xDC3545,
         ];
-        
+
         $title = $eventLabels[$event] ?? "Clone Event: $event";
         $color = $severityColors[$severity] ?? 0x808080;
-        
+
         $fields = $this->buildDiscordFields($event, $payload);
-        
+
         return [
             'title' => $title,
             'color' => $color,
@@ -546,14 +546,14 @@ class CloneNotificationService
     private function buildDiscordFields(string $event, array $payload): array
     {
         $fields = [];
-        
+
         switch ($event) {
             case self::EVENT_JOB_STARTED:
                 $fields[] = ['name' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'inline' => true];
                 $fields[] = ['name' => 'Itens', 'value' => (string)($payload['items_count'] ?? 0), 'inline' => true];
                 $fields[] = ['name' => 'Fonte', 'value' => $payload['source_type'] ?? 'N/A', 'inline' => true];
                 break;
-                
+
             case self::EVENT_JOB_COMPLETED:
                 $fields[] = ['name' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'inline' => true];
                 $fields[] = ['name' => 'Total', 'value' => (string)($payload['total_items'] ?? 0), 'inline' => true];
@@ -561,29 +561,29 @@ class CloneNotificationService
                 $fields[] = ['name' => 'Falhas', 'value' => (string)($payload['failed'] ?? 0), 'inline' => true];
                 $fields[] = ['name' => 'Duração', 'value' => $payload['duration'] ?? 'N/A', 'inline' => true];
                 break;
-                
+
             case self::EVENT_JOB_FAILED:
                 $fields[] = ['name' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'inline' => true];
                 $fields[] = ['name' => 'Erro', 'value' => mb_substr($payload['error'] ?? 'Desconhecido', 0, 1024), 'inline' => false];
                 break;
-                
+
             case self::EVENT_BATCH_PROGRESS:
                 $fields[] = ['name' => 'Job ID', 'value' => (string)($payload['job_id'] ?? 'N/A'), 'inline' => true];
                 $fields[] = ['name' => 'Progresso', 'value' => "{$payload['processed']}/{$payload['total']} ({$payload['percentage']}%)", 'inline' => true];
                 break;
-                
+
             case self::EVENT_ALERT_CRITICAL:
                 $fields[] = ['name' => 'Tipo', 'value' => $payload['alert_type'] ?? 'N/A', 'inline' => true];
                 $fields[] = ['name' => 'Mensagem', 'value' => mb_substr($payload['message'] ?? 'N/A', 0, 1024), 'inline' => false];
                 break;
-                
+
             case self::EVENT_METRICS_DAILY:
                 $fields[] = ['name' => 'Data', 'value' => $payload['date'] ?? date('Y-m-d'), 'inline' => true];
                 $fields[] = ['name' => 'Jobs', 'value' => (string)($payload['total_jobs'] ?? 0), 'inline' => true];
                 $fields[] = ['name' => 'Itens Clonados', 'value' => (string)($payload['items_cloned'] ?? 0), 'inline' => true];
                 $fields[] = ['name' => 'Taxa de Sucesso', 'value' => ($payload['success_rate'] ?? 0) . '%', 'inline' => true];
                 break;
-                
+
             default:
                 foreach ($payload as $key => $value) {
                     if (!is_array($value)) {
@@ -591,7 +591,7 @@ class CloneNotificationService
                     }
                 }
         }
-        
+
         return $fields;
     }
 
@@ -601,7 +601,7 @@ class CloneNotificationService
     private function sendHttpRequest(string $url, array $data): array
     {
         $ch = curl_init($url);
-        
+
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
@@ -612,21 +612,21 @@ class CloneNotificationService
             CURLOPT_TIMEOUT => $this->config['timeout'],
             CURLOPT_CONNECTTIMEOUT => 5,
         ]);
-        
+
         $response = curl_exec($ch);
         $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
-        
+
         if ($error) {
             return [
                 'success' => false,
                 'error' => $error,
             ];
         }
-        
+
         $success = $statusCode >= 200 && $statusCode < 300;
-        
+
         return [
             'success' => $success,
             'status_code' => $statusCode,
@@ -642,9 +642,9 @@ class CloneNotificationService
     {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO clone_notification_logs 
+                INSERT INTO clone_notification_logs
                 (webhook_id, account_id, event, severity, success, status_code, error, created_at)
-                VALUES 
+                VALUES
                 (:webhook_id, :account_id, :event, :severity, :success, :status_code, :error, NOW())
             ");
             $stmt->execute([
@@ -674,23 +674,23 @@ class CloneNotificationService
             JOIN clone_notification_webhooks w ON l.webhook_id = w.id
             WHERE l.account_id = :account_id
         ";
-        
+
         $params = [':account_id' => $this->accountId];
-        
+
         if ($event) {
             $sql .= " AND l.event = :event";
             $params[':event'] = $event;
         }
-        
+
         $sql .= " ORDER BY l.created_at DESC LIMIT {$limitSql}";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':account_id', $this->accountId, PDO::PARAM_INT);
         if ($event) {
             $stmt->bindValue(':event', $event, PDO::PARAM_STR);
         }
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -700,18 +700,18 @@ class CloneNotificationService
     public function listWebhooks(): array
     {
         $this->ensureTableExists();
-        
+
         $stmt = $this->db->prepare("
-            SELECT id, type, url, status, 
+            SELECT id, type, url, status,
                    JSON_UNQUOTE(JSON_EXTRACT(config, '$.events')) as events,
                    JSON_UNQUOTE(JSON_EXTRACT(config, '$.min_severity')) as min_severity,
                    created_at, updated_at
-            FROM clone_notification_webhooks 
+            FROM clone_notification_webhooks
             WHERE account_id = :account_id
             ORDER BY created_at DESC
         ");
         $stmt->execute([':account_id' => $this->accountId]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -721,11 +721,11 @@ class CloneNotificationService
     public function disableWebhook(int $webhookId): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE clone_notification_webhooks 
+            UPDATE clone_notification_webhooks
             SET status = 'inactive', updated_at = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             ':id' => $webhookId,
             ':account_id' => $this->accountId,
@@ -738,11 +738,11 @@ class CloneNotificationService
     public function enableWebhook(int $webhookId): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE clone_notification_webhooks 
+            UPDATE clone_notification_webhooks
             SET status = 'active', updated_at = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             ':id' => $webhookId,
             ':account_id' => $this->accountId,
@@ -755,10 +755,10 @@ class CloneNotificationService
     public function deleteWebhook(int $webhookId): bool
     {
         $stmt = $this->db->prepare("
-            DELETE FROM clone_notification_webhooks 
+            DELETE FROM clone_notification_webhooks
             WHERE id = :id AND account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             ':id' => $webhookId,
             ':account_id' => $this->accountId,
@@ -771,7 +771,7 @@ class CloneNotificationService
     public function testWebhook(int $webhookId): array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM clone_notification_webhooks 
+            SELECT * FROM clone_notification_webhooks
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute([
@@ -779,11 +779,11 @@ class CloneNotificationService
             ':account_id' => $this->accountId,
         ]);
         $webhook = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$webhook) {
             return ['success' => false, 'error' => 'Webhook não encontrado'];
         }
-        
+
         return $this->sendWebhook($webhook, 'test', self::SEVERITY_INFO, [
             'message' => '🧪 Teste de conexão do Clone Bot',
             'timestamp' => date('Y-m-d H:i:s'),
@@ -799,7 +799,7 @@ class CloneNotificationService
         if ($checked) {
             return;
         }
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_notification_webhooks (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -815,7 +815,7 @@ class CloneNotificationService
                 INDEX idx_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_notification_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -833,7 +833,7 @@ class CloneNotificationService
                 INDEX idx_created (created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $checked = true;
     }
 }

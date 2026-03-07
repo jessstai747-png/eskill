@@ -36,20 +36,45 @@ class TitleOptimizerService
     // Termos proibidos pelo ML
     private const FORBIDDEN_TERMS = [
         // Promoções (proibido)
-        'promoção', 'oferta', 'desconto', 'liquidação', 'black friday',
-        'cyber monday', 'queima', 'super oferta', 'mega oferta',
+        'promoção',
+        'oferta',
+        'desconto',
+        'liquidação',
+        'black friday',
+        'cyber monday',
+        'queima',
+        'super oferta',
+        'mega oferta',
         // Call to action (proibido)
-        'compre já', 'aproveite', 'não perca', 'últimas unidades',
-        'corra', 'imperdível', 'oportunidade única',
+        'compre já',
+        'aproveite',
+        'não perca',
+        'últimas unidades',
+        'corra',
+        'imperdível',
+        'oportunidade única',
         // Menção de frete (redundante)
-        'frete grátis', 'frete gratuito', 'envio grátis',
+        'frete grátis',
+        'frete gratuito',
+        'envio grátis',
         // Preço (proibido)
-        'menor preço', 'melhor preço', 'preço baixo', 'barato',
-        'mais barato', 'econômico',
+        'menor preço',
+        'melhor preço',
+        'preço baixo',
+        'barato',
+        'mais barato',
+        'econômico',
         // Excesso de pontuação
-        '!!!', '???', '***', '...', '+++',
+        '!!!',
+        '???',
+        '***',
+        '...',
+        '+++',
         // Termos genéricos sem valor
-        'confira', 'veja', 'clique', 'acesse',
+        'confira',
+        'veja',
+        'clique',
+        'acesse',
     ];
 
     // Termos de alto valor SEO
@@ -78,7 +103,7 @@ class TitleOptimizerService
         $this->retryService = new RetryService();
         $this->logger = new LogService();
     }
-    
+
     /**
      * Otimiza um título existente com IA
      */
@@ -127,7 +152,6 @@ class TitleOptimizerService
             ]);
 
             $result['optimized_title'] = $optimizedTitle;
-
         } catch (\Exception $e) {
             $this->logger->error('AI title optimization failed', [
                 'error' => $e->getMessage(),
@@ -265,7 +289,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
 
         return implode(' ', $result);
     }
-    
+
     /**
      * Analisa qualidade de um título
      */
@@ -279,7 +303,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
             'issues' => [],
             'positives' => [],
         ];
-        
+
         // 1. Comprimento (0-25 pontos)
         $length = $analysis['length'];
         if ($length >= 45 && $length <= 58) {
@@ -294,7 +318,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
             $analysis['score'] += 10;
             $analysis['issues'][] = 'Título muito curto';
         }
-        
+
         // 2. Termos proibidos (0-20 pontos)
         $forbiddenFound = $this->findForbiddenTerms($title);
         if (empty($forbiddenFound)) {
@@ -303,7 +327,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
         } else {
             $analysis['issues'][] = 'Termos proibidos: ' . implode(', ', $forbiddenFound);
         }
-        
+
         // 3. Termos de alto valor (0-20 pontos)
         $highValueFound = $this->findHighValueTerms($title);
         $highValueScore = min(20, count($highValueFound) * 5);
@@ -311,14 +335,14 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
         if (!empty($highValueFound)) {
             $analysis['positives'][] = 'Termos de valor: ' . implode(', ', array_keys($highValueFound));
         }
-        
+
         // 4. Estrutura (0-20 pontos)
         $structureScore = $this->evaluateStructure($title);
         $analysis['score'] += $structureScore;
         if ($structureScore >= 15) {
             $analysis['positives'][] = 'Boa estrutura';
         }
-        
+
         // 5. Capitalização (0-10 pontos)
         if ($this->hasProperCapitalization($title)) {
             $analysis['score'] += 10;
@@ -327,47 +351,47 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
             $analysis['score'] += 5;
             $analysis['issues'][] = 'Capitalização pode ser melhorada';
         }
-        
+
         // 6. Palavras repetidas (0-5 pontos)
         if (!$this->hasRepeatedWords($title)) {
             $analysis['score'] += 5;
         } else {
             $analysis['issues'][] = 'Palavras repetidas detectadas';
         }
-        
+
         $analysis['grade'] = $this->calculateGrade($analysis['score']);
-        
+
         return $analysis;
     }
-    
+
     /**
      * Constrói título otimizado
      */
     private function buildOptimizedTitle(array $components): string
     {
         $parts = [];
-        
+
         // 1. Marca (sempre primeiro se disponível)
         if (!empty($components['brand'])) {
             $parts[] = $this->capitalize($components['brand']);
         }
-        
+
         // 2. Modelo
         if (!empty($components['model'])) {
             $parts[] = $components['model'];
         }
-        
+
         // 3. Palavras importantes do título original (que não são marca/modelo)
         $originalWords = $components['original_words'] ?? [];
         $usedWords = array_map('mb_strtolower', $parts);
-        
+
         foreach ($originalWords as $word) {
             if (!in_array(mb_strtolower($word), $usedWords) && mb_strlen($word) > 2) {
                 $parts[] = $this->capitalize($word);
                 $usedWords[] = mb_strtolower($word);
             }
         }
-        
+
         // 4. Keywords de alto impacto
         $keywords = $components['keywords'] ?? [];
         foreach (array_slice($keywords, 0, 3) as $kw) {
@@ -377,7 +401,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
                 $usedWords[] = mb_strtolower($keyword);
             }
         }
-        
+
         // 5. Termos de alto valor SEO se couber
         foreach (self::HIGH_VALUE_TERMS as $term => $score) {
             if (!in_array(mb_strtolower($term), $usedWords)) {
@@ -388,20 +412,20 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
                 }
             }
         }
-        
+
         // Montar título respeitando limite
         $title = $this->assembleTitle($parts);
-        
+
         return $title;
     }
-    
+
     /**
      * Monta título respeitando limite de caracteres
      */
     private function assembleTitle(array $parts): string
     {
         $title = '';
-        
+
         foreach ($parts as $part) {
             $testTitle = trim($title . ' ' . $part);
             if (mb_strlen($testTitle) <= self::MAX_LENGTH) {
@@ -410,10 +434,10 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
                 break;
             }
         }
-        
+
         return trim($title);
     }
-    
+
     /**
      * Gera títulos alternativos
      */
@@ -424,7 +448,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
         $model = $components['model'] ?? '';
         $keywords = $components['keywords'] ?? [];
         $originalWords = $components['original_words'] ?? [];
-        
+
         // Alternativa 1: Modelo + Marca
         if ($brand && $model) {
             $alt1Parts = [$model, $brand];
@@ -434,7 +458,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
                 'strategy' => 'Modelo primeiro (busca por modelo)',
             ];
         }
-        
+
         // Alternativa 2: Foco em keywords
         if (!empty($keywords)) {
             $keywordFirst = array_column(array_slice($keywords, 0, 2), 'keyword');
@@ -445,7 +469,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
                 'strategy' => 'Keywords primeiro (maior relevância)',
             ];
         }
-        
+
         // Alternativa 3: Descritivo com benefício
         $benefitTerms = ['Original', 'Garantia', 'Novo'];
         $alt3Parts = [$brand, $model];
@@ -454,7 +478,7 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
             'title' => $this->assembleTitle(array_filter($alt3Parts)),
             'strategy' => 'Foco em benefícios/garantias',
         ];
-        
+
         // Alternativa 4: Long-tail
         $alt4Parts = array_merge(
             [$brand, $model],
@@ -464,43 +488,43 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
             'title' => $this->assembleTitle(array_filter($alt4Parts)),
             'strategy' => 'Long-tail (específico)',
         ];
-        
+
         // Avaliar cada alternativa
         foreach ($alternatives as &$alt) {
             $analysis = $this->analyzeTitle($alt['title']);
             $alt['score'] = $analysis['score'];
             $alt['grade'] = $analysis['grade'];
         }
-        
+
         // Ordenar por score
         usort($alternatives, fn($a, $b) => $b['score'] - $a['score']);
-        
+
         return $alternatives;
     }
-    
+
     /**
      * Limpa título removendo termos proibidos e normalizando
      */
     private function cleanTitle(string $title): string
     {
         $cleaned = $title;
-        
+
         // Remover termos proibidos
         foreach (self::FORBIDDEN_TERMS as $term) {
             $pattern = '/\b' . preg_quote($term, '/') . '\b/iu';
             $cleaned = preg_replace($pattern, '', $cleaned);
         }
-        
+
         // Remover pontuação excessiva
         $cleaned = preg_replace('/[!?*]{2,}/', '', $cleaned);
         $cleaned = preg_replace('/\.{3,}/', '', $cleaned);
-        
+
         // Normalizar espaços
         $cleaned = preg_replace('/\s+/', ' ', $cleaned);
-        
+
         return trim($cleaned);
     }
-    
+
     /**
      * Extrai marca do título
      */
@@ -508,31 +532,61 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
     {
         // Lista de marcas conhecidas (expandir conforme necessário)
         $knownBrands = [
-            'samsung', 'apple', 'lg', 'sony', 'motorola', 'xiaomi', 'huawei',
-            'asus', 'dell', 'hp', 'lenovo', 'acer', 'positivo', 'multilaser',
-            'nike', 'adidas', 'puma', 'new balance', 'olympikus', 'fila',
-            'tramontina', 'mondial', 'britânia', 'philco', 'electrolux',
-            'brastemp', 'consul', 'intelbras', 'tp-link', 'd-link',
-            'jbl', 'harman', 'bose', 'beats', 'edifier', 'philips'
+            'samsung',
+            'apple',
+            'lg',
+            'sony',
+            'motorola',
+            'xiaomi',
+            'huawei',
+            'asus',
+            'dell',
+            'hp',
+            'lenovo',
+            'acer',
+            'positivo',
+            'multilaser',
+            'nike',
+            'adidas',
+            'puma',
+            'new balance',
+            'olympikus',
+            'fila',
+            'tramontina',
+            'mondial',
+            'britânia',
+            'philco',
+            'electrolux',
+            'brastemp',
+            'consul',
+            'intelbras',
+            'tp-link',
+            'd-link',
+            'jbl',
+            'harman',
+            'bose',
+            'beats',
+            'edifier',
+            'philips'
         ];
-        
+
         $titleLower = mb_strtolower($title);
-        
+
         foreach ($knownBrands as $brand) {
             if (mb_strpos($titleLower, $brand) !== false) {
                 return mb_strtoupper(mb_substr($brand, 0, 1)) . mb_substr($brand, 1);
             }
         }
-        
+
         // Tentar extrair primeira palavra capitalizada como marca
         $words = explode(' ', $title);
         if (!empty($words[0]) && preg_match('/^[A-Z]/', $words[0])) {
             return $words[0];
         }
-        
+
         return null;
     }
-    
+
     /**
      * Extrai modelo do título
      */
@@ -546,16 +600,16 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
             '/\b(Galaxy\s+[A-Z]\d{1,2})/i', // Galaxy S21
             '/\b(iPhone\s+\d{1,2}(\s+Pro)?)/i', // iPhone 13 Pro
         ];
-        
+
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $title, $matches)) {
                 return $matches[1];
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * Extrai palavras importantes do título
      */
@@ -563,20 +617,20 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
     {
         // Stop words para remover
         $stopWords = ['a', 'o', 'de', 'da', 'do', 'em', 'um', 'uma', 'para', 'com', 'e', 'ou', 'que'];
-        
+
         $words = preg_split('/\s+/', $title);
         $important = [];
-        
+
         foreach ($words as $word) {
             $wordLower = mb_strtolower($word);
             if (mb_strlen($word) > 2 && !in_array($wordLower, $stopWords)) {
                 $important[] = $word;
             }
         }
-        
+
         return $important;
     }
-    
+
     /**
      * Encontra termos proibidos no título
      */
@@ -584,16 +638,16 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
     {
         $found = [];
         $titleLower = mb_strtolower($title);
-        
+
         foreach (self::FORBIDDEN_TERMS as $term) {
             if (mb_strpos($titleLower, mb_strtolower($term)) !== false) {
                 $found[] = $term;
             }
         }
-        
+
         return $found;
     }
-    
+
     /**
      * Encontra termos de alto valor no título
      */
@@ -601,48 +655,48 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
     {
         $found = [];
         $titleLower = mb_strtolower($title);
-        
+
         foreach (self::HIGH_VALUE_TERMS as $term => $score) {
             if (mb_strpos($titleLower, mb_strtolower($term)) !== false) {
                 $found[$term] = $score;
             }
         }
-        
+
         return $found;
     }
-    
+
     /**
      * Avalia estrutura do título
      */
     private function evaluateStructure(string $title): int
     {
         $score = 0;
-        
+
         // Tem números (modelos)
         if (preg_match('/\d/', $title)) {
             $score += 5;
         }
-        
+
         // Começa com maiúscula (marca)
         if (preg_match('/^[A-Z]/', $title)) {
             $score += 5;
         }
-        
+
         // Tem variação de case (não é tudo maiúsculo ou minúsculo)
         if (preg_match('/[a-z]/', $title) && preg_match('/[A-Z]/', $title)) {
             $score += 5;
         }
-        
+
         // Não tem excesso de maiúsculas
         $upperCount = preg_match_all('/[A-Z]/', $title);
         $totalChars = mb_strlen(preg_replace('/[^a-zA-Z]/', '', $title));
         if ($totalChars > 0 && ($upperCount / $totalChars) < 0.5) {
             $score += 5;
         }
-        
+
         return $score;
     }
-    
+
     /**
      * Verifica capitalização adequada
      */
@@ -652,15 +706,15 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
         if (!preg_match('/^[A-ZÀ-Ú]/', $title)) {
             return false;
         }
-        
+
         // Não é tudo maiúsculo
         if ($title === mb_strtoupper($title)) {
             return false;
         }
-        
+
         return true;
     }
-    
+
     /**
      * Verifica se tem palavras repetidas
      */
@@ -668,16 +722,16 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
     {
         $words = preg_split('/\s+/', mb_strtolower($title));
         $wordCount = array_count_values($words);
-        
+
         foreach ($wordCount as $word => $count) {
             if ($count > 1 && mb_strlen($word) > 2) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Capitaliza texto de forma inteligente
      */
@@ -685,10 +739,10 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
     {
         // Palavras que devem ficar minúsculas (conectores)
         $lowercase = ['de', 'da', 'do', 'das', 'dos', 'para', 'com', 'em', 'e', 'ou', 'a', 'o'];
-        
+
         $words = explode(' ', mb_strtolower($text));
         $result = [];
-        
+
         foreach ($words as $i => $word) {
             if ($i === 0 || !in_array($word, $lowercase)) {
                 $result[] = mb_strtoupper(mb_substr($word, 0, 1)) . mb_substr($word, 1);
@@ -696,10 +750,10 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
                 $result[] = $word;
             }
         }
-        
+
         return implode(' ', $result);
     }
-    
+
     /**
      * Calcula nota baseada no score
      */
@@ -712,40 +766,40 @@ Retorne APENAS o título otimizado, sem explicações adicionais.";
         if ($score >= 50) return 'D';
         return 'F';
     }
-    
+
     /**
      * Lista melhorias realizadas
      */
     private function listImprovements(array $before, array $after): array
     {
         $improvements = [];
-        
+
         if ($after['length'] !== $before['length']) {
             $improvements[] = "Comprimento ajustado: {$before['length']} → {$after['length']} caracteres";
         }
-        
+
         // Problemas resolvidos
         foreach ($before['issues'] as $issue) {
             if (!in_array($issue, $after['issues'])) {
                 $improvements[] = "Corrigido: {$issue}";
             }
         }
-        
+
         // Novos positivos
         foreach ($after['positives'] as $positive) {
             if (!in_array($positive, $before['positives'])) {
                 $improvements[] = "Adicionado: {$positive}";
             }
         }
-        
+
         if ($after['score'] > $before['score']) {
             $diff = $after['score'] - $before['score'];
             $improvements[] = "Score melhorado em {$diff} pontos";
         }
-        
+
         return $improvements;
     }
-    
+
     /**
      * Sugere título baseado em categoria e atributos com IA
      */
@@ -814,7 +868,6 @@ Retorne APENAS o título sugerido, sem explicações adicionais.";
                 // Fallback to traditional method
                 $suggestedTitle = $this->buildTraditionalSuggestedTitle($categoryId, $brand, $model, $specs, $topKeywords);
             }
-
         } catch (\Exception $e) {
             $this->logger->error('AI title suggestion failed', [
                 'error' => $e->getMessage(),

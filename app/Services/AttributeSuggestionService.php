@@ -11,28 +11,28 @@ use Exception;
 
 /**
  * 🔧 Attribute Suggestion Service
- * 
+ *
  * Gerencia sugestões de atributos da Ficha Técnica com preview e aplicação real.
- * 
+ *
  * Para campos que podem ser atualizados via ML API (ex: attributes[]),
  * oferece fluxo de preview → confirmação → apply.
- * 
+ *
  * Para campos que não possuem endpoint de atualização no ML,
  * mantém como "sugestão interna" sem tentar aplicar.
- * 
+ *
  * Campos aplicáveis via ML PUT /items/{id}:
  * - attributes[] (BRAND, MODEL, GTIN, MPN, etc)
- * 
+ *
  * Campos NÃO aplicáveis (somente sugestão interna):
  * - KEYWORDS (não existe no ML, é interno)
  * - Alguns campos calculados/read-only
- * 
+ *
  * @package App\Services
  */
 class AttributeSuggestionService
 {
     private const RATE_LIMIT_DELAY_MS = 200;
-    
+
     /**
      * Atributos que PODEM ser aplicados via ML API
      * PUT /items/{id} com body: { "attributes": [...] }
@@ -84,7 +84,7 @@ class AttributeSuggestionService
 
     /**
      * 🔍 Preview de sugestões de atributos
-     * 
+     *
      * Retorna lista de sugestões pendentes com:
      * - Valor atual do atributo
      * - Valor sugerido
@@ -117,8 +117,8 @@ class AttributeSuggestionService
 
             // Buscar sugestões pendentes do banco
             $stmt = $this->db->prepare("
-                SELECT 
-                    id, attribute_id, suggested_value, confidence, 
+                SELECT
+                    id, attribute_id, suggested_value, confidence,
                     source, strategy, notes, created_at
                 FROM tech_sheet_suggestions
                 WHERE item_id = :item_id
@@ -137,7 +137,7 @@ class AttributeSuggestionService
             foreach ($suggestions as $suggestion) {
                 $attrId = $suggestion['attribute_id'];
                 $current = $currentAttributes[$attrId] ?? null;
-                
+
                 $isApplicable = isset(self::APPLICABLE_ATTRIBUTES[$attrId]);
                 $isInternalOnly = isset(self::INTERNAL_ONLY_ATTRIBUTES[$attrId]);
 
@@ -148,7 +148,7 @@ class AttributeSuggestionService
                     'current_value' => $current['value'] ?? null,
                     'suggested_value' => $suggestion['suggested_value'],
                     'has_change' => $this->hasRealChange(
-                        $current['value'] ?? '', 
+                        $current['value'] ?? '',
                         $suggestion['suggested_value'] ?? ''
                     ),
                     'confidence' => (int)$suggestion['confidence'],
@@ -157,8 +157,8 @@ class AttributeSuggestionService
                     'notes' => $suggestion['notes'],
                     'is_applicable' => $isApplicable,
                     'is_internal_only' => $isInternalOnly,
-                    'applicability_note' => $isInternalOnly 
-                        ? self::INTERNAL_ONLY_ATTRIBUTES[$attrId] 
+                    'applicability_note' => $isInternalOnly
+                        ? self::INTERNAL_ONLY_ATTRIBUTES[$attrId]
                         : ($isApplicable ? 'Pode ser aplicado via ML API' : 'Verificar endpoint'),
                     'created_at' => $suggestion['created_at'],
                 ];
@@ -174,7 +174,6 @@ class AttributeSuggestionService
                 'suggestions' => $preview,
                 'applicable_attributes' => array_keys(self::APPLICABLE_ATTRIBUTES),
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -185,14 +184,14 @@ class AttributeSuggestionService
 
     /**
      * ✅ Aplica sugestão de atributo específico
-     * 
+     *
      * Fluxo:
      * 1. Verifica se atributo é aplicável via ML
      * 2. Cria snapshot do estado atual
      * 3. Aplica via PUT /items/{id}
      * 4. Atualiza status da sugestão
      * 5. Refresh cache local
-     * 
+     *
      * @param string $itemId Item ID
      * @param string $attributeId ID do atributo
      * @param mixed $value Valor a aplicar (se null, usa o sugerido)
@@ -235,7 +234,7 @@ class AttributeSuggestionService
                     'account_id' => $this->accountId,
                 ]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                
+
                 if (!$row) {
                     return [
                         'success' => false,
@@ -287,7 +286,7 @@ class AttributeSuggestionService
                     ];
                 }
             }
-            
+
             // Se atributo não existia, adicionar
             $attrExists = false;
             foreach ($currentAttrs as $attr) {
@@ -313,7 +312,7 @@ class AttributeSuggestionService
             if (isset($response['error'])) {
                 // Rollback snapshot se falhou
                 $this->deleteSnapshot($snapshotId);
-                
+
                 return [
                     'success' => false,
                     'error' => 'Falha ao aplicar no ML: ' . ($response['message'] ?? $response['error'] ?? 'Erro desconhecido'),
@@ -338,7 +337,6 @@ class AttributeSuggestionService
                 'snapshot_id' => $snapshotId,
                 'message' => "Atributo {$attributeId} atualizado com sucesso",
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -362,7 +360,7 @@ class AttributeSuggestionService
             }
 
             $categoryId = $item['category_id'] ?? '';
-            
+
             // Buscar atributos da categoria
             $categoryAttrs = [];
             if ($categoryId) {
@@ -416,7 +414,6 @@ class AttributeSuggestionService
                 'applicable' => $applicable,
                 'not_applicable' => $notApplicable,
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -441,7 +438,7 @@ class AttributeSuggestionService
     {
         $stmt = $this->db->prepare("
             INSERT INTO seo_attribute_snapshots (
-                account_id, item_id, attribute_id, 
+                account_id, item_id, attribute_id,
                 value_before, created_at
             ) VALUES (
                 :account_id, :item_id, :attribute_id,
@@ -486,7 +483,7 @@ class AttributeSuggestionService
     {
         $stmt = $this->db->prepare("
             UPDATE tech_sheet_suggestions
-            SET status = :status, 
+            SET status = :status,
                 decided_at = NOW(),
                 decided_by = :user_id,
                 notes = CONCAT(COALESCE(notes, ''), ' [applied via AttributeSuggestionService]')
@@ -508,10 +505,10 @@ class AttributeSuggestionService
      * Registra alteração de atributo no histórico
      */
     private function recordAttributeChange(
-        string $itemId, 
-        string $attributeId, 
-        $oldValue, 
-        $newValue, 
+        string $itemId,
+        string $attributeId,
+        $oldValue,
+        $newValue,
         int $userId,
         int $snapshotId
     ): int {

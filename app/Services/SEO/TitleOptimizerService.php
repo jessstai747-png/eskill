@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -30,16 +31,16 @@ class TitleOptimizerService
     {
         $category = $context['category'] ?? '';
         $itemId = $context['item_id'] ?? '';
-        
+
         // 1. Busca produtos similares via API ML
         $similarProducts = $this->getSimilarProducts($title, $category);
-        
+
         // 2. Análise com IA integrando dados ML
         $analysis = $this->performTitleAnalysis($title, $context, $similarProducts);
-        
+
         // 3. Identificação de lacunas
         $gaps = $this->identifyTitleGaps($title, $similarProducts);
-        
+
         return [
             'success' => true,
             'title' => $title,
@@ -58,13 +59,13 @@ class TitleOptimizerService
         $category = $context['category'] ?? '';
         $brand = $context['brand'] ?? '';
         $keywords = $context['target_keywords'] ?? [];
-        
+
         // Busca tendências e sugestões ML
         $mlSuggestions = $this->getMLTitleSuggestions($title, $category);
-        
+
         // Análise semântica
         $semanticAnalysis = $this->performSemanticAnalysis($title, $keywords, $mlSuggestions);
-        
+
         // Geração de títulos
         $prompt = "Você é especialista em títulos para Mercado Livre. Use estratégias semânticas e de cauda longa.
 
@@ -115,7 +116,7 @@ Retorne JSON:
         $category = $productData['category'] ?? '';
         $brand = $productData['brand'] ?? '';
         $attributes = $productData['attributes'] ?? [];
-        
+
         // Análise do produto para extração de modelo
         $prompt = "Extraia o modelo do produto e sugira otimizações:
 
@@ -157,16 +158,16 @@ Analise e retorne JSON:
     {
         $competitorTitles = array_column($competitors, 'title');
         $competitorKeywords = [];
-        
+
         // Extrai keywords dos concorrentes
         foreach ($competitorTitles as $compTitle) {
             $keywords = $this->extractKeywords($compTitle);
             $competitorKeywords = array_merge($competitorKeywords, $keywords);
         }
-        
+
         $myKeywords = $this->extractKeywords($title);
         $missingKeywords = array_diff($competitorKeywords, $myKeywords);
-        
+
         return [
             'visible_gaps' => [
                 'missing_keywords' => array_unique($missingKeywords),
@@ -191,18 +192,18 @@ Analise e retorne JSON:
             // Extrai keywords principais do título
             $keywords = $this->extractKeywords($title);
             $searchQuery = implode(' ', array_slice($keywords, 0, 3)); // Primeiras 3 keywords
-            
+
             $params = [
                 'q' => $searchQuery,
                 'category' => $category,
                 'limit' => 20,
                 'sort' => 'relevance'
             ];
-            
+
             $response = $this->mlClient->get('/sites/MLB/search', $params);
-            
+
             if (isset($response['results'])) {
-                return array_map(function($item) {
+                return array_map(function ($item) {
                     return [
                         'id' => $item['id'],
                         'title' => $item['title'],
@@ -216,7 +217,7 @@ Analise e retorne JSON:
         } catch (\Exception $e) {
             // Log erro mas continua com array vazio
         }
-        
+
         return [];
     }
 
@@ -227,7 +228,7 @@ Analise e retorne JSON:
     {
         $competitorSample = array_slice($competitors, 0, 3);
         $competitorJson = json_encode($competitorSample, JSON_UNESCAPED_UNICODE);
-        
+
         $prompt = "Analise este título para Mercado Livre comparando com concorrentes:
 
 TÍTULO: {$title}
@@ -252,7 +253,7 @@ Retorne JSON de análise:
 }";
 
         $response = $this->ai->chatJSON($prompt, ['cache_ttl' => 1800]);
-        
+
         return $response['success'] ? $response['data'] : ['score' => 50];
     }
 
@@ -279,7 +280,7 @@ Retorne JSON semântico:
 }";
 
         $response = $this->ai->chatJSON($prompt, ['cache_ttl' => 3600]);
-        
+
         return $response['success'] ? $response['data'] : [];
     }
 
@@ -289,7 +290,7 @@ Retorne JSON semântico:
     private function generateTitleRecommendations(string $title, array $analysis, array $gaps): array
     {
         $recommendations = [];
-        
+
         // Recomendações baseadas na análise
         if (($analysis['score'] ?? 0) < 70) {
             $recommendations[] = [
@@ -299,7 +300,7 @@ Retorne JSON semântico:
                 'reason' => 'Score abaixo de 70'
             ];
         }
-        
+
         // Recomendações baseadas nas lacunas
         if (!empty($gaps['visible_gaps']['missing_keywords'])) {
             $recommendations[] = [
@@ -309,7 +310,7 @@ Retorne JSON semântico:
                 'reason' => 'Keywords presentes em concorrentes'
             ];
         }
-        
+
         // Recomendações semânticas
         if (!empty($gaps['hidden_gaps']['semantic_gaps'])) {
             $recommendations[] = [
@@ -319,7 +320,7 @@ Retorne JSON semântico:
                 'reason' => 'Oportunidades de expansão semântica'
             ];
         }
-        
+
         return $recommendations;
     }
 
@@ -331,8 +332,8 @@ Retorne JSON semântico:
         // Remove palavras irrelevantes e extrai keywords
         $stopWords = ['de', 'da', 'do', 'em', 'para', 'com', 'sem', 'a', 'o', 'as', 'os', 'e', 'ou'];
         $words = preg_split('/[\s,\-\/]+/', mb_strtolower(trim($text)));
-        
-        return array_filter($words, function($word) use ($stopWords) {
+
+        return array_filter($words, function ($word) use ($stopWords) {
             return mb_strlen($word) > 2 && !in_array($word, $stopWords);
         });
     }
@@ -344,14 +345,14 @@ Retorne JSON semântico:
     {
         // Implementação simplificada - poderia usar NLP mais avançado
         $gaps = [];
-        
+
         foreach ($competitorTitles as $compTitle) {
             $compWords = $this->extractKeywords($compTitle);
             $myWords = $this->extractKeywords($title);
             $differences = array_diff($compWords, $myWords);
             $gaps = array_merge($gaps, $differences);
         }
-        
+
         return array_unique($gaps);
     }
 
@@ -361,7 +362,7 @@ Retorne JSON semântico:
     private function analyzeSearchIntent(string $title, array $competitorTitles): array
     {
         $intentGaps = [];
-        
+
         // Palavras que indicam intenção
         $intentWords = [
             'comprar' => 'transacional',
@@ -370,7 +371,7 @@ Retorne JSON semântico:
             'promoção' => 'oferta',
             'original' => 'autenticidade'
         ];
-        
+
         foreach ($intentWords as $word => $intent) {
             $hasInCompetitors = 0;
             foreach ($competitorTitles as $compTitle) {
@@ -378,12 +379,12 @@ Retorne JSON semântico:
                     $hasInCompetitors++;
                 }
             }
-            
+
             if ($hasInCompetitors > 0 && stripos($title, $word) === false) {
                 $intentGaps[] = $word;
             }
         }
-        
+
         return $intentGaps;
     }
 
@@ -393,10 +394,10 @@ Retorne JSON semântico:
     private function findMissingAttributes(string $title, array $competitors): array
     {
         $missingAttributes = [];
-        
+
         // Atributos comuns que devem estar no título
         $commonAttributes = ['cor', 'tamanho', 'capacidade', 'modelo', 'garantia', 'voltagem'];
-        
+
         foreach ($competitors as $competitor) {
             foreach ($competitor['attributes'] ?? [] as $attr) {
                 $value = $attr['value_name'] ?? '';
@@ -405,7 +406,7 @@ Retorne JSON semântico:
                 }
             }
         }
-        
+
         return array_unique(array_slice($missingAttributes, 0, 5));
     }
 
@@ -415,12 +416,12 @@ Retorne JSON semântico:
     private function calculateOpportunityScore(string $title, array $competitors): int
     {
         $score = 50; // Base
-        
+
         // Fatores que aumentam oportunidade
         if (mb_strlen($title) < 45 || mb_strlen($title) > 60) $score += 15;
         if (count($this->extractKeywords($title)) < 3) $score += 20;
         if (!preg_match('/[0-9]/', $title)) $score += 10; // Especificidades numéricas
-        
+
         return min(100, $score);
     }
 
@@ -521,7 +522,6 @@ Retorne JSON semântico:
             // Ordenar padrões recomendados por frequência
             arsort($recommendedPatterns);
             $topPatterns = array_slice(array_keys($recommendedPatterns), 0, 15);
-
         } catch (\Exception $e) {
             // Falha silenciosa — retornar o que já foi coletado
         }
@@ -588,7 +588,6 @@ Retorne JSON semântico:
                 'model_frequency' => array_slice($models, 0, 10, true),
                 'competitor_titles' => array_slice($titlePatterns, 0, 5),
             ];
-
         } catch (\Exception $e) {
             return [];
         }

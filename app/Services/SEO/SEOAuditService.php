@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -11,7 +12,7 @@ use Exception;
 
 /**
  * SEO Audit Service
- * 
+ *
  * Analyzes listing quality and generates SEO scores with actionable recommendations
  */
 class SEOAuditService
@@ -39,7 +40,7 @@ class SEOAuditService
 
     /**
      * Audit a listing and generate SEO score
-     * 
+     *
      * @param string $itemId ML item ID
      * @param bool $forceRefresh Force new audit (skip cache)
      * @return array Audit results
@@ -718,8 +719,8 @@ class SEOAuditService
     private function getCachedAudit(string $itemId): ?array
     {
         $stmt = $this->db->prepare(
-            "SELECT * FROM seo_audits 
-             WHERE item_id = :item_id 
+            "SELECT * FROM seo_audits
+             WHERE item_id = :item_id
              AND audit_date > DATE_SUB(NOW(), INTERVAL 1 HOUR)
              ORDER BY audit_date DESC
              LIMIT 1"
@@ -765,11 +766,11 @@ class SEOAuditService
         $limitSql = max(1, min((int)$limit, 200));
 
         $stmt = $this->db->prepare(
-            "SELECT audit_date, overall_score, 
+            "SELECT audit_date, overall_score,
                     title_score, description_score, attributes_score,
                     images_score, pricing_score, category_score
-             FROM seo_audits 
-             WHERE item_id = :item_id 
+             FROM seo_audits
+             WHERE item_id = :item_id
              ORDER BY audit_date DESC
              LIMIT {$limitSql}"
         );

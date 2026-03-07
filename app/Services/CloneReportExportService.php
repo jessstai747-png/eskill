@@ -9,12 +9,12 @@ use PDO;
 
 /**
  * Service para exportação de relatórios do sistema de clonagem
- * 
+ *
  * Suporta exportação em múltiplos formatos:
  * - PDF: Relatórios formatados profissionalmente com gráficos
  * - Excel: Planilhas com dados detalhados e filtros
  * - CSV: Dados brutos para análise externa
- * 
+ *
  * @package App\Services
  */
 class CloneReportExportService
@@ -28,7 +28,7 @@ class CloneReportExportService
 
     /**
      * Exportar relatório em formato especificado
-     * 
+     *
      * @param string $format 'pdf', 'excel', 'csv'
      * @param array $filters Filtros: account_id, date_from, date_to, status
      * @param array $options Opções: include_charts, include_summary, orientation
@@ -74,14 +74,14 @@ class CloneReportExportService
 
     /**
      * Obter dados do relatório com filtros
-     * 
+     *
      * @param array $filters
      * @return array{jobs: array, summary: array, charts_data: array}
      */
     private function getReportData(array $filters): array
     {
         $sql = "
-            SELECT 
+            SELECT
                 j.id as job_id,
                 j.account_id,
                 a.nickname as account_name,
@@ -160,7 +160,7 @@ class CloneReportExportService
 
     /**
      * Calcular sumário estatístico
-     * 
+     *
      * @param array $jobs
      * @return array
      */
@@ -207,7 +207,7 @@ class CloneReportExportService
 
     /**
      * Preparar dados para gráficos
-     * 
+     *
      * @param array $jobs
      * @return array
      */
@@ -261,7 +261,7 @@ class CloneReportExportService
 
     /**
      * Exportar para PDF
-     * 
+     *
      * @param array $data
      * @param array $options
      * @return array
@@ -340,7 +340,7 @@ class CloneReportExportService
 
     /**
      * Exportar PDF simples (sem TCPDF)
-     * 
+     *
      * @param array $data
      * @param array $options
      * @return array
@@ -365,7 +365,7 @@ class CloneReportExportService
 
     /**
      * Adicionar sumário ao PDF
-     * 
+     *
      * @param \TCPDF $pdf
      * @param array $summary
      * @return void
@@ -397,7 +397,7 @@ class CloneReportExportService
 
     /**
      * Adicionar tabela de jobs ao PDF
-     * 
+     *
      * @param \TCPDF $pdf
      * @param array $jobs
      * @return void
@@ -433,7 +433,7 @@ class CloneReportExportService
 
     /**
      * Exportar para Excel
-     * 
+     *
      * @param array $data
      * @param array $options
      * @return array
@@ -490,7 +490,7 @@ class CloneReportExportService
 
     /**
      * Adicionar sumário ao Excel
-     * 
+     *
      * @param \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet
      * @param array $summary
      * @return void
@@ -528,7 +528,7 @@ class CloneReportExportService
 
     /**
      * Adicionar jobs ao Excel
-     * 
+     *
      * @param \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet
      * @param array $jobs
      * @return void
@@ -580,7 +580,7 @@ class CloneReportExportService
 
     /**
      * Adicionar dados de gráficos ao Excel
-     * 
+     *
      * @param \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet
      * @param array $chartsData
      * @return void
@@ -608,7 +608,7 @@ class CloneReportExportService
 
     /**
      * Exportar para CSV
-     * 
+     *
      * @param array $data
      * @return array
      */
@@ -678,7 +678,7 @@ class CloneReportExportService
 
     /**
      * Gerar HTML para relatório
-     * 
+     *
      * @param array $data
      * @param array $options
      * @return string
@@ -716,7 +716,7 @@ class CloneReportExportService
 
     /**
      * Gerar HTML do sumário
-     * 
+     *
      * @param array $summary
      * @return string
      */
@@ -735,7 +735,7 @@ class CloneReportExportService
 
     /**
      * Gerar HTML da tabela de jobs
-     * 
+     *
      * @param array $jobs
      * @return string
      */
@@ -779,7 +779,7 @@ class CloneReportExportService
 
     /**
      * Obter caminho do diretório de storage
-     * 
+     *
      * @return string
      */
     private function getStoragePath(): string
@@ -795,7 +795,7 @@ class CloneReportExportService
 
     /**
      * Formatar duração em segundos
-     * 
+     *
      * @param float $seconds
      * @return string
      */
@@ -814,7 +814,7 @@ class CloneReportExportService
 
     /**
      * Agendar relatório periódico
-     * 
+     *
      * @param string $format
      * @param array $filters
      * @param string $schedule 'daily', 'weekly', 'monthly'
@@ -825,7 +825,7 @@ class CloneReportExportService
     {
         try {
             $sql = "
-                INSERT INTO scheduled_reports 
+                INSERT INTO scheduled_reports
                 (format, filters, schedule_type, recipients, created_at)
                 VALUES (:format, :filters, :schedule, :recipients, NOW())
             ";

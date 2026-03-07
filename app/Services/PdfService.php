@@ -9,7 +9,7 @@ use Dompdf\Options;
 
 /**
  * Serviço de Geração de PDF
- * 
+ *
  * Gera relatórios PDF profissionais para:
  * - Relatórios de vendas
  * - Análises de mercado
@@ -496,9 +496,9 @@ class PdfService
     <title>' . htmlspecialchars($title) . '</title>
     <style>
         @page { size: A4 ' . $orientation . '; margin: 15mm; }
-        
+
         * { box-sizing: border-box; }
-        
+
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 11px;
@@ -507,7 +507,7 @@ class PdfService
             margin: 0;
             padding: 0;
         }
-        
+
         .report-header {
             background: linear-gradient(135deg, ' . $this->config['primary_color'] . ' 0%, #1a237e 100%);
             color: white;
@@ -515,18 +515,18 @@ class PdfService
             margin: -15mm -15mm 20px -15mm;
             text-align: center;
         }
-        
+
         .report-header h1 {
             margin: 0 0 5px 0;
             font-size: 22px;
             font-weight: bold;
         }
-        
+
         .report-header .subtitle {
             font-size: 12px;
             opacity: 0.9;
         }
-        
+
         .header-info {
             background-color: #f8f9fa;
             padding: 12px 15px;
@@ -534,24 +534,24 @@ class PdfService
             margin-bottom: 20px;
             border-left: 4px solid ' . $this->config['primary_color'] . ';
         }
-        
+
         .header-info p {
             margin: 3px 0;
             font-size: 10px;
         }
-        
+
         .kpi-grid {
             display: table;
             width: 100%;
             margin-bottom: 20px;
         }
-        
+
         .kpi-card {
             display: table-cell;
             width: 25%;
             padding: 5px;
         }
-        
+
         .kpi-card-inner {
             background: #f8f9fa;
             padding: 15px;
@@ -559,25 +559,25 @@ class PdfService
             text-align: center;
             border-top: 3px solid ' . $this->config['primary_color'] . ';
         }
-        
+
         .kpi-value {
             font-size: 18px;
             font-weight: bold;
             color: ' . $this->config['primary_color'] . ';
             margin-bottom: 5px;
         }
-        
+
         .kpi-label {
             font-size: 9px;
             color: #666;
             text-transform: uppercase;
         }
-        
+
         .section {
             margin-bottom: 25px;
             page-break-inside: avoid;
         }
-        
+
         .section h2 {
             font-size: 14px;
             color: ' . $this->config['secondary_color'] . ';
@@ -585,13 +585,13 @@ class PdfService
             padding-bottom: 8px;
             margin-bottom: 15px;
         }
-        
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 10px;
         }
-        
+
         .data-table th {
             background-color: ' . $this->config['primary_color'] . ';
             color: white;
@@ -599,30 +599,30 @@ class PdfService
             text-align: left;
             font-weight: bold;
         }
-        
+
         .data-table td {
             padding: 8px;
             border-bottom: 1px solid #e0e0e0;
         }
-        
+
         .data-table tr:nth-child(even) {
             background-color: #f9f9f9;
         }
-        
+
         .data-table tr:hover {
             background-color: #f0f7ff;
         }
-        
+
         .rank {
             font-weight: bold;
             color: ' . $this->config['primary_color'] . ';
             text-align: center;
             width: 30px;
         }
-        
+
         .positive { color: #28a745; font-weight: bold; }
         .negative { color: #dc3545; font-weight: bold; }
-        
+
         .progress-bar-container {
             display: inline-block;
             width: 60px;
@@ -632,53 +632,53 @@ class PdfService
             margin-right: 8px;
             vertical-align: middle;
         }
-        
+
         .progress-bar {
             height: 100%;
             background-color: ' . $this->config['primary_color'] . ';
             border-radius: 4px;
         }
-        
+
         .distribution-grid {
             display: table;
             width: 100%;
         }
-        
+
         .distribution-item {
             display: table-cell;
             width: 50%;
             padding: 15px;
             text-align: center;
         }
-        
+
         .distribution-item.catalog {
             background-color: #e3f2fd;
             border-radius: 8px 0 0 8px;
         }
-        
+
         .distribution-item.common {
             background-color: #fff3e0;
             border-radius: 0 8px 8px 0;
         }
-        
+
         .distribution-value {
             font-size: 24px;
             font-weight: bold;
             color: #333;
         }
-        
+
         .distribution-label {
             font-size: 11px;
             color: #666;
             margin: 5px 0;
         }
-        
+
         .distribution-percent {
             font-size: 14px;
             font-weight: bold;
             color: ' . $this->config['primary_color'] . ';
         }
-        
+
         .status-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -687,14 +687,14 @@ class PdfService
             font-weight: bold;
             text-transform: uppercase;
         }
-        
+
         .status-paid { background: #d4edda; color: #155724; }
         .status-confirmed { background: #cce5ff; color: #004085; }
         .status-shipped { background: #fff3cd; color: #856404; }
         .status-delivered { background: #d4edda; color: #155724; }
         .status-cancelled { background: #f8d7da; color: #721c24; }
         .status-unknown { background: #e2e3e5; color: #383d41; }
-        
+
         .reputation-badge {
             display: inline-block;
             padding: 2px 6px;
@@ -702,77 +702,77 @@ class PdfService
             font-size: 9px;
             font-weight: bold;
         }
-        
+
         .reputation-green { background: #28a745; color: white; }
         .reputation-light_green { background: #5cb85c; color: white; }
         .reputation-yellow { background: #ffc107; color: #333; }
         .reputation-orange { background: #fd7e14; color: white; }
         .reputation-red { background: #dc3545; color: white; }
-        
+
         .executive-kpis { margin-bottom: 25px; }
-        
+
         .kpi-row {
             display: table;
             width: 100%;
             margin-bottom: 10px;
         }
-        
+
         .executive-kpi {
             display: table-cell;
             width: 33.33%;
             padding: 5px;
         }
-        
+
         .executive-kpi-inner {
             padding: 15px;
             border-radius: 8px;
             text-align: center;
         }
-        
+
         .executive-kpi-inner.blue { background: #e3f2fd; border-left: 4px solid #1976d2; }
         .executive-kpi-inner.green { background: #e8f5e9; border-left: 4px solid #388e3c; }
         .executive-kpi-inner.purple { background: #f3e5f5; border-left: 4px solid #7b1fa2; }
         .executive-kpi-inner.orange { background: #fff3e0; border-left: 4px solid #f57c00; }
         .executive-kpi-inner.teal { background: #e0f2f1; border-left: 4px solid #00796b; }
         .executive-kpi-inner.gray { background: #f5f5f5; border-left: 4px solid #616161; }
-        
+
         .executive-kpi-value {
             font-size: 20px;
             font-weight: bold;
             color: #333;
         }
-        
+
         .executive-kpi-label {
             font-size: 10px;
             color: #666;
             margin-top: 5px;
         }
-        
+
         .executive-kpi-growth {
             font-size: 10px;
             margin-top: 3px;
         }
-        
+
         .alerts-list { margin-top: 10px; }
-        
+
         .alert-item {
             padding: 10px 15px;
             border-radius: 6px;
             margin-bottom: 10px;
         }
-        
+
         .alert-item.critical { background: #f8d7da; border-left: 4px solid #dc3545; }
         .alert-item.warning { background: #fff3cd; border-left: 4px solid #ffc107; }
         .alert-item.info { background: #cce5ff; border-left: 4px solid #007bff; }
-        
+
         .alert-item strong { display: block; margin-bottom: 3px; }
         .alert-item p { margin: 0; font-size: 10px; color: #666; }
-        
+
         .seo-score-section {
             text-align: center;
             margin-bottom: 25px;
         }
-        
+
         .score-circle {
             width: 100px;
             height: 100px;
@@ -782,47 +782,47 @@ class PdfService
             line-height: 100px;
             margin: 15px 0;
         }
-        
+
         .score-circle.excellent { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
         .score-circle.good { background: linear-gradient(135deg, #17a2b8, #20c997); color: white; }
         .score-circle.fair { background: linear-gradient(135deg, #ffc107, #fd7e14); color: #333; }
         .score-circle.poor { background: linear-gradient(135deg, #dc3545, #c82333); color: white; }
-        
+
         .score-value { font-size: 28px; font-weight: bold; }
         .score-label { font-size: 12px; }
-        
+
         .score-details { margin-top: 20px; }
-        
+
         .score-item {
             display: table;
             width: 100%;
             margin-bottom: 8px;
         }
-        
+
         .score-item-label {
             display: table-cell;
             width: 100px;
             text-align: left;
             font-size: 10px;
         }
-        
+
         .score-item-bar {
             display: table-cell;
             padding: 0 10px;
         }
-        
+
         .score-item-bar > div {
             height: 8px;
             background: #e0e0e0;
             border-radius: 4px;
         }
-        
+
         .score-item-fill {
             height: 100%;
             background: ' . $this->config['primary_color'] . ';
             border-radius: 4px;
         }
-        
+
         .score-item-value {
             display: table-cell;
             width: 50px;
@@ -830,71 +830,71 @@ class PdfService
             font-size: 10px;
             font-weight: bold;
         }
-        
+
         .recommendations-list { margin-top: 10px; }
-        
+
         .recommendation-item {
             padding: 10px 15px;
             border-radius: 6px;
             margin-bottom: 10px;
             border-left: 4px solid;
         }
-        
+
         .recommendation-item.high {
             background: #fff3e0;
             border-color: #f57c00;
         }
-        
+
         .recommendation-item.medium {
             background: #fff8e1;
             border-color: #ffc107;
         }
-        
+
         .recommendation-item.low {
             background: #e8f5e9;
             border-color: #4caf50;
         }
-        
+
         .recommendation-item strong {
             display: block;
             margin-bottom: 5px;
             font-size: 11px;
         }
-        
+
         .recommendation-item p {
             margin: 0;
             font-size: 10px;
             color: #666;
         }
-        
+
         .listing-header {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
         }
-        
+
         .listing-header h2 {
             margin: 0 0 10px 0;
             font-size: 14px;
             border: none;
             padding: 0;
         }
-        
+
         .listing-meta .price {
             font-size: 18px;
             font-weight: bold;
             color: ' . $this->config['primary_color'] . ';
             margin-right: 15px;
         }
-        
+
         .listing-meta .condition {
             background: #e0e0e0;
             padding: 3px 8px;
             border-radius: 4px;
             font-size: 10px;
         }
-        
+
         .footer {
             margin-top: 30px;
             padding-top: 15px;

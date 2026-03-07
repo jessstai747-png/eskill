@@ -8,15 +8,15 @@ use App\Services\MercadoLivreClient;
 
 /**
  * 🔍 E4: Search Type Coverage Service
- * 
+ *
  * Garante cobertura para os 5 tipos de busca do Mercado Livre:
- * 
+ *
  * 1. GENÉRICA: "bauleto moto" - alto volume, baixa conversão
  * 2. ESPECÍFICA: "bauleto 45 litros" - médio volume, média conversão
  * 3. MARCA: "bauleto givi" - médio volume, alta conversão
  * 4. MODELO: "bauleto honda cg 160" - baixo volume, alta conversão
  * 5. LONG-TAIL: "bauleto moto delivery 45 litros com base" - baixíssimo volume, altíssima conversão
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class SearchTypeCoverageService
@@ -92,7 +92,7 @@ class SearchTypeCoverageService
 
     /**
      * Analisa a cobertura de tipos de busca de um anúncio
-     * 
+     *
      * @param array $itemData Dados do anúncio
      * @return array Análise de cobertura
      */
@@ -119,7 +119,7 @@ class SearchTypeCoverageService
 
         foreach (self::SEARCH_TYPES as $type => $config) {
             $maxScore += $config['weight'] * 100;
-            
+
             $typeCoverage = $this->analyzeSearchType(
                 $type,
                 $config,
@@ -155,7 +155,7 @@ class SearchTypeCoverageService
 
     /**
      * Gera keywords para cobrir todos os tipos de busca
-     * 
+     *
      * @param string $baseKeyword Keyword base
      * @param array $productData Dados do produto
      * @param string|null $categoryId ID da categoria
@@ -187,10 +187,10 @@ class SearchTypeCoverageService
 
         // 5. LONG TAIL
         $keywords['long_tail'] = $this->generateLongTailKeywords(
-            $baseKeyword, 
-            $brand, 
-            $model, 
-            $specs, 
+            $baseKeyword,
+            $brand,
+            $model,
+            $specs,
             $useCase
         );
 
@@ -216,7 +216,7 @@ class SearchTypeCoverageService
 
     /**
      * Otimiza um anúncio para cobrir todos os tipos de busca
-     * 
+     *
      * @param array $itemData Dados atuais do anúncio
      * @param array $keywords Keywords a incluir
      * @return array Campos otimizados
@@ -329,8 +329,9 @@ class SearchTypeCoverageService
         }
 
         // Ordenar por prioridade/impacto
-        uasort($suggestions, fn($a, $b) => 
-            ($b['impact'] <=> $a['impact']) ?: ($a['priority'] <=> $b['priority'])
+        uasort(
+            $suggestions,
+            fn($a, $b) => ($b['impact'] <=> $a['impact']) ?: ($a['priority'] <=> $b['priority'])
         );
 
         return $suggestions;
@@ -341,9 +342,9 @@ class SearchTypeCoverageService
     // ========================================================================
 
     private function analyzeSearchType(
-        string $type, 
-        array $config, 
-        string $fullText, 
+        string $type,
+        array $config,
+        string $fullText,
         array $context
     ): array {
         $score = 0;
@@ -354,22 +355,22 @@ class SearchTypeCoverageService
                 $score = $this->scoreGenericCoverage($fullText, $context);
                 $indicators = $this->getGenericIndicators($fullText);
                 break;
-                
+
             case 'specific':
                 $score = $this->scoreSpecificCoverage($fullText);
                 $indicators = $this->getSpecificIndicators($fullText);
                 break;
-                
+
             case 'brand':
                 $score = $this->scoreBrandCoverage($context['brand'], $fullText);
                 $indicators = $this->getBrandIndicators($context['brand'], $fullText);
                 break;
-                
+
             case 'model':
                 $score = $this->scoreModelCoverage($context['model'], $fullText);
                 $indicators = $this->getModelIndicators($context['model'], $fullText);
                 break;
-                
+
             case 'long_tail':
                 $score = $this->scoreLongTailCoverage($fullText, $context);
                 $indicators = $this->getLongTailIndicators($fullText);
@@ -391,35 +392,35 @@ class SearchTypeCoverageService
     {
         $score = 0;
         $title = $context['title'] ?? '';
-        
+
         // Verificar se título tem termo genérico principal
         $words = $this->tokenize($title);
         if (count($words) >= 2 && count($words) <= 4) {
             $score += 40;
         }
-        
+
         // Verificar sinônimos genéricos
         if ($this->hasGenericSynonyms($text)) {
             $score += 30;
         }
-        
+
         // Verificar se não está muito específico
         if (count($words) <= 6) {
             $score += 30;
         }
-        
+
         return $score;
     }
 
     private function scoreSpecificCoverage(string $text): int
     {
         $score = 0;
-        
+
         // Verificar especificações numéricas
         if (preg_match('/\d+\s*(litros?|l|mm|cm|kg|w)/i', $text)) {
             $score += 50;
         }
-        
+
         // Verificar características específicas
         $specificTerms = ['capacidade', 'tamanho', 'dimensão', 'peso', 'potência', 'voltagem'];
         foreach ($specificTerms as $term) {
@@ -427,7 +428,7 @@ class SearchTypeCoverageService
                 $score += 10;
             }
         }
-        
+
         return min(100, $score);
     }
 
@@ -436,14 +437,14 @@ class SearchTypeCoverageService
         if (empty($brand)) {
             return 0;
         }
-        
+
         $score = 0;
-        
+
         // Marca presente no texto
         if (stripos($text, $brand) !== false) {
             $score += 70;
         }
-        
+
         // Variações da marca
         $brandVariations = $this->generateBrandVariations($brand);
         foreach ($brandVariations as $variation) {
@@ -451,7 +452,7 @@ class SearchTypeCoverageService
                 $score += 10;
             }
         }
-        
+
         return min(100, $score);
     }
 
@@ -460,24 +461,24 @@ class SearchTypeCoverageService
         if (empty($model)) {
             return 0;
         }
-        
+
         $score = 0;
-        
+
         // Modelo presente
         if (stripos($text, $model) !== false) {
             $score += 60;
         }
-        
+
         // Códigos alfanuméricos
         if (preg_match('/[A-Z]{2,}\d+|\d+[A-Z]{2,}/i', $text)) {
             $score += 20;
         }
-        
+
         // Anos de modelo
         if (preg_match('/20[1-2]\d/', $text)) {
             $score += 20;
         }
-        
+
         return min(100, $score);
     }
 
@@ -485,23 +486,23 @@ class SearchTypeCoverageService
     {
         $score = 0;
         $words = $this->tokenize($text);
-        
+
         // Quantidade de palavras-chave
         if (count($words) >= 10) {
             $score += 30;
         }
-        
+
         // Combinação de elementos
         $hasGeneric = $this->hasGenericSynonyms($text);
         $hasBrand = !empty($context['brand']) && stripos($text, $context['brand']) !== false;
         $hasSpecs = preg_match('/\d+\s*(litros?|l|mm|cm)/i', $text);
         $hasUseCase = preg_match('/delivery|viagem|trabalho|profissional|lazer/i', $text);
-        
+
         if ($hasGeneric) $score += 15;
         if ($hasBrand) $score += 15;
         if ($hasSpecs) $score += 20;
         if ($hasUseCase) $score += 20;
-        
+
         return min(100, $score);
     }
 
@@ -512,13 +513,13 @@ class SearchTypeCoverageService
     private function generateGenericKeywords(string $baseKeyword, ?string $categoryId): array
     {
         $keywords = [$baseKeyword];
-        
+
         if ($categoryId) {
             $synonyms = $this->synonymService->expand($baseKeyword, $categoryId, [
                 'levels' => [1],
                 'limit_per_level' => 5
             ]);
-            
+
             foreach ($synonyms['synonyms'] ?? [] as $syn) {
                 if (is_array($syn)) {
                     $word = $syn['word'] ?? $syn['value'] ?? '';
@@ -530,14 +531,14 @@ class SearchTypeCoverageService
                 }
             }
         }
-        
+
         return array_unique($keywords);
     }
 
     private function generateSpecificKeywords(string $baseKeyword, array $specs): array
     {
         $keywords = [];
-        
+
         foreach ($specs as $specKey => $specValue) {
             // Tratar valores que podem ser arrays
             if (is_array($specValue)) {
@@ -546,9 +547,9 @@ class SearchTypeCoverageService
             if (empty($specValue) || !is_scalar($specValue)) {
                 continue;
             }
-            
+
             $keywords[] = "{$baseKeyword} {$specValue}";
-            
+
             // Variações com unidades
             if (is_numeric($specValue)) {
                 $units = ['litros', 'l', 'cm', 'mm', 'kg'];
@@ -558,7 +559,7 @@ class SearchTypeCoverageService
                 }
             }
         }
-        
+
         return array_unique($keywords);
     }
 
@@ -567,72 +568,72 @@ class SearchTypeCoverageService
         if (empty($brand)) {
             return [];
         }
-        
+
         $keywords = [
             "{$baseKeyword} {$brand}",
             "{$brand} {$baseKeyword}",
         ];
-        
+
         // Variações da marca
         $brandVariations = $this->generateBrandVariations($brand);
         foreach ($brandVariations as $variation) {
             $keywords[] = "{$baseKeyword} {$variation}";
         }
-        
+
         return array_unique($keywords);
     }
 
     private function generateModelKeywords(string $baseKeyword, string $brand, string $model): array
     {
         $keywords = [];
-        
+
         if ($model) {
             $keywords[] = "{$baseKeyword} {$model}";
-            
+
             if ($brand) {
                 $keywords[] = "{$baseKeyword} {$brand} {$model}";
                 $keywords[] = "{$brand} {$model} {$baseKeyword}";
             }
         }
-        
+
         return array_unique($keywords);
     }
 
     private function generateLongTailKeywords(
-        string $baseKeyword, 
-        string $brand, 
-        string $model, 
+        string $baseKeyword,
+        string $brand,
+        string $model,
         array $specs,
         string $useCase
     ): array {
         $keywords = [];
-        
+
         // Combinar elementos
         $parts = [$baseKeyword];
         if ($brand) $parts[] = $brand;
         if ($model) $parts[] = $model;
         if (!empty($specs)) $parts[] = implode(' ', array_values($specs));
-        
+
         // Adicionar caso de uso
         $useCases = [
             'profissional' => ['delivery', 'motoboy', 'trabalho'],
             'lazer' => ['viagem', 'passeio', 'turismo'],
             'urbano' => ['cidade', 'dia a dia', 'diário'],
         ];
-        
+
         $cases = $useCases[$useCase] ?? ['uso geral'];
-        
+
         foreach ($cases as $case) {
             $keywords[] = implode(' ', $parts) . " {$case}";
             $keywords[] = "{$baseKeyword} para {$case} " . implode(' ', array_slice($parts, 1));
         }
-        
+
         return array_unique($keywords);
     }
 
     private function generateKeywordsForType(
-        string $type, 
-        string $baseKeyword, 
+        string $type,
+        string $baseKeyword,
         ?string $categoryId,
         int $maxWords
     ): array {
@@ -660,7 +661,7 @@ class SearchTypeCoverageService
     {
         $maxLength = 60;
         $optimized = $title;
-        
+
         // Adicionar keywords genéricas no início
         $genericKws = $keywords['generic'] ?? [];
         foreach ($genericKws as $kw) {
@@ -673,7 +674,7 @@ class SearchTypeCoverageService
                 }
             }
         }
-        
+
         return [
             'original' => $title,
             'optimized' => $optimized,
@@ -685,13 +686,13 @@ class SearchTypeCoverageService
     {
         $maxLength = 255;
         $optimized = $model;
-        
+
         // Adicionar keywords de modelo e específicas
         $modelKws = array_merge(
             $keywords['model'] ?? [],
             $keywords['specific'] ?? []
         );
-        
+
         foreach ($modelKws as $kw) {
             $keyword = is_array($kw) ? $kw['keyword'] : $kw;
             if (stripos($optimized, $keyword) === false) {
@@ -701,7 +702,7 @@ class SearchTypeCoverageService
                 }
             }
         }
-        
+
         return [
             'original' => $model,
             'optimized' => $optimized,
@@ -712,7 +713,7 @@ class SearchTypeCoverageService
     private function optimizeDescription(string $description, array $keywords): array
     {
         $injector = new KeywordInjectorService($this->accountId);
-        
+
         $allKeywords = [];
         foreach ($keywords as $typeKws) {
             // Garantir que typeKws é array
@@ -723,24 +724,24 @@ class SearchTypeCoverageService
                 $allKeywords[] = is_array($kw) ? ($kw['keyword'] ?? $kw[0] ?? '') : (string)$kw;
             }
         }
-        
+
         // Filtrar strings vazias
         $allKeywords = array_filter($allKeywords, fn($k) => !empty($k));
-        
+
         return $injector->injectInDescription($description, $allKeywords);
     }
 
     private function generateHiddenKeywords(array $keywords): string
     {
         $hidden = [];
-        
+
         // Priorizar long-tail para campo oculto (60 chars)
         $longTail = $keywords['long_tail'] ?? [];
         foreach ($longTail as $kw) {
             $keyword = is_array($kw) ? $kw['keyword'] : $kw;
             $hidden[] = $keyword;
         }
-        
+
         $result = implode(' ', $hidden);
         return mb_substr($result, 0, 60);
     }
@@ -830,7 +831,7 @@ class SearchTypeCoverageService
                 ];
             }
         }
-        
+
         usort($gaps, fn($a, $b) => $b['impact'] <=> $a['impact']);
         return $gaps;
     }
@@ -838,7 +839,7 @@ class SearchTypeCoverageService
     private function identifyOpportunities(array $coverage, ?string $categoryId): array
     {
         $opportunities = [];
-        
+
         foreach ($coverage as $type => $data) {
             if ($data['score'] >= 60 && $data['score'] < 90) {
                 $opportunities[] = [
@@ -849,18 +850,18 @@ class SearchTypeCoverageService
                 ];
             }
         }
-        
+
         return $opportunities;
     }
 
     private function generateRecommendations(array $coverage, array $gaps): array
     {
         $recommendations = [];
-        
+
         foreach ($gaps as $gap) {
             $type = $gap['type'];
             $config = self::SEARCH_TYPES[$type];
-            
+
             $recommendations[] = [
                 'priority' => $config['priority'],
                 'type' => $type,
@@ -868,7 +869,7 @@ class SearchTypeCoverageService
                 'impact' => $gap['impact'] > 0.3 ? 'high' : ($gap['impact'] > 0.15 ? 'medium' : 'low')
             ];
         }
-        
+
         usort($recommendations, fn($a, $b) => $a['priority'] <=> $b['priority']);
         return $recommendations;
     }
@@ -882,7 +883,7 @@ class SearchTypeCoverageService
             'model' => 'Campo MODEL e descrição',
             'long_tail' => 'Campo KEYWORDS oculto e descrição'
         ];
-        
+
         return $placements[$type] ?? 'Descrição';
     }
 

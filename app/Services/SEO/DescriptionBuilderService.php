@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -86,7 +87,7 @@ class DescriptionBuilderService
     {
         $wordCount = str_word_count($description);
         $charCount = mb_strlen($description);
-        
+
         return [
             'is_valid' => $wordCount >= 50 && $charCount <= 50000,
             'word_count' => $wordCount,

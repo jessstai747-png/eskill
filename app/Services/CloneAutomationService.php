@@ -11,7 +11,7 @@ use Throwable;
 
 /**
  * Clone Automation Service
- * 
+ *
  * Sistema de auto-clonagem programada por regras:
  * - Regras baseadas em triggers (novo item, preço, categoria)
  * - Agendamento por horário/frequência
@@ -62,7 +62,7 @@ class CloneAutomationService
         $sourceId = $data['source_id'] ?? null;
         $targetAccountId = $data['target_account_id'] ?? $this->accountId;
         $templateId = $data['template_id'] ?? null;
-        
+
         // Filtros
         $categories = $data['categories'] ?? [];
         if (!is_array($categories)) {
@@ -97,7 +97,7 @@ class CloneAutomationService
             'only_catalog' => $onlyCatalog,
             'only_available' => $onlyAvailable,
         ];
-        
+
         // Configurações de trigger
         $daysOfWeek = $data['days_of_week'] ?? [1, 2, 3, 4, 5];
         if (!is_array($daysOfWeek)) {
@@ -117,23 +117,23 @@ class CloneAutomationService
             'price_drop_percent' => $data['price_drop_percent'] ?? 10,
             'stock_threshold' => $data['stock_threshold'] ?? 5,
         ];
-        
+
         // Limites
         $limits = [
             'max_items_per_run' => $data['max_items_per_run'] ?? 50,
             'max_items_per_day' => $data['max_items_per_day'] ?? 200,
             'cooldown_hours' => $data['cooldown_hours'] ?? 24,
         ];
-        
+
         $stmt = $this->db->prepare("
-            INSERT INTO clone_automation_rules 
+            INSERT INTO clone_automation_rules
             (account_id, name, trigger_type, source_type, source_id, target_account_id,
              template_id, filters, trigger_config, limits, status, created_at, updated_at)
-            VALUES 
+            VALUES
             (:account_id, :name, :trigger_type, :source_type, :source_id, :target_account_id,
              :template_id, :filters, :trigger_config, :limits, :status, NOW(), NOW())
         ");
-        
+
         $stmt->execute([
             ':account_id' => $this->accountId,
             ':name' => $name,
@@ -147,7 +147,7 @@ class CloneAutomationService
             ':limits' => $this->encodeJson($limits),
             ':status' => self::STATUS_ACTIVE,
         ]);
-        
+
         return (int) $this->db->lastInsertId();
     }
 
@@ -158,17 +158,24 @@ class CloneAutomationService
     {
         $updates = [];
         $params = [':id' => $ruleId, ':account_id' => $this->accountId];
-        
-        $allowedFields = ['name', 'trigger_type', 'source_type', 'source_id', 
-                          'target_account_id', 'template_id', 'status'];
-        
+
+        $allowedFields = [
+            'name',
+            'trigger_type',
+            'source_type',
+            'source_id',
+            'target_account_id',
+            'template_id',
+            'status'
+        ];
+
         foreach ($allowedFields as $field) {
             if (isset($data[$field])) {
                 $updates[] = "{$field} = :{$field}";
                 $params[":{$field}"] = $data[$field];
             }
         }
-        
+
         // Campos JSON
         if (isset($data['filters'])) {
             $updates[] = "filters = :filters";
@@ -182,16 +189,16 @@ class CloneAutomationService
             $updates[] = "limits = :limits";
             $params[':limits'] = $this->encodeJson(is_array($data['limits']) ? $data['limits'] : []);
         }
-        
+
         if (empty($updates)) {
             return false;
         }
-        
+
         $updates[] = "updated_at = NOW()";
-        
-        $sql = "UPDATE clone_automation_rules SET " . implode(', ', $updates) . 
-               " WHERE id = :id AND account_id = :account_id";
-        
+
+        $sql = "UPDATE clone_automation_rules SET " . implode(', ', $updates) .
+            " WHERE id = :id AND account_id = :account_id";
+
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
     }
@@ -202,7 +209,7 @@ class CloneAutomationService
     public function getRule(int $ruleId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT r.*, 
+            SELECT r.*,
                    (SELECT COUNT(*) FROM clone_automation_logs WHERE rule_id = r.id) as total_runs,
                    (SELECT SUM(items_cloned) FROM clone_automation_logs WHERE rule_id = r.id) as total_cloned,
                    (SELECT MAX(executed_at) FROM clone_automation_logs WHERE rule_id = r.id) as last_run
@@ -213,15 +220,15 @@ class CloneAutomationService
             ':id' => $ruleId,
             ':account_id' => $this->accountId,
         ]);
-        
+
         $rule = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($rule) {
             $rule['filters'] = $this->decodeJson(is_string($rule['filters'] ?? null) ? $rule['filters'] : null);
             $rule['trigger_config'] = $this->decodeJson(is_string($rule['trigger_config'] ?? null) ? $rule['trigger_config'] : null);
             $rule['limits'] = $this->decodeJson(is_string($rule['limits'] ?? null) ? $rule['limits'] : null);
         }
-        
+
         return $rule ?: null;
     }
 
@@ -231,7 +238,7 @@ class CloneAutomationService
     public function listRules(array $filters = []): array
     {
         $sql = "
-            SELECT r.*, 
+            SELECT r.*,
                    (SELECT COUNT(*) FROM clone_automation_logs WHERE rule_id = r.id) as total_runs,
                    (SELECT SUM(items_cloned) FROM clone_automation_logs WHERE rule_id = r.id) as total_cloned,
                    (SELECT MAX(executed_at) FROM clone_automation_logs WHERE rule_id = r.id) as last_run
@@ -239,33 +246,33 @@ class CloneAutomationService
             WHERE r.account_id = :account_id
         ";
         $params = [':account_id' => $this->accountId];
-        
+
         if (!empty($filters['status'])) {
             $sql .= " AND r.status = :status";
             $params[':status'] = $filters['status'];
         }
-        
+
         if (!empty($filters['trigger_type'])) {
             $sql .= " AND r.trigger_type = :trigger_type";
             $params[':trigger_type'] = $filters['trigger_type'];
         }
-        
+
         $sql .= " ORDER BY r.created_at DESC";
-        
+
         if (!empty($filters['limit'])) {
             $sql .= " LIMIT " . (int)$filters['limit'];
         }
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($rules as &$rule) {
             $rule['filters'] = $this->decodeJson(is_string($rule['filters'] ?? null) ? $rule['filters'] : null);
             $rule['trigger_config'] = $this->decodeJson(is_string($rule['trigger_config'] ?? null) ? $rule['trigger_config'] : null);
             $rule['limits'] = $this->decodeJson(is_string($rule['limits'] ?? null) ? $rule['limits'] : null);
         }
-        
+
         return $rules;
     }
 
@@ -275,10 +282,10 @@ class CloneAutomationService
     public function deleteRule(int $ruleId): bool
     {
         $stmt = $this->db->prepare("
-            DELETE FROM clone_automation_rules 
+            DELETE FROM clone_automation_rules
             WHERE id = :id AND account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             ':id' => $ruleId,
             ':account_id' => $this->accountId,
@@ -307,50 +314,50 @@ class CloneAutomationService
     public function executeRule(int $ruleId, bool $dryRun = false): array
     {
         $rule = $this->getRule($ruleId);
-        
+
         if (!$rule) {
             throw new Exception('Regra não encontrada');
         }
-        
+
         if ($rule['status'] !== self::STATUS_ACTIVE && !$dryRun) {
             throw new Exception('Regra não está ativa');
         }
-        
+
         // Verificar cooldown
         if (!$dryRun && $rule['last_run']) {
             $cooldownHours = $rule['limits']['cooldown_hours'] ?? 24;
             $lastRunTime = strtotime($rule['last_run']);
             $cooldownEnd = $lastRunTime + ($cooldownHours * 3600);
-            
+
             if (time() < $cooldownEnd) {
                 $remaining = ceil(($cooldownEnd - time()) / 3600);
                 throw new Exception("Cooldown ativo. Aguarde {$remaining}h.");
             }
         }
-        
+
         // Verificar limite diário
         if (!$dryRun) {
             $dailyCloned = $this->getDailyClonedCount($ruleId);
             $maxDaily = $rule['limits']['max_items_per_day'] ?? 200;
-            
+
             if ($dailyCloned >= $maxDaily) {
                 throw new Exception("Limite diário atingido ({$dailyCloned}/{$maxDaily})");
             }
         }
-        
+
         // Buscar itens para clonar
         $items = $this->findItemsToClone($rule);
-        
+
         // Aplicar limite por execução
         $maxPerRun = $rule['limits']['max_items_per_run'] ?? 50;
         $items = array_slice($items, 0, $maxPerRun);
-        
+
         if ($dryRun) {
             return [
                 'status' => 'dry_run',
                 'rule_id' => $ruleId,
                 'items_found' => count($items),
-                'items' => array_map(function($item) {
+                'items' => array_map(function ($item) {
                     return [
                         'id' => $item['id'],
                         'title' => $item['title'] ?? '',
@@ -359,13 +366,13 @@ class CloneAutomationService
                 }, $items),
             ];
         }
-        
+
         // Executar clonagem
         $results = $this->cloneItems($rule, $items);
-        
+
         // Log da execução
         $this->logExecution($ruleId, $results);
-        
+
         return $results;
     }
 
@@ -376,23 +383,23 @@ class CloneAutomationService
     {
         $cloneService = $this->getCloneService();
         $filters = $rule['filters'];
-        
+
         $searchFilters = [];
-        
+
         if (!empty($filters['categories'])) {
             $searchFilters['category'] = $filters['categories'][0];
         }
-        
+
         if (!empty($filters['min_price'])) {
             $searchFilters['min_price'] = $filters['min_price'];
         }
-        
+
         if (!empty($filters['max_price'])) {
             $searchFilters['max_price'] = $filters['max_price'];
         }
-        
+
         $searchFilters['limit'] = 100;
-        
+
         // Buscar itens da fonte
         try {
             if ($rule['source_type'] === 'seller' && $rule['source_id']) {
@@ -411,10 +418,10 @@ class CloneAutomationService
             ]);
             return [];
         }
-        
+
         // Aplicar filtros adicionais
         $filteredItems = [];
-        
+
         foreach ($items as $item) {
             if (!is_array($item)) {
                 continue;
@@ -428,15 +435,15 @@ class CloneAutomationService
             if (!$this->shouldIncludeItem($item, is_array($filters) ? $filters : [])) {
                 continue;
             }
-            
+
             // Verificar se já foi clonado
             if ($this->wasAlreadyCloned($itemId, (int) $rule['id'])) {
                 continue;
             }
-            
+
             $filteredItems[] = $item;
         }
-        
+
         return $filteredItems;
     }
 
@@ -466,14 +473,14 @@ class CloneAutomationService
     private function wasAlreadyCloned(string $itemId, int $ruleId): bool
     {
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) FROM clone_automation_cloned_items 
+            SELECT COUNT(*) FROM clone_automation_cloned_items
             WHERE rule_id = :rule_id AND source_item_id = :item_id
         ");
         $stmt->execute([
             ':rule_id' => $ruleId,
             ':item_id' => $itemId,
         ]);
-        
+
         return (int) $stmt->fetchColumn() > 0;
     }
 
@@ -485,7 +492,7 @@ class CloneAutomationService
         $cloneService = $this->getCloneService();
         $targetAccountId = $rule['target_account_id'];
         $templateId = $rule['template_id'];
-        
+
         $results = [
             'status' => 'completed',
             'rule_id' => $rule['id'],
@@ -495,7 +502,7 @@ class CloneAutomationService
             'errors' => [],
             'cloned' => [],
         ];
-        
+
         foreach ($items as $item) {
             try {
                 if (!is_array($item)) {
@@ -522,14 +529,14 @@ class CloneAutomationService
                 }
 
                 $cloneResult = $cloneService->cloneItem($params);
-                
+
                 if (($cloneResult['status'] ?? null) === 'success' && !empty($cloneResult['target_item_id'])) {
                     $results['items_cloned']++;
                     $results['cloned'][] = [
                         'source_id' => $itemId,
                         'new_id' => (string) $cloneResult['target_item_id'],
                     ];
-                    
+
                     // Registrar item clonado
                     $this->recordClonedItem((int) $rule['id'], $itemId, (string) $cloneResult['target_item_id']);
                 } else {
@@ -539,7 +546,6 @@ class CloneAutomationService
                         'error' => $cloneResult['message'] ?? ($cloneResult['error'] ?? 'Unknown error'),
                     ];
                 }
-                
             } catch (Throwable $e) {
                 $results['items_failed']++;
                 $results['errors'][] = [
@@ -547,11 +553,11 @@ class CloneAutomationService
                     'error' => $e->getMessage(),
                 ];
             }
-            
+
             // Rate limit
             usleep(500000); // 0.5s entre cada clone
         }
-        
+
         return $results;
     }
 
@@ -561,9 +567,9 @@ class CloneAutomationService
     private function recordClonedItem(int $ruleId, string $sourceItemId, string $newItemId): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO clone_automation_cloned_items 
+            INSERT INTO clone_automation_cloned_items
             (rule_id, source_item_id, cloned_item_id, cloned_at)
-            VALUES 
+            VALUES
             (:rule_id, :source_id, :cloned_id, NOW())
         ");
         $stmt->execute([
@@ -579,10 +585,10 @@ class CloneAutomationService
     private function logExecution(int $ruleId, array $results): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO clone_automation_logs 
-            (rule_id, items_found, items_cloned, items_failed, 
+            INSERT INTO clone_automation_logs
+            (rule_id, items_found, items_cloned, items_failed,
              errors, executed_at)
-            VALUES 
+            VALUES
             (:rule_id, :found, :cloned, :failed, :errors, NOW())
         ");
         $stmt->execute([
@@ -600,13 +606,13 @@ class CloneAutomationService
     private function getDailyClonedCount(int $ruleId): int
     {
         $stmt = $this->db->prepare("
-            SELECT COALESCE(SUM(items_cloned), 0) 
-            FROM clone_automation_logs 
-            WHERE rule_id = :rule_id 
+            SELECT COALESCE(SUM(items_cloned), 0)
+            FROM clone_automation_logs
+            WHERE rule_id = :rule_id
             AND DATE(executed_at) = CURDATE()
         ");
         $stmt->execute([':rule_id' => $ruleId]);
-        
+
         return (int) $stmt->fetchColumn();
     }
 
@@ -617,24 +623,24 @@ class CloneAutomationService
     {
         $currentHour = date('H:i');
         $dayOfWeek = date('N'); // 1 = Monday, 7 = Sunday
-        
+
         $stmt = $this->db->prepare("
             SELECT r.* FROM clone_automation_rules r
             WHERE r.status = 'active'
             AND r.trigger_type = 'schedule'
             AND (
-                r.last_executed_at IS NULL 
+                r.last_executed_at IS NULL
                 OR (
-                    TIMESTAMPDIFF(HOUR, r.last_executed_at, NOW()) >= 
+                    TIMESTAMPDIFF(HOUR, r.last_executed_at, NOW()) >=
                     COALESCE(JSON_UNQUOTE(JSON_EXTRACT(r.limits, '$.cooldown_hours')), 24)
                 )
             )
         ");
         $stmt->execute();
         $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $duRules = [];
-        
+
         foreach ($rules as $rule) {
             $triggerConfig = $this->decodeJson(is_string($rule['trigger_config'] ?? null) ? $rule['trigger_config'] : null);
 
@@ -647,7 +653,7 @@ class CloneAutomationService
             $rule['limits'] = $this->decodeJson(is_string($rule['limits'] ?? null) ? $rule['limits'] : null);
             $duRules[] = $rule;
         }
-        
+
         return $duRules;
     }
 
@@ -657,7 +663,7 @@ class CloneAutomationService
     public function markAsExecuted(int $ruleId): void
     {
         $stmt = $this->db->prepare("
-            UPDATE clone_automation_rules 
+            UPDATE clone_automation_rules
             SET last_executed_at = NOW(), updated_at = NOW()
             WHERE id = :id
         ");
@@ -671,20 +677,20 @@ class CloneAutomationService
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT * FROM clone_automation_logs 
-            WHERE rule_id = :rule_id 
-            ORDER BY executed_at DESC 
+            SELECT * FROM clone_automation_logs
+            WHERE rule_id = :rule_id
+            ORDER BY executed_at DESC
             LIMIT {$limitSql}
         ");
         $stmt->bindValue(':rule_id', $ruleId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($logs as &$log) {
             $log['errors'] = $this->decodeJson(is_string($log['errors'] ?? null) ? $log['errors'] : null);
         }
-        
+
         return $logs;
     }
 
@@ -808,14 +814,14 @@ class CloneAutomationService
     public function getStats(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total_rules,
                 SUM(status = 'active') as active_rules,
-                (SELECT COUNT(*) FROM clone_automation_logs l 
-                 JOIN clone_automation_rules r ON r.id = l.rule_id 
+                (SELECT COUNT(*) FROM clone_automation_logs l
+                 JOIN clone_automation_rules r ON r.id = l.rule_id
                  WHERE r.account_id = :account_id) as total_executions,
-                (SELECT COALESCE(SUM(items_cloned), 0) FROM clone_automation_logs l 
-                 JOIN clone_automation_rules r ON r.id = l.rule_id 
+                (SELECT COALESCE(SUM(items_cloned), 0) FROM clone_automation_logs l
+                 JOIN clone_automation_rules r ON r.id = l.rule_id
                  WHERE r.account_id = :account_id2) as total_items_cloned
             FROM clone_automation_rules
             WHERE account_id = :account_id3
@@ -825,7 +831,7 @@ class CloneAutomationService
             ':account_id2' => $this->accountId,
             ':account_id3' => $this->accountId,
         ]);
-        
+
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -849,7 +855,7 @@ class CloneAutomationService
         if ($checked) {
             return;
         }
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_automation_rules (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -872,7 +878,7 @@ class CloneAutomationService
                 INDEX idx_trigger (trigger_type)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_automation_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -887,7 +893,7 @@ class CloneAutomationService
                 FOREIGN KEY (rule_id) REFERENCES clone_automation_rules(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_automation_cloned_items (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -901,7 +907,7 @@ class CloneAutomationService
                 FOREIGN KEY (rule_id) REFERENCES clone_automation_rules(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $checked = true;
     }
 }

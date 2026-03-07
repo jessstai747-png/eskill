@@ -114,7 +114,6 @@ class AISEOOptimizerService
             ]);
 
             return $result;
-
         } catch (Exception $e) {
             $this->logger->error('AI SEO analysis failed', [
                 'error' => $e->getMessage(),
@@ -190,7 +189,6 @@ class AISEOOptimizerService
             ]);
 
             return $result;
-
         } catch (Exception $e) {
             $this->logger->error('AI SEO optimization failed', [
                 'error' => $e->getMessage(),
@@ -252,7 +250,6 @@ class AISEOOptimizerService
                 // Fallback to basic analysis if AI fails
                 return $this->analyzeTitleSEOFallback($productData);
             }
-
         } catch (\Exception $e) {
             $this->logger->error('Title SEO analysis failed', [
                 'error' => $e->getMessage(),
@@ -397,7 +394,6 @@ class AISEOOptimizerService
                 // Fallback to basic analysis if AI fails
                 return $this->analyzeDescriptionSEOFallback($productData);
             }
-
         } catch (\Exception $e) {
             $this->logger->error('Description SEO analysis failed', [
                 'error' => $e->getMessage(),
@@ -542,7 +538,6 @@ class AISEOOptimizerService
                 // Fallback to basic analysis if AI fails
                 return $this->analyzeKeywordsFallback($productData);
             }
-
         } catch (\Exception $e) {
             $this->logger->error('Keywords analysis failed', [
                 'error' => $e->getMessage(),
@@ -1136,7 +1131,6 @@ class AISEOOptimizerService
                 // Fallback to basic analysis if AI fails
                 return $this->analyzeCompetitionFallback($productData);
             }
-
         } catch (\Exception $e) {
             $this->logger->error('Competition analysis failed', [
                 'error' => $e->getMessage(),
@@ -1271,7 +1265,7 @@ Retorne um JSON com a seguinte estrutura:
         }
 
         // Attribute completeness
-        $attrCompleteness = count($attributes) > 0 ? (count(array_filter($attributes, function($attr) {
+        $attrCompleteness = count($attributes) > 0 ? (count(array_filter($attributes, function ($attr) {
             return !empty($attr['value_name']) || !empty($attr['value']);
         })) / count($attributes)) * 100 : 0;
 
@@ -1989,7 +1983,7 @@ Retorne um JSON com a seguinte estrutura:
             'improved' => $improvements,
             'suggestions' => $suggestions,
             'total_attributes' => count($attributes),
-            'filled_attributes' => count(array_filter($attributes, function($attr) {
+            'filled_attributes' => count(array_filter($attributes, function ($attr) {
                 return !empty($attr['value_name']) || !empty($attr['value']);
             }))
         ];
@@ -2073,7 +2067,7 @@ Retorne um JSON com a seguinte estrutura:
         $actionPlan = [];
 
         // Prioritize opportunities by severity
-        usort($opportunities, function($a, $b) {
+        usort($opportunities, function ($a, $b) {
             $priorityOrder = ['high' => 3, 'medium' => 2, 'low' => 1];
             return ($priorityOrder[$b['priority']] ?? 0) - ($priorityOrder[$a['priority']] ?? 0);
         });
@@ -2288,7 +2282,6 @@ Retorne um JSON com a seguinte estrutura:
             ]);
 
             return $competitors;
-
         } catch (\Exception $e) {
             $this->logger->error('Failed to fetch real competitors', [
                 'error' => $e->getMessage(),
@@ -2534,9 +2527,9 @@ Retorne um JSON com a seguinte estrutura:
     {
         // If ML provides a valid health (0.0 to 1.0), use it.
         if (isset($item['health']) && is_numeric($item['health'])) {
-             if ($item['health'] > 0.01) {
-                 return (float)$item['health'];
-             }
+            if ($item['health'] > 0.01) {
+                return (float)$item['health'];
+            }
         }
 
         $score = 0.0;

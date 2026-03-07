@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -19,11 +20,11 @@ class SemanticScoreService
     {
         $titleLower = mb_strtolower($title);
         $wordLower = mb_strtolower($word);
-        
+
         if (strpos($titleLower, $wordLower) !== false) {
             return 1.0;
         }
-        
+
         return 0.5;
     }
 
@@ -135,7 +136,7 @@ class ContextInjectorService
     {
         $db = Database::getInstance();
         $categoryId = $item['category_id'] ?? '';
-        
+
         if (empty($categoryId)) {
             return [];
         }
@@ -146,7 +147,7 @@ class ContextInjectorService
             WHERE category_id = :category_id AND is_active = 1
             ORDER BY weight DESC
         ");
-        
+
         $stmt->execute(['category_id' => $categoryId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -165,13 +166,13 @@ class LongTailGeneratorService
     {
         $words = explode(' ', $title);
         $longTail = [];
-        
+
         $suffixes = ['barato', 'original', 'profissional', 'premium', 'melhor'];
-        
+
         foreach ($suffixes as $suffix) {
             $longTail[] = $title . ' ' . $suffix;
         }
-        
+
         return $longTail;
     }
 }
@@ -220,11 +221,11 @@ class SEOMonitoringService
         $stmt = $this->db->prepare("
             INSERT INTO seo_monitoring_schedule (item_id, interval_days, next_check)
             VALUES (:item_id, :interval_days, DATE_ADD(NOW(), INTERVAL :interval_days DAY))
-            ON DUPLICATE KEY UPDATE 
+            ON DUPLICATE KEY UPDATE
                 interval_days = :interval_days,
                 next_check = DATE_ADD(NOW(), INTERVAL :interval_days DAY)
         ");
-        
+
         $stmt->execute([
             'item_id' => $itemId,
             'interval_days' => $intervalDays

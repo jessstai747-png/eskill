@@ -37,7 +37,7 @@ class NegotiationService
         // 3. Logic
         // Offer is the buyer's proposed price.
         // MinPrice is our floor.
-        
+
         $currentPrice = (float)$item['price'];
         $minPrice = (float)$item['min_price'];
 
@@ -47,7 +47,7 @@ class NegotiationService
             // For now, we simulate approval.
             $appUrl = $_ENV['APP_URL'] ?? 'https://eskill.com.br';
             $checkoutUrl = "{$appUrl}/checkout/{$mlItemId}?price=" . number_format($offer, 2, '.', '');
-            
+
             return [
                 'action' => 'ACCEPT',
                 'text' => "Olá! Aceitamos sua oferta de R$ " . number_format($offer, 2, ',', '.') . ". Pode comprar neste link que ajustamos para você: $checkoutUrl"
@@ -80,7 +80,7 @@ class NegotiationService
     {
         // Normalize
         $text = mb_strtolower($text);
-        
+
         // Regex for "faz x", "aceita x", "fecha em x"
         // Matches: "faz 200", "faz R$ 200", "aceita 200,00"
         if (preg_match('/(faz|aceita|fecha|por|r\$)\s*[:\s]?\s*(r\$)?\s*([\d\.]+)(,\d{2})?/', $text, $matches)) {
@@ -88,25 +88,25 @@ class NegotiationService
             // Handle brazilian float format (dots as thousands separators sometimes, comma decimals)
             // But usually regex approach is simpler if we assume simple ints or standard floats.
             // Let's assume user types "200" or "200,00"
-            
+
             $numStr = $matches[3];
             $decimal = $matches[4] ?? ''; // ,00
-            
+
             // If text has "2.000,00", regex might be tricky.
             // Simplified approach: Extract all numbers, check if likely price.
-            
+
             // Clean string to float
             $clean = str_replace('.', '', $numStr); // remove thousands dot
             if ($decimal) {
                 $clean .= str_replace(',', '.', $decimal);
             }
-            
+
             $val = (float)$clean;
-            
+
             // Sanity check: Offer usually shouldn't be effectively zero
             if ($val > 0) return $val;
         }
-        
+
         // Fallback for just number at end? "top paga 300"
         if (preg_match('/(\d+)/', $text, $matches)) {
             // risky without context

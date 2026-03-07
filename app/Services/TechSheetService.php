@@ -29,7 +29,7 @@ class TechSheetService
 
     /**
      * Fontes canônicas de sugestões (usadas para gravação e queries)
-     * 
+     *
      * Mapeamento:
      * - title: Extração regex/NLP do título do anúncio
      * - benchmark: Análise de concorrentes da mesma categoria
@@ -924,13 +924,13 @@ class TechSheetService
 
     /**
      * Gera sugestões avançadas para o atributo MODEL usando múltiplas estratégias de busca
-     * 
+     *
      * Estratégias:
      * 1. Autocomplete Mining - Usa título parcial para buscar sugestões
      * 2. Category Trends - Busca trends da categoria e extrai modelos
      * 3. Competitor Analysis - Extrai modelos dos top sellers
      * 4. Search Volume Scoring - Prioriza modelos com maior volume de busca
-     * 
+     *
      * @param string $itemId ID do item
      * @return array Resultado com sugestões ranqueadas por relevância
      */
@@ -1369,10 +1369,10 @@ class TechSheetService
 
         // Buscar outros itens da mesma categoria
         $stmt = $this->db->prepare("
-            SELECT i.ml_item_id, i.title 
-            FROM items i 
-            WHERE i.account_id = :account_id 
-            AND i.category_id = :category_id 
+            SELECT i.ml_item_id, i.title
+            FROM items i
+            WHERE i.account_id = :account_id
+            AND i.category_id = :category_id
             AND i.ml_item_id != :exclude_id
             AND i.status = 'active'
             LIMIT 50
@@ -2104,7 +2104,7 @@ class TechSheetService
 
     /**
      * Salva decisões de aprovação/rejeição de sugestões
-     * 
+     *
      * @param string $itemId
      * @param array $decisions Array de decisões [['attribute_id' => '...', 'status' => 'approved|rejected', 'value' => ...], ...]
      * @param int|null $userId ID do usuário que fez a decisão. NULL = sistema (auto-optimize)
@@ -2760,7 +2760,7 @@ class TechSheetService
 
     /**
      * Adiciona sugestões manualmente (de extração de título ou análise de concorrentes)
-     * 
+     *
      * @param string $itemId ID do item
      * @param array $suggestions Array de sugestões [{attribute_id, suggested_value, confidence, source}]
      * @return array Resultado da operação

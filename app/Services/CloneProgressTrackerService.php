@@ -9,19 +9,19 @@ use PDO;
 
 /**
  * Service para tracking granular de progresso de clonagem
- * 
+ *
  * Rastreia o progresso detalhado por fase:
  * - Validação de itens
  * - Preparação de dados
  * - Publicação no ML
  * - Pós-ações (templates, pricing)
- * 
+ *
  * Fornece:
  * - Porcentagem por fase
  * - ETA estimado
  * - Status em tempo real
  * - Histórico de progresso
- * 
+ *
  * @package App\Services
  */
 class CloneProgressTrackerService
@@ -50,7 +50,7 @@ class CloneProgressTrackerService
 
     /**
      * Inicializar tracking para um job
-     * 
+     *
      * @param int $jobId
      * @param int $totalItems
      * @return bool
@@ -88,7 +88,7 @@ class CloneProgressTrackerService
 
     /**
      * Atualizar progresso de uma fase
-     * 
+     *
      * @param int $jobId
      * @param string $phase Fase atual
      * @param int $itemsProcessed Items processados nesta fase
@@ -99,7 +99,7 @@ class CloneProgressTrackerService
     {
         try {
             // Calcular progresso da fase atual (0-100)
-            $phaseProgress = $totalItems > 0 
+            $phaseProgress = $totalItems > 0
                 ? round(($itemsProcessed / $totalItems) * 100, 2)
                 : 0;
 
@@ -147,7 +147,7 @@ class CloneProgressTrackerService
 
     /**
      * Avançar para próxima fase
-     * 
+     *
      * @param int $jobId
      * @param string $nextPhase
      * @return bool
@@ -192,7 +192,7 @@ class CloneProgressTrackerService
 
     /**
      * Marcar job como completo
-     * 
+     *
      * @param int $jobId
      * @return bool
      */
@@ -226,7 +226,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter progresso completo de um job
-     * 
+     *
      * @param int $jobId
      * @return array{
      *     job_id: int,
@@ -245,7 +245,7 @@ class CloneProgressTrackerService
     {
         try {
             $sql = "
-                SELECT 
+                SELECT
                     job_id,
                     total_items,
                     current_phase,
@@ -302,7 +302,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter histórico de progresso
-     * 
+     *
      * @param int $jobId
      * @param int $limit
      * @return array<array{
@@ -318,7 +318,7 @@ class CloneProgressTrackerService
             $limitSql = max(1, min((int)$limit, 500));
 
             $sql = "
-                SELECT 
+                SELECT
                     phase,
                     progress,
                     items_processed,
@@ -346,7 +346,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter progresso de múltiplos jobs
-     * 
+     *
      * @param array $jobIds
      * @return array<int, array> Array indexado por job_id
      */
@@ -369,7 +369,7 @@ class CloneProgressTrackerService
 
     /**
      * Calcular progresso geral baseado na fase e progresso da fase
-     * 
+     *
      * @param string $currentPhase
      * @param float $phaseProgress Progresso da fase atual (0-100)
      * @return float Progresso geral (0-100)
@@ -401,7 +401,7 @@ class CloneProgressTrackerService
 
     /**
      * Estimar tempo restante
-     * 
+     *
      * @param int $jobId
      * @param float $overallProgress Progresso geral (0-100)
      * @return int|null Segundos restantes ou null se não puder estimar
@@ -431,10 +431,14 @@ class CloneProgressTrackerService
             $elapsed = (int)$result['elapsed'];
 
             // Calcular velocidade (% por segundo)
-            $rate = $overallProgress / $elapsed;
+            $rate = $elapsed > 0 ? $overallProgress / $elapsed : 0;
 
             // Estimar tempo restante
-            $remaining = (100 - $overallProgress) / $rate;
+            $remaining = $rate > 0 ? (100 - $overallProgress) / $rate : null;
+
+            if ($remaining === null) {
+                return null;
+            }
 
             return (int)$remaining;
         } catch (\Exception $e) {
@@ -448,7 +452,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter detalhes de cada fase
-     * 
+     *
      * @param int $jobId
      * @param string $currentPhase
      * @return array
@@ -512,7 +516,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter progresso atual da fase
-     * 
+     *
      * @param int $jobId
      * @param string $phase
      * @return float
@@ -538,7 +542,7 @@ class CloneProgressTrackerService
 
     /**
      * Registrar histórico de progresso
-     * 
+     *
      * @param int $jobId
      * @param string $phase
      * @param float $progress
@@ -573,7 +577,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter fase atual
-     * 
+     *
      * @param int $jobId
      * @return string|null
      */
@@ -593,7 +597,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter total de items
-     * 
+     *
      * @param int $jobId
      * @return int
      */
@@ -613,7 +617,7 @@ class CloneProgressTrackerService
 
     /**
      * Formatar duração em formato legível
-     * 
+     *
      * @param int $seconds
      * @return string
      */
@@ -636,7 +640,7 @@ class CloneProgressTrackerService
 
     /**
      * Resetar tracking de um job
-     * 
+     *
      * @param int $jobId
      * @return bool
      */
@@ -663,7 +667,7 @@ class CloneProgressTrackerService
 
     /**
      * Obter estatísticas de performance
-     * 
+     *
      * @param int $jobId
      * @return array{
      *     avg_items_per_second: float,
@@ -681,7 +685,7 @@ class CloneProgressTrackerService
             }
 
             $history = $this->getProgressHistory($jobId, 1000);
-            
+
             // Calcular velocidade média
             $totalItems = $this->getTotalItems($jobId);
             $avgRate = $totalItems / max($progress['elapsed_seconds'], 1);

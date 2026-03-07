@@ -10,7 +10,7 @@ use App\Services\StructuredLogService;
 
 /**
  * Competitor Intelligence System
- * 
+ *
  * Features:
  * - Real-time competitor tracking
  * - Market share analysis

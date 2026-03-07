@@ -9,17 +9,17 @@ use PDO;
 
 /**
  * PricingScenarioService
- * 
+ *
  * Serviço para análise e gerenciamento de cenários de precificação.
  * Permite criar regras automáticas, comparar estratégias e otimizar preços.
- * 
+ *
  * Funcionalidades:
  * - Criação de cenários "e se" (what-if)
  * - Comparação de estratégias de preço
  * - Regras de precificação automática
  * - Análise de demanda e elasticidade
  * - Otimização baseada em concorrência
- * 
+ *
  * @package App\Services
  */
 class PricingScenarioService
@@ -82,7 +82,7 @@ class PricingScenarioService
 
     /**
      * Compara múltiplas estratégias para um item
-     * 
+     *
      * @param string $itemId ID do item no ML
      * @return array Comparação de estratégias
      */
@@ -118,15 +118,15 @@ class PricingScenarioService
         foreach (self::ESTRATEGIAS_DESC as $key => $estrategia) {
             $precoSugerido = $this->calcularPrecoEstrategia($key, $stats, $custos);
             $margemCenario = $this->marginService->calcularMargem($precoSugerido, $custos);
-            
+
             $impactoRanking = $this->marginService->analisarImpactoRanking($precoAtual, $precoSugerido);
-            
+
             $comparacao[$key] = [
                 'estrategia' => $key,
                 'nome' => $estrategia['nome'],
                 'descricao' => $estrategia['descricao'],
                 'preco_sugerido' => round($precoSugerido, 2),
-                'variacao_atual' => round((($precoSugerido - $precoAtual) / $precoAtual) * 100, 2),
+                'variacao_atual' => $precoAtual > 0 ? round((($precoSugerido - $precoAtual) / $precoAtual) * 100, 2) : 0,
                 'margem_estimada' => round($margemCenario['margem_real'] ?? 0, 2),
                 'lucro_unitario' => round($margemCenario['lucro_unitario'] ?? 0, 2),
                 'impacto_ranking' => $impactoRanking['alerta'],
@@ -252,11 +252,11 @@ class PricingScenarioService
         }
 
         $margem = $estrategia['margem_estimada'] ?? 0;
-        
+
         if ($acao === 'aumentar') {
             return "Preço abaixo do ideal. A estratégia {$estrategia['nome']} oferece margem de {$margem}% com baixo risco de ranking.";
         }
-        
+
         if ($acao === 'reduzir') {
             return "Preço acima do mercado. Reduzir para {$estrategia['preco_sugerido']} melhora competitividade mantendo {$margem}% de margem.";
         }
@@ -266,7 +266,7 @@ class PricingScenarioService
 
     /**
      * Cria cenário "what-if" para análise
-     * 
+     *
      * @param string $itemId ID do item
      * @param array $parametros Parâmetros do cenário
      * @return array Resultado do cenário
@@ -292,7 +292,7 @@ class PricingScenarioService
 
         // Projeção de vendas (usando elasticidade simplificada)
         $elasticidade = $parametros['elasticidade'] ?? -1.5;
-        $variacaoPreco = (($precoNovo - $item['price']) / $item['price']) * 100;
+        $variacaoPreco = $item['price'] > 0 ? (($precoNovo - $item['price']) / $item['price']) * 100 : 0;
         $variacaoVendas = $variacaoPreco * $elasticidade;
 
         return [
@@ -318,7 +318,7 @@ class PricingScenarioService
 
     /**
      * Cria regra de precificação automática
-     * 
+     *
      * @param array $regra Dados da regra
      * @return array Resultado da criação
      */
@@ -406,7 +406,7 @@ class PricingScenarioService
 
     /**
      * Executa regra de precificação em itens
-     * 
+     *
      * @param int $regraId ID da regra
      * @param bool $aplicar Se deve aplicar ou apenas simular
      * @return array Resultado da execução
@@ -415,7 +415,7 @@ class PricingScenarioService
     {
         // Buscar regra
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_rules 
+            SELECT * FROM pricing_rules
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute(['id' => $regraId, 'account_id' => $this->accountId]);
@@ -446,10 +446,10 @@ class PricingScenarioService
             if (empty($stats['count'])) continue;
 
             $precoSugerido = $this->calcularPrecoEstrategia($regra['estrategia'], $stats, $custos);
-            
+
             // Verificar limites
             $variacao = (($precoSugerido - $precoAtual) / $precoAtual) * 100;
-            
+
             if ($variacao > $regra['aumento_maximo']) {
                 $precoSugerido = $precoAtual * (1 + $regra['aumento_maximo'] / 100);
             }
@@ -532,7 +532,7 @@ class PricingScenarioService
 
         // Buscar detalhes
         $itemsData = $this->mlClient->get("/items", ['ids' => implode(',', array_slice($itemIds, 0, 20))]);
-        
+
         $itens = [];
         foreach ($itemsData as $data) {
             $item = $data['body'] ?? $data;

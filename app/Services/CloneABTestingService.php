@@ -10,7 +10,7 @@ use Exception;
 
 /**
  * Clone A/B Testing Service
- * 
+ *
  * Sistema de A/B Testing para variações de anúncios clonados:
  * - Criação de variações (título, preço, imagens)
  * - Rastreamento de métricas (visualizações, cliques, vendas)
@@ -74,14 +74,14 @@ class CloneABTestingService
         }
 
         $this->db->beginTransaction();
-        
+
         try {
             // Criar teste
             $stmt = $this->db->prepare("
-                INSERT INTO clone_ab_tests 
+                INSERT INTO clone_ab_tests
                 (account_id, original_item_id, name, variation_type, target_metric,
                  duration_days, min_sample_size, confidence_level, status, created_at, updated_at)
-                VALUES 
+                VALUES
                 (:account_id, :item_id, :name, :var_type, :metric,
                  :duration, :min_sample, :confidence, :status, NOW(), NOW())
             ");
@@ -96,20 +96,20 @@ class CloneABTestingService
                 ':confidence' => $confidenceLevel,
                 ':status' => self::STATUS_DRAFT,
             ]);
-            
+
             $testId = (int) $this->db->lastInsertId();
-            
+
             // Criar variações
             foreach ($variations as $index => $variation) {
                 $isControl = $index === 0;
                 $variationName = $variation['name'] ?? ($isControl ? 'Controle (Original)' : 'Variação ' . $index);
-                
+
                 $stmt = $this->db->prepare("
-                    INSERT INTO clone_ab_variations 
-                    (test_id, name, is_control, item_id, variation_data, 
+                    INSERT INTO clone_ab_variations
+                    (test_id, name, is_control, item_id, variation_data,
                      traffic_weight, status, created_at)
-                    VALUES 
-                    (:test_id, :name, :is_control, :item_id, :data, 
+                    VALUES
+                    (:test_id, :name, :is_control, :item_id, :data,
                      :weight, 'active', NOW())
                 ");
                 $stmt->execute([
@@ -121,11 +121,10 @@ class CloneABTestingService
                     ':weight' => $variation['weight'] ?? round(100 / count($variations), 2),
                 ]);
             }
-            
+
             $this->db->commit();
-            
+
             return $testId;
-            
         } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
@@ -138,18 +137,18 @@ class CloneABTestingService
     public function startTest(int $testId): array
     {
         $test = $this->getTest($testId);
-        
+
         if (!$test) {
             throw new Exception('Teste não encontrado');
         }
-        
+
         if ($test['status'] !== self::STATUS_DRAFT && $test['status'] !== self::STATUS_PAUSED) {
             throw new Exception('Teste só pode ser iniciado se estiver em rascunho ou pausado');
         }
-        
+
         // Atualizar status
         $stmt = $this->db->prepare("
-            UPDATE clone_ab_tests 
+            UPDATE clone_ab_tests
             SET status = :status, started_at = IFNULL(started_at, NOW()), updated_at = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
@@ -158,7 +157,7 @@ class CloneABTestingService
             ':id' => $testId,
             ':account_id' => $this->accountId,
         ]);
-        
+
         return $this->getTest($testId);
     }
 
@@ -168,7 +167,7 @@ class CloneABTestingService
     public function pauseTest(int $testId): array
     {
         $stmt = $this->db->prepare("
-            UPDATE clone_ab_tests 
+            UPDATE clone_ab_tests
             SET status = :status, updated_at = NOW()
             WHERE id = :id AND account_id = :account_id AND status = 'running'
         ");
@@ -177,7 +176,7 @@ class CloneABTestingService
             ':id' => $testId,
             ':account_id' => $this->accountId,
         ]);
-        
+
         return $this->getTest($testId);
     }
 
@@ -187,18 +186,18 @@ class CloneABTestingService
     public function completeTest(int $testId): array
     {
         $test = $this->getTest($testId);
-        
+
         if (!$test) {
             throw new Exception('Teste não encontrado');
         }
-        
+
         // Calcular vencedor
         $winner = $this->determineWinner($testId);
-        
+
         $stmt = $this->db->prepare("
-            UPDATE clone_ab_tests 
-            SET status = :status, 
-                ended_at = NOW(), 
+            UPDATE clone_ab_tests
+            SET status = :status,
+                ended_at = NOW(),
                 winner_variation_id = :winner_id,
                 updated_at = NOW()
             WHERE id = :id AND account_id = :account_id
@@ -209,7 +208,7 @@ class CloneABTestingService
             ':id' => $testId,
             ':account_id' => $this->accountId,
         ]);
-        
+
         return array_merge($this->getTest($testId), ['winner' => $winner]);
     }
 
@@ -219,11 +218,11 @@ class CloneABTestingService
     public function cancelTest(int $testId): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE clone_ab_tests 
+            UPDATE clone_ab_tests
             SET status = :status, ended_at = NOW(), updated_at = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             ':status' => self::STATUS_CANCELLED,
             ':id' => $testId,
@@ -237,7 +236,7 @@ class CloneABTestingService
     public function getTest(int $testId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT t.*, 
+            SELECT t.*,
                    (SELECT COUNT(*) FROM clone_ab_variations WHERE test_id = t.id) as variation_count
             FROM clone_ab_tests t
             WHERE t.id = :id AND t.account_id = :account_id
@@ -246,16 +245,16 @@ class CloneABTestingService
             ':id' => $testId,
             ':account_id' => $this->accountId,
         ]);
-        
+
         $test = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$test) {
             return null;
         }
-        
+
         // Buscar variações
         $stmt = $this->db->prepare("
-            SELECT v.*, 
+            SELECT v.*,
                    COALESCE(SUM(m.views), 0) as total_views,
                    COALESCE(SUM(m.clicks), 0) as total_clicks,
                    COALESCE(SUM(m.sales), 0) as total_sales,
@@ -268,20 +267,20 @@ class CloneABTestingService
         ");
         $stmt->execute([':test_id' => $testId]);
         $test['variations'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Calcular métricas derivadas
         foreach ($test['variations'] as &$var) {
-            $var['conversion_rate'] = $var['total_views'] > 0 
-                ? round(($var['total_sales'] / $var['total_views']) * 100, 2) 
+            $var['conversion_rate'] = $var['total_views'] > 0
+                ? round(($var['total_sales'] / $var['total_views']) * 100, 2)
                 : 0;
-            $var['ctr'] = $var['total_views'] > 0 
-                ? round(($var['total_clicks'] / $var['total_views']) * 100, 2) 
+            $var['ctr'] = $var['total_views'] > 0
+                ? round(($var['total_clicks'] / $var['total_views']) * 100, 2)
                 : 0;
-            $var['avg_order_value'] = $var['total_sales'] > 0 
-                ? round($var['total_revenue'] / $var['total_sales'], 2) 
+            $var['avg_order_value'] = $var['total_sales'] > 0
+                ? round($var['total_revenue'] / $var['total_sales'], 2)
                 : 0;
         }
-        
+
         return $test;
     }
 
@@ -291,30 +290,30 @@ class CloneABTestingService
     public function listTests(array $filters = []): array
     {
         $sql = "
-            SELECT t.*, 
+            SELECT t.*,
                    (SELECT COUNT(*) FROM clone_ab_variations WHERE test_id = t.id) as variation_count,
-                   (SELECT SUM(views) FROM clone_ab_metrics m 
-                    JOIN clone_ab_variations v ON v.id = m.variation_id 
+                   (SELECT SUM(views) FROM clone_ab_metrics m
+                    JOIN clone_ab_variations v ON v.id = m.variation_id
                     WHERE v.test_id = t.id) as total_views
             FROM clone_ab_tests t
             WHERE t.account_id = :account_id
         ";
         $params = [':account_id' => $this->accountId];
-        
+
         if (!empty($filters['status'])) {
             $sql .= " AND t.status = :status";
             $params[':status'] = $filters['status'];
         }
-        
+
         $sql .= " ORDER BY t.created_at DESC";
-        
+
         if (!empty($filters['limit'])) {
             $sql .= " LIMIT " . (int)$filters['limit'];
         }
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -324,11 +323,11 @@ class CloneABTestingService
     public function recordMetrics(int $variationId, array $metrics): bool
     {
         $date = $metrics['date'] ?? date('Y-m-d');
-        
+
         $stmt = $this->db->prepare("
-            INSERT INTO clone_ab_metrics 
+            INSERT INTO clone_ab_metrics
             (variation_id, date, views, clicks, sales, revenue, created_at)
-            VALUES 
+            VALUES
             (:variation_id, :date, :views, :clicks, :sales, :revenue, NOW())
             ON DUPLICATE KEY UPDATE
                 views = views + VALUES(views),
@@ -336,7 +335,7 @@ class CloneABTestingService
                 sales = sales + VALUES(sales),
                 revenue = revenue + VALUES(revenue)
         ");
-        
+
         return $stmt->execute([
             ':variation_id' => $variationId,
             ':date' => $date,
@@ -353,46 +352,45 @@ class CloneABTestingService
     public function syncMetricsFromML(int $testId): array
     {
         $test = $this->getTest($testId);
-        
+
         if (!$test) {
             throw new Exception('Teste não encontrado');
         }
-        
+
         $client = $this->getClient();
         $results = [];
-        
+
         foreach ($test['variations'] as $variation) {
             $itemId = $variation['item_id'];
-            
+
             try {
                 // Buscar visitas
                 $visits = $client->get("/items/{$itemId}/visits/time_window", [
                     'last' => 7,
                     'unit' => 'day'
                 ]);
-                
+
                 $totalViews = 0;
                 if (!empty($visits['results'])) {
                     foreach ($visits['results'] as $day) {
                         $totalViews += $day['total'] ?? 0;
                     }
                 }
-                
+
                 // Buscar vendas (se disponível)
                 // Nota: Endpoint de vendas pode variar
-                
+
                 $this->recordMetrics($variation['id'], [
                     'views' => $totalViews,
                     'date' => date('Y-m-d'),
                 ]);
-                
+
                 $results[] = [
                     'variation_id' => $variation['id'],
                     'item_id' => $itemId,
                     'views_synced' => $totalViews,
                     'success' => true,
                 ];
-                
             } catch (Exception $e) {
                 $results[] = [
                     'variation_id' => $variation['id'],
@@ -402,7 +400,7 @@ class CloneABTestingService
                 ];
             }
         }
-        
+
         return $results;
     }
 
@@ -412,19 +410,19 @@ class CloneABTestingService
     public function determineWinner(int $testId): array
     {
         $test = $this->getTest($testId);
-        
+
         if (!$test || empty($test['variations'])) {
             return ['variation_id' => null, 'confidence' => 0, 'reason' => 'Sem dados'];
         }
-        
+
         $targetMetric = $test['target_metric'];
         $minSample = $test['min_sample_size'];
         $confidenceLevel = $test['confidence_level'];
-        
+
         // Encontrar variação controle
         $control = null;
         $variations = [];
-        
+
         foreach ($test['variations'] as $var) {
             if ($var['is_control']) {
                 $control = $var;
@@ -432,21 +430,21 @@ class CloneABTestingService
                 $variations[] = $var;
             }
         }
-        
+
         if (!$control) {
             return ['variation_id' => null, 'confidence' => 0, 'reason' => 'Controle não encontrado'];
         }
-        
+
         // Verificar tamanho mínimo da amostra
         $totalSamples = array_sum(array_column($test['variations'], 'total_views'));
         if ($totalSamples < $minSample) {
             return [
-                'variation_id' => null, 
-                'confidence' => 0, 
+                'variation_id' => null,
+                'confidence' => 0,
                 'reason' => "Amostra insuficiente ({$totalSamples}/{$minSample})"
             ];
         }
-        
+
         // Calcular melhor variação
         $metricMap = [
             self::METRIC_VIEWS => 'total_views',
@@ -455,13 +453,13 @@ class CloneABTestingService
             self::METRIC_CONVERSION => 'conversion_rate',
             self::METRIC_REVENUE => 'total_revenue',
         ];
-        
+
         $metricField = $metricMap[$targetMetric] ?? 'conversion_rate';
-        
+
         $best = $control;
         $bestValue = $control[$metricField] ?? 0;
         $improvement = 0;
-        
+
         foreach ($variations as $var) {
             $value = $var[$metricField] ?? 0;
             if ($value > $bestValue) {
@@ -470,12 +468,12 @@ class CloneABTestingService
                 $bestValue = $value;
             }
         }
-        
+
         // Calcular significância estatística (simplificado)
         $confidence = $this->calculateConfidence($control, $best, $metricField);
-        
+
         $isSignificant = $confidence >= $confidenceLevel;
-        
+
         return [
             'variation_id' => $isSignificant ? $best['id'] : null,
             'variation_name' => $best['name'],
@@ -483,8 +481,8 @@ class CloneABTestingService
             'improvement' => round($improvement, 2),
             'confidence' => $confidence,
             'is_significant' => $isSignificant,
-            'reason' => $isSignificant 
-                ? "Vencedor com {$confidence}% de confiança" 
+            'reason' => $isSignificant
+                ? "Vencedor com {$confidence}% de confiança"
                 : "Resultado inconclusivo (confiança: {$confidence}%)",
         ];
     }
@@ -496,28 +494,28 @@ class CloneABTestingService
     {
         $nControl = max(1, $control['total_views'] ?? 1);
         $nVariation = max(1, $variation['total_views'] ?? 1);
-        
+
         if ($metric === 'conversion_rate') {
             $pControl = ($control['total_sales'] ?? 0) / $nControl;
             $pVariation = ($variation['total_sales'] ?? 0) / $nVariation;
-            
+
             // Pooled proportion
             $pPooled = (($control['total_sales'] ?? 0) + ($variation['total_sales'] ?? 0)) / ($nControl + $nVariation);
-            
+
             if ($pPooled == 0 || $pPooled == 1) {
                 return 50; // Não é possível calcular
             }
-            
+
             // Standard error
-            $se = sqrt($pPooled * (1 - $pPooled) * (1/$nControl + 1/$nVariation));
-            
+            $se = sqrt($pPooled * (1 - $pPooled) * (1 / $nControl + 1 / $nVariation));
+
             if ($se == 0) {
                 return 50;
             }
-            
+
             // Z-score
             $z = abs($pVariation - $pControl) / $se;
-            
+
             // Conversão aproximada para porcentagem de confiança
             // Z = 1.96 -> 95%, Z = 2.58 -> 99%, Z = 1.28 -> 80%
             if ($z >= 2.58) return 99;
@@ -528,18 +526,18 @@ class CloneABTestingService
             if ($z >= 0.84) return 60;
             return round(50 + ($z * 15), 0);
         }
-        
+
         // Para outras métricas, usar comparação simples
         $controlValue = $control[$metric] ?? 0;
         $variationValue = $variation[$metric] ?? 0;
-        
+
         if ($controlValue == 0 && $variationValue == 0) {
             return 50;
         }
-        
+
         $diff = abs($variationValue - $controlValue);
         $max = max($controlValue, $variationValue);
-        
+
         return min(99, round(50 + ($diff / $max) * 50, 0));
     }
 
@@ -549,30 +547,30 @@ class CloneABTestingService
     public function applyWinner(int $testId): array
     {
         $test = $this->getTest($testId);
-        
+
         if (!$test) {
             throw new Exception('Teste não encontrado');
         }
-        
+
         if ($test['status'] !== self::STATUS_COMPLETED) {
             throw new Exception('Teste precisa estar completado para aplicar vencedor');
         }
-        
+
         if (!$test['winner_variation_id']) {
             throw new Exception('Nenhum vencedor determinado');
         }
-        
+
         // Buscar variação vencedora
         $stmt = $this->db->prepare("
             SELECT * FROM clone_ab_variations WHERE id = :id
         ");
         $stmt->execute([':id' => $test['winner_variation_id']]);
         $winner = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$winner) {
             throw new Exception('Variação vencedora não encontrada');
         }
-        
+
         // Se a variação vencedora é o controle, não precisa fazer nada
         if ($winner['is_control']) {
             return [
@@ -581,16 +579,16 @@ class CloneABTestingService
                 'applied' => false,
             ];
         }
-        
+
         $variationData = json_decode($winner['variation_data'], true) ?? [];
-        
+
         // Aplicar mudanças no item original
         $client = $this->getClient();
         $originalItemId = $test['original_item_id'];
-        
+
         try {
             $updateData = [];
-            
+
             if (!empty($variationData['title'])) {
                 $updateData['title'] = $variationData['title'];
             }
@@ -603,26 +601,25 @@ class CloneABTestingService
                     'plain_text' => $variationData['description']
                 ]);
             }
-            
+
             if (!empty($updateData)) {
                 $client->put("/items/{$originalItemId}", $updateData);
             }
-            
+
             // Marcar como aplicado
             $stmt = $this->db->prepare("
-                UPDATE clone_ab_tests 
+                UPDATE clone_ab_tests
                 SET winner_applied = 1, winner_applied_at = NOW()
                 WHERE id = :id
             ");
             $stmt->execute([':id' => $testId]);
-            
+
             return [
                 'status' => 'success',
                 'message' => 'Variação vencedora aplicada ao anúncio original',
                 'applied' => true,
                 'changes' => $variationData,
             ];
-            
         } catch (Exception $e) {
             return [
                 'status' => 'error',
@@ -639,14 +636,14 @@ class CloneABTestingService
     {
         $client = $this->getClient();
         $item = $client->get("/items/{$itemId}");
-        
+
         if (isset($item['error'])) {
             throw new Exception('Item não encontrado: ' . ($item['message'] ?? 'Unknown'));
         }
-        
+
         $originalTitle = $item['title'] ?? '';
         $categoryId = $item['category_id'] ?? '';
-        
+
         // Gerar variações baseadas em padrões comuns
         $variations = [
             [
@@ -655,7 +652,7 @@ class CloneABTestingService
                 'data' => ['title' => $originalTitle],
             ],
         ];
-        
+
         // Variação 1: Adicionar palavras de urgência
         $urgencyPrefixes = ['OFERTA!', 'PROMOÇÃO!', 'IMPERDÍVEL!'];
         if (mb_strlen($originalTitle) < 50) {
@@ -665,7 +662,7 @@ class CloneABTestingService
                 'data' => ['title' => $urgencyPrefixes[$prefixIndex] . ' ' . $originalTitle],
             ];
         }
-        
+
         // Variação 2: Palavras-chave no início
         $words = explode(' ', $originalTitle);
         if (count($words) > 3) {
@@ -683,7 +680,7 @@ class CloneABTestingService
                 'data' => ['title' => implode(' ', $words)],
             ];
         }
-        
+
         // Variação 3: Adicionar benefício
         $benefits = ['Frete Grátis', 'Envio Rápido', 'Garantia', 'Qualidade'];
         if (mb_strlen($originalTitle) < 45) {
@@ -694,7 +691,7 @@ class CloneABTestingService
                 'data' => ['title' => $originalTitle . ' - ' . $benefit],
             ];
         }
-        
+
         return array_slice($variations, 0, $count + 1);
     }
 
@@ -718,7 +715,7 @@ class CloneABTestingService
         if ($checked) {
             return;
         }
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_ab_tests (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -743,7 +740,7 @@ class CloneABTestingService
                 INDEX idx_item (original_item_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_ab_variations (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -759,7 +756,7 @@ class CloneABTestingService
                 FOREIGN KEY (test_id) REFERENCES clone_ab_tests(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS clone_ab_metrics (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -775,7 +772,7 @@ class CloneABTestingService
                 FOREIGN KEY (variation_id) REFERENCES clone_ab_variations(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         $checked = true;
     }
 }

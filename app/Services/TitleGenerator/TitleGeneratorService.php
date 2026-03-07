@@ -34,11 +34,21 @@ class TitleGeneratorService
 
     // Termos proibidos no Mercado Livre
     private const FORBIDDEN_WORDS = [
-        'original', 'genuíno', 'autêntico', 'oficial',
-        'melhor', 'top', 'número 1', '#1',
-        'mais barato', 'menor preço', 'promoção',
-        'frete grátis', 'entrega grátis',
-        'novo', 'lacrado' // Quando não for realmente novo
+        'original',
+        'genuíno',
+        'autêntico',
+        'oficial',
+        'melhor',
+        'top',
+        'número 1',
+        '#1',
+        'mais barato',
+        'menor preço',
+        'promoção',
+        'frete grátis',
+        'entrega grátis',
+        'novo',
+        'lacrado' // Quando não for realmente novo
     ];
 
     public function __construct(?int $accountId = null)
@@ -162,7 +172,6 @@ class TitleGeneratorService
             ];
 
             return $result;
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -249,7 +258,6 @@ class TitleGeneratorService
                 'patterns' => array_keys(array_slice($patterns, 0, 5)),
                 'top_performers' => array_slice($titles, 0, 5)
             ];
-
         } catch (\Exception $e) {
             log_warning('Falha ao analisar concorrentes top', [
                 'category_id' => $categoryId,

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -33,19 +34,19 @@ class AttributeModelService
         $category = $product['category_id'] ?? '';
         $brand = $this->extractBrand($product);
         $currentModel = $this->extractCurrentModel($product);
-        
+
         // 1. Análise via IA para extração de padrões
         $aiAnalysis = $this->performModelExtraction($title, $description, $brand, $category);
-        
+
         // 2. Busca produtos similares para validação
         $similarProducts = $this->getSimilarProductsForModel($title, $category, $brand);
-        
+
         // 3. Análise de padrões de mercado
         $marketPatterns = $this->analyzeMarketPatterns($similarProducts, $brand);
-        
+
         // 4. Geração de sugestões
         $suggestions = $this->generateModelSuggestions($aiAnalysis, $marketPatterns, $currentModel);
-        
+
         return [
             'success' => true,
             'current_model' => $currentModel,
@@ -65,7 +66,7 @@ class AttributeModelService
         $title = $product['title'] ?? '';
         $category = $product['category_id'] ?? '';
         $brand = $this->extractBrand($product);
-        
+
         $prompt = "Otimize o campo modelo para marketplace seguindo as melhores práticas:
 
 MODELO ATUAL: {$currentModel}
@@ -140,7 +141,7 @@ Analise e otimize o modelo retornando JSON:
         $category = $product['category_id'] ?? '';
         $brand = $this->extractBrand($product);
         $title = $product['title'] ?? '';
-        
+
         $validationPrompt = "Valide o campo modelo para conformidade e otimização:
 
 MODELO: {$model}
@@ -261,26 +262,26 @@ Analise tendências atuais e retorne JSON:
     {
         $results = [];
         $categoryGroups = [];
-        
+
         // Agrupa produtos por categoria para análise eficiente
         foreach ($products as $product) {
             $category = $product['category_id'] ?? 'unknown';
             $categoryGroups[$category][] = $product;
         }
-        
+
         foreach ($categoryGroups as $category => $categoryProducts) {
             $categoryInsights = $this->analyzeModelTrends($category);
-            
+
             foreach ($categoryProducts as $product) {
                 $productId = $product['id'] ?? uniqid();
-                
+
                 $modelResult = $this->extractAndSuggestModel($product);
                 $modelResult['category_insights'] = $categoryInsights;
-                
+
                 $results[$productId] = $modelResult;
             }
         }
-        
+
         return [
             'success' => true,
             'processed_count' => count($products),
@@ -343,23 +344,23 @@ Extraia informações de modelo e retorne JSON:
         try {
             $keywords = $this->extractKeywords($title);
             $searchQuery = $brand . ' ' . implode(' ', array_slice($keywords, 0, 2));
-            
+
             $params = [
                 'q' => $searchQuery,
                 'category' => $category,
                 'limit' => 10,
                 'sort' => 'relevance'
             ];
-            
+
             $response = $this->mlClient->get('/sites/MLB/search', $params);
-            
+
             $products = [];
             foreach ($response['results'] ?? [] as $item) {
                 $model = $this->extractCurrentModel([
                     'title' => $item['title'],
                     'attributes' => $item['attributes'] ?? []
                 ]);
-                
+
                 if (!empty($model)) {
                     $products[] = [
                         'id' => $item['id'],
@@ -370,7 +371,7 @@ Extraia informações de modelo e retorne JSON:
                     ];
                 }
             }
-            
+
             return $products;
         } catch (\Exception $e) {
             return [];
@@ -382,7 +383,7 @@ Extraia informações de modelo e retorne JSON:
         if (empty($similarProducts)) {
             return ['patterns_found' => [], 'confidence' => 0];
         }
-        
+
         $models = array_column($similarProducts, 'model');
         $patternAnalysis = [
             'common_prefixes' => [],
@@ -391,7 +392,7 @@ Extraia informações de modelo e retorne JSON:
             'brand_position' => [],
             'model_structures' => []
         ];
-        
+
         foreach ($models as $model) {
             // Análise de padrões
             $parts = explode(' ', $model);
@@ -399,7 +400,7 @@ Extraia informações de modelo e retorne JSON:
                 $patternAnalysis['common_prefixes'][] = $parts[0];
                 $patternAnalysis['common_suffixes'][] = end($parts);
             }
-            
+
             // Padrões numéricos
             preg_match_all('/\d+/', $model, $numbers);
             if (!empty($numbers[0])) {
@@ -408,14 +409,14 @@ Extraia informações de modelo e retorne JSON:
                     $numbers[0]
                 );
             }
-            
+
             // Posição da marca
             $brandPosition = stripos($model, $brand);
             if ($brandPosition !== false) {
                 $patternAnalysis['brand_position'][] = $brandPosition === 0 ? 'prefix' : 'suffix';
             }
         }
-        
+
         return [
             'patterns_found' => $patternAnalysis,
             'frequency_analysis' => [
@@ -431,7 +432,7 @@ Extraia informações de modelo e retorne JSON:
     {
         $baseModel = $aiAnalysis['extraction_results']['current_model'] ?? $currentModel;
         $patterns = $marketPatterns['patterns_found'] ?? [];
-        
+
         if (empty($patterns)) {
             return [
                 'recommended_model' => $baseModel,
@@ -440,14 +441,14 @@ Extraia informações de modelo e retorne JSON:
                 'reasoning' => 'Sem dados suficientes para otimização'
             ];
         }
-        
+
         $suggestions = [
             'recommended_model' => $this->buildOptimalModel($baseModel, $patterns),
             'alternatives' => $this->generateAlternatives($baseModel, $patterns),
             'pattern_based' => $this->applyPatternRules($baseModel, $patterns),
             'seo_optimized' => $this->seoOptimizeModel($baseModel, $patterns)
         ];
-        
+
         return $suggestions;
     }
 
@@ -456,14 +457,14 @@ Extraia informações de modelo e retorne JSON:
         // Lógica para construir modelo ótimo baseado em padrões
         $prefixes = $patterns['common_prefixes'] ?? [];
         $suffixes = $patterns['common_suffixes'] ?? [];
-        
+
         if (!empty($prefixes) && !empty($suffixes)) {
             $mostCommonPrefix = array_keys(array_count_values($prefixes), max(array_count_values($prefixes)))[0] ?? '';
             $mostCommonSuffix = array_keys(array_count_values($suffixes), max(array_count_values($suffixes)))[0] ?? '';
-            
+
             return $mostCommonPrefix . ' ' . $baseModel . ' ' . $mostCommonSuffix;
         }
-        
+
         return $baseModel;
     }
 
@@ -508,7 +509,7 @@ Extraia informações de modelo e retorne JSON:
     {
         $aiConfidence = $aiAnalysis['validation_clues']['consistency_score'] ?? 50;
         $marketConfidence = $marketPatterns['market_confidence'] ?? 0;
-        
+
         return round(($aiConfidence + $marketConfidence) / 2);
     }
 
@@ -517,12 +518,12 @@ Extraia informações de modelo e retorne JSON:
         if (empty($currentModel)) {
             return 'create_new';
         }
-        
+
         $recommended = $suggestions['recommended_model'] ?? '';
         if ($recommended === $currentModel) {
             return 'keep_current';
         }
-        
+
         return 'update_optimized';
     }
 
@@ -530,13 +531,13 @@ Extraia informações de modelo e retorne JSON:
     {
         // Extrai marca dos atributos ou título
         $attributes = $product['attributes'] ?? [];
-        
+
         foreach ($attributes as $attr) {
             if (isset($attr['id']) && $attr['id'] === 'BRAND') {
                 return $attr['value_name'] ?? '';
             }
         }
-        
+
         // Tentativa extração do título
         $title = $product['title'] ?? '';
         $titleParts = explode(' ', $title);
@@ -547,29 +548,29 @@ Extraia informações de modelo e retorne JSON:
     {
         // Extrai modelo atual dos atributos ou título
         $attributes = $product['attributes'] ?? [];
-        
+
         foreach ($attributes as $attr) {
             if (isset($attr['id']) && ($attr['id'] === 'MODEL' || $attr['id'] === 'MODEL_NAME')) {
                 return $attr['value_name'] ?? '';
             }
         }
-        
+
         // Extração do título
         $title = $product['title'] ?? '';
-        
+
         // Padrões comuns de modelo
         $patterns = [
             '/\b[A-Z]{2,4}-\d{3,4}\b/',  // Ex: ABC-1234
             '/\b[A-Z]+\d+[A-Z]*\b/',     // Ex: iPhone12Pro
             '/\b\d+\.\d+[A-Z]*\b/',      // Ex: 3.0 Pro
         ];
-        
+
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $title, $matches)) {
                 return $matches[0];
             }
         }
-        
+
         return '';
     }
 
@@ -581,21 +582,21 @@ Extraia informações de modelo e retorne JSON:
                 'q' => $brand,
                 'limit' => 5
             ];
-            
+
             $response = $this->mlClient->get('/sites/MLB/search', $params);
-            
+
             $insights = [
                 'top_models' => [],
                 'model_frequency' => [],
                 'price_model_correlation' => []
             ];
-            
+
             foreach ($response['results'] ?? [] as $item) {
                 $model = $this->extractCurrentModel([
                     'title' => $item['title'],
                     'attributes' => $item['attributes'] ?? []
                 ]);
-                
+
                 if (!empty($model)) {
                     $insights['top_models'][] = [
                         'model' => $model,
@@ -604,7 +605,7 @@ Extraia informações de modelo e retorne JSON:
                     ];
                 }
             }
-            
+
             return $insights;
         } catch (\Exception $e) {
             return [];
@@ -614,12 +615,12 @@ Extraia informações de modelo e retorne JSON:
     private function extractKeywords(string $text): array
     {
         $text = mb_strtolower($text);
-        $text = preg_replace('/[^a-z0-9\s]/', ' ', $text);
+        $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
         $words = preg_split('/\s+/', trim($text));
-        
+
         $stopWords = ['de', 'da', 'do', 'em', 'para', 'com', 'sem', 'a', 'o', 'as', 'os', 'e', 'ou'];
-        
-        return array_filter($words, function($word) use ($stopWords) {
+
+        return array_filter($words, function ($word) use ($stopWords) {
             return mb_strlen($word) > 2 && !in_array($word, $stopWords);
         });
     }
@@ -637,18 +638,18 @@ Extraia informações de modelo e retorne JSON:
                 'keep_current' => 0
             ]
         ];
-        
+
         foreach ($results as $result) {
             $confidence = $result['confidence_score'] ?? 50;
-            
+
             if ($confidence >= 75) $summary['high_confidence']++;
             elseif ($confidence >= 50) $summary['medium_confidence']++;
             else $summary['low_confidence']++;
-            
+
             $action = $result['recommended_action'] ?? 'keep_current';
             $summary['actions_needed'][$action]++;
         }
-        
+
         return $summary;
     }
 }

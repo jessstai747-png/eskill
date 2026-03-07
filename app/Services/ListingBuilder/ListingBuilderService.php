@@ -18,7 +18,7 @@ use PDO;
 
 /**
  * Listing Builder Service - Construtor Inteligente de Anúncios
- * 
+ *
  * Assistente completo para criação de anúncios otimizados que integra:
  * - SEO Analyzer (títulos otimizados)
  * - Quality Check (validação pré-publicação)
@@ -150,7 +150,7 @@ class ListingBuilderService
         try {
             // 1. Validar todos os dados
             $fullValidation = $this->validator->validateListing($data);
-            
+
             if (!$fullValidation['valid']) {
                 return [
                     'success' => false,
@@ -204,7 +204,6 @@ class ListingBuilderService
                 'preview' => $preview,
                 'recommendations' => $this->getFinalRecommendations($listing, $predictedScore),
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -252,7 +251,6 @@ class ListingBuilderService
                 'quality_score' => $postQuality['score'] ?? 0,
                 'message' => 'Anúncio publicado com sucesso!',
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -271,7 +269,7 @@ class ListingBuilderService
             $title = $data['title'] ?? $draftName ?: 'Rascunho sem título';
 
             $stmt = $this->db->prepare("
-                INSERT INTO listing_drafts 
+                INSERT INTO listing_drafts
                 (account_id, title, description, bullet_points, seo_keywords, suggested_price, category_id, status, created_at, updated_at)
                 VALUES (:account_id, :title, :description, :bullets, :keywords, :price, :category_id, 'draft', :created_at, :updated_at)
             ");
@@ -376,7 +374,6 @@ class ListingBuilderService
                 'improvements_applied' => $improvements,
                 'message' => 'Anúncio clonado com sucesso',
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -459,7 +456,7 @@ class ListingBuilderService
                 'category_id' => $data['category_id'],
             ]);
             $titleSeoScore = $seoAnalysis['scores']['title']['score'] ?? 100;
-            
+
             if ($titleSeoScore < 70) {
                 $warnings[] = "Score SEO baixo: {$titleSeoScore}/100";
                 $score -= 15;
@@ -485,7 +482,7 @@ class ListingBuilderService
         if (empty($description)) {
             $warnings[] = 'Descrição não fornecida (recomendado para melhor conversão)';
             $score -= 20;
-            
+
             // Sugerir templates
             if (!empty($data['category_id'])) {
                 $templates = $this->templateManager->getTemplatesByCategory($data['category_id']);
@@ -495,7 +492,7 @@ class ListingBuilderService
             }
         } else {
             $length = mb_strlen($description);
-            
+
             if ($length < 500) {
                 $warnings[] = 'Descrição curta (recomendado mínimo 500 caracteres)';
                 $score -= 10;
@@ -664,7 +661,7 @@ class ListingBuilderService
                 $score -= 40;
             } else {
                 $suggestions[] = "Modalidades compatíveis: " . implode(', ', $dimValidation['compatible_modes']);
-                
+
                 // Recomendar melhor opção
                 if ($mode !== $dimValidation['recommended_mode']) {
                     $suggestions[] = "Considere usar: {$dimValidation['recommended_mode']}";
@@ -752,7 +749,6 @@ class ListingBuilderService
                 'min_price' => !empty($prices) ? min($prices) : 0,
                 'max_price' => !empty($prices) ? max($prices) : 0,
             ];
-
         } catch (\Exception $e) {
             return ['available' => false, 'error' => $e->getMessage()];
         }
@@ -769,7 +765,7 @@ class ListingBuilderService
 
         // Usar ShippingSimulatorService para sugerir melhor configuração
         $simulator = new ShippingSimulatorService($this->accountId);
-        
+
         // Simular custos
         $simulation = $simulator->simulateShipping([
             'dimensions' => $dimensions,
@@ -878,7 +874,8 @@ class ListingBuilderService
             $shipScore += 8;
         }
         if (($listing['shipping']['logistic_type'] ?? '') === 'fulfillment'
-            || ($listing['shipping']['mode'] ?? '') === 'me2') {
+            || ($listing['shipping']['mode'] ?? '') === 'me2'
+        ) {
             $shipScore += 7;
         }
         $score += $shipScore;
@@ -929,7 +926,7 @@ class ListingBuilderService
             }
 
             $avg = array_sum($prices) / count($prices);
-            $ratio = $price / $avg;
+            $ratio = $avg > 0 ? $price / $avg : 1;
 
             // Preço competitivo (80%-120% da média) = score alto
             if ($ratio >= 0.8 && $ratio <= 1.2) {
@@ -1007,7 +1004,7 @@ class ListingBuilderService
     private function suggestAutomaticImprovements(array $data): array
     {
         // Sugerir melhorias automáticas
-        
+
         // Analisar título via SEO
         if (!empty($data['title']) && !empty($data['category_id'])) {
             $titleAnalysis = $this->seoAnalyzer->analyzeItemData([

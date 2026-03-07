@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -29,7 +30,7 @@ class SemanticAnalyzerService
         $description = $product['description'] ?? '';
         $category = $product['category'] ?? '';
         $attributes = $product['attributes'] ?? [];
-        
+
         $prompt = "Realize análise semântica profunda deste produto para marketplace:
 
 TÍTULO: {$title}
@@ -121,7 +122,7 @@ Execute análise semântica avançada e retorne JSON:
         $category = $context['category'] ?? '';
         $targetAudience = $context['target_audience'] ?? '';
         $useCase = $context['use_case'] ?? '';
-        
+
         $prompt = "Expanda semanticamente a keyword principal usando análise LAT e contextos avançados:
 
 KEYWORD BASE: {$baseKeyword}
@@ -184,7 +185,7 @@ Realize expansão semântica completa e retorne JSON:
     public function analyzeSemanticCohesion(array $products): array
     {
         $productSummaries = [];
-        
+
         foreach ($products as $product) {
             $productSummaries[] = [
                 'id' => $product['id'] ?? '',
@@ -193,7 +194,7 @@ Realize expansão semântica completa e retorne JSON:
                 'keywords_preview' => implode(', ', array_slice($this->extractBasicKeywords($product['title'] ?? ''), 0, 5))
             ];
         }
-        
+
         $prompt = "Analise coesão semântica entre múltiplos produtos da mesma categoria:
 
 PRODUTOS: " . json_encode($productSummaries, JSON_UNESCAPED_UNICODE) . "
@@ -319,7 +320,7 @@ Identifique tendências semânticas e retorne JSON:
         $title = $product['title'] ?? '';
         $category = $product['category'] ?? '';
         $semanticAnalysis = $product['semantic_analysis'] ?? [];
-        
+
         $prompt = "Gere conteúdo semanticamente otimizado usando análise semântica avançada:
 
 PRODUTO: {$title}
@@ -394,7 +395,7 @@ Crie conteúdo semanticamente rico e retorne JSON:
         $optimizedTitle = $optimizedContent['title'] ?? '';
         $originalDescription = $product['description'] ?? '';
         $optimizedDescription = $optimizedContent['description'] ?? '';
-        
+
         $prompt = "Valide a otimização semântica comparando original vs otimizado:
 
 ORIGINAL:
@@ -459,12 +460,12 @@ Valide semanticamente e retorne JSON:
     private function extractBasicKeywords(string $text): array
     {
         $text = mb_strtolower($text);
-        $text = preg_replace('/[^a-z0-9\s]/', ' ', $text);
+        $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
         $words = preg_split('/\s+/', trim($text));
-        
+
         $stopWords = ['de', 'da', 'do', 'em', 'para', 'com', 'sem', 'a', 'o', 'as', 'os', 'e', 'ou', 'um', 'uma', 'uns', 'umas'];
-        
-        return array_filter($words, function($word) use ($stopWords) {
+
+        return array_filter($words, function ($word) use ($stopWords) {
             return mb_strlen($word) > 2 && !in_array($word, $stopWords);
         });
     }
@@ -495,7 +496,7 @@ Analise e retorne JSON:
 }";
 
         $response = $this->ai->chatJSON($prompt, ['cache_ttl' => 1800]);
-        
+
         return $response['success'] ? $response['data'] : ['semantic_similarity' => ['overall_score' => 0]];
     }
 }

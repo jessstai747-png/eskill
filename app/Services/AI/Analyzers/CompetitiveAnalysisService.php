@@ -125,12 +125,11 @@ class CompetitiveAnalysisService
             }
 
             // Sort by sold quantity
-            usort($competitors, function($a, $b) {
+            usort($competitors, function ($a, $b) {
                 return $b['sold_quantity'] <=> $a['sold_quantity'];
             });
 
             return $competitors;
-
         } catch (\Exception $e) {
             log_warning('Error finding competitors', ['service' => 'CompetitiveAnalysisService', 'error' => $e->getMessage()]);
             return [];

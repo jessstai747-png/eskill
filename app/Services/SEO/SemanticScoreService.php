@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -22,24 +23,24 @@ class SemanticScoreService
     public function calculateScore(string $word, string $title, string $categoryId): float
     {
         $components = $this->getScoreComponents($word, $title);
-        
+
         // Calculate weighted sum of components
         $totalScore = 0;
         $totalWeight = 0;
-        
+
         foreach ($components as $component => $data) {
             $totalScore += $data['score'] * $data['weight'];
             $totalWeight += $data['weight'];
         }
-        
+
         // Normalize score to 0-100 range
         $normalizedScore = $totalWeight > 0 ? ($totalScore / $totalWeight) * 100 : 0;
-        
+
         // Adjust score based on category-specific contexts
         if ($this->hasUseContext($word)) {
             $normalizedScore *= 1.2; // Boost for words with known context
         }
-        
+
         // Ensure score doesn't exceed 100
         return min($normalizedScore, 100);
     }
@@ -50,11 +51,11 @@ class SemanticScoreService
     public function scoreWords(array $words, string $title, string $categoryId): array
     {
         $scores = [];
-        
+
         foreach ($words as $word) {
             $scores[$word] = $this->calculateScore($word, $title, $categoryId);
         }
-        
+
         return $scores;
     }
 
@@ -64,10 +65,10 @@ class SemanticScoreService
     public function rankByScore(array $words, string $title, string $categoryId): array
     {
         $scores = $this->scoreWords($words, $title, $categoryId);
-        
+
         // Sort by score descending
         arsort($scores);
-        
+
         return $scores;
     }
 
@@ -77,7 +78,7 @@ class SemanticScoreService
     public function hasUseContext(string $word): bool
     {
         $wordLower = mb_strtolower($word);
-        
+
         foreach ($this->useContexts as $contextGroup) {
             foreach ($contextGroup as $contextWord) {
                 if (mb_strtolower($contextWord) === $wordLower) {
@@ -85,7 +86,7 @@ class SemanticScoreService
                 }
             }
         }
-        
+
         return false;
     }
 
@@ -129,7 +130,7 @@ class SemanticScoreService
     {
         $wordLower = mb_strtolower($word);
         $titleLower = mb_strtolower($title);
-        
+
         return [
             'relevance' => [
                 'score' => $this->calculateRelevanceScore($wordLower, $titleLower),
@@ -159,7 +160,7 @@ class SemanticScoreService
         if (strpos($title, $word) !== false) {
             return 1.0;
         }
-        
+
         // Lower score for words not in title
         return 0.3;
     }
@@ -171,13 +172,13 @@ class SemanticScoreService
     {
         $wordsInTitle = explode(' ', $title);
         $count = 0;
-        
+
         foreach ($wordsInTitle as $titleWord) {
             if (mb_strtolower($titleWord) === $word) {
                 $count++;
             }
         }
-        
+
         // Return normalized frequency (0-1 scale)
         return min($count / max(count($wordsInTitle), 1), 1);
     }
@@ -189,16 +190,16 @@ class SemanticScoreService
     {
         $titleWords = explode(' ', $title);
         $maxSimilarity = 0;
-        
+
         foreach ($titleWords as $titleWord) {
             similar_text($word, $titleWord, $percent);
             $similarity = $percent / 100;
-            
+
             if ($similarity > $maxSimilarity) {
                 $maxSimilarity = $similarity;
             }
         }
-        
+
         return $maxSimilarity;
     }
 
@@ -210,7 +211,7 @@ class SemanticScoreService
         if ($this->hasUseContext($word)) {
             return 1.0;
         }
-        
+
         return 0.1;
     }
 

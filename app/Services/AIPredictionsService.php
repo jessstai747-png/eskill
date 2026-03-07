@@ -496,7 +496,7 @@ class AIPredictionsService extends MercadoLivreClient
         $avgFirst = array_sum($firstHalf) / count($firstHalf);
         $avgSecond = array_sum($secondHalf) / count($secondHalf);
 
-        $change = ($avgSecond - $avgFirst) / $avgFirst;
+        $change = $avgFirst != 0 ? ($avgSecond - $avgFirst) / $avgFirst : 0;
 
         if ($change > 0.15) return 'rising';
         if ($change < -0.15) return 'falling';

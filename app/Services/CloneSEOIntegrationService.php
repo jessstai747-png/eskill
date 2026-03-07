@@ -31,15 +31,35 @@ class CloneSEOIntegrationService
 
     // Palavras proibidas no ML
     private const FORBIDDEN_WORDS = [
-        'melhor', 'barato', 'oferta', 'promoção', 'desconto', 'grátis',
-        'frete grátis', 'imperdível', 'aproveite', 'compre já', 'última unidade',
-        'somente hoje', 'mega', 'super', 'hiper', 'ultra', 'top',
+        'melhor',
+        'barato',
+        'oferta',
+        'promoção',
+        'desconto',
+        'grátis',
+        'frete grátis',
+        'imperdível',
+        'aproveite',
+        'compre já',
+        'última unidade',
+        'somente hoje',
+        'mega',
+        'super',
+        'hiper',
+        'ultra',
+        'top',
     ];
 
     // Palavras de alto impacto
     private const HIGH_IMPACT_WORDS = [
-        'original', 'lacrado', 'novo', 'garantia', 'nota fiscal',
-        'pronta entrega', 'envio imediato', 'full',
+        'original',
+        'lacrado',
+        'novo',
+        'garantia',
+        'nota fiscal',
+        'pronta entrega',
+        'envio imediato',
+        'full',
     ];
 
     public function __construct(int $accountId)

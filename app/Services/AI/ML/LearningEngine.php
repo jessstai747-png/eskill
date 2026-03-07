@@ -11,14 +11,14 @@ use PDO;
 /**
  * Data Collection & Pattern Analysis Engine
  * Coleta dados de otimizações e analisa padrões via contagem de frequência e médias
- * 
+ *
  * Features:
  * - Training data collection
  * - Success pattern analysis
  * - Automatic prompt adjustment
  * - Personalized scoring model
  * - Feedback loop
- * 
+ *
  * @author AI Development Team
  * @version 1.0.0
  */
@@ -27,7 +27,7 @@ class LearningEngine
     private PDO $db;
     private ?int $accountId;
     private ?MercadoLivreClient $mlClient = null;
-    
+
     // Learning weights
     private const WEIGHTS = [
         'title_conversion' => 0.35,
@@ -36,7 +36,7 @@ class LearningEngine
         'image_quality' => 0.15,
         'price_competitiveness' => 0.05
     ];
-    
+
     public function __construct(?int $accountId = null)
     {
         $this->db = Database::getInstance();
@@ -44,7 +44,7 @@ class LearningEngine
         $this->mlClient = $accountId ? new MercadoLivreClient($accountId) : null;
         $this->ensureTablesExist();
     }
-    
+
     /**
      * Ensure ML tables exist
      */
@@ -72,7 +72,7 @@ class LearningEngine
                     INDEX idx_success (is_successful)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
-            
+
             $this->db->exec("
                 CREATE TABLE IF NOT EXISTS ai_success_patterns (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -87,7 +87,7 @@ class LearningEngine
                     INDEX idx_category_type (category_id, pattern_type)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
-            
+
             $this->db->exec("
                 CREATE TABLE IF NOT EXISTS ai_prompt_adjustments (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -102,7 +102,7 @@ class LearningEngine
                     UNIQUE KEY unique_adjustment (account_id, category_id, prompt_type, adjustment_key)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
-            
+
             $this->db->exec("
                 CREATE TABLE IF NOT EXISTS ai_feedback (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -123,10 +123,10 @@ class LearningEngine
             ]);
         }
     }
-    
+
     /**
      * Collect training data from optimization results
-     * 
+     *
      * @param string $itemId
      * @param string $type
      * @param string $original
@@ -138,15 +138,15 @@ class LearningEngine
     {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO ai_training_data 
-                (account_id, item_id, category_id, data_type, original_content, optimized_content, 
+                INSERT INTO ai_training_data
+                (account_id, item_id, category_id, data_type, original_content, optimized_content,
                  score_before, score_after, conversion_before, conversion_after, is_successful)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            
+
             $isSuccessful = ($metrics['score_after'] ?? 0) > ($metrics['score_before'] ?? 0) ||
-                           ($metrics['conversion_after'] ?? 0) > ($metrics['conversion_before'] ?? 0);
-            
+                ($metrics['conversion_after'] ?? 0) > ($metrics['conversion_before'] ?? 0);
+
             return $stmt->execute([
                 $this->accountId,
                 $itemId,
@@ -170,34 +170,34 @@ class LearningEngine
             return false;
         }
     }
-    
+
     /**
      * Analyze success patterns from collected data
-     * 
+     *
      * @param string|null $categoryId
      * @return array
      */
     public function analyzeSuccessPatterns(?string $categoryId = null): array
     {
         $patterns = [];
-        
+
         // Analyze titles
         $patterns['title'] = $this->analyzeTitlePatterns($categoryId);
-        
+
         // Analyze descriptions
         $patterns['description'] = $this->analyzeDescriptionPatterns($categoryId);
-        
+
         // Analyze attributes
         $patterns['attributes'] = $this->analyzeAttributePatterns($categoryId);
-        
+
         // Save patterns
         foreach ($patterns as $type => $data) {
             $this->savePattern($categoryId, $type, $data);
         }
-        
+
         return $patterns;
     }
-    
+
     /**
      * Analyze successful title patterns
      */
@@ -205,7 +205,7 @@ class LearningEngine
     {
         try {
             $sql = "
-                SELECT 
+                SELECT
                     optimized_content,
                     conversion_after,
                     score_after
@@ -216,15 +216,15 @@ class LearningEngine
                 ORDER BY conversion_after DESC
                 LIMIT 100
             ";
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute($categoryId ? [$categoryId] : []);
             $successfulTitles = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             if (empty($successfulTitles)) {
                 return ['sample_size' => 0, 'patterns' => []];
             }
-            
+
             // Extract patterns
             $patterns = [
                 'avg_length' => 0,
@@ -234,18 +234,18 @@ class LearningEngine
                 'uses_brand' => 0,
                 'capitalization_style' => []
             ];
-            
+
             $wordFrequency = [];
-            
+
             foreach ($successfulTitles as $title) {
                 $content = $title['optimized_content'];
                 $patterns['avg_length'] += mb_strlen($content);
                 $patterns['avg_word_count'] += str_word_count($content);
-                
+
                 if (preg_match('/\d+/', $content)) {
                     $patterns['uses_numbers']++;
                 }
-                
+
                 // Count word frequency
                 $words = preg_split('/\s+/', mb_strtolower($content));
                 foreach ($words as $word) {
@@ -254,27 +254,26 @@ class LearningEngine
                     }
                 }
             }
-            
+
             $count = count($successfulTitles);
             $patterns['avg_length'] = round($patterns['avg_length'] / $count);
             $patterns['avg_word_count'] = round($patterns['avg_word_count'] / $count);
             $patterns['uses_numbers_pct'] = round(($patterns['uses_numbers'] / $count) * 100, 1);
-            
+
             // Get top words
             arsort($wordFrequency);
             $patterns['common_words'] = array_slice($wordFrequency, 0, 20, true);
-            
+
             return [
                 'sample_size' => $count,
                 'patterns' => $patterns,
                 'success_score' => 100
             ];
-            
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Analyze successful description patterns
      */
@@ -282,7 +281,7 @@ class LearningEngine
     {
         try {
             $sql = "
-                SELECT 
+                SELECT
                     optimized_content,
                     conversion_after
                 FROM ai_training_data
@@ -292,54 +291,53 @@ class LearningEngine
                 ORDER BY conversion_after DESC
                 LIMIT 50
             ";
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute($categoryId ? [$categoryId] : []);
             $descriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             if (empty($descriptions)) {
                 return ['sample_size' => 0, 'patterns' => []];
             }
-            
+
             $patterns = [
                 'avg_length' => 0,
                 'has_bullets' => 0,
                 'has_emojis' => 0,
                 'has_sections' => 0
             ];
-            
+
             foreach ($descriptions as $desc) {
                 $content = $desc['optimized_content'];
                 $patterns['avg_length'] += mb_strlen($content);
-                
+
                 if (preg_match('/[•\-\*]/', $content)) {
                     $patterns['has_bullets']++;
                 }
-                
+
                 if (preg_match('/[\x{1F300}-\x{1F9FF}]/u', $content)) {
                     $patterns['has_emojis']++;
                 }
-                
+
                 if (stripos($content, '##') !== false || stripos($content, '**') !== false) {
                     $patterns['has_sections']++;
                 }
             }
-            
+
             $count = count($descriptions);
             $patterns['avg_length'] = round($patterns['avg_length'] / $count);
             $patterns['bullets_pct'] = round(($patterns['has_bullets'] / $count) * 100, 1);
             $patterns['emojis_pct'] = round(($patterns['has_emojis'] / $count) * 100, 1);
-            
+
             return [
                 'sample_size' => $count,
                 'patterns' => $patterns
             ];
-            
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Analyze attribute patterns using ML API + local sales data
      */
@@ -497,7 +495,7 @@ class LearningEngine
             ];
         }
     }
-    
+
     /**
      * Save pattern to database
      */
@@ -505,7 +503,7 @@ class LearningEngine
     {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO ai_success_patterns 
+                INSERT INTO ai_success_patterns
                 (account_id, category_id, pattern_type, pattern_data, success_score, sample_size)
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
@@ -514,7 +512,7 @@ class LearningEngine
                     sample_size = VALUES(sample_size),
                     updated_at = NOW()
             ");
-            
+
             return $stmt->execute([
                 $this->accountId,
                 $categoryId,
@@ -527,10 +525,10 @@ class LearningEngine
             return false;
         }
     }
-    
+
     /**
      * Get prompt adjustments based on learned patterns
-     * 
+     *
      * @param string $promptType
      * @param string|null $categoryId
      * @return array
@@ -546,24 +544,24 @@ class LearningEngine
                 AND (category_id = ? OR category_id IS NULL)
                 ORDER BY performance_score DESC
             ";
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$promptType, $categoryId]);
-            
+
             $adjustments = [];
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $adjustments[$row['adjustment_key']] = $row['adjustment_value'];
             }
-            
+
             return $adjustments;
         } catch (\Exception $e) {
             return [];
         }
     }
-    
+
     /**
      * Record user feedback
-     * 
+     *
      * @param string $itemId
      * @param string $type
      * @param array $data
@@ -574,11 +572,11 @@ class LearningEngine
     {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO ai_feedback 
+                INSERT INTO ai_feedback
                 (account_id, item_id, optimization_id, feedback_type, feedback_data)
                 VALUES (?, ?, ?, ?, ?)
             ");
-            
+
             return $stmt->execute([
                 $this->accountId,
                 $itemId,
@@ -590,31 +588,31 @@ class LearningEngine
             return false;
         }
     }
-    
+
     /**
      * Get personalized scoring weights based on account data
-     * 
+     *
      * @return array
      */
     public function getPersonalizedWeights(): array
     {
         // Start with default weights
         $weights = self::WEIGHTS;
-        
+
         try {
             // Get success distribution by type
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     data_type,
                     AVG(CASE WHEN is_successful = 1 THEN conversion_after - conversion_before ELSE 0 END) as avg_improvement
                 FROM ai_training_data
                 WHERE account_id = ?
                 GROUP BY data_type
             ");
-            
+
             $stmt->execute([$this->accountId]);
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Adjust weights based on what works for this account
             foreach ($results as $row) {
                 if ($row['avg_improvement'] > 0) {
@@ -624,43 +622,42 @@ class LearningEngine
                     }
                 }
             }
-            
+
             // Normalize weights to sum to 1
             $total = array_sum($weights);
             foreach ($weights as $key => $value) {
                 $weights[$key] = round($value / $total, 4);
             }
-            
         } catch (\Exception $e) {
             // Return defaults on error
         }
-        
+
         return $weights;
     }
-    
+
     /**
      * Get learning statistics
-     * 
+     *
      * @return array
      */
     public function getStats(): array
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_samples,
                     SUM(is_successful) as successful_samples,
                     COUNT(DISTINCT category_id) as categories_learned
                 FROM ai_training_data
                 WHERE account_id = ? OR account_id IS NULL
             ");
-            
+
             $stmt->execute([$this->accountId]);
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             $total = intval($data['total_samples'] ?? 0);
             $successful = intval($data['successful_samples'] ?? 0);
-            
+
             return [
                 'total_samples' => $total,
                 'successful_samples' => $successful,
@@ -672,7 +669,7 @@ class LearningEngine
             return [];
         }
     }
-    
+
     /**
      * Calculate learning maturity level
      */

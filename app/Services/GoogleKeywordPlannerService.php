@@ -12,9 +12,9 @@ use Psr\Log\NullLogger;
 
 /**
  * Google Keyword Planner API Service
- * 
+ *
  * Provides real keyword volume and competition data
- * 
+ *
  * @author AI System
  * @version 1.0.0
  */
@@ -29,11 +29,11 @@ class GoogleKeywordPlannerService
     private string $refreshToken;
     private \PDO $db;
     private MercadoLivreClient $mlClient;
-    
+
     // Cache configuration
     private const CACHE_TTL = 86400; // 24 hours
     private const RATE_LIMIT = 10; // requests per minute
-    
+
     public function __construct(?LoggerInterface $logger = null)
     {
         $this->logger = $logger ?? new NullLogger();
@@ -44,7 +44,7 @@ class GoogleKeywordPlannerService
                 'Accept' => 'application/json',
             ]
         ]);
-        
+
         // Load credentials from environment
         $this->apiKey = $_ENV['GOOGLE_ADS_API_KEY'] ?? '';
         $this->clientId = $_ENV['GOOGLE_ADS_CLIENT_ID'] ?? '';
@@ -54,7 +54,7 @@ class GoogleKeywordPlannerService
         $this->db = Database::getInstance();
         $this->mlClient = new MercadoLivreClient();
     }
-    
+
     /**
      * Get keyword metrics (volume, competition, CPC)
      *
@@ -69,23 +69,23 @@ class GoogleKeywordPlannerService
             // Check cache first
             $cacheKey = "gkp_keyword_{$keyword}_{$countryCode}_{$languageCode}";
             $cached = $this->getCachedResult($cacheKey);
-            
+
             if ($cached) {
                 $this->logger->info("Google Keyword Planner: Cache HIT for keyword: {$keyword}");
                 return $cached;
             }
-            
+
             $this->logger->info("Google Keyword Planner: Fetching real data for keyword: {$keyword}");
-            
+
             // Get access token
             $accessToken = $this->getAccessToken();
             if (!$accessToken) {
                 throw new Exception('Failed to obtain Google Ads API access token');
             }
-            
+
             // Build request payload
             $payload = $this->buildKeywordRequest($keyword, $countryCode, $languageCode);
-            
+
             // Make API request
             $response = $this->client->post('https://googleads.googleapis.com/v17/customers:listAccessibleCustomers', [
                 'headers' => [
@@ -93,16 +93,16 @@ class GoogleKeywordPlannerService
                     'developer-token' => $this->developerToken,
                 ]
             ]);
-            
+
             $customers = json_decode($response->getBody(), true);
-            
+
             if (empty($customers['resourceNames'])) {
                 throw new Exception('No accessible Google Ads accounts found');
             }
-            
+
             // Use first customer account
             $customerId = str_replace('customers/', '', $customers['resourceNames'][0]);
-            
+
             // Generate keyword ideas
             $ideasResponse = $this->client->post(
                 "https://googleads.googleapis.com/v17/customers/{$customerId}:generateKeywordIdeas",
@@ -115,30 +115,29 @@ class GoogleKeywordPlannerService
                     'json' => $payload
                 ]
             );
-            
+
             $ideas = json_decode($ideasResponse->getBody(), true);
-            
+
             // Process results
             $metrics = $this->processKeywordIdeas($ideas, $keyword);
-            
+
             // Cache the result
             $this->cacheResult($cacheKey, $metrics);
-            
+
             $this->logger->info("Google Keyword Planner: Successfully fetched metrics for: {$keyword}", [
                 'volume' => $metrics['volume'],
                 'competition' => $metrics['competition'],
                 'cpc' => $metrics['avg_cpc']
             ]);
-            
+
             return $metrics;
-            
         } catch (Exception $e) {
             $this->logger->error("Google Keyword Planner API error for keyword '{$keyword}': " . $e->getMessage());
-            
+
             return $this->getFallbackMetrics($keyword);
         }
     }
-    
+
     /**
      * Get multiple keywords metrics in batch
      *
@@ -150,17 +149,17 @@ class GoogleKeywordPlannerService
     public function getBatchKeywordMetrics(array $keywords, string $countryCode = 'BR', string $languageCode = 'pt'): array
     {
         $results = [];
-        
+
         foreach ($keywords as $keyword) {
             $metrics = $this->getKeywordMetrics($keyword, $countryCode, $languageCode);
             if ($metrics) {
                 $results[$keyword] = $metrics;
             }
         }
-        
+
         return $results;
     }
-    
+
     /**
      * Get keyword competition level mapping
      *
@@ -174,10 +173,10 @@ class GoogleKeywordPlannerService
             'MEDIUM' => 'média',
             'HIGH' => 'alta'
         ];
-        
+
         return $mapping[strtoupper($competitionEnum)] ?? 'desconhecida';
     }
-    
+
     /**
      * Get access token using refresh token
      *
@@ -194,16 +193,15 @@ class GoogleKeywordPlannerService
                     'grant_type' => 'refresh_token'
                 ]
             ]);
-            
+
             $tokenData = json_decode($response->getBody(), true);
             return $tokenData['access_token'] ?? null;
-            
         } catch (Exception $e) {
             $this->logger->error('Failed to refresh Google Ads API token: ' . $e->getMessage());
             return null;
         }
     }
-    
+
     /**
      * Build keyword request payload
      *
@@ -226,7 +224,7 @@ class GoogleKeywordPlannerService
             'language' => $this->getLanguageConstant($languageCode)
         ];
     }
-    
+
     /**
      * Get geo target constant for country
      *
@@ -242,10 +240,10 @@ class GoogleKeywordPlannerService
             'CL' => 'geoTargetConstants/2108', // Chile
             'MX' => 'geoTargetConstants/2180'  // Mexico
         ];
-        
+
         return $countries[strtoupper($countryCode)] ?? 'geoTargetConstants/2014'; // Default to Brazil
     }
-    
+
     /**
      * Get language constant
      *
@@ -259,10 +257,10 @@ class GoogleKeywordPlannerService
             'en' => 'languageConstants/1000', // English
             'es' => 'languageConstants/1002'  // Spanish
         ];
-        
+
         return $languages[strtolower($languageCode)] ?? 'languageConstants/1022'; // Default to Portuguese
     }
-    
+
     /**
      * Process keyword ideas response
      *
@@ -275,18 +273,18 @@ class GoogleKeywordPlannerService
         if (empty($response['results'])) {
             return null;
         }
-        
+
         // Find exact match or closest match
         $bestMatch = null;
         $lowestDistance = PHP_INT_MAX;
-        
+
         foreach ($response['results'] as $idea) {
             $keywordText = $idea['keyword']['text'] ?? '';
             if (mb_strtolower($keywordText) === mb_strtolower($originalKeyword)) {
                 $bestMatch = $idea;
                 break;
             }
-            
+
             // Calculate similarity distance
             $distance = levenshtein(mb_strtolower($keywordText), mb_strtolower($originalKeyword));
             if ($distance < $lowestDistance) {
@@ -294,13 +292,13 @@ class GoogleKeywordPlannerService
                 $bestMatch = $idea;
             }
         }
-        
+
         if (!$bestMatch) {
             return null;
         }
-        
+
         $metrics = $bestMatch['keywordIdeaMetrics'] ?? [];
-        
+
         return [
             'keyword' => $originalKeyword,
             'volume' => (int)($metrics['avgMonthlySearches'] ?? 0),
@@ -311,7 +309,7 @@ class GoogleKeywordPlannerService
             'source' => 'google_keyword_planner'
         ];
     }
-    
+
     /**
      * Map competition enum to numeric index
      *
@@ -325,10 +323,10 @@ class GoogleKeywordPlannerService
             'MEDIUM' => 66,
             'HIGH' => 90
         ];
-        
+
         return $mapping[strtoupper($competition)] ?? 50;
     }
-    
+
     /**
      * Get fallback metrics when API fails
      *
@@ -339,10 +337,10 @@ class GoogleKeywordPlannerService
     {
         // 1) Dados locais de market_keywords (populados por rotinas reais)
         $stmt = $this->db->prepare("
-            SELECT search_volume, competition_level, avg_price 
-            FROM market_keywords 
-            WHERE keyword = :keyword 
-            ORDER BY updated_at DESC 
+            SELECT search_volume, competition_level, avg_price
+            FROM market_keywords
+            WHERE keyword = :keyword
+            ORDER BY updated_at DESC
             LIMIT 1
         ");
         $stmt->execute(['keyword' => $keyword]);
@@ -420,7 +418,7 @@ class GoogleKeywordPlannerService
         if ($index >= 20) return 'baixa';
         return 'muito_baixa';
     }
-    
+
     /**
      * Get cached result
      *
@@ -431,19 +429,19 @@ class GoogleKeywordPlannerService
     {
         // Simple file-based cache for now
         $cacheFile = STORAGE_PATH . "/cache/{$key}.json";
-        
+
         if (file_exists($cacheFile)) {
             $cacheData = json_decode(file_get_contents($cacheFile), true);
             $expiry = $cacheData['expires'] ?? 0;
-            
+
             if (time() < $expiry) {
                 return $cacheData['data'];
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * Cache result
      *
@@ -457,17 +455,17 @@ class GoogleKeywordPlannerService
         if (!is_dir($cacheDir)) {
             mkdir($cacheDir, 0755, true);
         }
-        
+
         $cacheFile = "{$cacheDir}/{$key}.json";
         $cacheData = [
             'data' => $data,
             'expires' => time() + self::CACHE_TTL,
             'created' => time()
         ];
-        
+
         file_put_contents($cacheFile, json_encode($cacheData));
     }
-    
+
     /**
      * Check if service is configured
      *
@@ -475,13 +473,13 @@ class GoogleKeywordPlannerService
      */
     public function isConfigured(): bool
     {
-        return !empty($this->apiKey) && 
-               !empty($this->clientId) && 
-               !empty($this->clientSecret) && 
-               !empty($this->developerToken) && 
-               !empty($this->refreshToken);
+        return !empty($this->apiKey) &&
+            !empty($this->clientId) &&
+            !empty($this->clientSecret) &&
+            !empty($this->developerToken) &&
+            !empty($this->refreshToken);
     }
-    
+
     /**
      * Get service health status
      *

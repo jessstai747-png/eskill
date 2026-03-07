@@ -85,7 +85,7 @@ class KeywordInjectorService
         $currentKeywords = $this->identifyKeywords($title, $categoryId);
 
         // Filtrar keywords já presentes
-        $newKeywords = array_filter($keywords, function($kw) use ($currentWords) {
+        $newKeywords = array_filter($keywords, function ($kw) use ($currentWords) {
             return !$this->wordExistsIn($kw, $currentWords);
         });
 
@@ -202,7 +202,7 @@ class KeywordInjectorService
         $currentWords = $this->tokenize($model);
 
         // Filtrar keywords já presentes
-        $newKeywords = array_filter($keywords, function($kw) use ($currentWords) {
+        $newKeywords = array_filter($keywords, function ($kw) use ($currentWords) {
             return !$this->wordExistsIn($kw, $currentWords);
         });
 
@@ -354,8 +354,25 @@ class KeywordInjectorService
         $keywords = [];
 
         // Filtrar stopwords
-        $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na',
-                      'e', 'ou', 'um', 'uma', 'os', 'as', 'que', 'por'];
+        $stopWords = [
+            'para',
+            'com',
+            'sem',
+            'de',
+            'da',
+            'do',
+            'em',
+            'no',
+            'na',
+            'e',
+            'ou',
+            'um',
+            'uma',
+            'os',
+            'as',
+            'que',
+            'por'
+        ];
 
         foreach ($words as $word) {
             if (mb_strlen($word) > 2 && !in_array($word, $stopWords)) {

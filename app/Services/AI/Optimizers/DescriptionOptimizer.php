@@ -347,9 +347,11 @@ class DescriptionOptimizer
                 if (preg_match('/^-\s*(.+)$/', $trimmed, $match)) {
                     $modifiedLines[] = '• ' . trim($match[1]);
                     $changes[] = 'Convertido - para •';
-                } elseif (mb_strlen($trimmed) > 5 && mb_strlen($trimmed) < 80 &&
-                         preg_match('/^[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ]/', $trimmed) &&
-                         !preg_match('/[.!?:]$/', $trimmed)) {
+                } elseif (
+                    mb_strlen($trimmed) > 5 && mb_strlen($trimmed) < 80 &&
+                    preg_match('/^[A-ZÀÁÂÃÉÊÍÓÔÕÚÇ]/', $trimmed) &&
+                    !preg_match('/[.!?:]$/', $trimmed)
+                ) {
                     $modifiedLines[] = '• ' . $trimmed;
                 } else {
                     $modifiedLines[] = $line;

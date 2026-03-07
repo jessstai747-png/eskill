@@ -12,13 +12,13 @@ use PDO;
 
 /**
  * 🚀 TITLE KILLER - Otimizador de Títulos Matador
- * 
+ *
  * Estratégias avançadas de SEO para títulos:
  * - Semântica perfeita
  * - Cauda longa (long-tail keywords)
  * - Máximo aproveitamento dos 60 caracteres
  * - Keywords de alta conversão
- * 
+ *
  * @author AI Development Team
  * @version 1.0.0
  */
@@ -27,12 +27,12 @@ class TitleKiller
     private ?AIProviderManager $aiProvider;
     private ?int $accountId;
     private ?ItemService $itemService;
-    
+
     // ML Title Rules
     private const MAX_LENGTH = 60;
     private const MIN_LENGTH = 40;
     private const OPTIMAL_WORDS = [5, 8]; // min, max
-    
+
     // High-converting patterns by category
     private const TITLE_PATTERNS = [
         'electronics' => [
@@ -61,7 +61,7 @@ class TitleKiller
             'must_include' => ['product', 'key_spec'],
         ],
     ];
-    
+
     // Power words that increase CTR
     private const POWER_WORDS = [
         'pt_BR' => [
@@ -71,14 +71,14 @@ class TitleKiller
             'benefit' => ['Ultra', 'Super', 'Mega', 'Plus', 'Pro', 'Max'],
         ],
     ];
-    
+
     public function __construct(?int $accountId = null)
     {
         $this->accountId = $accountId;
         $this->aiProvider = new AIProviderManager();
         $this->itemService = new ItemService($accountId);
     }
-    
+
     /**
      * 🚀 Otimizar título de um item específico
      */
@@ -101,10 +101,10 @@ class TitleKiller
             ];
         }
     }
-    
+
     /**
      * 🔥 Gerar título matador usando IA
-     * 
+     *
      * @param array $productData
      * @return array
      */
@@ -113,9 +113,9 @@ class TitleKiller
         $category = $this->detectCategory($productData);
         $keywords = $this->extractKeywords($productData);
         $longTailKeywords = $this->generateLongTailKeywords($productData);
-        
+
         $prompt = $this->buildKillerPrompt($productData, $category, $keywords, $longTailKeywords);
-        
+
         try {
             $response = $this->aiProvider->chat([
                 [
@@ -127,16 +127,16 @@ class TitleKiller
                     'content' => $prompt
                 ]
             ], ['temperature' => 0.7, 'max_tokens' => 1000]);
-            
+
             if (isset($response['error'])) {
                 return $this->generateFallbackTitle($productData, $keywords);
             }
-            
+
             $result = $this->parseAIResponse($response['content']);
-            
+
             // Validate and enhance
             $result = $this->validateAndEnhance($result, $productData);
-            
+
             return [
                 'success' => true,
                 'titles' => $result['titles'],
@@ -146,12 +146,11 @@ class TitleKiller
                 'strategy_applied' => $category,
                 'seo_score' => $this->calculateTitleScore($result['titles'][0] ?? ''),
             ];
-            
         } catch (\Exception $e) {
             return $this->generateFallbackTitle($productData, $keywords);
         }
     }
-    
+
     /**
      * 📊 Gerar Long-Tail Keywords
      */
@@ -160,9 +159,9 @@ class TitleKiller
         $baseProduct = $productData['title'] ?? $productData['product_name'] ?? '';
         $brand = $productData['brand'] ?? '';
         $category = $productData['category'] ?? '';
-        
+
         $longTail = [];
-        
+
         // Pattern: Product + Attribute
         if (!empty($productData['attributes'])) {
             foreach (array_slice($productData['attributes'], 0, 5) as $attr) {
@@ -172,35 +171,35 @@ class TitleKiller
                 }
             }
         }
-        
+
         // Pattern: Product + Brand + Spec
         if ($brand) {
             $longTail[] = "{$brand} {$baseProduct}";
             $longTail[] = "{$baseProduct} {$brand} original";
         }
-        
+
         // Pattern: Product + Use Case
         $useCases = $this->getUseCases($category);
         foreach ($useCases as $use) {
             $longTail[] = "{$baseProduct} para {$use}";
         }
-        
+
         // Pattern: Product + Specific Specs
         $specs = $this->extractSpecs($productData);
         foreach ($specs as $spec) {
             $longTail[] = "{$baseProduct} {$spec}";
         }
-        
+
         return array_unique(array_filter($longTail));
     }
-    
+
     /**
      * 🎯 Extrair Keywords de Alta Conversão
      */
     private function extractKeywords(array $productData): array
     {
         $keywords = [];
-        
+
         // From title
         $title = $productData['title'] ?? '';
         $words = preg_split('/\s+/', $title);
@@ -209,17 +208,17 @@ class TitleKiller
                 $keywords[] = mb_strtolower($word);
             }
         }
-        
+
         // From brand
         if (!empty($productData['brand'])) {
             $keywords[] = mb_strtolower($productData['brand']);
         }
-        
+
         // From model
         if (!empty($productData['model'])) {
             $keywords[] = mb_strtolower($productData['model']);
         }
-        
+
         // From key attributes
         $keyAttrs = ['BRAND', 'MODEL', 'COLOR', 'SIZE', 'MATERIAL'];
         foreach ($productData['attributes'] ?? [] as $attr) {
@@ -227,17 +226,17 @@ class TitleKiller
                 $keywords[] = mb_strtolower($attr['value_name'] ?? '');
             }
         }
-        
+
         return array_unique(array_filter($keywords));
     }
-    
+
     /**
      * 🏗️ Build Killer Prompt for AI
      */
     private function buildKillerPrompt(array $productData, string $category, array $keywords, array $longTail): string
     {
         $pattern = self::TITLE_PATTERNS[$category] ?? self::TITLE_PATTERNS['default'];
-        
+
         return "Você é um especialista em SEO para Mercado Livre com 10+ anos de experiência.
 
 PRODUTO:
@@ -280,52 +279,52 @@ Responda em JSON:
   ]
 }";
     }
-    
+
     /**
      * 📋 Get System Prompt
      */
     private function getSystemPrompt(): string
     {
-        return "Você é o maior especialista em SEO para Mercado Livre do Brasil. 
-Seu objetivo é criar títulos que VENDEM. 
+        return "Você é o maior especialista em SEO para Mercado Livre do Brasil.
+Seu objetivo é criar títulos que VENDEM.
 Você conhece todos os algoritmos do ML e sabe exatamente como rankear #1.
 Responda APENAS em JSON válido.";
     }
-    
+
     /**
      * ✅ Validate and Enhance Titles
      */
     private function validateAndEnhance(array $result, array $productData): array
     {
         $validatedTitles = [];
-        
+
         foreach ($result['titles'] ?? [] as $item) {
             $title = $item['title'] ?? $item;
-            
+
             // Enforce length
             if (mb_strlen($title) > self::MAX_LENGTH) {
                 $title = $this->smartTruncate($title, self::MAX_LENGTH);
             }
-            
+
             // Capitalize properly
             $title = $this->properCapitalize($title);
-            
+
             // Remove forbidden words
             $title = $this->removeForbiddenWords($title);
-            
+
             $validatedTitles[] = [
                 'title' => $title,
                 'length' => mb_strlen($title),
                 'score' => $this->calculateTitleScore($title),
             ];
         }
-        
+
         // Sort by score
         usort($validatedTitles, fn($a, $b) => $b['score'] <=> $a['score']);
-        
+
         return ['titles' => array_column($validatedTitles, 'title')];
     }
-    
+
     /**
      * 📊 Calculate Title SEO Score
      */
@@ -333,23 +332,23 @@ Responda APENAS em JSON válido.";
     {
         $score = 100;
         $len = mb_strlen($title);
-        
+
         // Length penalties
         if ($len < 30) $score -= 30;
         elseif ($len < 40) $score -= 15;
         elseif ($len > 60) $score -= 20;
-        
+
         // No numbers
         if (!preg_match('/\d/', $title)) $score -= 10;
-        
+
         // All caps
         if ($title === mb_strtoupper($title)) $score -= 15;
-        
+
         // Word count
         $words = str_word_count($title);
         if ($words < 4) $score -= 10;
         if ($words > 10) $score -= 5;
-        
+
         // Has power words
         $hasPowerWord = false;
         foreach (self::POWER_WORDS['pt_BR'] as $category => $words) {
@@ -361,23 +360,23 @@ Responda APENAS em JSON válido.";
             }
         }
         if (!$hasPowerWord) $score -= 5;
-        
+
         return max(0, min(100, $score));
     }
-    
+
     // Helper methods
     private function detectCategory(array $productData): string
     {
         $categoryId = $productData['category_id'] ?? '';
         $title = mb_strtolower($productData['title'] ?? '');
-        
+
         $patterns = [
             'electronics' => ['celular', 'fone', 'notebook', 'tv', 'samsung', 'apple', 'iphone'],
             'fashion' => ['camisa', 'calça', 'vestido', 'tênis', 'roupa', 'moda'],
             'home' => ['sofá', 'mesa', 'cadeira', 'cama', 'decoração'],
             'sports' => ['esporte', 'academia', 'fitness', 'corrida', 'bola'],
         ];
-        
+
         foreach ($patterns as $cat => $keywords) {
             foreach ($keywords as $kw) {
                 if (mb_strpos($title, $kw) !== false) {
@@ -385,13 +384,13 @@ Responda APENAS em JSON válido.";
                 }
             }
         }
-        
+
         return 'default';
     }
-    
+
     private function getUseCases(string $category): array
     {
-        return match($category) {
+        return match ($category) {
             'electronics' => ['trabalho', 'jogos', 'fotos', 'vídeos'],
             'fashion' => ['dia a dia', 'trabalho', 'festa', 'casual'],
             'home' => ['sala', 'quarto', 'cozinha', 'escritório'],
@@ -399,7 +398,7 @@ Responda APENAS em JSON válido.";
             default => ['uso diário', 'presente'],
         };
     }
-    
+
     private function extractSpecs(array $productData): array
     {
         $specs = [];
@@ -411,34 +410,34 @@ Responda APENAS em JSON válido.";
         }
         return array_slice($specs, 0, 3);
     }
-    
+
     private function smartTruncate(string $text, int $maxLen): string
     {
         if (mb_strlen($text) <= $maxLen) return $text;
-        
+
         $text = mb_substr($text, 0, $maxLen);
         $lastSpace = mb_strrpos($text, ' ');
-        
+
         if ($lastSpace !== false && $lastSpace > $maxLen - 15) {
             $text = mb_substr($text, 0, $lastSpace);
         }
-        
+
         return $text;
     }
-    
+
     private function properCapitalize(string $text): string
     {
         $words = explode(' ', mb_strtolower($text));
         $lowerWords = ['de', 'da', 'do', 'das', 'dos', 'para', 'com', 'em', 'e'];
-        
-        return implode(' ', array_map(function($word, $i) use ($lowerWords) {
+
+        return implode(' ', array_map(function ($word, $i) use ($lowerWords) {
             if ($i > 0 && in_array($word, $lowerWords)) {
                 return $word;
             }
             return mb_convert_case($word, MB_CASE_TITLE, 'UTF-8');
         }, $words, array_keys($words)));
     }
-    
+
     private function removeForbiddenWords(string $text): string
     {
         $forbidden = ['grátis', 'desconto', 'promoção', 'oferta', 'barato', 'liquidação'];
@@ -447,7 +446,7 @@ Responda APENAS em JSON válido.";
         }
         return trim(preg_replace('/\s+/', ' ', $text));
     }
-    
+
     private function parseAIResponse(string $content): array
     {
         // Try JSON extraction
@@ -459,7 +458,7 @@ Responda APENAS em JSON válido.";
         }
         return ['titles' => []];
     }
-    
+
     /**
      * 🏗️ Generate Fallback Title (Pattern-Based)
      */
@@ -468,7 +467,7 @@ Responda APENAS em JSON válido.";
         $category = $this->detectCategory($productData);
         $patternConfig = self::TITLE_PATTERNS[$category] ?? self::TITLE_PATTERNS['default'];
         $pattern = $patternConfig['pattern'];
-        
+
         // Data Extraction for Placeholders
         $placeholders = [
             '{brand}' => $productData['brand'] ?? '',
@@ -486,17 +485,17 @@ Responda APENAS em JSON válido.";
             '{sport}' => '', // Hard to guess
             '{benefit}' => 'Pronta Entrega', // Safe default
         ];
-        
+
         // Fill Pattern
         $title = $pattern;
         foreach ($placeholders as $key => $value) {
             $title = str_replace($key, $value, $title);
         }
-        
+
         // Cleanup (remove empty placeholders and double spaces)
         $title = preg_replace('/\{.*?\}/', '', $title);
         $title = trim(preg_replace('/\s+/', ' ', $title));
-        
+
         // If title is too short or empty, fallback to simple concatenation
         if (mb_strlen($title) < 10) {
             $parts = [];
@@ -504,7 +503,7 @@ Responda APENAS em JSON válido.";
             if (!empty($productData['model'])) $parts[] = $productData['model'];
             $title = !empty($productData['title']) ? $productData['title'] : implode(' ', $parts);
         }
-        
+
         // Enhance with keywords if space allows
         foreach ($keywords as $kw) {
             if (mb_stripos($title, $kw) === false && mb_strlen($title) + mb_strlen($kw) + 1 <= 60) {
@@ -512,9 +511,9 @@ Responda APENAS em JSON válido.";
                 break;
             }
         }
-        
+
         $finalTitle = $this->smartTruncate($title, 60);
-        
+
         return [
             'success' => true,
             'titles' => [$finalTitle],
@@ -524,7 +523,7 @@ Responda APENAS em JSON válido.";
             'seo_score' => $this->calculateTitleScore($finalTitle),
         ];
     }
-    
+
     private function getAttributeValue(array $productData, string $attrId): ?string
     {
         foreach ($productData['attributes'] ?? [] as $attr) {

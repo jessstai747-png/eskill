@@ -9,10 +9,10 @@ use PDO;
 
 /**
  * PricingRulesService
- * 
+ *
  * Gerencia regras automáticas de precificação que podem ser aplicadas
  * a produtos ou categorias inteiras.
- * 
+ *
  * Tipos de regras suportados:
  * - margin_min: Mantém margem mínima
  * - margin_target: Busca margem alvo
@@ -92,7 +92,7 @@ class PricingRulesService
 
     /**
      * Cria uma nova regra de precificação
-     * 
+     *
      * @param array $ruleData Dados da regra
      * @return array Resultado da criação
      */
@@ -140,9 +140,9 @@ class PricingRulesService
 
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO pricing_rules 
+                INSERT INTO pricing_rules
                 (account_id, name, rule_type, scope, scope_id, params, priority, is_active, created_at)
-                VALUES 
+                VALUES
                 (:account_id, :name, :rule_type, :scope, :scope_id, :params, :priority, :is_active, NOW())
             ");
 
@@ -207,8 +207,8 @@ class PricingRulesService
 
             $updates[] = 'updated_at = NOW()';
 
-            $sql = "UPDATE pricing_rules SET " . implode(', ', $updates) . 
-                   " WHERE id = :id AND account_id = :account_id";
+            $sql = "UPDATE pricing_rules SET " . implode(', ', $updates) .
+                " WHERE id = :id AND account_id = :account_id";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
@@ -232,7 +232,7 @@ class PricingRulesService
     {
         try {
             $stmt = $this->db->prepare("
-                DELETE FROM pricing_rules 
+                DELETE FROM pricing_rules
                 WHERE id = :id AND account_id = :account_id
             ");
 
@@ -300,8 +300,8 @@ class PricingRulesService
     {
         try {
             $sql = "
-                SELECT * FROM pricing_rules 
-                WHERE account_id = :account_id 
+                SELECT * FROM pricing_rules
+                WHERE account_id = :account_id
                   AND is_active = 1
                   AND (
                       scope = 'global'
@@ -337,7 +337,7 @@ class PricingRulesService
 
     /**
      * Aplica regras de precificação a um item e retorna preço recomendado
-     * 
+     *
      * @param string $itemId ID do item
      * @param float $currentPrice Preço atual
      * @param array $context Contexto adicional (custos, categoria, etc)
@@ -391,7 +391,7 @@ class PricingRulesService
             'original_price' => $currentPrice,
             'recommended_price' => round($recommendedPrice, 2),
             'price_change' => round($recommendedPrice - $currentPrice, 2),
-            'price_change_percent' => round((($recommendedPrice - $currentPrice) / $currentPrice) * 100, 2),
+            'price_change_percent' => $currentPrice > 0 ? round((($recommendedPrice - $currentPrice) / $currentPrice) * 100, 2) : 0,
             'rules_applied' => $appliedRules,
             'violations' => $violations,
             'total_rules_evaluated' => count($rules)
@@ -618,7 +618,7 @@ class PricingRulesService
         }
 
         // Calcular ajuste necessário
-        $adjustmentNeeded = (($currentPrice - $priceForTarget) / $currentPrice) * 100;
+        $adjustmentNeeded = $currentPrice > 0 ? (($currentPrice - $priceForTarget) / $currentPrice) * 100 : 0;
 
         if ($adjustmentNeeded <= $maxAdjustment) {
             return [

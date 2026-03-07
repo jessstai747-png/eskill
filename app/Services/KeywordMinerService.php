@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * KeywordMinerService - Mineração de keywords da API do Mercado Livre
- * 
+ *
  * Usa endpoints públicos disponíveis:
  * - /categories/{ID} - Subcategorias e nomes de produtos
  * - /categories/{ID}/attributes - Valores de atributos
@@ -20,7 +20,7 @@ class KeywordMinerService
     private PDO $db;
     private string $baseUrl = 'https://api.mercadolibre.com';
     private array $cache = [];
-    
+
     // Categorias principais de motos/peças
     private array $motoCategoryIds = [
         'MLB1771' => 'Aces. de Motos e Quadriciclos',
@@ -178,14 +178,22 @@ class KeywordMinerService
         }
 
         $keywords = [];
-        $importantAttributes = ['BRAND', 'MODEL', 'SIDE_POSITION', 'SURFACE_FINISH', 
-                                'MOTORCYCLE_RIDING_STYLE', 'MATERIAL', 'COLOR', 'TYPE'];
+        $importantAttributes = [
+            'BRAND',
+            'MODEL',
+            'SIDE_POSITION',
+            'SURFACE_FINISH',
+            'MOTORCYCLE_RIDING_STYLE',
+            'MATERIAL',
+            'COLOR',
+            'TYPE'
+        ];
 
         foreach ($response as $attr) {
             $attrId = $attr['id'] ?? '';
             $attrName = $attr['name'] ?? '';
             $isHidden = isset($attr['tags']['hidden']);
-            
+
             // Pular atributos ocultos ou internos
             if ($isHidden && !in_array($attrId, $importantAttributes)) {
                 continue;
@@ -244,7 +252,7 @@ class KeywordMinerService
         foreach ($this->motoCategoryIds as $catId => $catName) {
             $catKeywords = $this->getCategoryKeywords($catId);
             $attrKeywords = $this->getAttributeKeywords($catId);
-            
+
             $categories[$catId] = [
                 'name' => $catName,
                 'category_keywords' => $catKeywords,
@@ -265,13 +273,13 @@ class KeywordMinerService
                 if (($kw['type'] ?? '') === 'subcategory' && !empty($kw['category_id'])) {
                     $subCatId = $kw['category_id'];
                     $subAttrKw = $this->getAttributeKeywords($subCatId);
-                    
+
                     $categories[$subCatId] = [
                         'name' => $kw['keyword'],
                         'parent' => $catId,
                         'attribute_keywords' => $subAttrKw,
                     ];
-                    
+
                     // Adicionar keywords únicas das subcategorias
                     foreach ($subAttrKw as $subKw) {
                         $key = mb_strtolower($subKw['keyword']);
@@ -337,7 +345,7 @@ class KeywordMinerService
                 $template
             );
             $title = preg_replace('/\s+/', ' ', trim($title));
-            
+
             if (mb_strlen($title) <= 60 && mb_strlen($title) >= 20) {
                 $suggestions[] = [
                     'title' => $title,
@@ -413,7 +421,7 @@ class KeywordMinerService
         $stmt = $this->db->prepare("
             INSERT INTO market_keywords (keyword, category_id, source, relevance, metadata, created_at)
             VALUES (:keyword, :category_id, :source, :relevance, :metadata, NOW())
-            ON DUPLICATE KEY UPDATE 
+            ON DUPLICATE KEY UPDATE
                 relevance = GREATEST(relevance, VALUES(relevance)),
                 updated_at = NOW()
         ");
@@ -474,14 +482,14 @@ class KeywordMinerService
         return [
             'total_keywords' => $this->db->query("SELECT COUNT(*) FROM market_keywords")->fetchColumn(),
             'by_source' => $this->db->query("
-                SELECT source, COUNT(*) as count, AVG(relevance) as avg_relevance 
+                SELECT source, COUNT(*) as count, AVG(relevance) as avg_relevance
                 FROM market_keywords GROUP BY source
             ")->fetchAll(PDO::FETCH_ASSOC),
             'top_categories' => $this->db->query("
-                SELECT category_id, COUNT(*) as count 
-                FROM market_keywords 
-                WHERE category_id IS NOT NULL 
-                GROUP BY category_id 
+                SELECT category_id, COUNT(*) as count
+                FROM market_keywords
+                WHERE category_id IS NOT NULL
+                GROUP BY category_id
                 ORDER BY count DESC LIMIT 10
             ")->fetchAll(PDO::FETCH_ASSOC),
         ];

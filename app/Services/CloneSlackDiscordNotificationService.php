@@ -9,17 +9,17 @@ use PDO;
 
 /**
  * CloneSlackDiscordNotificationService
- * 
+ *
  * Serviço para envio de notificações para Slack e Discord
  * sobre eventos de clonagem (jobs stuck, failures, completions, etc.)
- * 
+ *
  * @version 1.0.0
  */
 class CloneSlackDiscordNotificationService
 {
     private PDO $db;
     private int $accountId;
-    
+
     // Tipos de alerta suportados
     public const ALERT_JOB_STARTED = 'job_started';
     public const ALERT_JOB_COMPLETED = 'job_completed';
@@ -29,14 +29,14 @@ class CloneSlackDiscordNotificationService
     public const ALERT_RATE_LIMIT = 'rate_limit';
     public const ALERT_DAILY_SUMMARY = 'daily_summary';
     public const ALERT_MILESTONE = 'milestone';
-    
+
     // Severidades
     public const SEVERITY_INFO = 'info';
     public const SEVERITY_WARNING = 'warning';
     public const SEVERITY_ERROR = 'error';
     public const SEVERITY_CRITICAL = 'critical';
     public const SEVERITY_SUCCESS = 'success';
-    
+
     // Cores para Slack/Discord por severidade
     private const COLORS = [
         self::SEVERITY_INFO => '#17a2b8',
@@ -45,7 +45,7 @@ class CloneSlackDiscordNotificationService
         self::SEVERITY_CRITICAL => '#6f42c1',
         self::SEVERITY_SUCCESS => '#28a745',
     ];
-    
+
     // Emojis por tipo de alerta
     private const EMOJIS = [
         self::ALERT_JOB_STARTED => '🚀',
@@ -57,13 +57,13 @@ class CloneSlackDiscordNotificationService
         self::ALERT_DAILY_SUMMARY => '📊',
         self::ALERT_MILESTONE => '🎉',
     ];
-    
+
     public function __construct(int $accountId = 0)
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
     }
-    
+
     /**
      * Envia notificação para Slack
      */
@@ -76,17 +76,17 @@ class CloneSlackDiscordNotificationService
         ?string $webhookUrl = null
     ): array {
         $webhookUrl = $webhookUrl ?? $this->getSlackWebhook();
-        
+
         if (!$webhookUrl) {
             return [
                 'success' => false,
                 'error' => 'Slack webhook URL not configured',
             ];
         }
-        
+
         $emoji = self::EMOJIS[$alertType] ?? '📢';
         $color = self::COLORS[$severity] ?? self::COLORS[self::SEVERITY_INFO];
-        
+
         // Montar payload Slack
         $payload = [
             'username' => 'Clone Bot',
@@ -103,22 +103,22 @@ class CloneSlackDiscordNotificationService
                 ],
             ],
         ];
-        
+
         // Adicionar menções para alertas críticos
         if ($severity === self::SEVERITY_CRITICAL) {
             $payload['text'] = '<!channel> Alerta Crítico!';
         } elseif ($severity === self::SEVERITY_ERROR) {
             $payload['text'] = '<!here> Atenção necessária';
         }
-        
+
         $result = $this->sendWebhook($webhookUrl, $payload);
-        
+
         // Log da notificação
         $this->logNotification('slack', $alertType, $severity, $result['success']);
-        
+
         return $result;
     }
-    
+
     /**
      * Envia notificação para Discord
      */
@@ -131,17 +131,17 @@ class CloneSlackDiscordNotificationService
         ?string $webhookUrl = null
     ): array {
         $webhookUrl = $webhookUrl ?? $this->getDiscordWebhook();
-        
+
         if (!$webhookUrl) {
             return [
                 'success' => false,
                 'error' => 'Discord webhook URL not configured',
             ];
         }
-        
+
         $emoji = self::EMOJIS[$alertType] ?? '📢';
         $color = hexdec(ltrim(self::COLORS[$severity] ?? self::COLORS[self::SEVERITY_INFO], '#'));
-        
+
         // Montar payload Discord (embed)
         $payload = [
             'username' => 'Clone Bot',
@@ -160,22 +160,22 @@ class CloneSlackDiscordNotificationService
                 ],
             ],
         ];
-        
+
         // Adicionar menções para alertas críticos
         if ($severity === self::SEVERITY_CRITICAL) {
             $payload['content'] = '@everyone Alerta Crítico!';
         } elseif ($severity === self::SEVERITY_ERROR) {
             $payload['content'] = '@here Atenção necessária';
         }
-        
+
         $result = $this->sendWebhook($webhookUrl, $payload);
-        
+
         // Log da notificação
         $this->logNotification('discord', $alertType, $severity, $result['success']);
-        
+
         return $result;
     }
-    
+
     /**
      * Envia para todos os canais configurados
      */
@@ -190,27 +190,27 @@ class CloneSlackDiscordNotificationService
             'slack' => null,
             'discord' => null,
         ];
-        
+
         // Verificar se deve enviar para Slack
         if ($this->isSlackEnabled()) {
             $results['slack'] = $this->sendToSlack($alertType, $title, $message, $fields, $severity);
         }
-        
+
         // Verificar se deve enviar para Discord
         if ($this->isDiscordEnabled()) {
             $results['discord'] = $this->sendToDiscord($alertType, $title, $message, $fields, $severity);
         }
-        
+
         return [
             'success' => ($results['slack']['success'] ?? false) || ($results['discord']['success'] ?? false),
             'results' => $results,
         ];
     }
-    
+
     // =========================================================================
     // Métodos de Alerta Específicos
     // =========================================================================
-    
+
     /**
      * Notifica início de job
      */
@@ -228,7 +228,7 @@ class CloneSlackDiscordNotificationService
             self::SEVERITY_INFO
         );
     }
-    
+
     /**
      * Notifica conclusão de job
      */
@@ -242,10 +242,9 @@ class CloneSlackDiscordNotificationService
         $totalItems = $successCount + $failedCount;
         $successRate = $totalItems > 0 ? round(($successCount / $totalItems) * 100, 1) : 0;
         $duration = $this->formatDuration($durationSeconds);
-        
-        $severity = $failedCount === 0 ? self::SEVERITY_SUCCESS : 
-                   ($successRate < 80 ? self::SEVERITY_WARNING : self::SEVERITY_SUCCESS);
-        
+
+        $severity = $failedCount === 0 ? self::SEVERITY_SUCCESS : ($successRate < 80 ? self::SEVERITY_WARNING : self::SEVERITY_SUCCESS);
+
         return $this->broadcast(
             self::ALERT_JOB_COMPLETED,
             'Job de Clonagem Concluído',
@@ -260,7 +259,7 @@ class CloneSlackDiscordNotificationService
             $severity
         );
     }
-    
+
     /**
      * Notifica falha de job
      */
@@ -278,14 +277,14 @@ class CloneSlackDiscordNotificationService
             self::SEVERITY_ERROR
         );
     }
-    
+
     /**
      * Notifica job travado
      */
     public function notifyJobStuck(int $jobId, string $jobName, int $minutesStuck, int $currentProgress): array
     {
         $severity = $minutesStuck > 60 ? self::SEVERITY_CRITICAL : self::SEVERITY_WARNING;
-        
+
         return $this->broadcast(
             self::ALERT_JOB_STUCK,
             'Job de Clonagem Travado',
@@ -298,14 +297,14 @@ class CloneSlackDiscordNotificationService
             $severity
         );
     }
-    
+
     /**
      * Notifica taxa de falha alta
      */
     public function notifyHighFailureRate(float $failureRate, int $failedCount, int $totalCount, string $period): array
     {
         $severity = $failureRate > 50 ? self::SEVERITY_CRITICAL : self::SEVERITY_WARNING;
-        
+
         return $this->broadcast(
             self::ALERT_HIGH_FAILURE_RATE,
             'Taxa de Falha Alta Detectada',
@@ -319,7 +318,7 @@ class CloneSlackDiscordNotificationService
             $severity
         );
     }
-    
+
     /**
      * Notifica rate limit da API
      */
@@ -337,19 +336,18 @@ class CloneSlackDiscordNotificationService
             self::SEVERITY_WARNING
         );
     }
-    
+
     /**
      * Envia resumo diário
      */
     public function sendDailySummary(array $metrics): array
     {
-        $successRate = $metrics['total_items'] > 0 
-            ? round(($metrics['successful_items'] / $metrics['total_items']) * 100, 1) 
+        $successRate = $metrics['total_items'] > 0
+            ? round(($metrics['successful_items'] / $metrics['total_items']) * 100, 1)
             : 0;
-        
-        $severity = $successRate >= 90 ? self::SEVERITY_SUCCESS : 
-                   ($successRate >= 70 ? self::SEVERITY_INFO : self::SEVERITY_WARNING);
-        
+
+        $severity = $successRate >= 90 ? self::SEVERITY_SUCCESS : ($successRate >= 70 ? self::SEVERITY_INFO : self::SEVERITY_WARNING);
+
         return $this->broadcast(
             self::ALERT_DAILY_SUMMARY,
             'Resumo Diário de Clonagem',
@@ -365,7 +363,7 @@ class CloneSlackDiscordNotificationService
             $severity
         );
     }
-    
+
     /**
      * Notifica marco alcançado
      */
@@ -382,11 +380,11 @@ class CloneSlackDiscordNotificationService
             self::SEVERITY_SUCCESS
         );
     }
-    
+
     // =========================================================================
     // Configuração de Webhooks
     // =========================================================================
-    
+
     /**
      * Salva configuração de webhook
      */
@@ -396,18 +394,18 @@ class CloneSlackDiscordNotificationService
         if (!filter_var($webhookUrl, FILTER_VALIDATE_URL)) {
             return ['success' => false, 'error' => 'URL de webhook inválida'];
         }
-        
+
         // Validar plataforma
         if (!in_array($platform, ['slack', 'discord'])) {
             return ['success' => false, 'error' => 'Plataforma inválida'];
         }
-        
+
         // Testar webhook
         $testResult = $this->testWebhook($platform, $webhookUrl);
         if (!$testResult['success']) {
             return ['success' => false, 'error' => 'Webhook não respondeu corretamente: ' . ($testResult['error'] ?? 'Unknown error')];
         }
-        
+
         $configKey = "{$platform}_webhook";
         $config = [
             'url' => $webhookUrl,
@@ -417,12 +415,12 @@ class CloneSlackDiscordNotificationService
             'quiet_hours' => $settings['quiet_hours'] ?? null, // ['start' => '22:00', 'end' => '08:00']
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-        
+
         // Salvar em configuração da conta
         $sql = "INSERT INTO account_settings (account_id, setting_key, setting_value, updated_at)
                 VALUES (:account_id, :key, :value, NOW())
                 ON DUPLICATE KEY UPDATE setting_value = :value2, updated_at = NOW()";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'account_id' => $this->accountId,
@@ -430,51 +428,51 @@ class CloneSlackDiscordNotificationService
             'value' => json_encode($config),
             'value2' => json_encode($config),
         ]);
-        
+
         return [
             'success' => true,
             'message' => "Webhook {$platform} configurado com sucesso",
             'test_result' => $testResult,
         ];
     }
-    
+
     /**
      * Obtém configuração de webhook
      */
     public function getWebhookConfig(string $platform): ?array
     {
         $configKey = "{$platform}_webhook";
-        
-        $sql = "SELECT setting_value FROM account_settings 
+
+        $sql = "SELECT setting_value FROM account_settings
                 WHERE account_id = :account_id AND setting_key = :key";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'account_id' => $this->accountId,
             'key' => $configKey,
         ]);
-        
+
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$row) {
             return null;
         }
-        
+
         return json_decode($row['setting_value'], true);
     }
-    
+
     /**
      * Testa webhook
      */
     public function testWebhook(string $platform, string $webhookUrl): array
     {
-        $testPayload = $platform === 'slack' 
-            ? $this->buildSlackTestPayload() 
+        $testPayload = $platform === 'slack'
+            ? $this->buildSlackTestPayload()
             : $this->buildDiscordTestPayload();
-        
+
         return $this->sendWebhook($webhookUrl, $testPayload);
     }
-    
+
     /**
      * Lista configurações de webhooks
      */
@@ -484,151 +482,151 @@ class CloneSlackDiscordNotificationService
             'slack' => $this->getWebhookConfig('slack'),
             'discord' => $this->getWebhookConfig('discord'),
         ];
-        
+
         // Ocultar URL completa por segurança
         foreach ($configs as $platform => &$config) {
             if ($config && isset($config['url'])) {
                 $config['url_masked'] = $this->maskWebhookUrl($config['url']);
             }
         }
-        
+
         return $configs;
     }
-    
+
     /**
      * Desabilita webhook
      */
     public function disableWebhook(string $platform): array
     {
         $config = $this->getWebhookConfig($platform);
-        
+
         if (!$config) {
             return ['success' => false, 'error' => 'Webhook não configurado'];
         }
-        
+
         $config['enabled'] = false;
         $config['updated_at'] = date('Y-m-d H:i:s');
-        
+
         $sql = "UPDATE account_settings SET setting_value = :value, updated_at = NOW()
                 WHERE account_id = :account_id AND setting_key = :key";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'account_id' => $this->accountId,
             'key' => "{$platform}_webhook",
             'value' => json_encode($config),
         ]);
-        
+
         return ['success' => true, 'message' => "Webhook {$platform} desabilitado"];
     }
-    
+
     // =========================================================================
     // Histórico de Notificações
     // =========================================================================
-    
+
     /**
      * Obtém histórico de notificações
      */
     public function getNotificationHistory(int $limit = 50, array $filters = []): array
     {
         $limitSql = max(1, min(500, (int)$limit));
-        $sql = "SELECT * FROM clone_notification_logs 
+        $sql = "SELECT * FROM clone_notification_logs
                 WHERE account_id = :account_id";
         $params = ['account_id' => $this->accountId];
-        
+
         if (!empty($filters['platform'])) {
             $sql .= " AND platform = :platform";
             $params['platform'] = $filters['platform'];
         }
-        
+
         if (!empty($filters['alert_type'])) {
             $sql .= " AND alert_type = :alert_type";
             $params['alert_type'] = $filters['alert_type'];
         }
-        
+
         if (!empty($filters['success'])) {
             $sql .= " AND success = :success";
             $params['success'] = $filters['success'] === 'true' ? 1 : 0;
         }
-        
+
         $sql .= " ORDER BY created_at DESC LIMIT {$limitSql}";
-        
+
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
         }
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Obtém estatísticas de notificações
      */
     public function getNotificationStats(string $period = '7d'): array
     {
-        $days = match($period) {
+        $days = match ($period) {
             '24h' => 1,
             '7d' => 7,
             '30d' => 30,
             default => 7,
         };
-        
-        $sql = "SELECT 
+
+        $sql = "SELECT
                     platform,
                     alert_type,
                     COUNT(*) as total,
                     SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful,
                     SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed
                 FROM clone_notification_logs
-                WHERE account_id = :account_id 
+                WHERE account_id = :account_id
                   AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
                 GROUP BY platform, alert_type
                 ORDER BY total DESC";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'account_id' => $this->accountId,
             'days' => $days,
         ]);
-        
+
         $byPlatformType = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Totais
-        $sql = "SELECT 
+        $sql = "SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful,
                     SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed
                 FROM clone_notification_logs
-                WHERE account_id = :account_id 
+                WHERE account_id = :account_id
                   AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'account_id' => $this->accountId,
             'days' => $days,
         ]);
-        
+
         $totals = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return [
             'period' => $period,
             'totals' => $totals,
             'by_platform_type' => $byPlatformType,
         ];
     }
-    
+
     // =========================================================================
     // Métodos Privados
     // =========================================================================
-    
+
     /**
      * Envia request para webhook
      */
     private function sendWebhook(string $url, array $payload): array
     {
         $ch = curl_init($url);
-        
+
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($payload),
@@ -639,13 +637,13 @@ class CloneSlackDiscordNotificationService
             CURLOPT_TIMEOUT => 10,
             CURLOPT_CONNECTTIMEOUT => 5,
         ]);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        
+
         curl_close($ch);
-        
+
         if ($error) {
             return [
                 'success' => false,
@@ -653,17 +651,17 @@ class CloneSlackDiscordNotificationService
                 'http_code' => 0,
             ];
         }
-        
+
         // Slack retorna "ok", Discord retorna 204 No Content
         $success = ($httpCode >= 200 && $httpCode < 300) || $response === 'ok';
-        
+
         return [
             'success' => $success,
             'http_code' => $httpCode,
             'response' => $response,
         ];
     }
-    
+
     /**
      * Formata campos para Slack
      */
@@ -677,7 +675,7 @@ class CloneSlackDiscordNotificationService
             ];
         }, $fields);
     }
-    
+
     /**
      * Formata campos para Discord
      */
@@ -691,45 +689,45 @@ class CloneSlackDiscordNotificationService
             ];
         }, $fields);
     }
-    
+
     /**
      * Obtém URL do webhook Slack
      */
     private function getSlackWebhook(): ?string
     {
         $config = $this->getWebhookConfig('slack');
-        
+
         if (!$config || !($config['enabled'] ?? false)) {
             return null;
         }
-        
+
         // Verificar quiet hours
         if (!$this->isWithinActiveHours($config['quiet_hours'] ?? null)) {
             return null;
         }
-        
+
         return $config['url'] ?? null;
     }
-    
+
     /**
      * Obtém URL do webhook Discord
      */
     private function getDiscordWebhook(): ?string
     {
         $config = $this->getWebhookConfig('discord');
-        
+
         if (!$config || !($config['enabled'] ?? false)) {
             return null;
         }
-        
+
         // Verificar quiet hours
         if (!$this->isWithinActiveHours($config['quiet_hours'] ?? null)) {
             return null;
         }
-        
+
         return $config['url'] ?? null;
     }
-    
+
     /**
      * Verifica se Slack está habilitado
      */
@@ -737,7 +735,7 @@ class CloneSlackDiscordNotificationService
     {
         return $this->getSlackWebhook() !== null;
     }
-    
+
     /**
      * Verifica se Discord está habilitado
      */
@@ -745,7 +743,7 @@ class CloneSlackDiscordNotificationService
     {
         return $this->getDiscordWebhook() !== null;
     }
-    
+
     /**
      * Verifica se está dentro do horário ativo
      */
@@ -754,32 +752,32 @@ class CloneSlackDiscordNotificationService
         if (!$quietHours || !isset($quietHours['start'], $quietHours['end'])) {
             return true;
         }
-        
+
         $now = new \DateTime();
         $start = \DateTime::createFromFormat('H:i', $quietHours['start']);
         $end = \DateTime::createFromFormat('H:i', $quietHours['end']);
-        
+
         if (!$start || !$end) {
             return true;
         }
-        
+
         // Se start > end, significa que quiet hours cruza meia-noite
         if ($start > $end) {
             return $now < $start && $now > $end;
         }
-        
+
         return $now < $start || $now > $end;
     }
-    
+
     /**
      * Log de notificação
      */
     private function logNotification(string $platform, string $alertType, string $severity, bool $success): void
     {
-        $sql = "INSERT INTO clone_notification_logs 
+        $sql = "INSERT INTO clone_notification_logs
                 (account_id, platform, alert_type, severity, success, created_at)
                 VALUES (:account_id, :platform, :alert_type, :severity, :success, NOW())";
-        
+
         try {
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
@@ -798,7 +796,7 @@ class CloneSlackDiscordNotificationService
             ]);
         }
     }
-    
+
     /**
      * Obtém nome da conta
      */
@@ -808,10 +806,10 @@ class CloneSlackDiscordNotificationService
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $this->accountId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return $row['nickname'] ?? "Conta #{$this->accountId}";
     }
-    
+
     /**
      * Formata duração
      */
@@ -820,20 +818,20 @@ class CloneSlackDiscordNotificationService
         if ($seconds < 60) {
             return "{$seconds}s";
         }
-        
+
         $minutes = floor($seconds / 60);
         $secs = $seconds % 60;
-        
+
         if ($minutes < 60) {
             return "{$minutes}m {$secs}s";
         }
-        
+
         $hours = floor($minutes / 60);
         $mins = $minutes % 60;
-        
+
         return "{$hours}h {$mins}m";
     }
-    
+
     /**
      * Calcula velocidade de processamento
      */
@@ -842,12 +840,12 @@ class CloneSlackDiscordNotificationService
         if ($seconds <= 0) {
             return 'N/A';
         }
-        
+
         $itemsPerMinute = round(($items / $seconds) * 60, 1);
-        
+
         return "{$itemsPerMinute} items/min";
     }
-    
+
     /**
      * Mascara URL do webhook
      */
@@ -855,14 +853,14 @@ class CloneSlackDiscordNotificationService
     {
         $parsed = parse_url($url);
         $path = $parsed['path'] ?? '';
-        
+
         if (strlen($path) > 20) {
             $path = substr($path, 0, 10) . '...' . substr($path, -6);
         }
-        
+
         return ($parsed['scheme'] ?? 'https') . '://' . ($parsed['host'] ?? 'unknown') . $path;
     }
-    
+
     /**
      * Payload de teste para Slack
      */
@@ -882,7 +880,7 @@ class CloneSlackDiscordNotificationService
             ],
         ];
     }
-    
+
     /**
      * Payload de teste para Discord
      */

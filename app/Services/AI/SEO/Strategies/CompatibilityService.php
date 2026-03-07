@@ -8,13 +8,13 @@ use App\Services\MercadoLivreClient;
 
 /**
  * 🚗 E10: Compatibility Service
- * 
+ *
  * Gerencia compatibilidade expandida de produtos:
  * - Detecção automática de veículos/modelos compatíveis
  * - Expansão de compatibilidade via ML API
  * - Geração de atributos COMPATIBLE_MODELS
  * - Matching inteligente por especificações
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class CompatibilityService
@@ -93,7 +93,7 @@ class CompatibilityService
 
         try {
             $item = $this->client->get("/items/{$itemId}");
-            
+
             $currentCompatibility = $this->extractCurrentCompatibility($item);
             $suggestedExpansion = $this->suggestExpansion($currentCompatibility);
             $missingAttributes = $this->detectMissingAttributes($item);
@@ -127,26 +127,26 @@ class CompatibilityService
             if (empty($model) || !is_string($model)) {
                 continue;
             }
-            
+
             $modelLower = mb_strtolower($model);
-            
+
             // Detectar marca
             $brand = $this->detectBrand($modelLower);
-            
+
             if ($brand) {
                 // Buscar modelos relacionados
                 $related = $this->findRelatedModels($brand, $modelLower);
-                
+
                 foreach ($related as $relatedModel) {
                     // Garantir que relatedModel é string
                     if (is_array($relatedModel)) {
                         $relatedModel = $relatedModel['model'] ?? $relatedModel['value'] ?? '';
                     }
                     if (empty($relatedModel)) continue;
-                    
+
                     $key = mb_strtolower($relatedModel);
                     // Extrair strings de currentModels para comparação
-                    $currentModelStrings = array_map(function($m) {
+                    $currentModelStrings = array_map(function ($m) {
                         return is_array($m) ? ($m['model'] ?? $m['value'] ?? '') : $m;
                     }, $currentModels);
                     if (!in_array($key, array_map('mb_strtolower', array_filter($currentModelStrings)))) {
@@ -168,14 +168,16 @@ class CompatibilityService
                         $familyModel = $familyModel['model'] ?? $familyModel['value'] ?? '';
                     }
                     if (empty($familyModel)) continue;
-                    
+
                     $key = mb_strtolower($familyModel);
-                    $addedModelStrings = array_filter(array_map(function($m) {
+                    $addedModelStrings = array_filter(array_map(function ($m) {
                         return is_array($m) ? ($m['model'] ?? $m['value'] ?? '') : $m;
                     }, $addedModels));
-                    
-                    if (!in_array($key, array_map('mb_strtolower', array_filter($currentModelStrings))) &&
-                        !in_array($key, array_map('mb_strtolower', $addedModelStrings))) {
+
+                    if (
+                        !in_array($key, array_map('mb_strtolower', array_filter($currentModelStrings))) &&
+                        !in_array($key, array_map('mb_strtolower', $addedModelStrings))
+                    ) {
                         $expanded[] = [
                             'model' => $familyModel,
                             'brand' => $brand,
@@ -209,7 +211,7 @@ class CompatibilityService
         try {
             // Buscar atributos da categoria
             $attributes = $this->client->get("/categories/{$categoryId}/attributes");
-            
+
             foreach ($attributes as $attr) {
                 if (in_array($attr['id'], self::COMPATIBILITY_ATTRIBUTES)) {
                     // Se tiver valores pré-definidos
@@ -238,7 +240,6 @@ class CompatibilityService
             }
 
             $compatibility['from_similar_items'] = array_unique($fromItems);
-
         } catch (\Exception $e) {
             $compatibility['error'] = $e->getMessage();
         }
@@ -256,7 +257,7 @@ class CompatibilityService
     {
         // Agrupar por marca
         $byBrand = [];
-        
+
         foreach ($models as $model) {
             // Tratar modelo que pode ser array
             if (is_array($model)) {
@@ -265,10 +266,10 @@ class CompatibilityService
             if (empty($model) || !is_string($model)) {
                 continue;
             }
-            
+
             $brand = $this->detectBrand(mb_strtolower($model));
             if (!$brand) $brand = 'outros';
-            
+
             if (!isset($byBrand[$brand])) {
                 $byBrand[$brand] = [];
             }
@@ -287,7 +288,7 @@ class CompatibilityService
         }
 
         // Gerar texto para campo
-        $modelStrings = array_map(function($m) {
+        $modelStrings = array_map(function ($m) {
             return is_array($m) ? ($m['model'] ?? $m['value'] ?? '') : $m;
         }, $models);
         $textValue = implode(', ', array_filter($modelStrings));
@@ -316,25 +317,37 @@ class CompatibilityService
 
         // Lógica de compatibilidade por especificações
         // (Exemplo simplificado - em produção seria mais complexo)
-        
+
         // Baús pequenos (até 30L) - compatíveis com scooters e motos leves
         if ($capacity && $this->parseCapacity($capacity) <= 30) {
             $suggestions = array_merge($suggestions, [
-                'pcx 150', 'nmax 160', 'elite 125', 'pop 110', 'lead 110'
+                'pcx 150',
+                'nmax 160',
+                'elite 125',
+                'pop 110',
+                'lead 110'
             ]);
         }
-        
+
         // Baús médios (31-45L) - compatíveis com maioria das motos
         if ($capacity && $this->parseCapacity($capacity) > 30 && $this->parseCapacity($capacity) <= 45) {
             $suggestions = array_merge($suggestions, [
-                'cg 160', 'fazer 250', 'bros 160', 'factor 150', 'gsr 150'
+                'cg 160',
+                'fazer 250',
+                'bros 160',
+                'factor 150',
+                'gsr 150'
             ]);
         }
 
         // Baús grandes (46L+) - compatíveis com motos maiores
         if ($capacity && $this->parseCapacity($capacity) > 45) {
             $suggestions = array_merge($suggestions, [
-                'xre 300', 'cb 500', 'v-strom 650', 'lander 250', 'g310 gs'
+                'xre 300',
+                'cb 500',
+                'v-strom 650',
+                'lander 250',
+                'g310 gs'
             ]);
         }
 
@@ -365,7 +378,7 @@ class CompatibilityService
             if (empty($model) || !is_string($model)) {
                 continue;
             }
-            
+
             $modelLower = mb_strtolower($model);
             $brand = $this->detectBrand($modelLower);
 
@@ -616,13 +629,13 @@ class CompatibilityService
         $hasFromAttr = !empty($current['from_attributes']);
 
         $score = 0;
-        
+
         // Pontuação por modelos
         $score += min(30, $modelCount * 5);
-        
+
         // Pontuação por marcas
         $score += min(20, $brandCount * 5);
-        
+
         // Bônus por fonte
         if ($hasFromTitle) $score += 15;
         if ($hasFromAttr) $score += 25;
@@ -674,13 +687,13 @@ class CompatibilityService
     private function getSpecsReasoning(array $specs): string
     {
         $capacity = $specs['capacity'] ?? null;
-        
+
         if (!$capacity) {
             return 'Sem capacidade especificada - sugerindo compatibilidade universal';
         }
 
         $liters = $this->parseCapacity($capacity);
-        
+
         if ($liters <= 30) {
             return "Capacidade pequena ({$liters}L) - ideal para scooters e motos urbanas";
         }
