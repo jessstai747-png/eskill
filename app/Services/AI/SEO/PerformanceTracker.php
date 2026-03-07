@@ -401,8 +401,8 @@ class PerformanceTracker
             return ['direction' => 'stable', 'change' => 0];
         }
 
-        $firstHalf = array_slice($metrics, 0, floor(count($metrics) / 2));
-        $secondHalf = array_slice($metrics, floor(count($metrics) / 2));
+        $firstHalf = array_slice($metrics, 0, (int) floor(count($metrics) / 2));
+        $secondHalf = array_slice($metrics, (int) floor(count($metrics) / 2));
 
         $avgFirst = count($firstHalf) ? array_sum(array_column($firstHalf, 'views')) / count($firstHalf) : 0;
         $avgSecond = count($secondHalf) ? array_sum(array_column($secondHalf, 'views')) / count($secondHalf) : 0;

@@ -1789,7 +1789,7 @@ class DeepResearchService
         if ($count === 0) return 0;
 
         sort($values);
-        $middle = floor($count / 2);
+        $middle = (int) floor($count / 2);
 
         return $count % 2 === 0
             ? ($values[$middle - 1] + $values[$middle]) / 2
@@ -1802,8 +1802,8 @@ class DeepResearchService
 
         sort($values);
         $index = ($percentile / 100) * (count($values) - 1);
-        $lower = floor($index);
-        $upper = ceil($index);
+        $lower = (int) floor($index);
+        $upper = (int) ceil($index);
 
         return $lower === $upper
             ? $values[$lower]

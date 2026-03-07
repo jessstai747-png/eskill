@@ -370,8 +370,8 @@ class CompetitorAnalysisService
         $max = max($prices);
         $avg = array_sum($prices) / $count;
         $median = $count % 2 === 0 
-            ? ($prices[$count / 2 - 1] + $prices[$count / 2]) / 2
-            : $prices[floor($count / 2)];
+            ? ($prices[(int) ($count / 2) - 1] + $prices[(int) ($count / 2)]) / 2
+            : $prices[(int) floor($count / 2)];
         
         // Calculate our position
         $position = 'average';

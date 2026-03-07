@@ -266,8 +266,8 @@ class RealMarketDataService
                 'max' => max($prices),
                 'avg' => round(array_sum($prices) / $count, 2),
                 'median' => $count % 2 === 0
-                    ? ($prices[$count / 2 - 1] + $prices[$count / 2]) / 2
-                    : $prices[floor($count / 2)],
+                    ? ($prices[(int) ($count / 2) - 1] + $prices[(int) ($count / 2)]) / 2
+                    : $prices[(int) floor($count / 2)],
                 'p10' => $prices[(int)floor($count * 0.1)] ?? $prices[0],
                 'p25' => $prices[(int)floor($count * 0.25)] ?? $prices[0],
                 'p75' => $prices[(int)floor($count * 0.75)] ?? end($prices),
@@ -292,7 +292,7 @@ class RealMarketDataService
     {
         $recommendations = [];
         $avg = array_sum($prices) / count($prices);
-        $median = $prices[floor(count($prices) / 2)];
+        $median = $prices[(int) floor(count($prices) / 2)];
 
         // Recomendação de preço competitivo
         $recommendations['competitive_price'] = [
