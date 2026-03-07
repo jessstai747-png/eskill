@@ -859,7 +859,7 @@ class AIRecommendationEngineService
         $trends = [];
         foreach ($items as $item) {
             $trends[] = [
-                'type' => substr($item['title'], 0, 30) . '...',
+                'type' => mb_substr($item['title'], 0, 30) . '...',
                 'strength' => ($item['sold_quantity'] ?? 0) > 50 ? 'high' : 'medium',
                 'growth_rate' => null,
                 'saturation' => 'unknown',

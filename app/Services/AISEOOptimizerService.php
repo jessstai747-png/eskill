@@ -693,8 +693,8 @@ class AISEOOptimizerService
         $optimizedTitle = implode(' ', $titleParts);
         
         // Limitar a 60 caracteres
-        if (strlen($optimizedTitle) > 60) {
-            $optimizedTitle = substr($optimizedTitle, 0, 57) . '...';
+        if (mb_strlen($optimizedTitle) > 60) {
+            $optimizedTitle = mb_substr($optimizedTitle, 0, 57) . '...';
         }
 
         $expectedImprovement = $this->estimateTitleImprovement(

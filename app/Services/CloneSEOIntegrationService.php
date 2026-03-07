@@ -201,16 +201,16 @@ class CloneSEOIntegrationService
      */
     private function truncateTitle(string $title, int $maxLength): string
     {
-        if (strlen($title) <= $maxLength) {
+        if (mb_strlen($title) <= $maxLength) {
             return $title;
         }
 
         // Tentar cortar em espaço
-        $truncated = substr($title, 0, $maxLength);
-        $lastSpace = strrpos($truncated, ' ');
+        $truncated = mb_substr($title, 0, $maxLength);
+        $lastSpace = mb_strrpos($truncated, ' ');
 
         if ($lastSpace > $maxLength * 0.7) {
-            $truncated = substr($truncated, 0, $lastSpace);
+            $truncated = mb_substr($truncated, 0, $lastSpace);
         }
 
         return trim($truncated);

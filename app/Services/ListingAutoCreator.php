@@ -151,7 +151,7 @@ class ListingAutoCreator
             }
 
             $listingPayload = [
-                'title' => substr($draft['title'], 0, 60), // ML limite de 60 chars
+                'title' => mb_substr($draft['title'], 0, 60), // ML limite de 60 chars
                 'category_id' => $draft['category_id'],
                 'price' => (float)$draft['suggested_price'],
                 'currency_id' => 'BRL',

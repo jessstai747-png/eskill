@@ -382,7 +382,7 @@ class PdfExporter
 
         foreach ($data['competitors'] as $comp) {
             $html .= '<tr>
-                <td>' . htmlspecialchars(substr($comp['title'] ?? '', 0, 50)) . '...</td>
+                <td>' . htmlspecialchars(mb_substr($comp['title'] ?? '', 0, 50)) . '...</td>
                 <td>R$ ' . number_format($comp['price'] ?? 0, 2, ',', '.') . '</td>
                 <td>' . ($comp['sold_quantity'] ?? 0) . '</td>
                 <td>' . ($comp['seo_score'] ?? 0) . '/100</td>

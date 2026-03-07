@@ -446,7 +446,7 @@ class TitleAnalyzerService
         $seoFactors = [];
 
         // Keywords no início (primeiros 20 caracteres)
-        $firstPart = substr($title, 0, 20);
+        $firstPart = mb_substr($title, 0, 20);
         if (preg_match('/[A-Z][a-z]+/', $firstPart)) {
             $seoScore += 15;
             $seoFactors[] = 'Marca no início (+15)';

@@ -244,13 +244,13 @@ class BulkEditorController extends BaseController
 
                 case 'update_title_prefix':
                     $newTitle = $value . ' ' . $item['title'];
-                    $updateData['title'] = substr($newTitle, 0, 60); // Limite ML
+                    $updateData['title'] = mb_substr($newTitle, 0, 60); // Limite ML
                     $localUpdate['title'] = $updateData['title'];
                     break;
 
                 case 'update_title_suffix':
                     $newTitle = $item['title'] . ' ' . $value;
-                    $updateData['title'] = substr($newTitle, 0, 60);
+                    $updateData['title'] = mb_substr($newTitle, 0, 60);
                     $localUpdate['title'] = $updateData['title'];
                     break;
             }
@@ -370,7 +370,7 @@ class BulkEditorController extends BaseController
                 $change = $this->calculateChange($item, $action, $value);
                 $preview[] = [
                     'item_id' => $item['ml_item_id'],
-                    'title' => substr($item['title'], 0, 50),
+                    'title' => mb_substr($item['title'], 0, 50),
                     'current' => $change['current'],
                     'new' => $change['new'],
                     'field' => $change['field']
