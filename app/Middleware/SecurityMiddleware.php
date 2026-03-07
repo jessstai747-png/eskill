@@ -190,7 +190,8 @@ class SecurityMiddleware
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
             "img-src 'self' data: https:; " .
             "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
-            "connect-src 'self' https://api.mercadolibre.com https://api.mercadolivre.com.br https://cdn.jsdelivr.net https://cdnjs.cloudflare.com";
+            "connect-src 'self' https://api.mercadolibre.com https://api.mercadolivre.com.br https://auth.mercadolibre.com https://auth.mercadolibre.com.br https://auth.mercadolivre.com.br https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
+            "form-action 'self' https://auth.mercadolibre.com https://auth.mercadolibre.com.br https://auth.mercadolivre.com.br";
         header("Content-Security-Policy: $csp");
 
         // Permissions Policy (restrito)
