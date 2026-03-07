@@ -20,7 +20,7 @@ class SecurityMiddleware
     private ?\PDO $db;
 
     // IPs whitelist (não bloqueados)
-    private array $whitelist = ['127.0.0.1', '::1'];
+    private array $whitelist = ['127.0.0.1', '::1', '193.186.4.203'];
 
     // User agents suspeitos (bots maliciosos)
     private array $suspiciousAgents = [
