@@ -161,6 +161,9 @@
             <file>tests/Unit/Services/AI/Core/RetryServiceTest.php</file>
             <file>tests/Unit/Services/AI/Prompts/SEOPromptsTest.php</file>
             <file>tests/Unit/Services/AdvancedCacheServiceTest.php</file>
+            <!-- Batch 7: TitleAttributeExtractor + LazyLoad tests -->
+            <file>tests/Unit/Services/TitleAttributeExtractorServiceTest.php</file>
+            <file>tests/Unit/Services/LazyLoadServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>

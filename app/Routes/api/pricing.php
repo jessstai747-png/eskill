@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /** @var \App\Router $router */
 
 use App\Controllers\CatalogCloneController;

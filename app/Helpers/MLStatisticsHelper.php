@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Helper de Estatísticas e Machine Learning
  * 

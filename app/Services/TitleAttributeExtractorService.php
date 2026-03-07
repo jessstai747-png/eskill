@@ -866,8 +866,8 @@ class TitleAttributeExtractorService
         
         // Normalização parcial
         foreach ($this->normalizations as $key => $normalized) {
-            if (str_contains($valueLower, $key)) {
-                return str_ireplace($key, $normalized, $value);
+            if (str_contains($valueLower, (string) $key)) {
+                return str_ireplace((string) $key, $normalized, $value);
             }
         }
         

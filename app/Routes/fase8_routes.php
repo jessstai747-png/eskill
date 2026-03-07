@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Rotas da Fase 8 - Dashboard, Reports, SEO e Progress Tracking
  * 
