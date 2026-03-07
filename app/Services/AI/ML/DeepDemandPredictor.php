@@ -405,28 +405,29 @@ class DeepDemandPredictor
     private function getZScoreForServiceLevel(float $serviceLevel): float
     {
         // Common service levels and their Z-scores
+        // Note: float array keys are truncated to int in PHP, so use tuples
         $zScores = [
-            0.80 => 0.84,
-            0.85 => 1.04,
-            0.90 => 1.28,
-            0.95 => 1.65,
-            0.97 => 1.88,
-            0.99 => 2.33,
+            [0.80, 0.84],
+            [0.85, 1.04],
+            [0.90, 1.28],
+            [0.95, 1.65],
+            [0.97, 1.88],
+            [0.99, 2.33],
         ];
 
         // Find closest match
-        $closest = 0.95;
+        $closestZ = 1.65; // default: 0.95 service level
         $minDiff = PHP_FLOAT_MAX;
 
-        foreach ($zScores as $level => $z) {
+        foreach ($zScores as [$level, $z]) {
             $diff = abs($level - $serviceLevel);
             if ($diff < $minDiff) {
                 $minDiff = $diff;
-                $closest = $level;
+                $closestZ = $z;
             }
         }
 
-        return $zScores[$closest];
+        return $closestZ;
     }
 
     /**

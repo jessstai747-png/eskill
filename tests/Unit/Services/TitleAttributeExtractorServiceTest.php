@@ -267,8 +267,8 @@ class TitleAttributeExtractorServiceTest extends TestCase
         $this->assertNotEmpty($models);
         $values = array_map(fn($r) => mb_strtolower($r['value']), array_values($models));
         $this->assertTrue(
-            in_array('cg 160', $values) || in_array('cg160', $values) || 
-            count(array_filter($values, fn($v) => str_contains($v, 'cg'))) > 0,
+            in_array('cg 160', $values) || in_array('cg160', $values) ||
+                count(array_filter($values, fn($v) => str_contains($v, 'cg'))) > 0,
             'CG 160 should be detected'
         );
     }

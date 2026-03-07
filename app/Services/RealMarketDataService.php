@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * RealMarketDataService - Serviço para dados reais de mercado do Mercado Livre
- * 
+ *
  * Integra com APIs públicas e autenticadas do ML para:
  * - Análise de concorrentes
  * - Preços de mercado
@@ -25,7 +25,7 @@ class RealMarketDataService
     private CacheService $cache;
 
     private const CACHE_TTL_SHORT = 300;      // 5 minutos
-    private const CACHE_TTL_MEDIUM = 1800;    // 30 minutos  
+    private const CACHE_TTL_MEDIUM = 1800;    // 30 minutos
     private const CACHE_TTL_LONG = 86400;     // 24 horas
 
     public function __construct(?int $accountId = null)
@@ -864,7 +864,7 @@ class RealMarketDataService
     private function getItemFromLocalDb(string $itemId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 ml_item_id as id,
                 title,
                 category_id,
@@ -872,7 +872,7 @@ class RealMarketDataService
                 available_quantity,
                 status,
                 data
-            FROM items 
+            FROM items
             WHERE ml_item_id = :item_id
         ");
         $stmt->execute(['item_id' => $itemId]);
@@ -1189,7 +1189,7 @@ class RealMarketDataService
             'similar_products' => array_slice($similar['products'], 0, 5),
         ];
     }
-    
+
     // =========================================================================
     // AUTOCOMPLETE & SEARCH HELPERS
     // =========================================================================
@@ -1249,7 +1249,7 @@ class RealMarketDataService
 
         // Total de itens
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total_items,
                 COUNT(CASE WHEN status = 'active' THEN 1 END) as active_items,
                 AVG(price) as avg_price,
@@ -1257,7 +1257,7 @@ class RealMarketDataService
                 MAX(price) as max_price,
                 COUNT(DISTINCT category_id) as categories,
                 SUM(available_quantity) as total_stock
-            FROM items 
+            FROM items
             WHERE account_id = :account_id {$categoryCondition}
         ");
         $stmt->execute($params);
@@ -1265,12 +1265,12 @@ class RealMarketDataService
 
         // Top categorias
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 category_id,
                 category_name,
                 COUNT(*) as items_count,
                 AVG(price) as avg_price
-            FROM items 
+            FROM items
             WHERE account_id = :account_id {$categoryCondition}
             GROUP BY category_id, category_name
             ORDER BY items_count DESC

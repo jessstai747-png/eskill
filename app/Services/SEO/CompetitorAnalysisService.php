@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -10,7 +11,7 @@ use Exception;
 
 /**
  * Competitor Analysis Service
- * 
+ *
  * Discovers and analyzes top competitors for benchmarking and pattern detection
  */
 class CompetitorAnalysisService
@@ -18,26 +19,26 @@ class CompetitorAnalysisService
     private \PDO $db;
     private MercadoLivreClient $mlClient;
     private CacheService $cache;
-    
+
     // Default number of competitors to analyze
     private const DEFAULT_COMPETITOR_COUNT = 20;
-    
+
     // Cache TTL for competitor data (6 hours)
     private const CACHE_TTL = 21600;
-    
+
     // Price range tolerance (±30%)
     private const PRICE_TOLERANCE = 0.30;
-    
+
     public function __construct(?int $accountId = null)
     {
         $this->db = Database::getInstance();
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->cache = new CacheService();
     }
-    
+
     /**
      * Discover and analyze competitors for an item
-     * 
+     *
      * @param string $itemId ML item ID
      * @param int $limit Number of competitors to find
      * @param bool $forceRefresh Force new discovery
@@ -52,29 +53,29 @@ class CompetitorAnalysisService
                 return $cached;
             }
         }
-        
+
         // Get our item data
         $item = $this->mlClient->getItem($itemId);
-        
+
         if (!$item) {
             throw new Exception("Item not found: {$itemId}");
         }
-        
+
         // Discover competitors
         $competitors = $this->discoverCompetitors($item, $limit);
-        
+
         // Analyze patterns
         $analysis = $this->analyzePatterns($item, $competitors);
-        
+
         // Save to database
         $this->saveCompetitors($itemId, $competitors);
-        
+
         return $analysis;
     }
-    
+
     /**
      * Discover competitors using ML search API
-     * 
+     *
      * @param array $item Our item data
      * @param int $limit Max competitors to find
      * @return array List of competitor items
@@ -84,14 +85,14 @@ class CompetitorAnalysisService
         $categoryId = $item['category_id'] ?? '';
         $price = $item['price'] ?? 0;
         $condition = $item['condition'] ?? 'new';
-        
+
         if (empty($categoryId)) {
             return [];
         }
-        
+
         // Build search query
         $searchQuery = $this->buildSearchQuery($item);
-        
+
         // Search in same category
         try {
             $searchResults = $this->mlClient->get('/sites/MLB/search', [
@@ -101,40 +102,39 @@ class CompetitorAnalysisService
                 'limit' => $limit * 2, // Get more to filter
                 'sort' => 'relevance',
             ]);
-            
+
             $results = $searchResults['results'] ?? [];
-            
         } catch (Exception $e) {
             log_error('Falha na busca de concorrentes', [
                 'error' => $e->getMessage(),
             ]);
             return [];
         }
-        
+
         // Filter and rank competitors
         $competitors = [];
         $ourItemId = $item['id'];
-        
+
         foreach ($results as $result) {
             // Skip our own item
             if ($result['id'] === $ourItemId) {
                 continue;
             }
-            
+
             // Filter by price range (±30%)
             $competitorPrice = $result['price'] ?? 0;
             if ($price > 0) {
                 $minPrice = $price * (1 - self::PRICE_TOLERANCE);
                 $maxPrice = $price * (1 + self::PRICE_TOLERANCE);
-                
+
                 if ($competitorPrice < $minPrice || $competitorPrice > $maxPrice) {
                     continue;
                 }
             }
-            
+
             // Calculate relevance score
             $relevanceScore = $this->calculateRelevance($item, $result);
-            
+
             // Get full item data for top candidates
             if (count($competitors) < $limit) {
                 try {
@@ -149,46 +149,46 @@ class CompetitorAnalysisService
                 }
             }
         }
-        
+
         // Sort by relevance
-        usort($competitors, function($a, $b) {
+        usort($competitors, function ($a, $b) {
             return ($b['relevance_score'] ?? 0) <=> ($a['relevance_score'] ?? 0);
         });
-        
+
         return array_slice($competitors, 0, $limit);
     }
-    
+
     /**
      * Build search query from item data
-     * 
+     *
      * @param array $item Item data
      * @return string Search query
      */
     private function buildSearchQuery(array $item): string
     {
         $title = $item['title'] ?? '';
-        
+
         // Extract key terms (remove common words)
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'em', 'o', 'a', 'e', 'ou'];
         $words = explode(' ', strtolower($title));
         $keywords = [];
-        
+
         foreach ($words as $word) {
             $word = trim($word);
             if (strlen($word) > 3 && !in_array($word, $stopWords)) {
                 $keywords[] = $word;
             }
         }
-        
+
         // Use first 3-5 keywords
         $keywords = array_slice($keywords, 0, 5);
-        
+
         return implode(' ', $keywords);
     }
-    
+
     /**
      * Calculate relevance score between our item and competitor
-     * 
+     *
      * @param array $ourItem Our item
      * @param array $competitor Competitor item
      * @return float Relevance score (0-100)
@@ -196,17 +196,17 @@ class CompetitorAnalysisService
     private function calculateRelevance(array $ourItem, array $competitor): float
     {
         $score = 0;
-        
+
         // Same category: +30 points
         if (($ourItem['category_id'] ?? '') === ($competitor['category_id'] ?? '')) {
             $score += 30;
         }
-        
+
         // Same condition: +20 points
         if (($ourItem['condition'] ?? '') === ($competitor['condition'] ?? '')) {
             $score += 20;
         }
-        
+
         // Similar price: +20 points
         $ourPrice = $ourItem['price'] ?? 0;
         $compPrice = $competitor['price'] ?? 0;
@@ -214,20 +214,20 @@ class CompetitorAnalysisService
             $priceDiff = abs($ourPrice - $compPrice) / $ourPrice;
             $score += (1 - $priceDiff) * 20;
         }
-        
+
         // Title similarity: +30 points
         $titleSimilarity = $this->calculateTitleSimilarity(
             $ourItem['title'] ?? '',
             $competitor['title'] ?? ''
         );
         $score += $titleSimilarity * 30;
-        
+
         return round($score, 2);
     }
-    
+
     /**
      * Calculate title similarity using word overlap
-     * 
+     *
      * @param string $title1
      * @param string $title2
      * @return float Similarity (0-1)
@@ -236,20 +236,20 @@ class CompetitorAnalysisService
     {
         $words1 = array_unique(explode(' ', strtolower($title1)));
         $words2 = array_unique(explode(' ', strtolower($title2)));
-        
+
         $intersection = array_intersect($words1, $words2);
         $union = array_unique(array_merge($words1, $words2));
-        
+
         if (count($union) === 0) {
             return 0;
         }
-        
+
         return count($intersection) / count($union);
     }
-    
+
     /**
      * Analyze patterns from competitors
-     * 
+     *
      * @param array $item Our item
      * @param array $competitors List of competitors
      * @return array Analysis results
@@ -266,7 +266,7 @@ class CompetitorAnalysisService
                 'competitors' => [],
             ];
         }
-        
+
         return [
             'competitor_count' => count($competitors),
             'attribute_patterns' => $this->analyzeAttributePatterns($competitors),
@@ -277,10 +277,10 @@ class CompetitorAnalysisService
             'competitors' => $this->formatCompetitors($competitors),
         ];
     }
-    
+
     /**
      * Analyze attribute frequency patterns
-     * 
+     *
      * @param array $competitors
      * @return array Attribute patterns
      */
@@ -288,19 +288,19 @@ class CompetitorAnalysisService
     {
         $attributeFrequency = [];
         $totalCompetitors = count($competitors);
-        
+
         foreach ($competitors as $competitor) {
             $attributes = $competitor['attributes'] ?? [];
-            
+
             foreach ($attributes as $attr) {
                 $attrId = $attr['id'] ?? '';
                 $attrName = $attr['name'] ?? '';
                 $attrValue = $attr['value_name'] ?? $attr['value_id'] ?? '';
-                
+
                 if (empty($attrId)) {
                     continue;
                 }
-                
+
                 // Initialize if first time
                 if (!isset($attributeFrequency[$attrId])) {
                     $attributeFrequency[$attrId] = [
@@ -311,9 +311,9 @@ class CompetitorAnalysisService
                         'values' => [],
                     ];
                 }
-                
+
                 $attributeFrequency[$attrId]['count']++;
-                
+
                 // Track value distribution
                 if (!empty($attrValue)) {
                     if (!isset($attributeFrequency[$attrId]['values'][$attrValue])) {
@@ -323,26 +323,26 @@ class CompetitorAnalysisService
                 }
             }
         }
-        
+
         // Calculate frequencies
         foreach ($attributeFrequency as $attrId => &$data) {
             $data['frequency'] = round(($data['count'] / $totalCompetitors) * 100);
-            
+
             // Sort values by frequency
             arsort($data['values']);
         }
-        
+
         // Sort by frequency
-        usort($attributeFrequency, function($a, $b) {
+        usort($attributeFrequency, function ($a, $b) {
             return $b['frequency'] <=> $a['frequency'];
         });
-        
+
         return $attributeFrequency;
     }
-    
+
     /**
      * Analyze pricing strategies
-     * 
+     *
      * @param array $item Our item
      * @param array $competitors
      * @return array Pricing analysis
@@ -351,28 +351,28 @@ class CompetitorAnalysisService
     {
         $prices = [];
         $ourPrice = $item['price'] ?? 0;
-        
+
         foreach ($competitors as $competitor) {
             $price = $competitor['price'] ?? 0;
             if ($price > 0) {
                 $prices[] = $price;
             }
         }
-        
+
         if (empty($prices)) {
             return [];
         }
-        
+
         sort($prices);
-        
+
         $count = count($prices);
         $min = min($prices);
         $max = max($prices);
         $avg = array_sum($prices) / $count;
-        $median = $count % 2 === 0 
+        $median = $count % 2 === 0
             ? ($prices[(int) ($count / 2) - 1] + $prices[(int) ($count / 2)]) / 2
             : $prices[(int) floor($count / 2)];
-        
+
         // Calculate our position
         $position = 'average';
         if ($ourPrice > 0) {
@@ -382,7 +382,7 @@ class CompetitorAnalysisService
                 $position = 'above_market';
             }
         }
-        
+
         return [
             'min' => $min,
             'max' => $max,
@@ -393,7 +393,7 @@ class CompetitorAnalysisService
             'percentile' => $this->calculatePercentile($ourPrice, $prices),
         ];
     }
-    
+
     /**
      * Calculate percentile position
      */
@@ -402,36 +402,36 @@ class CompetitorAnalysisService
         if (empty($sortedValues) || $value <= 0) {
             return 50;
         }
-        
+
         $count = count($sortedValues);
         $below = 0;
-        
+
         foreach ($sortedValues as $v) {
             if ($v < $value) {
                 $below++;
             }
         }
-        
+
         return (int) round(($below / $count) * 100);
     }
-    
+
     /**
      * Analyze image strategies
      */
     private function analyzeImages(array $competitors): array
     {
         $imageCounts = [];
-        
+
         foreach ($competitors as $competitor) {
             $pictures = $competitor['pictures'] ?? [];
             $count = count($pictures);
             $imageCounts[] = $count;
         }
-        
+
         if (empty($imageCounts)) {
             return [];
         }
-        
+
         return [
             'min' => min($imageCounts),
             'max' => max($imageCounts),
@@ -439,7 +439,7 @@ class CompetitorAnalysisService
             'recommended' => max($imageCounts), // Use the max as recommendation
         ];
     }
-    
+
     /**
      * Analyze title patterns
      */
@@ -447,11 +447,11 @@ class CompetitorAnalysisService
     {
         $lengths = [];
         $commonWords = [];
-        
+
         foreach ($competitors as $competitor) {
             $title = $competitor['title'] ?? '';
             $lengths[] = mb_strlen($title);
-            
+
             // Extract words
             $words = explode(' ', strtolower($title));
             foreach ($words as $word) {
@@ -464,11 +464,11 @@ class CompetitorAnalysisService
                 }
             }
         }
-        
+
         // Sort common words
         arsort($commonWords);
         $topWords = array_slice($commonWords, 0, 10, true);
-        
+
         return [
             'min_length' => min($lengths),
             'max_length' => max($lengths),
@@ -476,7 +476,7 @@ class CompetitorAnalysisService
             'common_keywords' => array_keys($topWords),
         ];
     }
-    
+
     /**
      * Analyze shipping strategies
      */
@@ -484,27 +484,27 @@ class CompetitorAnalysisService
     {
         $freeShippingCount = 0;
         $total = count($competitors);
-        
+
         foreach ($competitors as $competitor) {
             $shipping = $competitor['shipping'] ?? [];
             if ($shipping['free_shipping'] ?? false) {
                 $freeShippingCount++;
             }
         }
-        
+
         return [
             'free_shipping_percentage' => round(($freeShippingCount / $total) * 100),
             'recommendation' => $freeShippingCount > ($total / 2) ? 'enable_free_shipping' : 'optional',
         ];
     }
-    
+
     /**
      * Format competitors for response
      */
     private function formatCompetitors(array $competitors): array
     {
         $formatted = [];
-        
+
         foreach ($competitors as $competitor) {
             $formatted[] = [
                 'id' => $competitor['id'],
@@ -523,25 +523,25 @@ class CompetitorAnalysisService
                 'relevance_score' => $competitor['relevance_score'] ?? 0,
             ];
         }
-        
+
         return $formatted;
     }
-    
+
     /**
      * Save competitors to database
      */
     private function saveCompetitors(string $itemId, array $competitors): void
     {
         $accountId = $this->mlClient->getAccountId();
-        
+
         // Mark existing competitors as inactive
         $stmt = $this->db->prepare(
-            "UPDATE seo_competitors 
-             SET is_active = FALSE 
+            "UPDATE seo_competitors
+             SET is_active = FALSE
              WHERE item_id = :item_id"
         );
         $stmt->execute(['item_id' => $itemId]);
-        
+
         // Insert new competitors
         $stmtInsert = $this->db->prepare(
             "INSERT INTO seo_competitors (
@@ -573,7 +573,7 @@ class CompetitorAnalysisService
 
         foreach ($competitors as $competitor) {
             $shipping = $competitor['shipping'] ?? [];
-            
+
             $stmtInsert->execute([
                 'item_id' => $itemId,
                 'competitor_item_id' => $competitor['id'],
@@ -593,7 +593,7 @@ class CompetitorAnalysisService
             ]);
         }
     }
-    
+
     /**
      * Get cached competitor analysis
      */
@@ -602,20 +602,20 @@ class CompetitorAnalysisService
         $cacheKey = "competitor_analysis_{$itemId}";
         return $this->cache->get($cacheKey);
     }
-    
+
     /**
      * Get competitors from database
      */
     public function getStoredCompetitors(string $itemId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT * FROM seo_competitors 
-             WHERE item_id = :item_id 
+            "SELECT * FROM seo_competitors
+             WHERE item_id = :item_id
              AND is_active = TRUE
              ORDER BY relevance_score DESC"
         );
         $stmt->execute(['item_id' => $itemId]);
-        
+
         return $stmt->fetchAll();
     }
 }

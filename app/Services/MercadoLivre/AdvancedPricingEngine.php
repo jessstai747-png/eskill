@@ -1500,10 +1500,15 @@ class AdvancedPricingEngine
     private function calculatePsychologicalFactor(float $price): float
     {
         $dec = round($price - floor($price), 2);
-        $map = [0.99 => 0.9, 0.95 => 0.8, 0.90 => 0.7, 0.00 => 0.5];
-        foreach ($map as $ending => $score) {
-            if (abs($dec - $ending) < 0.02) return $score;
-        }
+        // Note: float array keys are truncated to int in PHP, so use match()
+        $score = match (true) {
+            abs($dec - 0.99) < 0.02 => 0.9,
+            abs($dec - 0.95) < 0.02 => 0.8,
+            abs($dec - 0.90) < 0.02 => 0.7,
+            abs($dec - 0.00) < 0.02 => 0.5,
+            default => null,
+        };
+        if ($score !== null) return $score;
         return ($price % 100 >= 95) ? 0.3 : 0.1;
     }
 
@@ -1653,8 +1658,16 @@ class AdvancedPricingEngine
         $score = 0.0;
         $dec = round($candidatePrice - floor($candidatePrice), 2);
 
-        $charm = [0.99 => 3.0, 0.95 => 2.5, 0.90 => 2.0, 0.87 => 1.5, 0.85 => 1.5];
-        if (isset($charm[$dec])) $score += $charm[$dec];
+        // Note: float array keys are truncated to int in PHP, so use match()
+        $charmScore = match (true) {
+            abs($dec - 0.99) < 0.005 => 3.0,
+            abs($dec - 0.95) < 0.005 => 2.5,
+            abs($dec - 0.90) < 0.005 => 2.0,
+            abs($dec - 0.87) < 0.005 => 1.5,
+            abs($dec - 0.85) < 0.005 => 1.5,
+            default => 0.0,
+        };
+        $score += $charmScore;
 
         if (floor($candidatePrice) < floor($currentPrice)) $score += 2.0;
 

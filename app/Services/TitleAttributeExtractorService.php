@@ -6,12 +6,12 @@ namespace App\Services;
 
 /**
  * 🔍 Title Attribute Extractor Service
- * 
+ *
  * Extrai atributos de produtos a partir do título usando:
  * - Regex patterns
  * - Dicionários de marcas/modelos
  * - Normalização de valores
- * 
+ *
  * @version 1.0.0
  */
 class TitleAttributeExtractorService
@@ -31,319 +31,1432 @@ class TitleAttributeExtractorService
         // =====================================================
         'electronics' => [
             // Smartphones & Tablets
-            'Samsung', 'Apple', 'Motorola', 'Xiaomi', 'Huawei', 'OnePlus', 'Oppo',
-            'Realme', 'Vivo', 'Nokia', 'Google', 'Honor', 'Poco', 'Redmi', 'Nothing',
-            'ZTE', 'TCL', 'Alcatel', 'Positivo', 'Multilaser', 'LG', 'HTC', 'BlackBerry',
-            'Meizu', 'Infinix', 'Tecno', 'Itel', 'Umidigi', 'Doogee', 'Ulefone', 'Cubot',
-            'Oukitel', 'Blackview', 'AGM', 'CAT', 'Lenovo',
+            'Samsung',
+            'Apple',
+            'Motorola',
+            'Xiaomi',
+            'Huawei',
+            'OnePlus',
+            'Oppo',
+            'Realme',
+            'Vivo',
+            'Nokia',
+            'Google',
+            'Honor',
+            'Poco',
+            'Redmi',
+            'Nothing',
+            'ZTE',
+            'TCL',
+            'Alcatel',
+            'Positivo',
+            'Multilaser',
+            'LG',
+            'HTC',
+            'BlackBerry',
+            'Meizu',
+            'Infinix',
+            'Tecno',
+            'Itel',
+            'Umidigi',
+            'Doogee',
+            'Ulefone',
+            'Cubot',
+            'Oukitel',
+            'Blackview',
+            'AGM',
+            'CAT',
+            'Lenovo',
             // Áudio & Fones
-            'JBL', 'Bose', 'Sennheiser', 'Sony', 'Audio-Technica', 'Beyerdynamic', 'AKG',
-            'Shure', 'Skullcandy', 'Beats', 'Jabra', 'Plantronics', 'Bang & Olufsen', 'B&O',
-            'Marshall', 'Harman Kardon', 'Edifier', 'Creative', 'Anker', 'Soundcore',
-            'QCY', 'Haylou', 'KZ', 'Moondrop', 'FiiO', 'Topping', 'SMSL', 'Tribit',
-            'Earfun', 'SoundPeats', 'Liberty', 'Baseus', 'Tranya', 'MPOW', 'TaoTronics',
-            'Aukey', 'Bluedio', '1More', 'Focal', 'Grado', 'Meze', 'HiFiMan', 'Audeze',
+            'JBL',
+            'Bose',
+            'Sennheiser',
+            'Sony',
+            'Audio-Technica',
+            'Beyerdynamic',
+            'AKG',
+            'Shure',
+            'Skullcandy',
+            'Beats',
+            'Jabra',
+            'Plantronics',
+            'Bang & Olufsen',
+            'B&O',
+            'Marshall',
+            'Harman Kardon',
+            'Edifier',
+            'Creative',
+            'Anker',
+            'Soundcore',
+            'QCY',
+            'Haylou',
+            'KZ',
+            'Moondrop',
+            'FiiO',
+            'Topping',
+            'SMSL',
+            'Tribit',
+            'Earfun',
+            'SoundPeats',
+            'Liberty',
+            'Baseus',
+            'Tranya',
+            'MPOW',
+            'TaoTronics',
+            'Aukey',
+            'Bluedio',
+            '1More',
+            'Focal',
+            'Grado',
+            'Meze',
+            'HiFiMan',
+            'Audeze',
             // TVs & Monitores
-            'LG', 'Samsung', 'Sony', 'TCL', 'Philips', 'AOC', 'Philco', 'Panasonic',
-            'Hisense', 'Toshiba', 'Sharp', 'Semp', 'Multilaser', 'BenQ', 'ViewSonic',
-            'Dell', 'HP', 'Asus', 'Acer', 'Gigabyte', 'MSI', 'LG UltraGear', 'Alienware',
-            'PRISM+', 'Eve', 'Xiaomi Mi', 'Redmi', 'OnePlus', 'Realme',
+            'LG',
+            'Samsung',
+            'Sony',
+            'TCL',
+            'Philips',
+            'AOC',
+            'Philco',
+            'Panasonic',
+            'Hisense',
+            'Toshiba',
+            'Sharp',
+            'Semp',
+            'Multilaser',
+            'BenQ',
+            'ViewSonic',
+            'Dell',
+            'HP',
+            'Asus',
+            'Acer',
+            'Gigabyte',
+            'MSI',
+            'LG UltraGear',
+            'Alienware',
+            'PRISM+',
+            'Eve',
+            'Xiaomi Mi',
+            'Redmi',
+            'OnePlus',
+            'Realme',
             // Câmeras & Foto
-            'Canon', 'Nikon', 'Sony', 'Fujifilm', 'Panasonic', 'Olympus', 'Pentax',
-            'Leica', 'Hasselblad', 'Phase One', 'GoPro', 'DJI', 'Insta360', 'Ricoh',
-            'Kodak', 'Polaroid', 'Instax', 'Sigma', 'Tamron', 'Tokina', 'Samyang',
-            'Viltrox', 'Godox', 'Yongnuo', 'Neewer', 'Manfrotto', 'Joby', 'Peak Design',
+            'Canon',
+            'Nikon',
+            'Sony',
+            'Fujifilm',
+            'Panasonic',
+            'Olympus',
+            'Pentax',
+            'Leica',
+            'Hasselblad',
+            'Phase One',
+            'GoPro',
+            'DJI',
+            'Insta360',
+            'Ricoh',
+            'Kodak',
+            'Polaroid',
+            'Instax',
+            'Sigma',
+            'Tamron',
+            'Tokina',
+            'Samyang',
+            'Viltrox',
+            'Godox',
+            'Yongnuo',
+            'Neewer',
+            'Manfrotto',
+            'Joby',
+            'Peak Design',
             // Periféricos Gaming
-            'Logitech', 'Razer', 'Corsair', 'HyperX', 'SteelSeries', 'ASUS ROG',
-            'MSI', 'Gigabyte Aorus', 'Cooler Master', 'Thermaltake', 'NZXT',
-            'Glorious', 'Ducky', 'Keychron', 'Anne Pro', 'Akko', 'Leopold', 'Varmilo',
-            'Drop', 'GMMK', 'Redragon', 'T-Dagger', 'Havit', 'Fantech', 'Marvo',
-            'Trust', 'Genesis', 'Sharkoon', 'Roccat', 'MadCatz', 'Turtle Beach',
-            'Astro', 'EPOS', 'Fnatic', 'Xtrfy', 'Pulsar', 'Zowie', 'Endgame Gear',
+            'Logitech',
+            'Razer',
+            'Corsair',
+            'HyperX',
+            'SteelSeries',
+            'ASUS ROG',
+            'MSI',
+            'Gigabyte Aorus',
+            'Cooler Master',
+            'Thermaltake',
+            'NZXT',
+            'Glorious',
+            'Ducky',
+            'Keychron',
+            'Anne Pro',
+            'Akko',
+            'Leopold',
+            'Varmilo',
+            'Drop',
+            'GMMK',
+            'Redragon',
+            'T-Dagger',
+            'Havit',
+            'Fantech',
+            'Marvo',
+            'Trust',
+            'Genesis',
+            'Sharkoon',
+            'Roccat',
+            'MadCatz',
+            'Turtle Beach',
+            'Astro',
+            'EPOS',
+            'Fnatic',
+            'Xtrfy',
+            'Pulsar',
+            'Zowie',
+            'Endgame Gear',
             // Consoles & Gaming
-            'Sony PlayStation', 'Microsoft Xbox', 'Nintendo', '8BitDo', 'Hori',
-            'PowerA', 'SCUF', 'Nacon', 'Thrustmaster', 'Fanatec', 'Logitech G',
+            'Sony PlayStation',
+            'Microsoft Xbox',
+            'Nintendo',
+            '8BitDo',
+            'Hori',
+            'PowerA',
+            'SCUF',
+            'Nacon',
+            'Thrustmaster',
+            'Fanatec',
+            'Logitech G',
             // Wearables & Smartwatch
-            'Apple Watch', 'Samsung Galaxy Watch', 'Garmin', 'Fitbit', 'Amazfit',
-            'Huawei Watch', 'Xiaomi Mi Band', 'Withings', 'Polar', 'Suunto',
-            'Coros', 'Mobvoi', 'Fossil', 'TicWatch', 'Zepp', 'Realme Band',
+            'Apple Watch',
+            'Samsung Galaxy Watch',
+            'Garmin',
+            'Fitbit',
+            'Amazfit',
+            'Huawei Watch',
+            'Xiaomi Mi Band',
+            'Withings',
+            'Polar',
+            'Suunto',
+            'Coros',
+            'Mobvoi',
+            'Fossil',
+            'TicWatch',
+            'Zepp',
+            'Realme Band',
             // Smart Home
-            'Google Nest', 'Amazon Echo', 'Ring', 'Arlo', 'Wyze', 'Eufy', 'TP-Link',
-            'Tapo', 'Philips Hue', 'LIFX', 'Nanoleaf', 'Govee', 'Yeelight', 'Sonoff',
-            'Tuya', 'Shelly', 'Aqara', 'SmartThings', 'Honeywell', 'Ecobee', 'Nest',
+            'Google Nest',
+            'Amazon Echo',
+            'Ring',
+            'Arlo',
+            'Wyze',
+            'Eufy',
+            'TP-Link',
+            'Tapo',
+            'Philips Hue',
+            'LIFX',
+            'Nanoleaf',
+            'Govee',
+            'Yeelight',
+            'Sonoff',
+            'Tuya',
+            'Shelly',
+            'Aqara',
+            'SmartThings',
+            'Honeywell',
+            'Ecobee',
+            'Nest',
         ],
-        
+
         // =====================================================
         // ELETRODOMÉSTICOS (150+ marcas)
         // =====================================================
         'appliances' => [
             // Linha Branca
-            'Electrolux', 'Brastemp', 'Consul', 'LG', 'Samsung', 'Panasonic', 'Midea',
-            'Philco', 'Britânia', 'Mondial', 'Continental', 'GE', 'Bosch', 'Siemens',
-            'Whirlpool', 'Miele', 'Gorenje', 'Liebherr', 'Sub-Zero', 'Viking', 'KitchenAid',
-            'Frigidaire', 'Maytag', 'Amana', 'Dako', 'Mueller', 'Suggar', 'Atlas',
-            'Esmaltec', 'Venax', 'Geladeira', 'Freezer', 'Lava-Louças',
+            'Electrolux',
+            'Brastemp',
+            'Consul',
+            'LG',
+            'Samsung',
+            'Panasonic',
+            'Midea',
+            'Philco',
+            'Britânia',
+            'Mondial',
+            'Continental',
+            'GE',
+            'Bosch',
+            'Siemens',
+            'Whirlpool',
+            'Miele',
+            'Gorenje',
+            'Liebherr',
+            'Sub-Zero',
+            'Viking',
+            'KitchenAid',
+            'Frigidaire',
+            'Maytag',
+            'Amana',
+            'Dako',
+            'Mueller',
+            'Suggar',
+            'Atlas',
+            'Esmaltec',
+            'Venax',
+            'Geladeira',
+            'Freezer',
+            'Lava-Louças',
             // Pequenos Eletrodomésticos
-            'Arno', 'Oster', 'Cadence', 'Philips', 'Black+Decker', 'Cuisinart',
-            'Ninja', 'Nutribullet', 'Vitamix', 'Blendtec', 'Magic Bullet', 'Hamilton Beach',
-            'Krups', 'DeLonghi', 'Nespresso', 'Dolce Gusto', 'Cafeteira', 'Três Corações',
-            'Tramontina', 'Rochedo', 'Brinox', 'Coza', 'Oxford', 'Nadir Figueiredo',
+            'Arno',
+            'Oster',
+            'Cadence',
+            'Philips',
+            'Black+Decker',
+            'Cuisinart',
+            'Ninja',
+            'Nutribullet',
+            'Vitamix',
+            'Blendtec',
+            'Magic Bullet',
+            'Hamilton Beach',
+            'Krups',
+            'DeLonghi',
+            'Nespresso',
+            'Dolce Gusto',
+            'Cafeteira',
+            'Três Corações',
+            'Tramontina',
+            'Rochedo',
+            'Brinox',
+            'Coza',
+            'Oxford',
+            'Nadir Figueiredo',
             // Limpeza & Aspiradores
-            'Electrolux', 'Dyson', 'Shark', 'Bissell', 'Hoover', 'Wap', 'Karcher',
-            'Philco', 'Britânia', 'Mondial', 'Midea', 'Rowenta', 'Polti', 'Vax',
-            'Roborock', 'iRobot', 'Roomba', 'Ecovacs', 'Deebot', 'Xiaomi', 'Dreame',
+            'Electrolux',
+            'Dyson',
+            'Shark',
+            'Bissell',
+            'Hoover',
+            'Wap',
+            'Karcher',
+            'Philco',
+            'Britânia',
+            'Mondial',
+            'Midea',
+            'Rowenta',
+            'Polti',
+            'Vax',
+            'Roborock',
+            'iRobot',
+            'Roomba',
+            'Ecovacs',
+            'Deebot',
+            'Xiaomi',
+            'Dreame',
             // Climatização
-            'Consul', 'Midea', 'LG', 'Samsung', 'Carrier', 'Springer', 'Daikin',
-            'Fujitsu', 'Hitachi', 'Gree', 'Elgin', 'Komeco', 'Philco', 'Britânia',
-            'Ventisol', 'Arno', 'Mondial', 'Cadence', 'Mallory', 'Wap',
+            'Consul',
+            'Midea',
+            'LG',
+            'Samsung',
+            'Carrier',
+            'Springer',
+            'Daikin',
+            'Fujitsu',
+            'Hitachi',
+            'Gree',
+            'Elgin',
+            'Komeco',
+            'Philco',
+            'Britânia',
+            'Ventisol',
+            'Arno',
+            'Mondial',
+            'Cadence',
+            'Mallory',
+            'Wap',
             // Eletroportáteis
-            'Philips', 'Remington', 'Babyliss', 'Conair', 'GA.MA', 'Taiff', 'Mondial',
-            'Philco', 'Cadence', 'Britânia', 'Lizz', 'MQ', 'Mega', 'Kiss NY', 'Vertix',
-            'Wahl', 'Panasonic', 'Braun', 'Andis', 'Oster',
+            'Philips',
+            'Remington',
+            'Babyliss',
+            'Conair',
+            'GA.MA',
+            'Taiff',
+            'Mondial',
+            'Philco',
+            'Cadence',
+            'Britânia',
+            'Lizz',
+            'MQ',
+            'Mega',
+            'Kiss NY',
+            'Vertix',
+            'Wahl',
+            'Panasonic',
+            'Braun',
+            'Andis',
+            'Oster',
         ],
-        
+
         // =====================================================
         // MODA (200+ marcas)
         // =====================================================
         'fashion' => [
             // Esportivo
-            'Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Asics', 'Mizuno',
-            'Under Armour', 'Olympikus', 'Fila', 'Kappa', 'Diadora', 'Umbro', 'Lotto',
-            'Skechers', 'Converse', 'Vans', 'Champion', 'Jordan', 'Yeezy', 'Brooks',
-            'Saucony', 'Hoka', 'On Running', 'Salomon', 'Merrell', 'Columbia', 'The North Face',
-            'Patagonia', 'Arc\'teryx', 'Mammut', 'Oakley', 'Speedo', 'Arena', 'TYR',
+            'Nike',
+            'Adidas',
+            'Puma',
+            'Reebok',
+            'New Balance',
+            'Asics',
+            'Mizuno',
+            'Under Armour',
+            'Olympikus',
+            'Fila',
+            'Kappa',
+            'Diadora',
+            'Umbro',
+            'Lotto',
+            'Skechers',
+            'Converse',
+            'Vans',
+            'Champion',
+            'Jordan',
+            'Yeezy',
+            'Brooks',
+            'Saucony',
+            'Hoka',
+            'On Running',
+            'Salomon',
+            'Merrell',
+            'Columbia',
+            'The North Face',
+            'Patagonia',
+            'Arc\'teryx',
+            'Mammut',
+            'Oakley',
+            'Speedo',
+            'Arena',
+            'TYR',
             // Casual Premium
-            'Lacoste', 'Tommy Hilfiger', 'Calvin Klein', 'Ralph Lauren', 'Polo',
-            'Hugo Boss', 'Armani', 'Emporio Armani', 'Diesel', 'Guess', 'Levi\'s',
-            'GAP', 'Banana Republic', 'Abercrombie', 'Hollister', 'American Eagle',
-            'Timberland', 'Dockers', 'Nautica', 'GANT', 'Izod', 'US Polo', 'Wrangler',
-            'Lee', 'Carhartt', 'Dickies', 'Ben Sherman', 'Fred Perry', 'Superdry',
+            'Lacoste',
+            'Tommy Hilfiger',
+            'Calvin Klein',
+            'Ralph Lauren',
+            'Polo',
+            'Hugo Boss',
+            'Armani',
+            'Emporio Armani',
+            'Diesel',
+            'Guess',
+            'Levi\'s',
+            'GAP',
+            'Banana Republic',
+            'Abercrombie',
+            'Hollister',
+            'American Eagle',
+            'Timberland',
+            'Dockers',
+            'Nautica',
+            'GANT',
+            'Izod',
+            'US Polo',
+            'Wrangler',
+            'Lee',
+            'Carhartt',
+            'Dickies',
+            'Ben Sherman',
+            'Fred Perry',
+            'Superdry',
             // Fast Fashion Brasil
-            'Hering', 'Reserva', 'Colcci', 'Zara', 'H&M', 'C&A', 'Renner', 'Riachuelo',
-            'Marisa', 'Lojas Americanas', 'Leader', 'Torra', 'Besni', 'Pernambucanas',
-            'Malwee', 'Lunender', 'Morena Rosa', 'John John', 'Farm', 'Animale',
-            'Le Lis Blanc', 'Bo.Bô', 'Shoulder', 'Maria Filó', 'Ateen', 'A.Brand',
-            'Zinzane', 'Cantão', 'Dzarm', 'Triton', 'Forum', 'Tufi Duek', 'Ellus',
+            'Hering',
+            'Reserva',
+            'Colcci',
+            'Zara',
+            'H&M',
+            'C&A',
+            'Renner',
+            'Riachuelo',
+            'Marisa',
+            'Lojas Americanas',
+            'Leader',
+            'Torra',
+            'Besni',
+            'Pernambucanas',
+            'Malwee',
+            'Lunender',
+            'Morena Rosa',
+            'John John',
+            'Farm',
+            'Animale',
+            'Le Lis Blanc',
+            'Bo.Bô',
+            'Shoulder',
+            'Maria Filó',
+            'Ateen',
+            'A.Brand',
+            'Zinzane',
+            'Cantão',
+            'Dzarm',
+            'Triton',
+            'Forum',
+            'Tufi Duek',
+            'Ellus',
             // Calçados
-            'Arezzo', 'Schutz', 'Santa Lolla', 'Vizzano', 'Via Marte', 'Ramarim',
-            'Dakota', 'Beira Rio', 'Piccadilly', 'Usaflex', 'Moleca', 'Modare',
-            'Ferracini', 'Democrata', 'Samello', 'West Coast', 'Pegada', 'Free Way',
-            'Opananken', 'Kildare', 'Vulcabras', 'Havaianas', 'Ipanema', 'Grendene',
-            'Rider', 'Cartago', 'Kenner', 'Crocs', 'Birkenstock', 'Dr. Martens',
+            'Arezzo',
+            'Schutz',
+            'Santa Lolla',
+            'Vizzano',
+            'Via Marte',
+            'Ramarim',
+            'Dakota',
+            'Beira Rio',
+            'Piccadilly',
+            'Usaflex',
+            'Moleca',
+            'Modare',
+            'Ferracini',
+            'Democrata',
+            'Samello',
+            'West Coast',
+            'Pegada',
+            'Free Way',
+            'Opananken',
+            'Kildare',
+            'Vulcabras',
+            'Havaianas',
+            'Ipanema',
+            'Grendene',
+            'Rider',
+            'Cartago',
+            'Kenner',
+            'Crocs',
+            'Birkenstock',
+            'Dr. Martens',
             // Luxo
-            'Louis Vuitton', 'Gucci', 'Prada', 'Chanel', 'Dior', 'Versace', 'Dolce & Gabbana',
-            'Burberry', 'Balenciaga', 'Givenchy', 'Saint Laurent', 'YSL', 'Bottega Veneta',
-            'Fendi', 'Valentino', 'Alexander McQueen', 'Off-White', 'Moncler', 'Stone Island',
+            'Louis Vuitton',
+            'Gucci',
+            'Prada',
+            'Chanel',
+            'Dior',
+            'Versace',
+            'Dolce & Gabbana',
+            'Burberry',
+            'Balenciaga',
+            'Givenchy',
+            'Saint Laurent',
+            'YSL',
+            'Bottega Veneta',
+            'Fendi',
+            'Valentino',
+            'Alexander McQueen',
+            'Off-White',
+            'Moncler',
+            'Stone Island',
             // Infantil
-            'Tip Top', 'Brandili', 'Kyly', 'Alakazoo', 'Lilica Ripilica', 'Tigor',
-            'PUC', 'Green', 'Milon', 'Mundi', 'Colorittá', 'Marisol',
+            'Tip Top',
+            'Brandili',
+            'Kyly',
+            'Alakazoo',
+            'Lilica Ripilica',
+            'Tigor',
+            'PUC',
+            'Green',
+            'Milon',
+            'Mundi',
+            'Colorittá',
+            'Marisol',
         ],
-        
+
         // =====================================================
         // INFORMÁTICA (150+ marcas)
         // =====================================================
         'computers' => [
             // Processadores
-            'Intel', 'AMD', 'Qualcomm', 'MediaTek', 'ARM',
+            'Intel',
+            'AMD',
+            'Qualcomm',
+            'MediaTek',
+            'ARM',
             // Placas de Vídeo
-            'Nvidia', 'AMD Radeon', 'EVGA', 'Gigabyte', 'Asus', 'MSI', 'Zotac',
-            'Galax', 'PNY', 'Palit', 'Gainward', 'Inno3D', 'PowerColor', 'XFX',
-            'Sapphire', 'ASRock', 'Colorful', 'KFA2',
+            'Nvidia',
+            'AMD Radeon',
+            'EVGA',
+            'Gigabyte',
+            'Asus',
+            'MSI',
+            'Zotac',
+            'Galax',
+            'PNY',
+            'Palit',
+            'Gainward',
+            'Inno3D',
+            'PowerColor',
+            'XFX',
+            'Sapphire',
+            'ASRock',
+            'Colorful',
+            'KFA2',
             // Placas-mãe
-            'Asus', 'MSI', 'Gigabyte', 'ASRock', 'EVGA', 'Biostar', 'NZXT',
-            'Colorful', 'Supermicro', 'Intel', 'Foxconn',
+            'Asus',
+            'MSI',
+            'Gigabyte',
+            'ASRock',
+            'EVGA',
+            'Biostar',
+            'NZXT',
+            'Colorful',
+            'Supermicro',
+            'Intel',
+            'Foxconn',
             // Memória RAM
-            'Corsair', 'Kingston', 'Crucial', 'G.Skill', 'Team', 'Patriot',
-            'Adata', 'HyperX', 'Mushkin', 'PNY', 'GeIL', 'XPG', 'Asgard',
-            'Lexar', 'Silicon Power', 'V-Color', 'OLOy', 'Neo Forza', 'Klevv',
+            'Corsair',
+            'Kingston',
+            'Crucial',
+            'G.Skill',
+            'Team',
+            'Patriot',
+            'Adata',
+            'HyperX',
+            'Mushkin',
+            'PNY',
+            'GeIL',
+            'XPG',
+            'Asgard',
+            'Lexar',
+            'Silicon Power',
+            'V-Color',
+            'OLOy',
+            'Neo Forza',
+            'Klevv',
             // Armazenamento
-            'WD', 'Western Digital', 'Seagate', 'Samsung', 'Toshiba', 'HGST', 'Hitachi',
-            'Kingston', 'Crucial', 'SanDisk', 'Adata', 'Corsair', 'Sabrent', 'Inland',
-            'SK Hynix', 'Micron', 'Intel Optane', 'Phison', 'Silicon Motion',
-            'Lexar', 'PNY', 'Team', 'XPG', 'Patriot', 'Mushkin', 'Plextor',
+            'WD',
+            'Western Digital',
+            'Seagate',
+            'Samsung',
+            'Toshiba',
+            'HGST',
+            'Hitachi',
+            'Kingston',
+            'Crucial',
+            'SanDisk',
+            'Adata',
+            'Corsair',
+            'Sabrent',
+            'Inland',
+            'SK Hynix',
+            'Micron',
+            'Intel Optane',
+            'Phison',
+            'Silicon Motion',
+            'Lexar',
+            'PNY',
+            'Team',
+            'XPG',
+            'Patriot',
+            'Mushkin',
+            'Plextor',
             // Gabinetes & Fontes
-            'Corsair', 'NZXT', 'Cooler Master', 'Thermaltake', 'Be Quiet', 'Fractal Design',
-            'Lian Li', 'Phanteks', 'EVGA', 'Seasonic', 'Super Flower', 'FSP', 'XPG',
-            'Silverstone', 'In Win', 'Cougar', 'Antec', 'Deepcool', 'Redragon',
-            'Aerocool', 'Gamemax', 'Montech', 'Gamdias', 'Segotep', 'Sama',
+            'Corsair',
+            'NZXT',
+            'Cooler Master',
+            'Thermaltake',
+            'Be Quiet',
+            'Fractal Design',
+            'Lian Li',
+            'Phanteks',
+            'EVGA',
+            'Seasonic',
+            'Super Flower',
+            'FSP',
+            'XPG',
+            'Silverstone',
+            'In Win',
+            'Cougar',
+            'Antec',
+            'Deepcool',
+            'Redragon',
+            'Aerocool',
+            'Gamemax',
+            'Montech',
+            'Gamdias',
+            'Segotep',
+            'Sama',
             // Refrigeração
-            'Noctua', 'Be Quiet', 'Cooler Master', 'Corsair', 'NZXT', 'Deepcool',
-            'Arctic', 'Scythe', 'Thermalright', 'ID-Cooling', 'Cryorig', 'Thermaltake',
-            'EKWB', 'Alphacool', 'Aquacomputer', 'Bitspower', 'Barrow', 'Bykski',
+            'Noctua',
+            'Be Quiet',
+            'Cooler Master',
+            'Corsair',
+            'NZXT',
+            'Deepcool',
+            'Arctic',
+            'Scythe',
+            'Thermalright',
+            'ID-Cooling',
+            'Cryorig',
+            'Thermaltake',
+            'EKWB',
+            'Alphacool',
+            'Aquacomputer',
+            'Bitspower',
+            'Barrow',
+            'Bykski',
             // Notebooks & PCs
-            'Dell', 'HP', 'Lenovo', 'Acer', 'Asus', 'MSI', 'Apple', 'Microsoft Surface',
-            'Razer', 'Alienware', 'Samsung', 'LG', 'Huawei', 'Xiaomi', 'Positivo',
-            'Vaio', 'Toshiba', 'Avell', 'Multilaser', 'Compaq', 'Gateway', 'eMachines',
+            'Dell',
+            'HP',
+            'Lenovo',
+            'Acer',
+            'Asus',
+            'MSI',
+            'Apple',
+            'Microsoft Surface',
+            'Razer',
+            'Alienware',
+            'Samsung',
+            'LG',
+            'Huawei',
+            'Xiaomi',
+            'Positivo',
+            'Vaio',
+            'Toshiba',
+            'Avell',
+            'Multilaser',
+            'Compaq',
+            'Gateway',
+            'eMachines',
             // Redes & Conectividade
-            'TP-Link', 'Netgear', 'Asus', 'D-Link', 'Linksys', 'Ubiquiti', 'UniFi',
-            'MikroTik', 'Cisco', 'Aruba', 'Ruckus', 'Intelbras', 'Multilaser', 'Mercusys',
-            'Tenda', 'Xiaomi Mi', 'Google Nest', 'Eero', 'Orbi', 'AmpliFi',
+            'TP-Link',
+            'Netgear',
+            'Asus',
+            'D-Link',
+            'Linksys',
+            'Ubiquiti',
+            'UniFi',
+            'MikroTik',
+            'Cisco',
+            'Aruba',
+            'Ruckus',
+            'Intelbras',
+            'Multilaser',
+            'Mercusys',
+            'Tenda',
+            'Xiaomi Mi',
+            'Google Nest',
+            'Eero',
+            'Orbi',
+            'AmpliFi',
         ],
-        
+
         // =====================================================
         // AUTOMOTIVO (100+ marcas)
         // =====================================================
         'automotive' => [
             // Peças & Componentes
-            'Bosch', 'NGK', 'Denso', 'Valeo', 'Magneti Marelli', 'Delphi', 'ACDelco',
-            'Continental', 'ZF', 'Schaeffler', 'INA', 'FAG', 'SKF', 'NTN', 'Timken',
-            'TRW', 'Monroe', 'Sachs', 'KYB', 'Cofap', 'Nakata', 'Axios', 'Perfect',
-            'Genuíno', 'Original', 'Wega', 'Mahle', 'Metal Leve', 'Varga', 'Fras-le',
-            'Cobreq', 'Jurid', 'Fremax', 'Hipper Freios', 'SYL', 'Urba', 'Gates',
-            'Dayco', 'Goodyear', 'Continental', 'SKF', 'INA', 'Ruville', 'Febi',
+            'Bosch',
+            'NGK',
+            'Denso',
+            'Valeo',
+            'Magneti Marelli',
+            'Delphi',
+            'ACDelco',
+            'Continental',
+            'ZF',
+            'Schaeffler',
+            'INA',
+            'FAG',
+            'SKF',
+            'NTN',
+            'Timken',
+            'TRW',
+            'Monroe',
+            'Sachs',
+            'KYB',
+            'Cofap',
+            'Nakata',
+            'Axios',
+            'Perfect',
+            'Genuíno',
+            'Original',
+            'Wega',
+            'Mahle',
+            'Metal Leve',
+            'Varga',
+            'Fras-le',
+            'Cobreq',
+            'Jurid',
+            'Fremax',
+            'Hipper Freios',
+            'SYL',
+            'Urba',
+            'Gates',
+            'Dayco',
+            'Goodyear',
+            'Continental',
+            'SKF',
+            'INA',
+            'Ruville',
+            'Febi',
             // Pneus
-            'Bridgestone', 'Pirelli', 'Michelin', 'Goodyear', 'Continental', 'Firestone',
-            'Dunlop', 'Yokohama', 'Hankook', 'Kumho', 'Nexen', 'Toyo', 'Falken',
-            'BFGoodrich', 'Cooper', 'General Tire', 'Nankang', 'Achilles', 'Ling Long',
-            'Westlake', 'Triangle', 'Sailun', 'GT Radial', 'Federal', 'Maxxis',
+            'Bridgestone',
+            'Pirelli',
+            'Michelin',
+            'Goodyear',
+            'Continental',
+            'Firestone',
+            'Dunlop',
+            'Yokohama',
+            'Hankook',
+            'Kumho',
+            'Nexen',
+            'Toyo',
+            'Falken',
+            'BFGoodrich',
+            'Cooper',
+            'General Tire',
+            'Nankang',
+            'Achilles',
+            'Ling Long',
+            'Westlake',
+            'Triangle',
+            'Sailun',
+            'GT Radial',
+            'Federal',
+            'Maxxis',
             // Lubrificantes & Fluidos
-            'Mobil', 'Shell', 'Castrol', 'Petronas', 'Liqui Moly', 'Motul', 'Valvoline',
-            'Elf', 'Total', 'Gulf', 'Pennzoil', 'Quaker State', 'Royal Purple', 'AMSOIL',
-            'Bardahl', 'Ipiranga', 'Lubrax', 'Texaco', 'Havoline', 'Selênia', 'Tutela',
+            'Mobil',
+            'Shell',
+            'Castrol',
+            'Petronas',
+            'Liqui Moly',
+            'Motul',
+            'Valvoline',
+            'Elf',
+            'Total',
+            'Gulf',
+            'Pennzoil',
+            'Quaker State',
+            'Royal Purple',
+            'AMSOIL',
+            'Bardahl',
+            'Ipiranga',
+            'Lubrax',
+            'Texaco',
+            'Havoline',
+            'Selênia',
+            'Tutela',
             // Som & Acessórios
-            'Pioneer', 'JBL', 'Sony', 'Kenwood', 'Alpine', 'JVC', 'Blaupunkt',
-            'Clarion', 'Boss', 'Taramps', 'Stetsom', 'Banda', 'Soundigital',
-            'Roadstar', 'Multilaser', 'Positron', 'H-Tech', 'Hertz', 'Focal',
+            'Pioneer',
+            'JBL',
+            'Sony',
+            'Kenwood',
+            'Alpine',
+            'JVC',
+            'Blaupunkt',
+            'Clarion',
+            'Boss',
+            'Taramps',
+            'Stetsom',
+            'Banda',
+            'Soundigital',
+            'Roadstar',
+            'Multilaser',
+            'Positron',
+            'H-Tech',
+            'Hertz',
+            'Focal',
             // Iluminação
-            'Philips', 'Osram', 'GE', 'Hella', 'Bosch', 'Wagner', 'Sylvania',
-            'Narva', 'H7', 'H4', 'H1', 'Xenon', 'LED', 'HID', 'Eagle Eyes',
+            'Philips',
+            'Osram',
+            'GE',
+            'Hella',
+            'Bosch',
+            'Wagner',
+            'Sylvania',
+            'Narva',
+            'H7',
+            'H4',
+            'H1',
+            'Xenon',
+            'LED',
+            'HID',
+            'Eagle Eyes',
             // Montadoras (para peças compatíveis)
-            'Volkswagen', 'VW', 'Fiat', 'Chevrolet', 'GM', 'Ford', 'Toyota', 'Honda',
-            'Hyundai', 'Kia', 'Nissan', 'Renault', 'Peugeot', 'Citroën', 'Jeep',
-            'Mercedes', 'BMW', 'Audi', 'Volvo', 'Land Rover', 'Mitsubishi', 'Suzuki',
+            'Volkswagen',
+            'VW',
+            'Fiat',
+            'Chevrolet',
+            'GM',
+            'Ford',
+            'Toyota',
+            'Honda',
+            'Hyundai',
+            'Kia',
+            'Nissan',
+            'Renault',
+            'Peugeot',
+            'Citroën',
+            'Jeep',
+            'Mercedes',
+            'BMW',
+            'Audi',
+            'Volvo',
+            'Land Rover',
+            'Mitsubishi',
+            'Suzuki',
         ],
-        
+
         // =====================================================
         // MOTOS - NOVA CATEGORIA (200+ marcas)
         // =====================================================
         'motos' => [
             // Montadoras de Motos
-            'Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'Dafra', 'Shineray', 'Haojue',
-            'Kasinski', 'BMW Motorrad', 'Triumph', 'Ducati', 'Harley-Davidson', 'Harley',
-            'KTM', 'Royal Enfield', 'Indian', 'Aprilia', 'MV Agusta', 'Benelli',
-            'Moto Guzzi', 'Husqvarna', 'CFMoto', 'SYM', 'Kymco', 'Piaggio', 'Vespa',
-            'Beta', 'GasGas', 'TM Racing', 'Husaberg', 'Sherco', 'Rieju', 'Derbi',
+            'Honda',
+            'Yamaha',
+            'Suzuki',
+            'Kawasaki',
+            'Dafra',
+            'Shineray',
+            'Haojue',
+            'Kasinski',
+            'BMW Motorrad',
+            'Triumph',
+            'Ducati',
+            'Harley-Davidson',
+            'Harley',
+            'KTM',
+            'Royal Enfield',
+            'Indian',
+            'Aprilia',
+            'MV Agusta',
+            'Benelli',
+            'Moto Guzzi',
+            'Husqvarna',
+            'CFMoto',
+            'SYM',
+            'Kymco',
+            'Piaggio',
+            'Vespa',
+            'Beta',
+            'GasGas',
+            'TM Racing',
+            'Husaberg',
+            'Sherco',
+            'Rieju',
+            'Derbi',
             // Capacetes
-            'AGV', 'Shoei', 'Arai', 'Bell', 'HJC', 'Shark', 'Nolan', 'X-Lite',
-            'Schuberth', 'LS2', 'MT Helmets', 'Airoh', 'Scorpion', 'Icon', 'Simpson',
-            'Biltwell', 'Ruroc', 'Caberg', 'Origine', 'Premier', 'Suomy', 'Vemar',
-            'Givi', 'Helt', 'Pro Tork', 'Norisk', 'Taurus', 'EBF', 'Kraft',
-            'Bieffe', 'Fly', 'San Marino', 'New', 'Mixs', 'Peels', 'Axxis',
-            'Texx', 'Nasa', 'Liberty', 'Lucca', 'ASX', 'Motociclista', 'Fechado',
+            'AGV',
+            'Shoei',
+            'Arai',
+            'Bell',
+            'HJC',
+            'Shark',
+            'Nolan',
+            'X-Lite',
+            'Schuberth',
+            'LS2',
+            'MT Helmets',
+            'Airoh',
+            'Scorpion',
+            'Icon',
+            'Simpson',
+            'Biltwell',
+            'Ruroc',
+            'Caberg',
+            'Origine',
+            'Premier',
+            'Suomy',
+            'Vemar',
+            'Givi',
+            'Helt',
+            'Pro Tork',
+            'Norisk',
+            'Taurus',
+            'EBF',
+            'Kraft',
+            'Bieffe',
+            'Fly',
+            'San Marino',
+            'New',
+            'Mixs',
+            'Peels',
+            'Axxis',
+            'Texx',
+            'Nasa',
+            'Liberty',
+            'Lucca',
+            'ASX',
+            'Motociclista',
+            'Fechado',
             // Jaquetas & Vestimentas
-            'Alpinestars', 'Dainese', 'Rev\'it', 'Spidi', 'Held', 'Rukka', 'Klim',
-            'Shoei', 'RST', 'Oxford', 'Richa', 'Bering', 'Furygan', 'Ixon',
-            'Segura', 'Modeka', 'Büse', 'Stadler', 'IXS', 'Macna', 'Seventy Degrees',
-            'Texx', 'X11', 'Claw', 'Forza', 'Riffel', 'Tutto Moto', 'Pantaneiro',
+            'Alpinestars',
+            'Dainese',
+            'Rev\'it',
+            'Spidi',
+            'Held',
+            'Rukka',
+            'Klim',
+            'Shoei',
+            'RST',
+            'Oxford',
+            'Richa',
+            'Bering',
+            'Furygan',
+            'Ixon',
+            'Segura',
+            'Modeka',
+            'Büse',
+            'Stadler',
+            'IXS',
+            'Macna',
+            'Seventy Degrees',
+            'Texx',
+            'X11',
+            'Claw',
+            'Forza',
+            'Riffel',
+            'Tutto Moto',
+            'Pantaneiro',
             // Luvas
-            'Alpinestars', 'Dainese', 'Rev\'it', 'Held', 'Five', 'Racer',
-            'Knox', 'Lee Parks', 'Cortech', 'Joe Rocket', 'Scorpion', 'Icon',
-            'Texx', 'X11', 'Tutto', 'Claw', 'Riffel', 'Free Hands',
+            'Alpinestars',
+            'Dainese',
+            'Rev\'it',
+            'Held',
+            'Five',
+            'Racer',
+            'Knox',
+            'Lee Parks',
+            'Cortech',
+            'Joe Rocket',
+            'Scorpion',
+            'Icon',
+            'Texx',
+            'X11',
+            'Tutto',
+            'Claw',
+            'Riffel',
+            'Free Hands',
             // Botas & Calçados
-            'Alpinestars', 'Dainese', 'Sidi', 'Gaerne', 'TCX', 'Forma',
-            'Stylmartin', 'XPD', 'Falco', 'Rev\'it', 'Bering', 'RST',
-            'Texx', 'Motoqueiro', 'Acero', 'Atron', 'Mondeo', 'Boots',
+            'Alpinestars',
+            'Dainese',
+            'Sidi',
+            'Gaerne',
+            'TCX',
+            'Forma',
+            'Stylmartin',
+            'XPD',
+            'Falco',
+            'Rev\'it',
+            'Bering',
+            'RST',
+            'Texx',
+            'Motoqueiro',
+            'Acero',
+            'Atron',
+            'Mondeo',
+            'Boots',
             // Peças & Acessórios
-            'Pro Tork', 'Dianteiro', 'Traseiro', 'Circuit', 'Renthal', 'Pro Taper',
-            'Acerbis', 'Polisport', 'UFO', 'Racetech', 'Twin Air', 'K&N',
-            'Yoshimura', 'Akrapovic', 'Termignoni', 'Arrow', 'LeoVince', 'SC Project',
-            'FMF', 'Two Brothers', 'Remus', 'GPR', 'IXIL', 'Spark', 'Mivv',
-            'Rizoma', 'Gilles', 'CNC Racing', 'LighTech', 'Evotech', 'R&G',
-            'Puig', 'MRA', 'Zero Gravity', 'Ermax', 'National Cycle', 'Givi',
-            'SW-Motech', 'Kappa', 'Shad', 'Top Case', 'Baú', 'Alforge', 'Bolsa',
+            'Pro Tork',
+            'Dianteiro',
+            'Traseiro',
+            'Circuit',
+            'Renthal',
+            'Pro Taper',
+            'Acerbis',
+            'Polisport',
+            'UFO',
+            'Racetech',
+            'Twin Air',
+            'K&N',
+            'Yoshimura',
+            'Akrapovic',
+            'Termignoni',
+            'Arrow',
+            'LeoVince',
+            'SC Project',
+            'FMF',
+            'Two Brothers',
+            'Remus',
+            'GPR',
+            'IXIL',
+            'Spark',
+            'Mivv',
+            'Rizoma',
+            'Gilles',
+            'CNC Racing',
+            'LighTech',
+            'Evotech',
+            'R&G',
+            'Puig',
+            'MRA',
+            'Zero Gravity',
+            'Ermax',
+            'National Cycle',
+            'Givi',
+            'SW-Motech',
+            'Kappa',
+            'Shad',
+            'Top Case',
+            'Baú',
+            'Alforge',
+            'Bolsa',
             // Pneus Moto
-            'Pirelli', 'Michelin', 'Bridgestone', 'Dunlop', 'Metzeler', 'Continental',
-            'Maxxis', 'IRC', 'Shinko', 'Avon', 'Kenda', 'Duro', 'Technic',
-            'Maggion', 'Rinaldi', 'Levorin', 'Vipal', 'Titan', 'Pilot',
+            'Pirelli',
+            'Michelin',
+            'Bridgestone',
+            'Dunlop',
+            'Metzeler',
+            'Continental',
+            'Maxxis',
+            'IRC',
+            'Shinko',
+            'Avon',
+            'Kenda',
+            'Duro',
+            'Technic',
+            'Maggion',
+            'Rinaldi',
+            'Levorin',
+            'Vipal',
+            'Titan',
+            'Pilot',
             // Óleos & Lubrificantes Moto
-            'Motul', 'Liqui Moly', 'Castrol Power', 'Shell Advance', 'Mobil 1', 'Yamalube',
-            'Honda Genuine', 'Kawasaki', 'Repsol', 'Ipiranga Moto', 'Bardahl', 'Petronas',
+            'Motul',
+            'Liqui Moly',
+            'Castrol Power',
+            'Shell Advance',
+            'Mobil 1',
+            'Yamalube',
+            'Honda Genuine',
+            'Kawasaki',
+            'Repsol',
+            'Ipiranga Moto',
+            'Bardahl',
+            'Petronas',
             // Freios & Suspensão
-            'Brembo', 'Nissin', 'Galfer', 'EBC', 'Ferodo', 'SBS', 'Bendix', 'Vesrah',
-            'Öhlins', 'Showa', 'Kayaba', 'WP', 'Marzocchi', 'Bitubo', 'Mupo', 'Matris',
+            'Brembo',
+            'Nissin',
+            'Galfer',
+            'EBC',
+            'Ferodo',
+            'SBS',
+            'Bendix',
+            'Vesrah',
+            'Öhlins',
+            'Showa',
+            'Kayaba',
+            'WP',
+            'Marzocchi',
+            'Bitubo',
+            'Mupo',
+            'Matris',
             // Correntes & Transmissão
-            'DID', 'RK', 'EK', 'Regina', 'Choho', 'JT Sprockets', 'Sunstar', 'AFAM',
-            'Renthal', 'Pro Taper', 'ZF', 'Vortex', 'PBR', 'Supersprox',
+            'DID',
+            'RK',
+            'EK',
+            'Regina',
+            'Choho',
+            'JT Sprockets',
+            'Sunstar',
+            'AFAM',
+            'Renthal',
+            'Pro Taper',
+            'ZF',
+            'Vortex',
+            'PBR',
+            'Supersprox',
             // Elétrica & Iluminação
-            'NGK', 'Denso', 'Iridium', 'Yuasa', 'Moura', 'Heliar', 'Brandy', 'Route',
-            'Philips', 'Osram', 'LED', 'HID', 'Xenon', 'Farol', 'Lanterna', 'Pisca',
+            'NGK',
+            'Denso',
+            'Iridium',
+            'Yuasa',
+            'Moura',
+            'Heliar',
+            'Brandy',
+            'Route',
+            'Philips',
+            'Osram',
+            'LED',
+            'HID',
+            'Xenon',
+            'Farol',
+            'Lanterna',
+            'Pisca',
             // Manetes & Comandos
-            'CRG', 'Brembo', 'Magura', 'Domino', 'Quick Action', 'Accossato',
+            'CRG',
+            'Brembo',
+            'Magura',
+            'Domino',
+            'Quick Action',
+            'Accossato',
             // Marcas BR populares
-            'BR Parts', 'Cofap', 'Nakata', 'Dafra Parts', 'Honda Genuíno', 'Yamaha Original',
+            'BR Parts',
+            'Cofap',
+            'Nakata',
+            'Dafra Parts',
+            'Honda Genuíno',
+            'Yamaha Original',
         ],
-        
+
         // =====================================================
         // FERRAMENTAS & CONSTRUÇÃO (100+ marcas)
         // =====================================================
         'tools' => [
             // Ferramentas Elétricas
-            'Bosch', 'Makita', 'DeWalt', 'Milwaukee', 'Black+Decker', 'Stanley',
-            'Skil', 'Dremel', 'Hitachi', 'Hikoki', 'Metabo', 'Festool', 'Hilti',
-            'Einhell', 'Ryobi', 'Worx', 'Craftsman', 'Ridgid', 'Porter-Cable',
-            'Tramontina', 'Vonder', 'Gamma', 'Nove54', 'Ferrari', 'Motomil',
-            'Nagano', 'Lynus', 'Schulz', 'Pressure', 'Chiaperini', 'Somar',
+            'Bosch',
+            'Makita',
+            'DeWalt',
+            'Milwaukee',
+            'Black+Decker',
+            'Stanley',
+            'Skil',
+            'Dremel',
+            'Hitachi',
+            'Hikoki',
+            'Metabo',
+            'Festool',
+            'Hilti',
+            'Einhell',
+            'Ryobi',
+            'Worx',
+            'Craftsman',
+            'Ridgid',
+            'Porter-Cable',
+            'Tramontina',
+            'Vonder',
+            'Gamma',
+            'Nove54',
+            'Ferrari',
+            'Motomil',
+            'Nagano',
+            'Lynus',
+            'Schulz',
+            'Pressure',
+            'Chiaperini',
+            'Somar',
             // Ferramentas Manuais
-            'Tramontina', 'Gedore', 'Stanley', 'Irwin', 'Starrett', 'Mitutoyo',
-            'King Tony', 'Belzer', 'Brasfort', 'Vonder', 'EDA', 'Worker',
+            'Tramontina',
+            'Gedore',
+            'Stanley',
+            'Irwin',
+            'Starrett',
+            'Mitutoyo',
+            'King Tony',
+            'Belzer',
+            'Brasfort',
+            'Vonder',
+            'EDA',
+            'Worker',
             // Jardinagem
-            'Stihl', 'Husqvarna', 'Tramontina', 'Trapp', 'Garthen', 'Toyama',
-            'Branco', 'Kawashima', 'Tekna', 'Vulcan', 'Nagano', 'Matsuyama',
+            'Stihl',
+            'Husqvarna',
+            'Tramontina',
+            'Trapp',
+            'Garthen',
+            'Toyama',
+            'Branco',
+            'Kawashima',
+            'Tekna',
+            'Vulcan',
+            'Nagano',
+            'Matsuyama',
         ],
-        
+
         // =====================================================
         // BELEZA & COSMÉTICOS (100+ marcas)
         // =====================================================
         'beauty' => [
             // Cabelo
-            'L\'Oréal', 'Wella', 'Schwarzkopf', 'Redken', 'Kerastase', 'Matrix',
-            'Joico', 'Alfaparf', 'Inoar', 'Cadiveu', 'Bio Extratus', 'Salon Line',
-            'Lola Cosmetics', 'Novex', 'Embelleze', 'Skala', 'Yamasterol', 'Haskell',
-            'Forever Liss', 'Truss', 'Felps', 'Richée', 'Agi Max', 'Mutari', 'Soul Power',
+            'L\'Oréal',
+            'Wella',
+            'Schwarzkopf',
+            'Redken',
+            'Kerastase',
+            'Matrix',
+            'Joico',
+            'Alfaparf',
+            'Inoar',
+            'Cadiveu',
+            'Bio Extratus',
+            'Salon Line',
+            'Lola Cosmetics',
+            'Novex',
+            'Embelleze',
+            'Skala',
+            'Yamasterol',
+            'Haskell',
+            'Forever Liss',
+            'Truss',
+            'Felps',
+            'Richée',
+            'Agi Max',
+            'Mutari',
+            'Soul Power',
             // Maquiagem
-            'MAC', 'Maybelline', 'L\'Oréal', 'Revlon', 'Avon', 'Natura', 'O Boticário',
-            'Vult', 'Ruby Rose', 'Dailus', 'Quem Disse Berenice', 'Eudora', 'Mary Kay',
-            'Urban Decay', 'NYX', 'Fenty Beauty', 'Charlotte Tilbury', 'Too Faced',
-            'Tarte', 'Benefit', 'Nars', 'Rare Beauty', 'Anastasia', 'Huda Beauty',
+            'MAC',
+            'Maybelline',
+            'L\'Oréal',
+            'Revlon',
+            'Avon',
+            'Natura',
+            'O Boticário',
+            'Vult',
+            'Ruby Rose',
+            'Dailus',
+            'Quem Disse Berenice',
+            'Eudora',
+            'Mary Kay',
+            'Urban Decay',
+            'NYX',
+            'Fenty Beauty',
+            'Charlotte Tilbury',
+            'Too Faced',
+            'Tarte',
+            'Benefit',
+            'Nars',
+            'Rare Beauty',
+            'Anastasia',
+            'Huda Beauty',
             // Skincare
-            'La Roche-Posay', 'Vichy', 'Bioderma', 'Cerave', 'Neutrogena', 'ROC',
-            'Clinique', 'Estée Lauder', 'Lancôme', 'Kiehl\'s', 'The Ordinary', 'Drunk Elephant',
-            'Skinceuticals', 'Dermalogica', 'Paula\'s Choice', 'Tatcha', 'Glow Recipe',
+            'La Roche-Posay',
+            'Vichy',
+            'Bioderma',
+            'Cerave',
+            'Neutrogena',
+            'ROC',
+            'Clinique',
+            'Estée Lauder',
+            'Lancôme',
+            'Kiehl\'s',
+            'The Ordinary',
+            'Drunk Elephant',
+            'Skinceuticals',
+            'Dermalogica',
+            'Paula\'s Choice',
+            'Tatcha',
+            'Glow Recipe',
             // Perfumaria
-            'Natura', 'O Boticário', 'Eudora', 'L\'Bel', 'Avon', 'Jequiti', 'Hinode',
-            'Dior', 'Chanel', 'Yves Saint Laurent', 'Givenchy', 'Versace', 'Dolce & Gabbana',
-            'Carolina Herrera', 'Paco Rabanne', 'Jean Paul Gaultier', 'Hugo Boss', 'Armani',
+            'Natura',
+            'O Boticário',
+            'Eudora',
+            'L\'Bel',
+            'Avon',
+            'Jequiti',
+            'Hinode',
+            'Dior',
+            'Chanel',
+            'Yves Saint Laurent',
+            'Givenchy',
+            'Versace',
+            'Dolce & Gabbana',
+            'Carolina Herrera',
+            'Paco Rabanne',
+            'Jean Paul Gaultier',
+            'Hugo Boss',
+            'Armani',
         ],
-        
+
         // =====================================================
         // BRINQUEDOS & INFANTIL (80+ marcas)
         // =====================================================
         'toys' => [
-            'LEGO', 'Mattel', 'Hasbro', 'Fisher-Price', 'Playmobil', 'Hot Wheels',
-            'Barbie', 'Nerf', 'Play-Doh', 'My Little Pony', 'Transformers', 'Marvel',
-            'Star Wars', 'Disney', 'Pixar', 'Nintendo', 'Funko', 'Bandai',
-            'Estrela', 'Grow', 'Copag', 'Toyster', 'Polibrinq', 'Candide',
-            'Brinquedos Cardoso', 'Roma', 'Elka', 'Cotiplás', 'Rosita', 'Dismat',
-            'Xalingo', 'Pais & Filhos', 'Brink+', 'Zippy Toys', 'Samba Toys',
-            'Baby Alive', 'LOL Surprise', 'Paw Patrol', 'PJ Masks', 'Peppa Pig',
+            'LEGO',
+            'Mattel',
+            'Hasbro',
+            'Fisher-Price',
+            'Playmobil',
+            'Hot Wheels',
+            'Barbie',
+            'Nerf',
+            'Play-Doh',
+            'My Little Pony',
+            'Transformers',
+            'Marvel',
+            'Star Wars',
+            'Disney',
+            'Pixar',
+            'Nintendo',
+            'Funko',
+            'Bandai',
+            'Estrela',
+            'Grow',
+            'Copag',
+            'Toyster',
+            'Polibrinq',
+            'Candide',
+            'Brinquedos Cardoso',
+            'Roma',
+            'Elka',
+            'Cotiplás',
+            'Rosita',
+            'Dismat',
+            'Xalingo',
+            'Pais & Filhos',
+            'Brink+',
+            'Zippy Toys',
+            'Samba Toys',
+            'Baby Alive',
+            'LOL Surprise',
+            'Paw Patrol',
+            'PJ Masks',
+            'Peppa Pig',
         ],
-        
+
         // =====================================================
         // ESPORTE & FITNESS (80+ marcas)
         // =====================================================
         'sports' => [
             // Fitness & Academia
-            'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'Everlast',
-            'Venum', 'UFC', 'Tapout', 'Pretorian', 'Rudel', 'Vollo',
-            'Polimet', 'Movement', 'Kikos', 'Athletic', 'Speedo', 'Arena',
-            'TYR', 'Hammerhead', 'Mormaii', 'Oakley', 'HB', 'Olympikus',
+            'Nike',
+            'Adidas',
+            'Puma',
+            'Under Armour',
+            'Reebok',
+            'Everlast',
+            'Venum',
+            'UFC',
+            'Tapout',
+            'Pretorian',
+            'Rudel',
+            'Vollo',
+            'Polimet',
+            'Movement',
+            'Kikos',
+            'Athletic',
+            'Speedo',
+            'Arena',
+            'TYR',
+            'Hammerhead',
+            'Mormaii',
+            'Oakley',
+            'HB',
+            'Olympikus',
             // Bicicletas
-            'Caloi', 'Monark', 'Sense', 'Oggi', 'TSW', 'Specialized', 'Trek',
-            'Giant', 'Cannondale', 'Scott', 'Merida', 'GT', 'BMC', 'Cervélo',
-            'Shimano', 'SRAM', 'Campagnolo', 'Continental', 'Vittoria', 'Schwalbe',
+            'Caloi',
+            'Monark',
+            'Sense',
+            'Oggi',
+            'TSW',
+            'Specialized',
+            'Trek',
+            'Giant',
+            'Cannondale',
+            'Scott',
+            'Merida',
+            'GT',
+            'BMC',
+            'Cervélo',
+            'Shimano',
+            'SRAM',
+            'Campagnolo',
+            'Continental',
+            'Vittoria',
+            'Schwalbe',
             // Camping & Outdoor
-            'Guepardo', 'NTK', 'Nautika', 'Azteq', 'Coleman', 'Deuter',
-            'Osprey', 'Gregory', 'Sea to Summit', 'Victorinox', 'Leatherman', 'Gerber',
+            'Guepardo',
+            'NTK',
+            'Nautika',
+            'Azteq',
+            'Coleman',
+            'Deuter',
+            'Osprey',
+            'Gregory',
+            'Sea to Summit',
+            'Victorinox',
+            'Leatherman',
+            'Gerber',
         ],
     ];
 
@@ -520,7 +1633,7 @@ class TitleAttributeExtractorService
         'starlight' => 'Estelar',
         'grafite' => 'Grafite',
         'champagne' => 'Champagne',
-        
+
         // Resolução
         'full hd' => 'Full HD',
         'fullhd' => 'Full HD',
@@ -535,7 +1648,7 @@ class TitleAttributeExtractorService
         '4320p' => '8K',
         'qhd' => 'QHD',
         '1440p' => 'QHD',
-        
+
         // Voltagem
         '110v' => '110V',
         '110' => '110V',
@@ -545,7 +1658,7 @@ class TitleAttributeExtractorService
         '220' => '220V',
         'bivolt' => 'Bivolt',
         'bi-volt' => 'Bivolt',
-        
+
         // Conectividade
         'wifi' => 'Wi-Fi',
         'wi-fi' => 'Wi-Fi',
@@ -559,7 +1672,7 @@ class TitleAttributeExtractorService
         '4g' => '4G',
         'lte' => '4G LTE',
         '3g' => '3G',
-        
+
         // Materiais
         'aço inox' => 'Aço Inoxidável',
         'aço inoxidável' => 'Aço Inoxidável',
@@ -604,7 +1717,7 @@ class TitleAttributeExtractorService
         'vinil' => 'Vinil',
         'policarbonato' => 'Policarbonato',
         'pc' => 'Policarbonato',
-        
+
         // Acabamento
         'fosco' => 'Fosco',
         'fosca' => 'Fosco',
@@ -618,7 +1731,7 @@ class TitleAttributeExtractorService
         'glossy' => 'Brilhante',
         'texturizado' => 'Texturizado',
         'texturizada' => 'Texturizado',
-        
+
         // Marcas de moto
         'honda' => 'Honda',
         'yamaha' => 'Yamaha',
@@ -633,7 +1746,7 @@ class TitleAttributeExtractorService
         'ducati' => 'Ducati',
         'harley' => 'Harley-Davidson',
         'ktm' => 'KTM',
-        
+
         // Compatibilidade
         'universal' => 'Universal',
         'univ.' => 'Universal',
@@ -642,7 +1755,7 @@ class TitleAttributeExtractorService
 
     /**
      * Extrai todos os atributos possíveis do título
-     * 
+     *
      * @param string $title Título do produto
      * @param array $allowedAttributes Lista de IDs de atributos permitidos (opcional)
      * @param string|null $categoryType Tipo de categoria para busca de marca
@@ -652,7 +1765,7 @@ class TitleAttributeExtractorService
     {
         $extracted = [];
         $titleLower = mb_strtolower($title);
-        
+
         // 1. Extrair marca
         $brand = $this->extractBrand($title, $categoryType);
         if ($brand) {
@@ -664,19 +1777,19 @@ class TitleAttributeExtractorService
                 'method' => 'dictionary_match',
             ];
         }
-        
+
         // 2. Ordenar padrões por prioridade
         $sortedPatterns = $this->patterns;
-        uasort($sortedPatterns, function($a, $b) {
+        uasort($sortedPatterns, function ($a, $b) {
             return ($a['priority'] ?? 99) <=> ($b['priority'] ?? 99);
         });
-        
+
         // 3. Aplicar padrões regex (ordenados por prioridade)
         $processedValues = []; // Evitar extrair o mesmo valor duas vezes
-        
+
         // Padrões que podem ter múltiplos matches (ex: várias marcas/modelos)
         $multiMatchPatterns = ['storage', 'capacity_generic', 'moto_model', 'moto_brand'];
-        
+
         foreach ($sortedPatterns as $patternName => $config) {
             // Para alguns padrões, extrair todos os matches
             if (in_array($patternName, $multiMatchPatterns)) {
@@ -686,7 +1799,7 @@ class TitleAttributeExtractorService
                     // Usar chave normalizada para detectar duplicatas (attrId + valor_lower)
                     $attrId = $this->findMatchingAttribute($config['attributes'], $allowedAttributes);
                     $uniqueKey = $attrId . ':' . mb_strtolower($value ?? '');
-                    
+
                     if ($value !== null && !isset($processedValues[$uniqueKey]) && $attrId) {
                         $extracted[] = [
                             'attribute_id' => $attrId,
@@ -703,11 +1816,11 @@ class TitleAttributeExtractorService
                 $matches = [];
                 if (preg_match($config['pattern'], $title, $matches)) {
                     $value = $this->processMatch($patternName, $matches, $config);
-                    
+
                     if ($value !== null && !isset($processedValues[$value])) {
                         // Verificar qual atributo usar baseado nos permitidos
                         $attrId = $this->findMatchingAttribute($config['attributes'], $allowedAttributes);
-                        
+
                         if ($attrId) {
                             $extracted[] = [
                                 'attribute_id' => $attrId,
@@ -722,10 +1835,10 @@ class TitleAttributeExtractorService
                 }
             }
         }
-        
+
         // 4. Remover duplicatas (manter maior confiança)
         $extracted = $this->deduplicateByAttribute($extracted);
-        
+
         return $extracted;
     }
 
@@ -735,7 +1848,7 @@ class TitleAttributeExtractorService
     private function extractBrand(string $title, ?string $categoryType = null): ?array
     {
         $titleLower = mb_strtolower($title);
-        
+
         // Determinar dicionários a usar
         $dictionaries = ['electronics']; // Default
         if ($categoryType && isset($this->brandDictionary[$categoryType])) {
@@ -744,22 +1857,22 @@ class TitleAttributeExtractorService
             // Usar todos os dicionários
             $dictionaries = array_keys($this->brandDictionary);
         }
-        
+
         foreach ($dictionaries as $dict) {
             foreach ($this->brandDictionary[$dict] ?? [] as $brand) {
                 $brandLower = mb_strtolower($brand);
-                
+
                 // Match exato com word boundary
                 $pattern = '/\b' . preg_quote($brandLower, '/') . '\b/i';
                 if (preg_match($pattern, $title)) {
                     // Verificar posição no título (início = maior confiança)
                     $position = mb_stripos($titleLower, $brandLower);
                     $confidence = 90;
-                    
+
                     if ($position !== false && $position < 20) {
                         $confidence = 95;
                     }
-                    
+
                     return [
                         'value' => $brand, // Usar capitalização correta
                         'confidence' => $confidence,
@@ -767,7 +1880,7 @@ class TitleAttributeExtractorService
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -777,7 +1890,7 @@ class TitleAttributeExtractorService
     private function processMatch(string $patternName, array $matches, array $config): ?string
     {
         $value = null;
-        
+
         switch ($patternName) {
             case 'storage':
             case 'ram':
@@ -794,12 +1907,12 @@ class TitleAttributeExtractorService
                 }
                 $value = "{$num} {$unit}";
                 break;
-                
+
             case 'screen_size':
                 $num = str_replace(',', '.', $matches[1]);
                 $value = "{$num}\"";
                 break;
-                
+
             case 'power':
                 $num = str_replace(',', '.', $matches[1]);
                 $unit = mb_strtoupper($matches[2]);
@@ -808,12 +1921,12 @@ class TitleAttributeExtractorService
                 }
                 $value = "{$num}{$unit}";
                 break;
-                
+
             case 'capacity_liters':
                 $num = str_replace(',', '.', $matches[1]);
                 $value = "{$num}L";
                 break;
-                
+
             case 'weight':
                 $num = str_replace(',', '.', $matches[1]);
                 $unit = mb_strtolower($matches[2]);
@@ -824,7 +1937,7 @@ class TitleAttributeExtractorService
                 }
                 $value = "{$num}{$unit}";
                 break;
-                
+
             case 'warranty':
                 $num = $matches[1];
                 $unit = mb_strtolower($matches[2] ?? '');
@@ -834,21 +1947,21 @@ class TitleAttributeExtractorService
                     $value = "{$num} meses";
                 }
                 break;
-                
+
             case 'year':
                 $value = $matches[1];
                 break;
-                
+
             default:
                 $value = trim($matches[0]);
                 break;
         }
-        
+
         // Aplicar normalização se configurado
         if ($value && ($config['normalize'] ?? false)) {
             $value = $this->normalizeValue($value);
         }
-        
+
         return $value;
     }
 
@@ -858,29 +1971,29 @@ class TitleAttributeExtractorService
     private function normalizeValue(string $value): string
     {
         $valueLower = mb_strtolower(trim($value));
-        
+
         // Verificar se já está no dicionário de normalização
         if (isset($this->normalizations[$valueLower])) {
             return $this->normalizations[$valueLower];
         }
-        
+
         // Normalização parcial
         foreach ($this->normalizations as $key => $normalized) {
             if (str_contains($valueLower, (string) $key)) {
                 return str_ireplace((string) $key, $normalized, $value);
             }
         }
-        
+
         // Padrões de capacidade: manter unidade em maiúsculas
         if (preg_match('/^(\d+)\s*(GB|TB|MB|KB)$/i', $value, $matches)) {
             return $matches[1] . ' ' . mb_strtoupper($matches[2]);
         }
-        
+
         // Capitalizar primeira letra como fallback (mas preservar siglas)
         if (preg_match('/^[A-Z0-9\s\-]+$/', $value)) {
             return $value; // Já está em maiúsculas/formatado
         }
-        
+
         return mb_convert_case($value, MB_CASE_TITLE);
     }
 
@@ -893,7 +2006,7 @@ class TitleAttributeExtractorService
             // Retorna o primeiro se não houver restrição
             return $possibleIds[0] ?? null;
         }
-        
+
         // Criar mapa de IDs permitidos
         $allowedMap = [];
         foreach ($allowedAttributes as $attr) {
@@ -902,14 +2015,14 @@ class TitleAttributeExtractorService
                 $allowedMap[$id] = true;
             }
         }
-        
+
         // Encontrar correspondência
         foreach ($possibleIds as $id) {
             if (isset($allowedMap[$id])) {
                 return $id;
             }
         }
-        
+
         return null;
     }
 
@@ -919,7 +2032,7 @@ class TitleAttributeExtractorService
     private function calculateConfidence(string $patternName, array $matches): int
     {
         $base = 85;
-        
+
         // Padrões mais específicos têm maior confiança
         $specificity = [
             'resolution' => 92,
@@ -939,7 +2052,7 @@ class TitleAttributeExtractorService
             'model' => 75,
             'dimensions' => 70,
         ];
-        
+
         return $specificity[$patternName] ?? $base;
     }
 
@@ -957,13 +2070,13 @@ class TitleAttributeExtractorService
             'VEHICLE_BRAND',
             'MOTO_MODEL',
         ];
-        
+
         $byAttr = [];
         $multiValues = []; // Para atributos de múltiplos valores
-        
+
         foreach ($extracted as $item) {
             $attrId = $item['attribute_id'];
-            
+
             if (in_array($attrId, $multiValueAttributes)) {
                 // Para multi-valores, guardar todos os valores únicos
                 $key = $attrId . ':' . mb_strtolower($item['value']);
@@ -974,7 +2087,7 @@ class TitleAttributeExtractorService
                 $byAttr[$attrId] = $item;
             }
         }
-        
+
         return array_merge(array_values($byAttr), array_values($multiValues));
     }
 
@@ -984,7 +2097,7 @@ class TitleAttributeExtractorService
     public function detectCategoryType(string $title): ?string
     {
         $titleLower = mb_strtolower($title);
-        
+
         $indicators = [
             'electronics' => ['celular', 'smartphone', 'tablet', 'notebook', 'laptop', 'tv', 'monitor', 'fone', 'headphone', 'mouse', 'teclado', 'webcam', 'câmera', 'console', 'videogame'],
             'appliances' => ['geladeira', 'refrigerador', 'fogão', 'microondas', 'liquidificador', 'batedeira', 'cafeteira', 'torradeira', 'aspirador', 'ventilador', 'ar condicionado', 'lava', 'seca', 'ferro de passar'],
@@ -992,7 +2105,7 @@ class TitleAttributeExtractorService
             'computers' => ['processador', 'cpu', 'placa de vídeo', 'gpu', 'memória ram', 'ssd', 'hd', 'fonte', 'gabinete', 'cooler', 'placa mãe', 'motherboard'],
             'automotive' => ['pneu', 'óleo', 'filtro', 'bateria', 'pastilha', 'amortecedor', 'escapamento', 'vela', 'bobina', 'radiador'],
         ];
-        
+
         foreach ($indicators as $type => $keywords) {
             foreach ($keywords as $keyword) {
                 if (str_contains($titleLower, $keyword)) {
@@ -1000,7 +2113,7 @@ class TitleAttributeExtractorService
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -1012,7 +2125,7 @@ class TitleAttributeExtractorService
         if (!isset($this->brandDictionary[$category])) {
             $this->brandDictionary[$category] = [];
         }
-        
+
         $this->brandDictionary[$category] = array_merge(
             $this->brandDictionary[$category],
             $brands

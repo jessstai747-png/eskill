@@ -22,7 +22,7 @@ class RetryServiceTest extends TestCase
     {
         parent::setUp();
         $this->logger = $this->createMock(LoggingService::class);
-        
+
         $this->retry = new RetryService($this->logger, [
             'max_retries' => 2,
             'base_delay_ms' => 1,

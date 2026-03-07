@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * Price Rules Engine Service
- * 
+ *
  * Motor de regras para automação de preços:
  * - Match Competitor: igualar ou ficar X% abaixo/acima do concorrente
  * - Floor/Ceiling: preço mínimo e máximo automático
@@ -17,7 +17,7 @@ use PDO;
  * - Margin-Based: ajustar preço para manter margem mínima
  * - Stock-Based: reduzir preço quando estoque alto
  * - Velocity-Based: ajustar baseado em velocidade de vendas
- * 
+ *
  * @package App\Services
  */
 class PriceRulesEngineService
@@ -76,11 +76,11 @@ class PriceRulesEngineService
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO pricing_rules 
-            (account_id, name, description, rule_type, conditions, actions, 
+            INSERT INTO pricing_rules
+            (account_id, name, description, rule_type, conditions, actions,
              priority, is_active, applies_to, item_ids, category_ids,
              start_date, end_date, created_at)
-            VALUES 
+            VALUES
             (:account_id, :name, :description, :rule_type, :conditions, :actions,
              :priority, :is_active, :applies_to, :item_ids, :category_ids,
              :start_date, :end_date, NOW())
@@ -151,7 +151,7 @@ class PriceRulesEngineService
         $offsetSql = max(0, (int)$offset);
 
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_rules 
+            SELECT * FROM pricing_rules
             WHERE {$whereClause}
             ORDER BY {$orderBy}
             LIMIT {$limitSql} OFFSET {$offsetSql}
@@ -195,7 +195,7 @@ class PriceRulesEngineService
     public function getRule(int $ruleId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_rules 
+            SELECT * FROM pricing_rules
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute(['id' => $ruleId, 'account_id' => $this->accountId]);
@@ -212,9 +212,9 @@ class PriceRulesEngineService
 
         // Carregar histórico de execuções
         $execStmt = $this->db->prepare("
-            SELECT * FROM pricing_rule_executions 
-            WHERE rule_id = :rule_id 
-            ORDER BY executed_at DESC 
+            SELECT * FROM pricing_rule_executions
+            WHERE rule_id = :rule_id
+            ORDER BY executed_at DESC
             LIMIT 10
         ");
         $execStmt->execute(['rule_id' => $ruleId]);
@@ -270,7 +270,7 @@ class PriceRulesEngineService
         $updateClause = implode(', ', $updates);
 
         $stmt = $this->db->prepare("
-            UPDATE pricing_rules 
+            UPDATE pricing_rules
             SET {$updateClause}
             WHERE id = :id AND account_id = :account_id
         ");
@@ -292,7 +292,7 @@ class PriceRulesEngineService
         }
 
         $stmt = $this->db->prepare("
-            DELETE FROM pricing_rules 
+            DELETE FROM pricing_rules
             WHERE id = :id AND account_id = :account_id
         ");
         $stmt->execute(['id' => $ruleId, 'account_id' => $this->accountId]);
@@ -308,7 +308,7 @@ class PriceRulesEngineService
     public function toggleRule(int $ruleId, bool $active): array
     {
         $stmt = $this->db->prepare("
-            UPDATE pricing_rules 
+            UPDATE pricing_rules
             SET is_active = :is_active, updated_at = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
@@ -343,8 +343,8 @@ class PriceRulesEngineService
 
         // Buscar regras aplicáveis
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_rules 
-            WHERE account_id = :account_id 
+            SELECT * FROM pricing_rules
+            WHERE account_id = :account_id
             AND is_active = 1
             AND (start_date IS NULL OR start_date <= NOW())
             AND (end_date IS NULL OR end_date >= NOW())
@@ -434,7 +434,7 @@ class PriceRulesEngineService
 
         // Buscar todos os itens ativos
         $stmt = $this->db->prepare("
-            SELECT DISTINCT item_id FROM item_costs 
+            SELECT DISTINCT item_id FROM item_costs
             WHERE account_id = :account_id
         ");
         $stmt->execute(['account_id' => $this->accountId]);
@@ -481,8 +481,8 @@ class PriceRulesEngineService
         $categoryId = $item['category_id'] ?? null;
 
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_rules 
-            WHERE account_id = :account_id 
+            SELECT * FROM pricing_rules
+            WHERE account_id = :account_id
             AND is_active = 1
             ORDER BY priority DESC
         ");
@@ -729,7 +729,7 @@ class PriceRulesEngineService
 
         // Buscar custos do item
         $stmt = $this->db->prepare("
-            SELECT * FROM item_costs 
+            SELECT * FROM item_costs
             WHERE account_id = :account_id AND item_id = :item_id
         ");
         $stmt->execute([
@@ -954,7 +954,7 @@ class PriceRulesEngineService
 
         // Buscar no cache primeiro
         $stmt = $this->db->prepare("
-            SELECT competitor_price FROM competitor_prices_cache 
+            SELECT competitor_price FROM competitor_prices_cache
             WHERE account_id = :account_id AND item_id = :item_id
             AND updated_at > DATE_SUB(NOW(), INTERVAL 6 HOUR)
         ");
@@ -1036,7 +1036,7 @@ class PriceRulesEngineService
     private function recordExecution(int $ruleId, string $itemId, array $result): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO pricing_rule_executions 
+            INSERT INTO pricing_rule_executions
             (rule_id, item_id, previous_price, new_price, reason, executed_at)
             VALUES (:rule_id, :item_id, :previous_price, :new_price, :reason, NOW())
         ");

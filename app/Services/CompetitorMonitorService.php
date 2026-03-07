@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * Serviço de Monitoramento de Concorrentes
- * 
+ *
  * Monitora preços de concorrentes em tempo real, analisa tendências
  * de mercado e gera alertas quando detecta movimentações importantes.
  */
@@ -140,10 +140,10 @@ class CompetitorMonitorService
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO pricing_watchlist 
-            (account_id, item_id, item_title, category_id, keywords, monitor_frequency, 
+            INSERT INTO pricing_watchlist
+            (account_id, item_id, item_title, category_id, keywords, monitor_frequency,
              price_alert_threshold, notify_email, notify_slack)
-            VALUES 
+            VALUES
             (:account_id, :item_id, :item_title, :category_id, :keywords, :frequency,
              :threshold, :notify_email, :notify_slack)
             ON DUPLICATE KEY UPDATE
@@ -182,7 +182,7 @@ class CompetitorMonitorService
     public function removeFromWatchlist(string $itemId): array
     {
         $stmt = $this->db->prepare("
-            UPDATE pricing_watchlist SET is_active = 0 
+            UPDATE pricing_watchlist SET is_active = 0
             WHERE account_id = :account_id AND item_id = :item_id
         ");
         $stmt->execute(['account_id' => $this->accountId, 'item_id' => $itemId]);
@@ -196,7 +196,7 @@ class CompetitorMonitorService
     public function getWatchlist(): array
     {
         $stmt = $this->db->prepare("
-            SELECT w.*, 
+            SELECT w.*,
                    (SELECT COUNT(*) FROM pricing_competitors c WHERE c.account_id = w.account_id AND c.item_id = w.item_id) as competitor_count,
                    (SELECT MIN(c.competitor_price) FROM pricing_competitors c WHERE c.account_id = w.account_id AND c.item_id = w.item_id) as lowest_competitor_price
             FROM pricing_watchlist w
@@ -280,7 +280,7 @@ class CompetitorMonitorService
 
             // Atualizar data de monitoramento
             $stmt = $this->db->prepare("
-                UPDATE pricing_watchlist SET last_monitored = NOW() 
+                UPDATE pricing_watchlist SET last_monitored = NOW()
                 WHERE account_id = :account_id AND item_id = :item_id
             ");
             $stmt->execute(['account_id' => $this->accountId, 'item_id' => $itemId]);
@@ -354,12 +354,12 @@ class CompetitorMonitorService
     private function saveCompetitor(string $itemId, array $competitor): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO pricing_competitors 
+            INSERT INTO pricing_competitors
             (account_id, item_id, competitor_id, competitor_seller_id, competitor_title,
              competitor_price, competitor_original_price, competitor_condition,
              competitor_shipping_free, competitor_seller_reputation, competitor_sold_quantity,
              competitor_available_quantity, position_in_search, last_checked)
-            VALUES 
+            VALUES
             (:account_id, :item_id, :competitor_id, :seller_id, :title,
              :price, :original_price, :condition, :shipping_free, :reputation,
              :sold_qty, :available_qty, :position, NOW())
@@ -401,9 +401,9 @@ class CompetitorMonitorService
     private function recordCompetitorHistory(int $competitorDbId, array $competitor): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO pricing_competitor_history 
+            INSERT INTO pricing_competitor_history
             (competitor_id, price, original_price, sold_quantity, available_quantity)
-            VALUES 
+            VALUES
             (:competitor_id, :price, :original_price, :sold_qty, :available_qty)
         ");
 
@@ -570,9 +570,9 @@ class CompetitorMonitorService
         array $data
     ): array {
         $stmt = $this->db->prepare("
-            INSERT INTO pricing_market_alerts 
+            INSERT INTO pricing_market_alerts
             (account_id, item_id, alert_type, severity, title, message, data)
-            VALUES 
+            VALUES
             (:account_id, :item_id, :type, :severity, :title, :message, :data)
         ");
 
@@ -646,8 +646,8 @@ class CompetitorMonitorService
 
         $placeholders = implode(',', array_fill(0, count($alertIds), '?'));
         $stmt = $this->db->prepare("
-            UPDATE pricing_market_alerts 
-            SET is_read = 1 
+            UPDATE pricing_market_alerts
+            SET is_read = 1
             WHERE account_id = ? AND id IN ($placeholders)
         ");
 
@@ -664,7 +664,7 @@ class CompetitorMonitorService
     {
         // Obter concorrentes atuais
         $stmt = $this->db->prepare("
-            SELECT * FROM pricing_competitors 
+            SELECT * FROM pricing_competitors
             WHERE account_id = :account_id AND item_id = :item_id
             ORDER BY competitor_price ASC
         ");
@@ -893,7 +893,7 @@ class CompetitorMonitorService
     {
         // Total de itens monitorados
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) FROM pricing_watchlist 
+            SELECT COUNT(*) FROM pricing_watchlist
             WHERE account_id = :account_id AND is_active = 1
         ");
         $stmt->execute(['account_id' => $this->accountId]);
@@ -901,7 +901,7 @@ class CompetitorMonitorService
 
         // Total de concorrentes rastreados
         $stmt = $this->db->prepare("
-            SELECT COUNT(DISTINCT competitor_id) FROM pricing_competitors 
+            SELECT COUNT(DISTINCT competitor_id) FROM pricing_competitors
             WHERE account_id = :account_id
         ");
         $stmt->execute(['account_id' => $this->accountId]);
@@ -909,7 +909,7 @@ class CompetitorMonitorService
 
         // Alertas não lidos
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) FROM pricing_market_alerts 
+            SELECT COUNT(*) FROM pricing_market_alerts
             WHERE account_id = :account_id AND is_read = 0
         ");
         $stmt->execute(['account_id' => $this->accountId]);
@@ -917,8 +917,8 @@ class CompetitorMonitorService
 
         // Alertas por tipo
         $stmt = $this->db->prepare("
-            SELECT alert_type, COUNT(*) as count 
-            FROM pricing_market_alerts 
+            SELECT alert_type, COUNT(*) as count
+            FROM pricing_market_alerts
             WHERE account_id = :account_id AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             GROUP BY alert_type
         ");

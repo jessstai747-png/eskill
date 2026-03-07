@@ -509,8 +509,12 @@ class MLStatisticsHelper
         $stdErr = self::standardDeviation($data) / sqrt($n);
         
         // Valor z para intervalo de confiança (aproximação)
-        $zValues = [0.90 => 1.645, 0.95 => 1.96, 0.99 => 2.576];
-        $z = $zValues[$confidenceLevel] ?? 1.96;
+        // Note: float keys are truncated to int in PHP, so we use match()
+        $z = match (true) {
+            abs($confidenceLevel - 0.90) < 0.001 => 1.645,
+            abs($confidenceLevel - 0.99) < 0.001 => 2.576,
+            default => 1.96, // 0.95
+        };
         
         $margin = $z * $stdErr;
         

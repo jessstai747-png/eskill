@@ -11,7 +11,7 @@ use App\Database;
 
 /**
  * Serviço de Pesquisa Profunda de Anúncios (Deep Research)
- * 
+ *
  * Análise revolucionária e completa de marcas dentro de categorias:
  * - Mapeamento completo de todos os anúncios (catálogo e comuns)
  * - Análise detalhada de sellers (reputação, histórico, poder de mercado)
@@ -62,7 +62,7 @@ class DeepResearchService
 
     /**
      * Executa pesquisa profunda de uma marca em uma categoria
-     * 
+     *
      * @param string $categoryId ID da categoria (ex: MLB1071 - Acessórios para Motos)
      * @param string $brand Nome da marca (ex: AWA)
      * @param array $options Opções adicionais
@@ -165,7 +165,7 @@ class DeepResearchService
 
     /**
      * Coleta TODOS os anúncios de uma marca na categoria (paginação completa)
-     * 
+     *
      * @param string $categoryId ID da categoria
      * @param string $brand Nome da marca
      * @param int $maxItems Máximo de itens a coletar
@@ -377,9 +377,9 @@ class DeepResearchService
             $stmt = $db->query("SHOW TABLES LIKE 'ml_items'");
             if ($stmt->rowCount() > 0) {
                 $stmt = $db->prepare("
-                    SELECT DISTINCT seller_id 
-                    FROM ml_items 
-                    WHERE category_id = :category_id 
+                    SELECT DISTINCT seller_id
+                    FROM ml_items
+                    WHERE category_id = :category_id
                     AND seller_id IS NOT NULL
                     LIMIT 50
                 ");
@@ -396,9 +396,9 @@ class DeepResearchService
             $stmt = $db->query("SHOW TABLES LIKE 'ml_research_cache'");
             if ($stmt->rowCount() > 0) {
                 $stmt = $db->prepare("
-                    SELECT data FROM ml_research_cache 
-                    WHERE category_id = :category_id 
-                    ORDER BY created_at DESC 
+                    SELECT data FROM ml_research_cache
+                    WHERE category_id = :category_id
+                    ORDER BY created_at DESC
                     LIMIT 1
                 ");
                 $stmt->execute(['category_id' => $categoryId]);
@@ -1887,7 +1887,7 @@ class DeepResearchService
 
     /**
      * Simula lucratividade para um produto nesta categoria
-     * 
+     *
      * @param float $costPrice Preço de custo do produto
      * @param float $targetPrice Preço de venda alvo (opcional, se null usa média)
      * @param string $taxRegime Regime tributário (simples, presumido, real)

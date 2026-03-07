@@ -6,7 +6,7 @@ namespace App\Services;
 
 /**
  * CacheService - Serviço de Cache com suporte a Redis e File
- * 
+ *
  * @property-read string $driver
  */
 class CacheService

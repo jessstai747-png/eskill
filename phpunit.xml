@@ -164,6 +164,9 @@
             <!-- Batch 7: TitleAttributeExtractor + LazyLoad tests -->
             <file>tests/Unit/Services/TitleAttributeExtractorServiceTest.php</file>
             <file>tests/Unit/Services/LazyLoadServiceTest.php</file>
+            <!-- Batch 8: AccountGovernance + MLStatisticsHelper tests -->
+            <file>tests/Unit/Services/AccountGovernanceServiceTest.php</file>
+            <file>tests/Unit/Helpers/MLStatisticsHelperTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
