@@ -188,11 +188,15 @@ class MLAIIntegrationController extends BaseController
      */
     public function listItems(): void
     {
-        $filters = [
-            'category' => $_GET['category'] ?? null,
-            'offset' => (int)($_GET['offset'] ?? 0),
-            'limit' => min((int)($_GET['limit'] ?? 20), 50),
-        ];
+        $filters = \App\Services\ValidationService::getParams([
+            'category' => ['type' => 'string', 'default' => null],
+            'offset' => ['type' => 'int', 'default' => 0],
+            'limit' => ['type' => 'int', 'default' => 20],
+        ]);
+
+        // Limitar máximo
+        $filters['limit'] = min($filters['limit'], 50);
+        $filters['offset'] = max($filters['offset'], 0);
 
         $result = $this->getService()->getItemsForOptimization(array_filter($filters));
         $this->jsonSuccess($result);
@@ -256,7 +260,10 @@ class MLAIIntegrationController extends BaseController
             $this->jsonError('Item ID is required', 400);
         }
 
-        $limit = min((int)($_GET['limit'] ?? 50), 200);
+        $limit = \App\Services\ValidationService::getParam('limit', 'int', 50);
+        $limit = min($limit, 200); // Máximo 200
+        $limit = max($limit, 1);   // Mínimo 1
+
         $result = $this->getService()->getOptimizationHistory($itemId, $limit);
 
         $this->jsonSuccess($result);
@@ -309,8 +316,13 @@ class MLAIIntegrationController extends BaseController
      */
     public function compare(): void
     {
-        $v1 = (int)($_GET['v1'] ?? 0);
-        $v2 = (int)($_GET['v2'] ?? 0);
+        $params = \App\Services\ValidationService::getParams([
+            'v1' => ['type' => 'int', 'default' => 0],
+            'v2' => ['type' => 'int', 'default' => 0],
+        ]);
+
+        $v1 = $params['v1'];
+        $v2 = $params['v2'];
 
         if ($v1 <= 0 || $v2 <= 0) {
             $this->jsonError('Both v1 and v2 query params are required (positive integers)', 400);

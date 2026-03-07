@@ -35,29 +35,58 @@ class TelegramService
     public function sendMessage(string $message): bool
     {
         if (!$this->isEnabled()) {
+            logger()->warning('Telegram not enabled', ['reason' => 'Missing credentials']);
             return false;
         }
 
-        $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
+        try {
+            $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
 
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode([
-                'chat_id' => $this->chatId,
-                'text' => $message,
-                'parse_mode' => 'HTML',
-            ]),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
-        ]);
+            $ch = curl_init($url);
+            if ($ch === false) {
+                throw new \RuntimeException('Failed to initialize curl');
+            }
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode([
+                    'chat_id' => $this->chatId,
+                    'text' => $message,
+                    'parse_mode' => 'HTML',
+                ]),
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_CONNECTTIMEOUT => 5,
+            ]);
 
-        return $httpCode === 200;
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            if ($response === false) {
+                throw new \RuntimeException("Curl error: {$error}");
+            }
+
+            if ($httpCode !== 200) {
+                logger()->error('Telegram API error', [
+                    'http_code' => $httpCode,
+                    'response' => $response
+                ]);
+                return false;
+            }
+
+            logger()->debug('Telegram message sent', ['http_code' => $httpCode]);
+            return true;
+
+        } catch (\Exception $e) {
+            logger()->error('Failed to send Telegram message', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
     }
 
     /**

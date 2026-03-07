@@ -421,12 +421,17 @@ class AIOptimizationWorker
      */
     private function log(string $message): void
     {
-        $timestamp = date('Y-m-d H:i:s');
-        echo "[{$timestamp}] {$message}\n";
+        // Use structured logging only
+        logger()->info($message, [
+            'worker' => 'AIOptimizationWorker',
+            'batch_size' => $this->batchSize,
+        ]);
 
-        // Also log to file
-        $logFile = dirname(__DIR__, 2) . '/storage/logs/ai_worker.log';
-        @file_put_contents($logFile, "[{$timestamp}] {$message}\n", FILE_APPEND);
+        // Output to console only in CLI mode
+        if (PHP_SAPI === 'cli') {
+            $timestamp = date('Y-m-d H:i:s');
+            echo "[{$timestamp}] {$message}\n";
+        }
     }
 
     /**

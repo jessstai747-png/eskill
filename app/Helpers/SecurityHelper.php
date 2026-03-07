@@ -46,3 +46,19 @@ class SecurityHelper
         return self::getSecurity()->sanitize($string);
     }
 }
+
+// ============================================================================
+// Função global e() — Escape seguro para views (previne XSS)
+// ============================================================================
+if (!function_exists('e')) {
+    /**
+     * Escape HTML para prevenir XSS
+     * 
+     * @param string $value String a ser escapada
+     * @return string String segura para output em HTML
+     */
+    function e(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    }
+}

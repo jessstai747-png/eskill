@@ -10,25 +10,40 @@ class AgentJob
 {
     public function run(): void
     {
-        echo "[" . date('Y-m-d H:i:s') . "] Starting AgentJob...\n";
+        logger()->info('Starting AgentJob', ['job' => 'AgentJob']);
         
         $service = new AutonomousAgentService();
         $agents = $service->getAgents();
         
         foreach ($agents as $agent) {
             if ($agent['status'] === 'active') {
-                echo "Running Agent: {$agent['name']} ({$agent['code']})...\n";
+                logger()->info("Running agent", [
+                    'agent' => $agent['name'],
+                    'code' => $agent['code']
+                ]);
+                
                 $result = $service->runAgent($agent['code']);
+                
                 if ($result['success']) {
-                    echo "✅ Success.\n";
+                    logger()->info("Agent completed successfully", [
+                        'agent' => $agent['name']
+                    ]);
                 } else {
-                    echo "❌ Failed: " . ($result['error'] ?? 'Unknown') . "\n";
+                    logger()->error("Agent failed", [
+                        'agent' => $agent['name'],
+                        'error' => $result['error'] ?? 'Unknown'
+                    ]);
                 }
             } else {
-                echo "Skipping Agent: {$agent['name']} (Status: {$agent['status']})\n";
+                logger()->debug("Skipping inactive agent", [
+                    'agent' => $agent['name'],
+                    'status' => $agent['status']
+                ]);
             }
         }
         
-        echo "AgentJob Finished.\n";
+        logger()->info('AgentJob finished', [
+            'total_agents' => count($agents)
+        ]);
     }
 }

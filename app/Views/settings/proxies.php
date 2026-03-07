@@ -15,7 +15,7 @@ $pageDescription = 'Configure proxies para acessar a API do Mercado Livre';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $pageTitle ?> - ML Manager</title>
+    <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?> - ML Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -179,9 +179,9 @@ $pageDescription = 'Configure proxies para acessar a API do Mercado Livre';
             <div>
                 <h1 class="h3 mb-1">
                     <i class="fas fa-network-wired me-2 text-warning"></i>
-                    <?= $pageTitle ?>
+                    <?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?>
                 </h1>
-                <p class="text-secondary mb-0"><?= $pageDescription ?></p>
+                <p class="text-secondary mb-0"><?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?></p>
             </div>
             <div>
                 <a href="/research" class="btn btn-outline-secondary me-2">

@@ -6,6 +6,37 @@
 
 ---
 
+## Sessão 2026-03-08 — Division-by-zero + Unicode regex + mb_* migration + 189 tests
+
+### O que foi feito
+- **Fixed 12 division-by-zero crash bugs** across pricing, competitor, prediction, and clone services:
+  - AIPredictionsService, AIPredictiveAnalyticsService, CompetitorMonitorService (×2)
+  - PricingRulesService (×2), PricingScenarioService (×2), KeywordGapAnalyzerService
+  - DeepResearchService, ListingBuilderService, CloneProgressTrackerService
+- **Fixed 4 ASCII-only regex bugs** stripping Portuguese accented characters:
+  - BrandAnalyzerService, SemanticAnalyzerService, AttributeModelService, KeywordGapAnalyzerService
+  - Pattern: `[^a-z0-9\s]` → `[\p{L}\p{N}\s]` with `/u` flag
+- **Comprehensive mb_* migration** across 53 service files (commit a06cc6e):
+  - ~60 strtolower→mb_strtolower, ~65 strlen→mb_strlen, ~25 substr→mb_substr
+  - ~20 ucfirst→mb_strtoupper(mb_substr())+mb_substr(), ~7 strtoupper→mb_strtoupper
+- **Extended MLStatisticsHelperTest** to 73 tests (all 14 public static methods)
+- **Rewrote ValidationServiceTest** to 116 tests (all 28 validators + edge cases)
+- **Security audit complete**: SQL injection, XSS, eval/exec, unserialize — all clean
+
+### Bugs encontrados e corrigidos
+1. **Division by zero** (12 services) — crash when price=0, empty datasets, or zero-progress rates
+2. **ASCII regex** (4 services) — keyword extractors stripped accented chars (proteção→proteo)
+3. **mb_* string functions** (53 files) — Portuguese multi-byte chars miscounted/truncated
+4. **!mb_strpos position-0 bug** (SEODescriptionGenerator) — false -15 penalty when bullet at position 0
+
+### Métricas
+- Total: 3434 tests, 7857 assertions, 51 skipped, 0 errors
+- Tests criados nesta sessão: +189 tests (73 MLStatistics + 116 Validation)
+- Bugs corrigidos nesta sessão: 12 division-by-zero + 4 regex + ~250 mb_* + 1 strpos
+- Git commits: 3fd3260, a06cc6e, c8c59c9
+
+---
+
 ## Sessão 2026-03-07 (23) — Float-key array bugs + AccountGovernance + MLStatistics tests
 
 ### O que foi feito

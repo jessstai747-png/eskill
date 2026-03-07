@@ -508,4 +508,109 @@ class ValidationService
     {
         return !empty($this->errors);
     }
+
+    // =========================================
+    // HELPERS PARA VALIDAÇÃO DE INPUT HTTP
+    // =========================================
+
+    /**
+     * Valida e retorna valor de $_GET com type-casting e sanitização
+     * 
+     * @param string $key Nome do parâmetro
+     * @param string $type Tipo esperado: 'int', 'string', 'bool', 'float', 'array'
+     * @param mixed $default Valor padrão se não existir ou inválido
+     * @return mixed Valor validado e convertido
+     */
+    public static function getParam(string $key, string $type = 'string', mixed $default = null): mixed
+    {
+        if (!isset($_GET[$key])) {
+            return $default;
+        }
+
+        $value = $_GET[$key];
+
+        return self::castValue($value, $type, $default);
+    }
+
+    /**
+     * Valida e retorna valor de $_POST com type-casting e sanitização
+     * 
+     * @param string $key Nome do parâmetro
+     * @param string $type Tipo esperado: 'int', 'string', 'bool', 'float', 'array'
+     * @param mixed $default Valor padrão se não existir ou inválido
+     * @return mixed Valor validado e convertido
+     */
+    public static function postParam(string $key, string $type = 'string', mixed $default = null): mixed
+    {
+        if (!isset($_POST[$key])) {
+            return $default;
+        }
+
+        $value = $_POST[$key];
+
+        return self::castValue($value, $type, $default);
+    }
+
+    /**
+     * Converte valor para o tipo esperado com validação
+     * 
+     * @param mixed $value Valor a ser convertido
+     * @param string $type Tipo alvo
+     * @param mixed $default Valor padrão se conversão falhar
+     * @return mixed Valor convertido
+     */
+    private static function castValue(mixed $value, string $type, mixed $default): mixed
+    {
+        switch ($type) {
+            case 'int':
+            case 'integer':
+                if (filter_var($value, FILTER_VALIDATE_INT) !== false) {
+                    return (int)$value;
+                }
+                return is_int($default) ? $default : 0;
+
+            case 'float':
+            case 'double':
+                if (is_numeric($value)) {
+                    return (float)$value;
+                }
+                return is_float($default) ? $default : 0.0;
+
+            case 'bool':
+            case 'boolean':
+                return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+
+            case 'array':
+                if (is_array($value)) {
+                    return $value;
+                }
+                return is_array($default) ? $default : [];
+
+            case 'string':
+            default:
+                // Sanitiza string (remove tags HTML, trim)
+                $sanitized = is_string($value) ? trim(strip_tags($value)) : (string)$value;
+                return $sanitized !== '' ? $sanitized : $default;
+        }
+    }
+
+    /**
+     * Valida múltiplos parâmetros $_GET de uma vez
+     * 
+     * @param array $params ['key' => ['type' => 'int', 'default' => 0], ...]
+     * @return array Parâmetros validados
+     */
+    public static function getParams(array $params): array
+    {
+        $result = [];
+
+        foreach ($params as $key => $config) {
+            $type = $config['type'] ?? 'string';
+            $default = $config['default'] ?? null;
+
+            $result[$key] = self::getParam($key, $type, $default);
+        }
+
+        return $result;
+    }
 }

@@ -40,7 +40,10 @@ class StockSyncController extends BaseController
     {
         $this->withErrorHandling(function (): void {
             $userId = $this->requireUserId();
-            $activeOnly = (bool) ($_GET['active_only'] ?? false);
+            $activeOnly = \App\Services\ValidationService::getParam('active_only', 'bool', false);
+            $limit = \App\Services\ValidationService::getParam('limit', 'int', 50);
+            $limit = min($limit, 100); // Máximo 100
+            
             $rules = $this->service->getRulesByUser($userId, $activeOnly);
 
             $this->jsonSuccess(['rules' => $rules, 'total' => count($rules)]);
@@ -254,16 +257,32 @@ class StockSyncController extends BaseController
         $this->withErrorHandling(function (): void {
             $userId = $this->requireUserId();
 
-            $filters = [
-                'rule_id' => !empty($_GET['rule_id']) ? (int) $_GET['rule_id'] : null,
-                'item_id' => $_GET['item_id'] ?? null,
-                'status' => $_GET['status'] ?? null,
-                'trigger_type' => $_GET['trigger_type'] ?? null,
-                'date_from' => $_GET['date_from'] ?? null,
-                'date_to' => $_GET['date_to'] ?? null,
-                'limit' => (int) ($_GET['limit'] ?? 50),
-                'offset' => (int) ($_GET['offset'] ?? 0),
-            ];
+            $filters = \App\Services\ValidationService::getParams([
+                'rule_id' => ['type' => 'int', 'default' => null],
+                'item_id' => ['type' => 'string', 'default' => null],
+                'status' => ['type' => 'string', 'default' => null],
+                'trigger_type' => ['type' => 'string', 'default' => null],
+                'date_from' => ['type' => 'string', 'default' => null],
+                'date_to' => ['type' => 'string', 'default' => null],
+                'limit' => ['type' => 'int', 'default' => 50],
+                'offset' => ['type' => 'int', 'default' => 0],
+            ]);
+
+            // Validar limites
+            $filters['limit'] = min(max($filters['limit'], 1), 100);
+            $filters['offset'] = max($filters['offset'], 0);
+
+            // Validar status permitidos
+            if ($filters['status'] !== null && !in_array($filters['status'], ['success', 'pending', 'failed', 'skipped'], true)) {
+                $this->jsonError('Status inválido. Valores permitidos: success, pending, failed, skipped', 422);
+                return;
+            }
+
+            // Validar trigger_type permitidos
+            if ($filters['trigger_type'] !== null && !in_array($filters['trigger_type'], ['webhook', 'manual', 'scheduled'], true)) {
+                $this->jsonError('Trigger type inválido. Valores permitidos: webhook, manual, scheduled', 422);
+                return;
+            }
 
             $result = $this->service->getHistory($userId, array_filter($filters));
 

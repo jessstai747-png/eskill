@@ -20,7 +20,7 @@ class AutoAnswerJob
 
     public function run(): void
     {
-        echo "[" . date('Y-m-d H:i:s') . "] Starting AutoAnswerJob...\n";
+        logger()->info('Starting AutoAnswerJob', ['job' => 'AutoAnswerJob']);
 
         // 1. Get Settings (Database with Fallback)
         $settings = $this->getSettings();
@@ -28,12 +28,11 @@ class AutoAnswerJob
         $minConfidence = $settings['min_confidence'] ?? 90;
 
         if (!$autoEnabled) {
-            echo "Auto-Answer disabled (Check system_settings).\n";
+            logger()->info('Auto-Answer disabled', ['settings' => $settings]);
             return;
         }
 
         // 2. Fetch Pending Questions
-        // Logic: Get questions status='UNANSWERED'
         $result = $this->questionService->getQuestions(['status' => 'UNANSWERED', 'limit' => 50]);
         $questions = $result['questions'] ?? [];
         
@@ -41,9 +40,6 @@ class AutoAnswerJob
         foreach ($questions as $q) {
             // Check if already has a draft
             if (empty($q['draft_answer'])) {
-                // Generate Draft (if not exists)
-                // In real scenario, this would be queue-based. 
-                // Here we skip generation to avoid blocking, assume draft was made on arrival.
                 continue;
             }
 
@@ -51,21 +47,34 @@ class AutoAnswerJob
             $confidence = $q['confidence_score'] ?? 0;
             
             if ($confidence >= $minConfidence) {
-                echo "Auto-Sending answer for Q: {$q['id']} (Confidence: $confidence%)\n";
+                logger()->info('Auto-sending answer', [
+                    'question_id' => $q['id'],
+                    'confidence' => $confidence
+                ]);
                 
                 // Send!
                 try {
                     $this->questionService->answerQuestion($q['id'], $q['draft_answer']);
                     $count++;
                 } catch (\Exception $e) {
-                    echo "Error sending Q {$q['id']}: " . $e->getMessage() . "\n";
+                    logger()->error('Failed to send answer', [
+                        'question_id' => $q['id'],
+                        'error' => $e->getMessage()
+                    ]);
                 }
             } else {
-                echo "Skipping Q: {$q['id']} (Confidence $confidence% < $minConfidence%)\n";
+                logger()->debug('Skipping low confidence answer', [
+                    'question_id' => $q['id'],
+                    'confidence' => $confidence,
+                    'min_required' => $minConfidence
+                ]);
             }
         }
         
-        echo "AutoAnswerJob Finished. Sent: $count\n";
+        logger()->info('AutoAnswerJob finished', [
+            'sent' => $count,
+            'total_questions' => count($questions)
+        ]);
     }
 
     private function getSettings(): array
