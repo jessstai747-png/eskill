@@ -37,12 +37,10 @@ try {
     $tokenService = new ApiTokenService();
     $notificationService = new RealTimeNotificationService();
 
+    // EmailSchedulerService removido - classe não existe mais
+    // TODO: Implementar service de email scheduling se necessário
     $emailService = null;
-    if (class_exists(\App\Services\EmailSchedulerService::class)) {
-        $emailService = new \App\Services\EmailSchedulerService();
-    } else {
-        logMessage('EmailSchedulerService não encontrado. Bloco de relatórios será ignorado.');
-    }
+    logMessage('[INFO] EmailSchedulerService desabilitado (classe não implementada)');
 
     // ============================================
     // 1. LIMPAR TOKENS EXPIRADOS

@@ -25,7 +25,7 @@ use GuzzleHttp\Exception\RequestException;
  */
 class MLResilienceHelper
 {
-    private CircuitBreakerService $circuitBreaker;
+    private object $circuitBreaker;  // CircuitBreakerService ou fallback em memória
     private ?CacheService $cache;
     private Client $httpClient;
     
@@ -40,13 +40,41 @@ class MLResilienceHelper
     
     public function __construct(?CircuitBreakerService $circuitBreaker = null, ?CacheService $cache = null)
     {
-        $this->circuitBreaker = $circuitBreaker ?? new CircuitBreakerService('mercadolivre_api');
+        // Circuit breaker opcional - se não passar e DB não disponível, cria um mock
+        if ($circuitBreaker !== null) {
+            $this->circuitBreaker = $circuitBreaker;
+        } else {
+            try {
+                $this->circuitBreaker = new CircuitBreakerService('mercadolivre_api');
+            } catch (\Exception $e) {
+                // DB não disponível - criar circuit breaker em memória (degraded mode)
+                logger()->warning('Circuit breaker degraded mode', [
+                    'reason' => 'DB unavailable',
+                    'error' => $e->getMessage()
+                ]);
+                $this->circuitBreaker = $this->createInMemoryCircuitBreaker();
+            }
+        }
+        
         $this->cache = $cache;
         $this->httpClient = new Client([
             'timeout' => 30,
             'connect_timeout' => 10,
             'http_errors' => false, // Handle errors manually
         ]);
+    }
+
+    /**
+     * Circuit breaker em memória (fallback quando DB não disponível)
+     */
+    private function createInMemoryCircuitBreaker(): object
+    {
+        return new class {
+            public function canRequest(): bool { return true; }
+            public function recordSuccess(): void {}
+            public function recordFailure(): void {}
+            public function getState(): array { return ['state' => 'closed', 'mode' => 'in-memory']; }
+        };
     }
 
     /**
