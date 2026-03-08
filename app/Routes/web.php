@@ -8,6 +8,7 @@ use App\Controllers\OrdersController; // Keeping both as per original file check
 use App\Controllers\AICenterController; // NEW: AI Center Controller
 use App\Controllers\AccountHealthController;
 use App\Controllers\AccountGovernanceController;
+use App\Controllers\AccountXRayController;
 
 /** @var \App\Router $router */
 
@@ -43,6 +44,14 @@ $router->post('api/account-governance/diagnostic', AccountGovernanceController::
 $router->post('api/account-governance/diagnostic-ml', AccountGovernanceController::class, 'runDiagnosticFromML');
 $router->post('api/account-governance/validate', AccountGovernanceController::class, 'validateInput');
 $router->get('api/account-governance/classifications', AccountGovernanceController::class, 'getClassifications');
+
+// ── Raio X — Diagnóstico Sistemático de Conta ─────────────────────────────
+$router->get('dashboard/raio-x', AccountXRayController::class, 'index');
+$router->get('api/xray/accounts', AccountXRayController::class, 'accounts');
+$router->post('api/xray/run', AccountXRayController::class, 'run');
+$router->get('api/xray/list', AccountXRayController::class, 'list');
+$router->get('api/xray/results/{id}', AccountXRayController::class, 'results');
+$router->get('api/xray/item-scores/{reportId}', AccountXRayController::class, 'itemScores');
 
 // OpenSpec Module
 $router->get('dashboard/openspec', 'App\\Controllers\\OpenSpecController', 'index');

@@ -96,6 +96,12 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                 <span>Diagnóstico</span>
                 <span class="nav-badge new">Novo</span>
             </a>
+
+            <a href="/dashboard/raio-x" class="nav-item <?= isActive('/raio-x') ? 'active' : '' ?>">
+                <i class="bi bi-radioactive text-danger"></i>
+                <span>Raio X da Conta</span>
+                <span class="nav-badge" style="background:#dc3545;color:#fff">X</span>
+            </a>
         </div>
 
         <!-- Catálogo & SEO -->
