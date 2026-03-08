@@ -93,9 +93,10 @@ class SecurityMiddleware
     public function handle(): bool
     {
         $ip = $this->getClientIp();
+        $isWhitelisted = in_array($ip, $this->whitelist, true);
 
-        // 1. Verificar se IP está bloqueado
-        if ($this->isIpBlocked($ip)) {
+        // 1. Verificar se IP está bloqueado (whitelist pula este check)
+        if (!$isWhitelisted && $this->isIpBlocked($ip)) {
             $this->denyAccess('IP bloqueado', 403);
             return false;
         }
@@ -112,6 +113,11 @@ class SecurityMiddleware
                 $this->redirectToHttps();
                 return false;
             }
+        }
+
+        // IPs na whitelist pulam verificações de segurança (agent, patterns, rate limit)
+        if ($isWhitelisted) {
+            return true;
         }
 
         // 4. Verificar user agent suspeito

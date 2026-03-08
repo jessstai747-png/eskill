@@ -11,7 +11,7 @@ use PDO;
 
 /**
  * 🧠 Category Learning Service
- * 
+ *
  * Aprende padrões de otimização por categoria do Mercado Livre:
  * - Analisa top performers de cada categoria
  * - Identifica padrões de título, descrição, atributos
@@ -28,7 +28,7 @@ class CategoryLearningService
     // Campos de aprendizado por categoria
     private const LEARNING_FIELDS = [
         'title_patterns',
-        'description_patterns', 
+        'description_patterns',
         'attribute_patterns',
         'keyword_patterns',
         'price_ranges',
@@ -51,7 +51,7 @@ class CategoryLearningService
         try {
             // Buscar top sellers da categoria
             $topItems = $this->fetchTopItems($categoryId, $sampleSize);
-            
+
             if (empty($topItems)) {
                 return [
                     'success' => false,
@@ -274,7 +274,7 @@ class CategoryLearningService
         // Buscar atributos da categoria
         try {
             $categoryAttrs = $this->mlClient->get("/categories/{$categoryId}/attributes");
-            
+
             $requiredAttrs = [];
             foreach ($categoryAttrs as $attr) {
                 if (($attr['tags']['required'] ?? false) || ($attr['relevance'] ?? 0) > 0.5) {
@@ -436,7 +436,7 @@ class CategoryLearningService
         $stmt->execute([
             'category_id' => $categoryId,
             'patterns_json' => json_encode($patterns),
-            'items_analyzed' => $patterns['title_patterns']['common_words'] 
+            'items_analyzed' => $patterns['title_patterns']['common_words']
                 ? count($patterns['title_patterns']['common_words']) : 0,
         ]);
     }

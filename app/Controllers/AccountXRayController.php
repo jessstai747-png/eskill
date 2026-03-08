@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Services\AccountXRayService;
+use App\Services\AccountRecoveryApplierService;
 use App\Services\UserService;
 use App\Services\MercadoLivreClient;
 use App\Database;
@@ -376,6 +377,217 @@ class AccountXRayController
     {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => $message], JSON_UNESCAPED_UNICODE);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // API: Aplicar plano de recuperação
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/xray/apply/{reportId}
+     * Body JSON: { "dry_run": true|false, "only_actions": ["PAUSAR","OTIMIZAR_TITULO"] }
+     */
+    public function applyRecovery(int $reportId): void
+    {
+        $this->requireAuth();
+        $this->jsonHeader();
+
+        if ($reportId <= 0) {
+            $this->error400('reportId inválido');
+            return;
+        }
+
+        // Verificar ownership do relatório
+        $db   = Database::getInstance();
+        $stmt = $db->prepare(
+            'SELECT r.id, r.account_id, r.status FROM account_xray_reports r
+             JOIN ml_accounts a ON r.account_id = a.id
+             WHERE r.id = :rid AND a.user_id = :uid LIMIT 1'
+        );
+        $stmt->execute(['rid' => $reportId, 'uid' => $this->userId()]);
+        $report = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$report) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Relatório não encontrado'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        if (($report['status'] ?? '') !== 'completed') {
+            $this->error400('Relatório ainda não concluído. Aguarde o término do diagnóstico.');
+            return;
+        }
+
+        $body       = $this->jsonInput();
+        $dryRun     = (bool) ($body['dry_run'] ?? true);
+        $onlyActions= array_filter((array) ($body['only_actions'] ?? []), 'is_string');
+
+        try {
+            $applier = new AccountRecoveryApplierService();
+            $result  = $applier->applyRecoveryPlan($reportId, $dryRun, array_values($onlyActions));
+
+            echo json_encode([
+                'success' => true,
+                'data'    => $result,
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            $this->error500($e->getMessage());
+        }
+    }
+
+    /**
+     * POST /api/xray/queue
+     * Enfileira análise assíncrona via xray_job_queue
+     * Body JSON: { "account_id": 3 }
+     */
+    public function queueAnalysis(): void
+    {
+        $this->requireAuth();
+        $this->jsonHeader();
+
+        $body      = $this->jsonInput();
+        $accountId = (int) ($body['account_id'] ?? 0);
+
+        if ($accountId <= 0) {
+            $this->error400('account_id obrigatório');
+            return;
+        }
+
+        if (!$this->userOwnsAccount($accountId)) {
+            $this->error403('Acesso negado a essa conta');
+            return;
+        }
+
+        try {
+            $db = Database::getInstance();
+
+            // Garantir que a tabela de fila existe
+            $db->exec(
+                "CREATE TABLE IF NOT EXISTS xray_job_queue (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT NOT NULL,
+                    status ENUM('queued','processing','completed','failed') DEFAULT 'queued',
+                    options_json TEXT,
+                    report_id INT DEFAULT NULL,
+                    error_message TEXT,
+                    pid INT DEFAULT NULL,
+                    queued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    started_at TIMESTAMP NULL,
+                    completed_at TIMESTAMP NULL,
+                    INDEX idx_status (status),
+                    INDEX idx_account (account_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+
+            // Verificar job já na fila
+            $existStmt = $db->prepare(
+                "SELECT id FROM xray_job_queue WHERE account_id = :aid AND status IN ('queued','processing') LIMIT 1"
+            );
+            $existStmt->execute(['aid' => $accountId]);
+            $existingJobId = $existStmt->fetchColumn();
+
+            if ($existingJobId) {
+                echo json_encode([
+                    'success'  => true,
+                    'job_id'   => (int) $existingJobId,
+                    'message'  => 'Análise já está na fila',
+                    'queued'   => false,
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $ins = $db->prepare(
+                "INSERT INTO xray_job_queue (account_id, status, options_json) VALUES (:aid, 'queued', :opts)"
+            );
+            $ins->execute([
+                'aid'  => $accountId,
+                'opts' => json_encode($body['options'] ?? (object)[]),
+            ]);
+            $jobId = (int) $db->lastInsertId();
+
+            // Lançar worker em background
+            $workerPath = dirname(__DIR__, 2) . '/bin/xray-worker.php';
+            $logPath    = dirname(__DIR__, 2) . '/storage/logs/xray-worker.log';
+            $cmd = "php {$workerPath} {$accountId} >> {$logPath} 2>&1 &";
+            exec($cmd);
+
+            echo json_encode([
+                'success' => true,
+                'job_id'  => $jobId,
+                'message' => 'Análise enfileirada e worker iniciado em background',
+                'queued'  => true,
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            $this->error500($e->getMessage());
+        }
+    }
+
+    /**
+     * GET /api/xray/job-status/{jobId}
+     * Retorna status de um job assíncrono
+     */
+    public function jobStatus(int $jobId): void
+    {
+        $this->requireAuth();
+        $this->jsonHeader();
+
+        try {
+            $db   = Database::getInstance();
+            $stmt = $db->prepare(
+                'SELECT j.id, j.account_id, j.status, j.report_id, j.error_message,
+                        j.queued_at, j.started_at, j.completed_at
+                 FROM xray_job_queue j
+                 JOIN ml_accounts a ON j.account_id = a.id
+                 WHERE j.id = :jid AND a.user_id = :uid
+                 LIMIT 1'
+            );
+            $stmt->execute(['jid' => $jobId, 'uid' => $this->userId()]);
+            $job = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$job) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Job não encontrado'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            echo json_encode(['success' => true, 'job' => $job], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            $this->error500($e->getMessage());
+        }
+    }
+
+    /**
+     * GET /api/xray/recovery-history/{accountId}
+     * Histórico de planos aplicados
+     */
+    public function recoveryHistory(int $accountId): void
+    {
+        $this->requireAuth();
+        $this->jsonHeader();
+
+        if (!$this->userOwnsAccount($accountId)) {
+            $this->error403('Acesso negado');
+            return;
+        }
+
+        try {
+            $applier = new AccountRecoveryApplierService();
+            $history = $applier->getApplicationHistory($accountId);
+
+            foreach ($history as &$row) {
+                $row['result'] = json_decode($row['result_json'] ?? '{}', true);
+                unset($row['result_json']);
+            }
+            unset($row);
+
+            echo json_encode([
+                'success' => true,
+                'history' => $history,
+                'count'   => count($history),
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            $this->error500($e->getMessage());
+        }
     }
 
     private function error500(string $message): void

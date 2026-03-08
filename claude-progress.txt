@@ -1,3 +1,77 @@
+## Sessão 2026-03-08 — Fase 2: Recovery Applier + Workers + Scheduler + UI Apply
+
+### O que foi feito
+- **AccountRecoveryApplierService** — aplica o plano automaticamente via ML API real:
+  - `PAUSAR`: pausa itens TOXICO/POLUIDOR/MORTO via `PUT /items/{id} status=paused`
+  - `OTIMIZAR_TITULO`: injeta keywords faltantes nos títulos via `PUT /items/{id} title=...`
+  - `REPOR_ESTOQUE` / `OTIMIZAR_PRECO`: coleta alertas para ação manual
+  - Dry-run mode: simula sem alterações reais
+  - Salva log em `xray_recovery_logs`
+- **bin/xray-worker.php** — worker CLI assíncrono:
+  - `php bin/xray-worker.php <accountId>` — diagnóstica uma conta
+  - `php bin/xray-worker.php --queue` — processa fila `xray_job_queue`
+  - `php bin/xray-worker.php --all` — roda para todas as contas ativas
+  - `php bin/xray-worker.php --apply <reportId> [--force]` — aplica plano
+- **bin/xray-scheduler.php** — scheduler diário para monitoramento automático:
+  - Compara score com relatório anterior
+  - Alerta via webhook quando score cai >10pts ou conta fica TRAVADA/PENALIZADA
+  - Configurável via `XRAY_ALERT_WEBHOOK` no `.env`
+- **Novos endpoints do controller** (4 adicionais):
+  - `POST /api/xray/apply/{reportId}` — aplica plano (dry_run + only_actions)
+  - `POST /api/xray/queue` — enfileira análise assíncrona, lança worker
+  - `GET /api/xray/job-status/{jobId}` — polling de status do job
+  - `GET /api/xray/recovery-history/{accountId}` — histórico de aplicações
+- **Dashboard UI** — modal "Aplicar Plano" completo:
+  - Dois modos: Simular (dry-run) e Aplicar Real
+  - Seletor de ações (PAUSAR, TÍTULO, ESTOQUE, PREÇO)
+  - Renderiza itens pausados, títulos antes/depois, alertas
+- **crontab.xray.example** — exemplo de crontab para scheduler diário e fila
+- **project-status.json** — 101 features, todas passando (XRAY-006..011 adicionados)
+
+### Testes
+- 3434 testes, 7861 assertions, 50 skipped, 0 erros — baseline mantido
+
+### Próximos passos sugeridos
+- Onboarding das 3 contas travadas (OAuth ML flow já existe em /auth/mercadolivre)
+- Export do relatório como PDF (DomPDF disponível)
+- Gráfico histórico de score (sparkline Chart.js na view)
+
+---
+
+## Sessão 2026-03-08 — Sistema Raio X Completo + Integração APIs Reais ML/MP
+
+### O que foi feito
+- **Sistema Raio X completo** — diagnóstico sistemático de contas ML com vendas travadas
+- **AccountXRayService** (9 fases):
+  1. Seller data: /users/me + /users/{id}/seller_reputation + power_seller_status
+  2. Items: /users/{id}/items/search (active + paused, batches de 20)
+  3. Métricas: getMultiItemVisits + getItemHealth + /orders/search (conversão)
+  4. Governance scoring via AccountGovernanceService (TRAVADA→FORTE)
+  5. SEO audit por item: score 0-100 (comprimento, caps, números, stop words, compat)
+  6. Análise competitiva: top 10 concorrentes por categoria, lacunas ocultas
+  7. Cauda longa via LongTailGeneratorService por item
+  8. Score geral ponderado (35% conta + 30% SEO + 20% financeiro + 15% competitivo)
+  9. Plano de recuperação priorizado + plano 7 dias
+- **MercadoPagoAccountService** — MP API v2 real:
+  - GET /v1/account/balance (disponível/bloqueado/pendente)
+  - GET /v1/chargebacks/search (30 dias, por status)
+  - GET /v1/disputes/search (abertas por razão)
+  - Risk level: BAIXO/MEDIO/ALTO/CRITICO com score 0-100 grade A-F
+- **AccountXRayController** — 6 endpoints (dashboard + 5 APIs)
+- **account-xray.php** — Dashboard completo:
+  - Score circular color-coded, status da conta, problemas por severidade
+  - 5 tabs: SEO items (filtro/sort/classificação), Lacunas Ocultas, Cauda Longa, MP, Plano 7 dias
+  - Histórico de relatórios com navegação
+- **DB Migration** — account_xray_reports + xray_item_scores (FK cascade)
+- **Menu sidebar** — link Raio X adicionado
+- Routes: GET /dashboard/raio-x + 5 endpoints /api/xray/*
+- project-status.json atualizado: XRAY-001 a XRAY-005
+
+### Métricas
+- Testes: 3434 passed, 0 failed, 50 skipped
+- Arquivos criados: 5 (service, mp service, controller, view, migration)
+- Git: add7089
+
 # Claude Progress — eskill.com.br
 
 > Este arquivo é atualizado automaticamente por agentes IA ao final de cada sessão.

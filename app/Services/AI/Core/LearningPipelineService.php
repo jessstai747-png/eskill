@@ -10,7 +10,7 @@ use PDO;
 
 /**
  * 🔄 Learning Pipeline Service
- * 
+ *
  * Pipeline de coleta de resultados que:
  * - Armazena outcomes de otimizações
  * - Calcula médias e tendências simples (não treina modelos ML)
@@ -75,7 +75,6 @@ class LearningPipelineService
                 'learning_result' => $learningResult ?? null,
                 'processing_time' => round(microtime(true) - $startTime, 3),
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -116,7 +115,7 @@ class LearningPipelineService
     {
         $stmt = $this->db->prepare("
             INSERT INTO learning_outcomes (
-                account_id, learning_type, outcome_data, 
+                account_id, learning_type, outcome_data,
                 success_score, created_at
             ) VALUES (
                 :account_id, :learning_type, :outcome_data,
@@ -206,7 +205,6 @@ class LearningPipelineService
             }
 
             return false;
-
         } catch (\Exception $e) {
             return false;
         }
@@ -233,7 +231,6 @@ class LearningPipelineService
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             return $row ? (float) $row['accuracy'] : null;
-
         } catch (\Exception $e) {
             return null;
         }
@@ -311,7 +308,6 @@ class LearningPipelineService
             }
 
             return $outcomes;
-
         } catch (\Exception $e) {
             return [];
         }
@@ -738,7 +734,7 @@ class LearningPipelineService
         try {
             // Outcomes by type
             $stmt = $this->db->prepare("
-                SELECT learning_type, 
+                SELECT learning_type,
                        COUNT(*) as total,
                        SUM(CASE WHEN processed = 1 THEN 1 ELSE 0 END) as processed,
                        AVG(success_score) as avg_success
@@ -772,7 +768,6 @@ class LearningPipelineService
                 'models' => $modelStats,
                 'health' => $this->calculatePipelineHealth($outcomeStats, $modelStats),
             ];
-
         } catch (\Exception $e) {
             return [
                 'error' => $e->getMessage(),
@@ -816,8 +811,16 @@ class LearningPipelineService
     {
         $results = [];
 
-        foreach ([self::LEARN_TITLE, self::LEARN_DESCRIPTION, self::LEARN_PRICE, 
-                  self::LEARN_KEYWORDS, self::LEARN_CATEGORY, self::LEARN_CONVERSION] as $type) {
+        foreach (
+            [
+                self::LEARN_TITLE,
+                self::LEARN_DESCRIPTION,
+                self::LEARN_PRICE,
+                self::LEARN_KEYWORDS,
+                self::LEARN_CATEGORY,
+                self::LEARN_CONVERSION
+            ] as $type
+        ) {
             $results[$type] = $this->runIncrementalLearning($type);
         }
 

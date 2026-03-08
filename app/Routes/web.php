@@ -52,6 +52,10 @@ $router->post('api/xray/run', AccountXRayController::class, 'run');
 $router->get('api/xray/list', AccountXRayController::class, 'list');
 $router->get('api/xray/results/{id}', AccountXRayController::class, 'results');
 $router->get('api/xray/item-scores/{reportId}', AccountXRayController::class, 'itemScores');
+$router->post('api/xray/apply/{reportId}', AccountXRayController::class, 'applyRecovery');
+$router->post('api/xray/queue', AccountXRayController::class, 'queueAnalysis');
+$router->get('api/xray/job-status/{jobId}', AccountXRayController::class, 'jobStatus');
+$router->get('api/xray/recovery-history/{accountId}', AccountXRayController::class, 'recoveryHistory');
 
 // OpenSpec Module
 $router->get('dashboard/openspec', 'App\\Controllers\\OpenSpecController', 'index');

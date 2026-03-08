@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Crontab — X-Ray Scheduler (Monitoramento Automático Raio X)
+#
+# Diagnóstica todas as contas ativas diariamente às 2h da manhã
+# e dispara alertas se score cair > 10 pontos ou conta ficar TRAVADA.
+#
+# Opcional: configure XRAY_ALERT_WEBHOOK=https://... no .env para receber
+# alertas via webhook (Discord, Slack, etc.)
+#
+# Para instalar:
+#   crontab -e
+#   (colar as linhas abaixo)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Diagnóstico diário de todas as contas (2h da manhã)
+0 2 * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/bin/xray-scheduler.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/xray-scheduler.log 2>&1
+
+# Processar fila de jobs X-Ray a cada 5 minutos (para requisições assíncronas do dashboard)
+*/5 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/bin/xray-worker.php --queue >> /home/eskill/htdocs/eskill.com.br/storage/logs/xray-worker.log 2>&1

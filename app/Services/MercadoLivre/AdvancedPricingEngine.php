@@ -9,7 +9,7 @@ use App\Services\CacheService;
 
 /**
  * Advanced Pricing Rules Engine
- * 
+ *
  * Features:
  * - Real-time competitor monitoring
  * - Elasticity-based pricing

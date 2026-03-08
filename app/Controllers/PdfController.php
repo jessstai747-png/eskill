@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controllers;
@@ -185,11 +186,11 @@ class PdfController extends BaseController
 
         // Total de vendas
         $stmt = $db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total_orders,
                 COALESCE(SUM(total_amount), 0) as total_sales
-            FROM ml_orders 
-            WHERE date_created >= :date_from 
+            FROM ml_orders
+            WHERE date_created >= :date_from
             AND date_created <= :date_to
             AND status != 'cancelled'
         ");
@@ -213,12 +214,12 @@ class PdfController extends BaseController
         };
 
         $stmt = $db->prepare("
-            SELECT 
+            SELECT
                 {$groupBy} as period,
                 COUNT(*) as orders,
                 COALESCE(SUM(total_amount), 0) as value
-            FROM ml_orders 
-            WHERE date_created >= :date_from 
+            FROM ml_orders
+            WHERE date_created >= :date_from
             AND date_created <= :date_to
             AND status != 'cancelled'
             GROUP BY {$groupBy}
@@ -263,7 +264,7 @@ class PdfController extends BaseController
                 'account_id' => $this->getAccountId(),
                 'error' => $e->getMessage(),
             ]);
-            
+
             // Fallback: estrutura vazia em caso de erro
             return [
                 'total_sales' => 0.00,
@@ -291,14 +292,14 @@ class PdfController extends BaseController
         try {
             // Tentar obter de tabela de itens vendidos se existir
             $stmt = $db->prepare("
-                SELECT 
+                SELECT
                     oi.item_id,
                     oi.title,
                     SUM(oi.quantity) as quantity,
                     SUM(oi.quantity * oi.unit_price) as revenue
                 FROM order_items oi
                 JOIN ml_orders o ON (oi.order_id = o.id OR oi.order_id = o.ml_order_id)
-                WHERE o.date_created >= :date_from 
+                WHERE o.date_created >= :date_from
                 AND o.date_created <= :date_to
                 GROUP BY oi.item_id, oi.title
                 ORDER BY quantity DESC
@@ -323,12 +324,12 @@ class PdfController extends BaseController
 
         try {
             $stmt = $db->prepare("
-                SELECT 
+                SELECT
                     COALESCE(category_name, 'Outros') as name,
                     COUNT(*) as orders,
                     COALESCE(SUM(total_amount), 0) as value
-                FROM ml_orders 
-                WHERE date_created >= :date_from 
+                FROM ml_orders
+                WHERE date_created >= :date_from
                 AND date_created <= :date_to
                 AND status != 'cancelled'
                 GROUP BY category_name
@@ -353,10 +354,10 @@ class PdfController extends BaseController
             // Instanciar CompetitorSpy (com account_id da sessão se houver)
             $accountId = $this->getAccountId();
             $spy = new \App\Services\AI\SEO\CompetitorSpy($accountId);
-            
+
             // Analisar Top Sellers da categoria (real API call)
             $analysis = $spy->analyzeTopSellers($categoryId, 50);
-            
+
             if (isset($analysis['error'])) {
                 // Fallback gracioso se a API falhar ou não houver credenciais
                 return $this->getSampleMarketData($categoryId, $brand);
@@ -364,7 +365,7 @@ class PdfController extends BaseController
 
             // Transformar dados do CompetitorSpy para o formato do PDF
             $sellers = $analysis['sellers'] ?? [];
-            
+
             // Calcular estatísticas dos top sellers
             $allPrices = [];
             foreach ($sellers as $seller) {
@@ -372,13 +373,13 @@ class PdfController extends BaseController
                     $allPrices[] = $item['price'];
                 }
             }
-            
+
             $avgPrice = count($allPrices) ? array_sum($allPrices) / count($allPrices) : 0;
             $minPrice = count($allPrices) ? min($allPrices) : 0;
             $maxPrice = count($allPrices) ? max($allPrices) : 0;
 
             // Formatar competidores
-            $competitorsFormatted = array_map(function($seller) {
+            $competitorsFormatted = array_map(function ($seller) {
                 return [
                     'nickname' => $seller['nickname'],
                     'listings' => $seller['item_count'],
@@ -402,7 +403,6 @@ class PdfController extends BaseController
                 'competitors' => $competitorsFormatted,
                 'price_ranges' => $this->calculatePriceRanges($allPrices),
             ];
-
         } catch (\Exception $e) {
             return $this->getSampleMarketData($categoryId, $brand);
         }
@@ -411,9 +411,13 @@ class PdfController extends BaseController
     private function calculatePriceRanges(array $prices): array
     {
         $ranges = [
-            '0-50' => 0, '50-100' => 0, '100-200' => 0, '200-500' => 0, '500+' => 0
+            '0-50' => 0,
+            '50-100' => 0,
+            '100-200' => 0,
+            '200-500' => 0,
+            '500+' => 0
         ];
-        
+
         foreach ($prices as $p) {
             if ($p <= 50) $ranges['0-50']++;
             elseif ($p <= 100) $ranges['50-100']++;
@@ -421,7 +425,7 @@ class PdfController extends BaseController
             elseif ($p <= 500) $ranges['200-500']++;
             else $ranges['500+']++;
         }
-        
+
         return [
             ['label' => 'R$ 0 - R$ 50', 'count' => $ranges['0-50']],
             ['label' => 'R$ 50 - R$ 100', 'count' => $ranges['50-100']],
@@ -505,10 +509,10 @@ class PdfController extends BaseController
 
             // Tentar obter dados de vendas
             $stmt = $db->query("
-                SELECT 
+                SELECT
                     COUNT(*) as orders,
                     COALESCE(SUM(total_amount), 0) as revenue
-                FROM ml_orders 
+                FROM ml_orders
                 WHERE date_created >= DATE_SUB(NOW(), INTERVAL 30 DAY)
                 AND status != 'cancelled'
             ");
@@ -519,12 +523,12 @@ class PdfController extends BaseController
 
             // Performance por conta
             $stmt = $db->query("
-                SELECT 
+                SELECT
                     a.nickname as name,
                     COUNT(o.id) as orders,
                     COALESCE(SUM(o.total_amount), 0) as revenue
                 FROM ml_accounts a
-                LEFT JOIN ml_orders o ON o.ml_account_id = a.id 
+                LEFT JOIN ml_orders o ON o.ml_account_id = a.id
                     AND o.date_created >= DATE_SUB(NOW(), INTERVAL 30 DAY)
                     AND o.status != 'cancelled'
                 WHERE a.status = 'active'

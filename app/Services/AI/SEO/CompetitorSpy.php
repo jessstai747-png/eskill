@@ -11,13 +11,13 @@ use PDO;
 
 /**
  * 🕵️ COMPETITOR SPY - Espionagem de Concorrentes
- * 
+ *
  * Analisa o que os top sellers fazem:
  * - Títulos dos mais vendidos
  * - Estratégias de preço
  * - Atributos que usam
  * - Padrões de sucesso
- * 
+ *
  * @author AI Development Team
  * @version 1.0.0
  */
@@ -546,7 +546,7 @@ class CompetitorSpy
 
         return array_slice($recommendations, 0, 5);
     }
-    
+
     // ==========================================
     // 🔖 WATCHLIST METHODS
     // ==========================================
@@ -594,12 +594,12 @@ class CompetitorSpy
 
             // Insert or update
             $stmt = $this->db->prepare("
-                INSERT INTO competitor_watchlist 
-                (account_id, competitor_item_id, competitor_seller_id, nickname, title, price, 
-                 sold_quantity, available_quantity, listing_type, condition, seo_score, 
-                 title_length, pictures_count, attributes_filled, free_shipping, shipping_mode, 
+                INSERT INTO competitor_watchlist
+                (account_id, competitor_item_id, competitor_seller_id, nickname, title, price,
+                 sold_quantity, available_quantity, listing_type, condition, seo_score,
+                 title_length, pictures_count, attributes_filled, free_shipping, shipping_mode,
                  status, category_id, tags, notes, alert_on_changes, last_checked_at)
-                VALUES 
+                VALUES
                 (:account_id, :competitor_item_id, :competitor_seller_id, :nickname, :title, :price,
                  :sold_quantity, :available_quantity, :listing_type, :condition, :seo_score,
                  :title_length, :pictures_count, :attributes_filled, :free_shipping, :shipping_mode,
@@ -678,7 +678,7 @@ class CompetitorSpy
             ? $filters['order_by'] : 'created_at DESC';
         $limit = max(1, min((int) ($filters['limit'] ?? 50), 200));
 
-        $sql = "SELECT * FROM competitor_watchlist 
+        $sql = "SELECT * FROM competitor_watchlist
                 WHERE " . implode(' AND ', $where) . "
                 ORDER BY {$orderBy}
                 LIMIT {$limit}";
@@ -754,7 +754,7 @@ class CompetitorSpy
             // Save history
             foreach ($changes as $change) {
                 $this->db->prepare("
-                    INSERT INTO competitor_history 
+                    INSERT INTO competitor_history
                     (watchlist_id, field_changed, old_value, new_value, change_type)
                     VALUES (:watchlist_id, :field, :old_value, :new_value, :change_type)
                 ")->execute([
@@ -825,7 +825,7 @@ class CompetitorSpy
     public function removeFromWatchlist(int $watchlistId): bool
     {
         $stmt = $this->db->prepare("
-            DELETE FROM competitor_watchlist 
+            DELETE FROM competitor_watchlist
             WHERE id = :id AND account_id = :account_id
         ");
 
@@ -942,7 +942,7 @@ class CompetitorSpy
 
         $limit = $filters['limit'] ?? 50;
 
-        $sql = "SELECT * FROM competitor_alerts 
+        $sql = "SELECT * FROM competitor_alerts
                 WHERE " . implode(' AND ', $where) . "
                 ORDER BY created_at DESC
                 LIMIT {$limit}";
@@ -959,7 +959,7 @@ class CompetitorSpy
     public function markAlertAsRead(int $alertId): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE competitor_alerts 
+            UPDATE competitor_alerts
             SET status = 'read', read_at = NOW()
             WHERE id = :id AND account_id = :account_id
         ");
@@ -977,7 +977,7 @@ class CompetitorSpy
     private function getWatchlistId(string $competitorItemId): ?int
     {
         $stmt = $this->db->prepare("
-            SELECT id FROM competitor_watchlist 
+            SELECT id FROM competitor_watchlist
             WHERE account_id = :account_id AND competitor_item_id = :item_id
         ");
 

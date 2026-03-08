@@ -10,7 +10,7 @@ use PDO;
 
 /**
  * Listing Auto-Creator V9.0
- * 
+ *
  * Uses AI to generate optimized product listings automatically.
  */
 class ListingAutoCreator
@@ -70,7 +70,7 @@ class ListingAutoCreator
     private function saveDraft(array $draft): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO listing_drafts 
+            INSERT INTO listing_drafts
             (title, description, bullet_points, seo_keywords, suggested_price, category_id, status, created_at)
             VALUES (:title, :desc, :bullets, :keywords, :price, :cat, :status, :created)
         ");
@@ -217,7 +217,6 @@ class ListingAutoCreator
                     'published_at' => date('Y-m-d H:i:s'),
                 ]
             ];
-
         } catch (\Exception $e) {
             log_error('Erro ao publicar listing no ML', [
                 'draft_id' => $draftId,

@@ -1104,6 +1104,42 @@
       ],
       "passes": true,
       "last_tested": "2026-03-08"
+    },
+    {
+      "id": "XRAY-006",
+      "name": "AccountRecoveryApplierService",
+      "description": "Aplica automaticamente o plano de recuperação: pausa itens tóxicos, otimiza títulos com keywords faltantes, coleta alertas de estoque e preço via ML API. Dry-run mode.",
+      "passes": true
+    },
+    {
+      "id": "XRAY-007",
+      "name": "X-Ray Background Worker (bin/xray-worker.php)",
+      "description": "Worker CLI assíncrono para análise X-Ray. Suporta conta específica, modo fila, --all, e --apply com dry-run/force. Gerencia tabela xray_job_queue.",
+      "passes": true
+    },
+    {
+      "id": "XRAY-008",
+      "name": "X-Ray Scheduler Diário (bin/xray-scheduler.php)",
+      "description": "Cron diário que roda X-Ray em todas as contas, compara scores, dispara alertas via webhook quando score cai >10pts ou conta fica TRAVADA/PENALIZADA.",
+      "passes": true
+    },
+    {
+      "id": "XRAY-009",
+      "name": "Apply Recovery Plan API (POST /api/xray/apply/{id})",
+      "description": "Endpoint que aplica o plano de recuperação de um relatório. Suporta dry_run e only_actions filter. Salva log na tabela xray_recovery_logs.",
+      "passes": true
+    },
+    {
+      "id": "XRAY-010",
+      "name": "Async Job Queue API (POST /api/xray/queue, GET /api/xray/job-status/{id})",
+      "description": "Enfileira análise assíncrona via xray_job_queue, lança worker em background, polling de status pelo frontend.",
+      "passes": true
+    },
+    {
+      "id": "XRAY-011",
+      "name": "Apply Recovery Plan Dashboard UI",
+      "description": "Modal Aplicar Plano com dry-run/real mode, seletor de ações, renderização de itens pausados, títulos otimizados e alertas. Integrado no painel Raio X.",
+      "passes": true
     }
   ]
 }

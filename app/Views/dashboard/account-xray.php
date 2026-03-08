@@ -350,6 +350,93 @@
   </div>
 </div>
 
+<!-- ─── MODAL: Aplicar Plano de Recuperação ───────────────────── -->
+<div class="modal fade" id="apply-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content shadow-lg border-0">
+      <div class="modal-header bg-success bg-opacity-10 border-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-lightning-fill me-2 text-success"></i>
+          <span id="apply-modal-title">Aplicar Plano de Recuperação</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <div id="apply-dry-run-warning" class="alert alert-info d-none">
+          <i class="bi bi-eye me-2"></i>
+          <strong>Modo Simulação (Dry Run)</strong> — Nenhuma alteração real será feita.
+          Você verá exatamente o que seria executado.
+        </div>
+        <div id="apply-real-warning" class="alert alert-warning d-none">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          <strong>Atenção!</strong> Esta ação irá pausar itens tóxicos e atualizar títulos
+          diretamente no Mercado Livre via API. Confirme antes de prosseguir.
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Ações a aplicar</label>
+          <div class="d-flex flex-wrap gap-2">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="apply-action-pause" value="PAUSAR" checked>
+              <label class="form-check-label small" for="apply-action-pause">
+                <span class="badge bg-danger me-1">PAUSAR</span> Itens tóxicos/poluidores/mortos
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="apply-action-title" value="OTIMIZAR_TITULO" checked>
+              <label class="form-check-label small" for="apply-action-title">
+                <span class="badge bg-primary me-1">TÍTULO</span> Otimizar com keywords faltantes
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="apply-action-stock" value="REPOR_ESTOQUE" checked>
+              <label class="form-check-label small" for="apply-action-stock">
+                <span class="badge bg-warning text-dark me-1">ESTOQUE</span> Alertas de reposição
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="apply-action-price" value="OTIMIZAR_PRECO" checked>
+              <label class="form-check-label small" for="apply-action-price">
+                <span class="badge bg-secondary me-1">PREÇO</span> Alertas de conversão baixa
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div id="apply-result" class="d-none mt-3">
+          <hr>
+          <h6 class="fw-bold mb-3" id="apply-result-title">Resultado</h6>
+          <div id="apply-result-summary" class="p-3 bg-light rounded mb-3 text-pre-wrap small font-monospace"></div>
+
+          <div id="apply-paused-list" class="d-none">
+            <h6 class="small fw-bold text-danger mb-2"><i class="bi bi-pause-circle me-1"></i>Itens pausados</h6>
+            <div id="apply-paused-items" class="list-group list-group-flush mb-3"></div>
+          </div>
+
+          <div id="apply-titles-list" class="d-none">
+            <h6 class="small fw-bold text-primary mb-2"><i class="bi bi-pencil me-1"></i>Títulos otimizados</h6>
+            <div id="apply-title-items" class="list-group list-group-flush mb-3"></div>
+          </div>
+
+          <div id="apply-alerts-list" class="d-none">
+            <h6 class="small fw-bold text-warning mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Alertas</h6>
+            <div id="apply-alert-items"></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal" id="apply-cancel-btn">Cancelar</button>
+        <button class="btn btn-success px-4 fw-semibold" onclick="XRay.applyPlan()" id="btn-apply-confirm">
+          <i class="bi bi-lightning-fill me-1"></i>
+          <span id="btn-apply-label">Confirmar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ─── STYLES ─────────────────────────────────────────────────── -->
 <style>
 .score-circle {
@@ -416,8 +503,10 @@
 const XRay = (() => {
   let currentAccountId = null;
   let currentReport    = null;
+  let currentReportId  = null;
   let allAccounts      = [];
   let allSEOItems      = [];
+  let applyDryRun      = true;
 
   // ── inicialização ──────────────────────────────────────────
   function init() {
@@ -594,7 +683,8 @@ const XRay = (() => {
 
   // ── renderizar relatório ─────────────────────────────────────
   function renderReport(report) {
-    currentReport = report;
+    currentReport   = report;
+    currentReportId = report.report_id || report.id || null;
     document.getElementById('result-dashboard').classList.remove('d-none');
 
     renderScoreCard(report);
@@ -889,6 +979,15 @@ const XRay = (() => {
             <div class="h5 fw-bold mb-0">${plan.estimated_recovery_days || '--'} dias</div>
             <div class="text-muted small">com plano executado</div>
           </div>
+
+          <div class="mt-3 d-grid gap-2">
+            <button class="btn btn-outline-primary btn-sm" onclick="XRay.openApplyModal(true)">
+              <i class="bi bi-eye me-1"></i> Simular Aplicação (Dry Run)
+            </button>
+            <button class="btn btn-success btn-sm" onclick="XRay.openApplyModal(false)">
+              <i class="bi bi-lightning-fill me-1"></i> Aplicar Plano Agora
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -994,8 +1093,134 @@ const XRay = (() => {
     return {ANCHOR:'⭐', SAUDAVEL:'🟢', EM_RISCO:'🟡', FRACO:'🔵', MORTO:'⚫', TOXICO:'🔴', POLUIDOR:'🟠', SEM_ESTOQUE:'🟣'}[cls] || '?';
   }
 
+// ── aplicar plano de recuperação ────────────────────────────
+
+  function openApplyModal(dryRun) {
+    if (!currentReportId) {
+      alert('Execute o Raio X primeiro para gerar um relatório.');
+      return;
+    }
+    applyDryRun = dryRun;
+
+    // Reset UI
+    document.getElementById('apply-result').classList.add('d-none');
+    document.getElementById('apply-paused-list').classList.add('d-none');
+    document.getElementById('apply-titles-list').classList.add('d-none');
+    document.getElementById('apply-alerts-list').classList.add('d-none');
+    document.getElementById('apply-result-summary').textContent = '';
+
+    const dryWarn  = document.getElementById('apply-dry-run-warning');
+    const realWarn = document.getElementById('apply-real-warning');
+    const title    = document.getElementById('apply-modal-title');
+    const btnLabel = document.getElementById('btn-apply-label');
+    const btn      = document.getElementById('btn-apply-confirm');
+
+    if (dryRun) {
+      dryWarn.classList.remove('d-none');
+      realWarn.classList.add('d-none');
+      title.textContent   = 'Simular Plano de Recuperação (Dry Run)';
+      btnLabel.textContent= 'Simular Agora';
+      btn.className       = 'btn btn-primary px-4 fw-semibold';
+    } else {
+      dryWarn.classList.add('d-none');
+      realWarn.classList.remove('d-none');
+      title.textContent   = '⚡ Aplicar Plano de Recuperação';
+      btnLabel.textContent= 'Aplicar Agora';
+      btn.className       = 'btn btn-success px-4 fw-semibold';
+    }
+
+    new bootstrap.Modal(document.getElementById('apply-modal')).show();
+  }
+
+  async function applyPlan() {
+    if (!currentReportId) return;
+
+    const btn = document.getElementById('btn-apply-confirm');
+    btn.disabled   = true;
+    btn.innerHTML  = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...';
+
+    const onlyActions = ['apply-action-pause','apply-action-title','apply-action-stock','apply-action-price']
+      .filter(id => document.getElementById(id)?.checked)
+      .map(id => document.getElementById(id).value);
+
+    try {
+      const res  = await fetch(`/api/xray/apply/${currentReportId}`, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ dry_run: applyDryRun, only_actions: onlyActions }),
+      });
+      const json = await res.json();
+
+      if (!json.success) throw new Error(json.error || 'Erro desconhecido');
+
+      const data = json.data;
+      renderApplyResult(data);
+    } catch (err) {
+      alert('Erro ao aplicar plano: ' + err.message);
+    } finally {
+      btn.disabled  = false;
+      btn.innerHTML = `<i class="bi bi-lightning-fill me-1"></i> ${applyDryRun ? 'Simular Novamente' : 'Aplicar Novamente'}`;
+    }
+  }
+
+  function renderApplyResult(data) {
+    const resultDiv = document.getElementById('apply-result');
+    resultDiv.classList.remove('d-none');
+
+    const titleEl = document.getElementById('apply-result-title');
+    titleEl.textContent = data.dry_run ? '🔍 Resultado da Simulação' : '✅ Resultado da Aplicação';
+
+    document.getElementById('apply-result-summary').textContent = data.summary || '';
+
+    // Itens pausados
+    const pausedItems = data.paused_items || [];
+    if (pausedItems.length > 0) {
+      document.getElementById('apply-paused-list').classList.remove('d-none');
+      document.getElementById('apply-paused-items').innerHTML = pausedItems.map(item => `
+        <div class="list-group-item border-0 py-1 small">
+          <span class="me-2">${item.applied ? '✅' : (data.dry_run ? '🔍' : '❌')}</span>
+          <strong>${escHtml(item.item_id)}</strong>
+          <span class="badge bg-danger ms-1">${escHtml(item.classification || '')}</span>
+          <span class="text-muted ms-1">${escHtml(item.title || '')}</span>
+          <span class="ms-1 text-muted">(score: ${item.score || 0})</span>
+        </div>
+      `).join('');
+    }
+
+    // Títulos otimizados
+    const titleItems = data.optimized_titles || [];
+    if (titleItems.length > 0) {
+      document.getElementById('apply-titles-list').classList.remove('d-none');
+      document.getElementById('apply-title-items').innerHTML = titleItems.map(item => `
+        <div class="list-group-item border-0 py-2 small">
+          <div class="mb-1">
+            <span class="me-2">${item.applied ? '✅' : (data.dry_run ? '🔍' : '❌')}</span>
+            <strong>${escHtml(item.item_id)}</strong>
+            <span class="badge bg-secondary ms-1">SEO ${item.seo_score_before || 0}</span>
+          </div>
+          <div class="text-muted ps-4">Antes: ${escHtml(item.original_title || '')}</div>
+          <div class="text-success ps-4 fw-semibold">Depois: ${escHtml(item.optimized_title || '')}</div>
+        </div>
+      `).join('');
+    }
+
+    // Alertas
+    const alerts = [...(data.stock_alerts || []), ...(data.price_alerts || [])];
+    if (alerts.length > 0) {
+      document.getElementById('apply-alerts-list').classList.remove('d-none');
+      document.getElementById('apply-alert-items').innerHTML = alerts.map(a => `
+        <div class="alert alert-warning py-2 small mb-1">
+          <strong>${escHtml(a.item_id)}</strong> — ${escHtml(a.message || '')}
+        </div>
+      `).join('');
+    }
+
+    // Cancelar → Fechar
+    document.getElementById('apply-cancel-btn').textContent = 'Fechar';
+  }
+
   // API pública do módulo
-  return { init, openRunModal, start, selectAccount, filterSEOItems, loadHistory, loadReportById };
+  return { init, openRunModal, start, selectAccount, filterSEOItems, loadHistory, loadReportById, openApplyModal, applyPlan };
 })();
 
 document.addEventListener('DOMContentLoaded', () => XRay.init());

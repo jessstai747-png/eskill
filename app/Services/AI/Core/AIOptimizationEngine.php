@@ -59,7 +59,7 @@ class AIOptimizationEngine
 
     /**
      * Optimize a complete listing
-     * 
+     *
      * @param string $itemId ML item ID
      * @param array $options Optimization options
      * @return array
@@ -147,7 +147,7 @@ class AIOptimizationEngine
 
     /**
      * Optimize only the title
-     * 
+     *
      * @param string $itemId
      * @return array
      */
@@ -162,7 +162,7 @@ class AIOptimizationEngine
 
     /**
      * Batch optimize multiple listings
-     * 
+     *
      * @param array $itemIds Array of item IDs
      * @param array $options
      * @return array
@@ -207,7 +207,7 @@ class AIOptimizationEngine
 
     /**
      * Get optimization suggestions without applying
-     * 
+     *
      * @param string $itemId
      * @return array
      */
@@ -253,7 +253,7 @@ class AIOptimizationEngine
 
     /**
      * Calculate overall quality score for a listing
-     * 
+     *
      * @param array $listingData
      * @return int Score 0-100
      */
@@ -312,7 +312,7 @@ class AIOptimizationEngine
 
     /**
      * Apply optimizations to listing data (simulation)
-     * 
+     *
      * @param array $currentData
      * @param array $optimizations
      * @return array
@@ -336,7 +336,7 @@ class AIOptimizationEngine
 
     /**
      * Get current listing data from Mercado Livre API
-     * 
+     *
      * @param string $itemId
      * @return array|null
      */
@@ -402,7 +402,7 @@ class AIOptimizationEngine
 
     /**
      * Apply optimizations to Mercado Livre via API
-     * 
+     *
      * @param string $itemId
      * @param array $optimizations
      * @return array Result with success status
@@ -484,7 +484,7 @@ class AIOptimizationEngine
 
     /**
      * Check if AI is available (circuit breaker aware)
-     * 
+     *
      * @return bool
      */
     public function isAvailable(): bool
@@ -495,7 +495,7 @@ class AIOptimizationEngine
 
     /**
      * Get AI provider info
-     * 
+     *
      * @return array
      */
     public function getProviderInfo(): array

@@ -11,7 +11,7 @@ use PDO;
 
 /**
  * AI Pricing Optimizer - Dynamic Pricing with Competitive Analysis
- * 
+ *
  * Otimização inteligente de preços usando análise competitiva e LLM:
  * - Análise de preços de concorrentes em tempo real (via API ML)
  * - Estimativa de demanda com heurísticas
@@ -19,9 +19,9 @@ use PDO;
  * - Precificação dinâmica baseada em contexto
  * - Estratégias de pricing (penetração, skimming, competitiva)
  * - Integração com MarginCalculatorService para custos reais
- * 
+ *
  * Nota: Usa OpenAI para sugestões, mas não implementa ML próprio.
- * 
+ *
  * @package App\Services\AI\SEO
  * @version 2.1.0
  * @since 2025-12-31
@@ -66,7 +66,7 @@ class AIPricingOptimizer
 
     /**
      * Sugere preço ótimo baseado em múltiplos fatores
-     * 
+     *
      * @param string $itemId ID do produto
      * @param array $options Opções de otimização
      * @return array Análise e sugestão de preço
@@ -118,7 +118,7 @@ class AIPricingOptimizer
 
     /**
      * Análise de elasticidade de preço
-     * 
+     *
      * @param string $itemId ID do produto
      * @return array Análise de elasticidade
      */
@@ -157,7 +157,7 @@ class AIPricingOptimizer
 
     /**
      * Otimização de margem considerando volume
-     * 
+     *
      * @param float $cost Custo do produto
      * @param array $constraints Restrições (margem mín, preço máx, etc)
      * @return array Análise margem vs volume
@@ -203,7 +203,7 @@ class AIPricingOptimizer
 
     /**
      * Estratégia de pricing dinâmico
-     * 
+     *
      * @param string $itemId ID do produto
      * @param array $rules Regras de precificação
      * @return array Regras e automação
@@ -245,7 +245,7 @@ class AIPricingOptimizer
 
     /**
      * Análise competitiva de preços
-     * 
+     *
      * @param string $itemId ID do produto
      * @return array Posicionamento competitivo
      */
@@ -303,7 +303,7 @@ class AIPricingOptimizer
 
     /**
      * Previsão de receita em diferentes cenários
-     * 
+     *
      * @param string $itemId ID do produto
      * @param array $pricePoints Preços a testar
      * @return array Previsões de receita
@@ -418,7 +418,7 @@ class AIPricingOptimizer
     private function getCompetitorPrices(string $itemId): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 cw.competitor_item_id,
                 cw.competitor_price as price,
                 cw.competitor_sales as sales,
@@ -437,7 +437,7 @@ class AIPricingOptimizer
     private function estimateDemand(string $itemId): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 AVG(views_increase) as avg_views,
                 AVG(sales_increase) as avg_sales,
                 COUNT(*) as data_points
@@ -1064,7 +1064,7 @@ class AIPricingOptimizer
     /**
      * Busca custo real do produto da tabela product_costs
      * Fallback para estimativa baseada no preço se não houver dados
-     * 
+     *
      * @param string $itemId ID do produto
      * @param float $currentPrice Preço atual para estimativa de fallback
      * @return float Custo do produto
@@ -1114,7 +1114,7 @@ class AIPricingOptimizer
 
     /**
      * Identifica a fonte do custo (real ou estimado)
-     * 
+     *
      * @param string $itemId ID do produto
      * @return string Fonte do custo
      */
@@ -1147,7 +1147,7 @@ class AIPricingOptimizer
 
     /**
      * Calcula margem real usando MarginCalculatorService
-     * 
+     *
      * @param float $price Preço de venda
      * @param string $itemId ID do produto
      * @param float $cost Custo do produto
@@ -1213,7 +1213,7 @@ class AIPricingOptimizer
     /**
      * Obtém análise de margem completa usando MarginCalculatorService
      * Método público para integração com outros serviços
-     * 
+     *
      * @param string $itemId ID do produto
      * @param float|null $price Preço a analisar (usa atual se null)
      * @return array Análise completa de margem

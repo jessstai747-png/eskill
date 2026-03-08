@@ -14,22 +14,22 @@ use PDO;
 class ItemAnalyzer
 {
     private PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Analyze all items and create prioritized optimization plan
-     * 
+     *
      * @return array
      */
     public function analyzeAllItems(): array
     {
         $items = $this->getAllItems();
         $analyzed = [];
-        
+
         foreach ($items as $item) {
             $score = $this->calculatePriorityScore($item);
             $item['priority_score'] = $score;
@@ -37,27 +37,27 @@ class ItemAnalyzer
             $item['estimated_roi'] = $this->estimateROI($item);
             $item['optimization_cost'] = $this->estimateOptimizationCost($item);
             $item['issues'] = $this->identifyIssues($item);
-            
+
             $analyzed[] = $item;
         }
-        
+
         // Sort by priority score (highest first)
         usort($analyzed, fn($a, $b) => $b['priority_score'] <=> $a['priority_score']);
-        
+
         return $analyzed;
     }
-    
+
     /**
      * Calculate priority score for an item (0-100)
      * Higher score = higher priority for optimization
-     * 
+     *
      * @param array $item
      * @return int
      */
     private function calculatePriorityScore(array $item): int
     {
         $score = 0;
-        
+
         // 1. Sales velocity (0-30 points)
         $salesVelocity = $item['sales_count'] ?? 0;
         if ($salesVelocity > 50) {
@@ -67,7 +67,7 @@ class ItemAnalyzer
         } elseif ($salesVelocity > 5) {
             $score += 10;
         }
-        
+
         // 2. Current quality issues (0-25 points)
         $titleLength = mb_strlen($item['title'] ?? '');
         if ($titleLength < 30) {
@@ -75,14 +75,14 @@ class ItemAnalyzer
         } elseif ($titleLength < 50) {
             $score += 10; // Poor title
         }
-        
+
         $hasDescription = !empty($item['description']);
         if (!$hasDescription) {
             $score += 10; // No description
         } elseif (mb_strlen($item['description']) < 100) {
             $score += 5; // Short description
         }
-        
+
         // 3. Price range (0-20 points)
         $price = floatval($item['price'] ?? 0);
         if ($price > 100) {
@@ -92,7 +92,7 @@ class ItemAnalyzer
         } elseif ($price > 20) {
             $score += 10;
         }
-        
+
         // 4. Status (0-15 points)
         $status = $item['status'] ?? '';
         if ($status === 'active') {
@@ -100,7 +100,7 @@ class ItemAnalyzer
         } elseif ($status === 'paused') {
             $score += 5;
         }
-        
+
         // 5. Current SEO score (0-10 points)
         // Lower current score = higher priority
         $currentScore = intval($item['seo_score'] ?? 0);
@@ -111,13 +111,13 @@ class ItemAnalyzer
         } elseif ($currentScore < 70) {
             $score += 3;
         }
-        
+
         return min(100, $score);
     }
-    
+
     /**
      * Get priority level from score
-     * 
+     *
      * @param int $score
      * @return string
      */
@@ -128,10 +128,10 @@ class ItemAnalyzer
         if ($score >= 30) return 'medium';
         return 'low';
     }
-    
+
     /**
      * Estimate ROI for optimizing this item
-     * 
+     *
      * @param array $item
      * @return array
      */
@@ -140,81 +140,81 @@ class ItemAnalyzer
         $currentViews = intval($item['visits'] ?? 10); // Default estimate
         $price = floatval($item['price'] ?? 0);
         $salesCount = intval($item['sales_count'] ?? 0);
-        
+
         // Calculate current conversion rate
         $currentConversion = $currentViews > 0 ? ($salesCount / $currentViews) : 0.01;
-        
+
         // Expected improvements from AI optimization
         $viewsIncrease = 1.45; // +145%
         $ctrIncrease = 1.89; // +89%
         $conversionIncrease = 1.67; // +67%
-        
+
         // Projected metrics
         $projectedViews = $currentViews * $viewsIncrease;
         $projectedConversion = $currentConversion * $conversionIncrease;
         $projectedSales = $projectedViews * $projectedConversion;
-        
+
         // Revenue estimates (monthly)
         $currentRevenue = $salesCount * $price;
         $projectedRevenue = $projectedSales * $price;
         $additionalRevenue = $projectedRevenue - $currentRevenue;
-        
+
         return [
             'current_views' => $currentViews,
             'projected_views' => round($projectedViews),
             'views_increase' => round(($viewsIncrease - 1) * 100) . '%',
-            
+
             'current_sales' => $salesCount,
             'projected_sales' => round($projectedSales, 1),
             'sales_increase' => round(($projectedSales - $salesCount), 1),
-            
+
             'current_revenue' => $currentRevenue,
             'projected_revenue' => round($projectedRevenue, 2),
             'additional_revenue' => round($additionalRevenue, 2),
-            
+
             'roi_multiplier' => $additionalRevenue > 0 ? round($additionalRevenue / 0.15, 1) : 0
         ];
     }
-    
+
     /**
      * Estimate cost to optimize this item
-     * 
+     *
      * @param array $item
      * @return float
      */
     private function estimateOptimizationCost(array $item): float
     {
         $cost = 0;
-        
+
         // Title optimization
         if (empty($item['title']) || mb_strlen($item['title']) < 50) {
             $cost += 0.03;
         }
-        
+
         // Description optimization
         if (empty($item['description']) || mb_strlen($item['description']) < 200) {
             $cost += 0.05;
         }
-        
+
         // Attributes/tech sheet
         $attributeCount = count($item['attributes'] ?? []);
         if ($attributeCount < 5) {
             $cost += 0.04;
         }
-        
+
         return $cost;
     }
-    
+
     /**
      * Identify specific issues with an item
-     * 
+     *
      * @param array $item
      * @return array
      */
     private function identifyIssues(array $item): array
     {
         $issues = [];
-        
+
         // Title issues
         $titleLength = mb_strlen($item['title'] ?? '');
         if ($titleLength == 0) {
@@ -239,7 +239,7 @@ class ItemAnalyzer
                 'impact' => 'medium'
             ];
         }
-        
+
         // Description issues
         $descLength = mb_strlen($item['description'] ?? '');
         if ($descLength == 0) {
@@ -257,7 +257,7 @@ class ItemAnalyzer
                 'impact' => 'high'
             ];
         }
-        
+
         // Attributes issues
         $attrCount = count($item['attributes'] ?? []);
         if ($attrCount < 3) {
@@ -268,7 +268,7 @@ class ItemAnalyzer
                 'impact' => 'medium'
             ];
         }
-        
+
         // Price issues
         $price = floatval($item['price'] ?? 0);
         if ($price == 0) {
@@ -279,7 +279,7 @@ class ItemAnalyzer
                 'impact' => 'critical'
             ];
         }
-        
+
         // Status issues
         if ($item['status'] !== 'active') {
             $issues[] = [
@@ -289,19 +289,19 @@ class ItemAnalyzer
                 'impact' => 'high'
             ];
         }
-        
+
         return $issues;
     }
-    
+
     /**
      * Get all items from database
-     * 
+     *
      * @return array
      */
     private function getAllItems(): array
     {
         $stmt = $this->db->query("
-            SELECT 
+            SELECT
                 id,
                 ml_id as item_id,
                 title,
@@ -316,13 +316,13 @@ class ItemAnalyzer
             FROM items
             ORDER BY sales DESC, visits DESC
         ");
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Generate optimization plan summary
-     * 
+     *
      * @param array $analyzedItems
      * @return array
      */
@@ -332,10 +332,10 @@ class ItemAnalyzer
         $high = array_filter($analyzedItems, fn($i) => $i['priority_level'] === 'high');
         $medium = array_filter($analyzedItems, fn($i) => $i['priority_level'] === 'medium');
         $low = array_filter($analyzedItems, fn($i) => $i['priority_level'] === 'low');
-        
+
         $totalCost = array_sum(array_column($analyzedItems, 'optimization_cost'));
         $totalRevenue = array_sum(array_column(array_column($analyzedItems, 'estimated_roi'), 'additional_revenue'));
-        
+
         return [
             'summary' => [
                 'total_items' => count($analyzedItems),
