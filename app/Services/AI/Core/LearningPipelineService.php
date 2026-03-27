@@ -502,7 +502,7 @@ class LearningPipelineService
         }
 
         // Analyze successful change ranges
-        $successfulChanges = array_filter($priceChanges, fn($c) => $c['success']);
+        $successfulChanges = array_filter($priceChanges, fn(array $c): bool => $c['success']);
         $avgSuccessChange = count($successfulChanges) > 0
             ? array_sum(array_column($successfulChanges, 'change_percent')) / count($successfulChanges)
             : 0;
@@ -691,9 +691,9 @@ class LearningPipelineService
 
         // Average success rate across top patterns
         $successRates = array_filter(array_map(
-            fn($p) => $p['success_rate'] ?? null,
+            fn(array $p): float|null => $p['success_rate'] ?? null,
             is_array($patterns) ? array_values($patterns) : []
-        ), fn($r) => $r !== null);
+        ), fn(float|null $r): bool => $r !== null);
 
         if (empty($successRates)) {
             return 0.5;

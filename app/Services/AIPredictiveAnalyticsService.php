@@ -1097,7 +1097,7 @@ class AIPredictiveAnalyticsService
     private function calculateConfidenceIntervals($forecast, $historical): array
     {
         // Calcula intervalos de confiança reais baseados na variabilidade histórica
-        $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $historical);
+        $values = array_map(fn(mixed $item): float|int => is_array($item) ? ($item['value'] ?? 0) : $item, $historical);
         $values = array_values(array_filter($values, 'is_numeric'));
 
         if (count($values) < 3) {
@@ -1117,7 +1117,7 @@ class AIPredictiveAnalyticsService
     {
         try {
             $values = array_map(
-                fn($item) => is_array($item) ? (float)($item['value'] ?? 0) : (float)$item,
+                fn(mixed $item): float => is_array($item) ? (float)($item['value'] ?? 0) : (float)$item,
                 $historical
             );
             $values = array_values(array_filter($values, 'is_numeric'));
@@ -1141,7 +1141,7 @@ class AIPredictiveAnalyticsService
             $seasonalStrength = 0;
             if (count($weeklyAvgs) >= 2) {
                 $mean = array_sum($weeklyAvgs) / count($weeklyAvgs);
-                $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $weeklyAvgs)) / count($weeklyAvgs);
+                $variance = array_sum(array_map(fn(float $v): float => ($v - $mean) ** 2, $weeklyAvgs)) / count($weeklyAvgs);
                 $seasonalStrength = $mean > 0 ? min(1, sqrt($variance) / $mean) : 0;
             }
 
@@ -1161,7 +1161,7 @@ class AIPredictiveAnalyticsService
     private function generateScenarios($forecast, $factors): array
     {
         $values = array_map(
-            fn($item) => is_array($item) ? (float)($item['value'] ?? 0) : (float)$item,
+            fn(mixed $item): float => is_array($item) ? (float)($item['value'] ?? 0) : (float)$item,
             $forecast
         );
         $values = array_values(array_filter($values, 'is_numeric'));
@@ -1173,7 +1173,7 @@ class AIPredictiveAnalyticsService
         $mean = array_sum($values) / count($values);
         $stdDev = 0;
         if (count($values) > 1) {
-            $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $values)) / (count($values) - 1);
+            $variance = array_sum(array_map(fn(float $v): float => ($v - $mean) ** 2, $values)) / (count($values) - 1);
             $stdDev = sqrt($variance);
         }
 
@@ -1203,7 +1203,7 @@ class AIPredictiveAnalyticsService
     private function evaluateModelPerformance($models, $historical): array
     {
         $values = array_map(
-            fn($item) => is_array($item) ? (float)($item['value'] ?? 0) : (float)$item,
+            fn(mixed $item): float => is_array($item) ? (float)($item['value'] ?? 0) : (float)$item,
             $historical
         );
         $values = array_values(array_filter($values, 'is_numeric'));
@@ -1267,7 +1267,7 @@ class AIPredictiveAnalyticsService
     private function analyzeTrends($forecast): array
     {
         // Análise de tendência usando regressão linear
-        $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $forecast);
+        $values = array_map(fn(mixed $item): float|int => is_array($item) ? ($item['value'] ?? 0) : $item, $forecast);
         $values = array_values(array_filter($values, 'is_numeric'));
         $n = count($values);
 
@@ -1692,7 +1692,7 @@ class AIPredictiveAnalyticsService
     private function detectYearlyPatterns($data): array
     {
         // Detecta padrão anual usando decomposição sazonal
-        $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
+        $values = array_map(fn(mixed $item): float|int => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
 
         if (count($values) < 365) {
@@ -1721,7 +1721,7 @@ class AIPredictiveAnalyticsService
     private function detectMonthlyPatterns($data): array
     {
         // Detecta padrão mensal (semanas do mês)
-        $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
+        $values = array_map(fn(mixed $item): float|int => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
 
         if (count($values) < 28) {
@@ -1749,7 +1749,7 @@ class AIPredictiveAnalyticsService
     {
         // Detecta padrão semanal (dia da semana)
         $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
+        $values = array_map(fn(mixed $item): float|int => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
 
         if (count($values) < 7) {
@@ -1773,7 +1773,7 @@ class AIPredictiveAnalyticsService
     private function detectDailyPatterns($data): array
     {
         // Detecta padrão diário (hora do dia) - requer dados horários
-        $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
+        $values = array_map(fn(mixed $item): float|int => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
 
         if (count($values) < 24) {
@@ -1808,7 +1808,7 @@ class AIPredictiveAnalyticsService
         }
 
         // Extrair valores numéricos do padrão
-        $values = array_map(fn($item) => is_numeric($item) ? (float)$item : ($item['value'] ?? 0), $pattern);
+        $values = array_map(fn(mixed $item): float => is_numeric($item) ? (float)$item : ($item['value'] ?? 0), $pattern);
         $values = array_filter($values, 'is_numeric');
 
         if (count($values) < 3) {
@@ -2155,7 +2155,7 @@ class AIPredictiveAnalyticsService
         if (count($salesVector) >= 14) {
             $mean = array_sum($salesVector) / count($salesVector);
             if ($mean > 0) {
-                $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $salesVector)) / count($salesVector);
+                $variance = array_sum(array_map(fn(float $v): float => ($v - $mean) ** 2, $salesVector)) / count($salesVector);
                 $cv = sqrt($variance) / $mean;
                 if ($cv > 0.8) {
                     $score += 0.15;
@@ -2383,7 +2383,7 @@ class AIPredictiveAnalyticsService
     private function extractNeuralPattern($data): array
     {
         // Extrai padrões usando regressão linear e análise estatística
-        $values = array_map(fn($item) => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
+        $values = array_map(fn(mixed $item): float|int => is_array($item) ? ($item['value'] ?? 0) : $item, $data);
         $values = array_values(array_filter($values, 'is_numeric'));
         $n = count($values);
 

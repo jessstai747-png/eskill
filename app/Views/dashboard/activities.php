@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Histórico de Atividades';
 $activePage = 'activities';
 ?>
@@ -142,7 +145,7 @@ $activePage = 'activities';
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     (() => {
         const form = document.getElementById('filter-form');
         const clearBtn = document.getElementById('clear-filters');

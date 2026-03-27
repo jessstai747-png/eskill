@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Dashboard de Logs do Sistema
  */
@@ -256,7 +259,7 @@ require_once __DIR__ . '/../../layouts/header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 // Filtrar logs
 document.getElementById('filterForm')?.addEventListener('submit', function(e) {

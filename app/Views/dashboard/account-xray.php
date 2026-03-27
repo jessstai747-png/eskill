@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * View: Dashboard Raio X — Diagnóstico Sistemático de Conta ML
  *
@@ -18,10 +21,15 @@
       <p class="text-muted mb-0">Diagnóstico sistemático completo — saúde, SEO, lacunas ocultas e plano de recuperação</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary btn-sm" onclick="XRay.loadHistory()">
+      <button class="btn btn-outline-secondary btn-sm" data-action="load-history">
         <i class="bi bi-clock-history me-1"></i> Histórico
       </button>
-      <button class="btn btn-primary btn-sm" onclick="XRay.openRunModal()" id="btn-start-xray">
+      <a class="btn btn-outline-success btn-sm d-none" id="btn-export-pdf"
+        href="#" data-action="export-pdf"
+        title="Exportar relatório atual como PDF">
+        <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+      </a>
+      <button class="btn btn-primary btn-sm" data-action="open-run-modal" id="btn-start-xray">
         <i class="bi bi-play-fill me-1"></i> Iniciar Raio X
       </button>
     </div>
@@ -52,7 +60,7 @@
       <p class="text-muted mb-3" id="running-detail">Conectando à API do Mercado Livre</p>
       <div class="progress mx-auto" style="max-width:400px;height:8px;">
         <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
-             role="progressbar" style="width:100%" id="running-progress"></div>
+          role="progressbar" style="width:100%" id="running-progress"></div>
       </div>
       <small class="text-muted d-block mt-2" id="running-elapsed">Isso pode levar 1-3 minutos...</small>
     </div>
@@ -186,7 +194,7 @@
               <span class="badge" id="avg-seo-badge">--</span>
             </div>
             <div class="d-flex gap-2">
-              <select class="form-select form-select-sm" style="width:auto;" id="seo-filter-class" onchange="XRay.filterSEOItems()">
+              <select class="form-select form-select-sm" style="width:auto;" id="seo-filter-class" data-changeaction="filter-seo-items">
                 <option value="">Todos</option>
                 <option value="TOXICO">🔴 Tóxico</option>
                 <option value="POLUIDOR">🟠 Poluidor</option>
@@ -196,7 +204,7 @@
                 <option value="SAUDAVEL">🟢 Saudável</option>
                 <option value="ANCHOR">⭐ Anchor</option>
               </select>
-              <select class="form-select form-select-sm" style="width:auto;" id="seo-sort" onchange="XRay.filterSEOItems()">
+              <select class="form-select form-select-sm" style="width:auto;" id="seo-sort" data-changeaction="filter-seo-items">
                 <option value="seo_score_asc">SEO Score ↑</option>
                 <option value="seo_score_desc">SEO Score ↓</option>
                 <option value="visits_desc">Visitas ↓</option>
@@ -275,7 +283,7 @@
   <div class="card border-0 shadow-sm d-none" id="history-card">
     <div class="card-header border-0 bg-transparent d-flex align-items-center justify-content-between">
       <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-1"></i> Histórico de Relatórios</h6>
-      <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('history-card').classList.add('d-none')">
+      <button class="btn btn-sm btn-outline-secondary" data-action="close-history-card">
         <i class="bi bi-x"></i>
       </button>
     </div>
@@ -342,7 +350,7 @@
       </div>
       <div class="modal-footer border-0">
         <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button class="btn btn-danger px-4 fw-semibold" onclick="XRay.start()" id="btn-modal-start">
+        <button class="btn btn-danger px-4 fw-semibold" data-action="start-xray" id="btn-modal-start">
           <i class="bi bi-play-fill me-1"></i> Iniciar Diagnóstico
         </button>
       </div>
@@ -428,7 +436,7 @@
       </div>
       <div class="modal-footer border-0">
         <button class="btn btn-outline-secondary" data-bs-dismiss="modal" id="apply-cancel-btn">Cancelar</button>
-        <button class="btn btn-success px-4 fw-semibold" onclick="XRay.applyPlan()" id="btn-apply-confirm">
+        <button class="btn btn-success px-4 fw-semibold" data-action="apply-plan" id="btn-apply-confirm">
           <i class="bi bi-lightning-fill me-1"></i>
           <span id="btn-apply-label">Confirmar</span>
         </button>
@@ -439,97 +447,292 @@
 
 <!-- ─── STYLES ─────────────────────────────────────────────────── -->
 <style>
-.score-circle {
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem; font-weight: 700;
-  border: 4px solid #dee2e6;
-  color: #6c757d;
-}
-.score-circle.excellent { border-color: #198754; color: #198754; background: #d1e7dd; }
-.score-circle.good      { border-color: #0d6efd; color: #0d6efd; background: #cfe2ff; }
-.score-circle.medium    { border-color: #ffc107; color: #856404; background: #fff3cd; }
-.score-circle.bad       { border-color: #dc3545; color: #dc3545; background: #f8d7da; }
-.score-circle.critical  { border-color: #6f1014; color: #fff;    background: #dc3545; }
+  .score-circle {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    border: 4px solid #dee2e6;
+    color: #6c757d;
+  }
 
-.xray-item-row { transition: background 0.15s; }
-.xray-item-row:hover { background: #f8f9fa; }
+  .score-circle.excellent {
+    border-color: #198754;
+    color: #198754;
+    background: #d1e7dd;
+  }
 
-.seo-bar {
-  height: 6px; border-radius: 3px;
-  background: #dee2e6;
-  display: inline-block; width: 80px;
-  vertical-align: middle;
-  overflow: hidden;
-}
-.seo-bar-fill { height: 100%; border-radius: 3px; }
+  .score-circle.good {
+    border-color: #0d6efd;
+    color: #0d6efd;
+    background: #cfe2ff;
+  }
 
-.kw-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.78rem;
-  margin: 2px;
-  background: #e9ecef;
-  color: #495057;
-  cursor: default;
-}
-.kw-badge.gap  { background: #fff3cd; color: #856404; }
-.kw-badge.opp  { background: #cff4fc; color: #055160; }
-.kw-badge.lt   { background: #d1e7dd; color: #0f5132; }
+  .score-circle.medium {
+    border-color: #ffc107;
+    color: #856404;
+    background: #fff3cd;
+  }
 
-.severity-CRITICO { border-left: 4px solid #dc3545 !important; }
-.severity-ALTO    { border-left: 4px solid #fd7e14 !important; }
-.severity-MEDIO   { border-left: 4px solid #ffc107 !important; }
-.severity-BAIXO   { border-left: 4px solid #0dcaf0 !important; }
+  .score-circle.bad {
+    border-color: #dc3545;
+    color: #dc3545;
+    background: #f8d7da;
+  }
 
-.account-card { cursor: pointer; transition: all 0.15s; border: 2px solid transparent !important; }
-.account-card:hover { border-color: #0d6efd !important; }
-.account-card.selected { border-color: #0d6efd !important; background: #f0f5ff; }
+  .score-circle.critical {
+    border-color: #6f1014;
+    color: #fff;
+    background: #dc3545;
+  }
 
-.classification-ANCHOR  { color: #f59e0b; font-weight: 700; }
-.classification-SAUDAVEL{ color: #059669; }
-.classification-EM_RISCO{ color: #d97706; }
-.classification-FRACO   { color: #6b7280; }
-.classification-MORTO   { color: #374151; }
-.classification-TOXICO  { color: #dc2626; font-weight: 700; }
-.classification-POLUIDOR{ color: #ea580c; }
-.classification-SEM_ESTOQUE { color: #7c3aed; }
+  .xray-item-row {
+    transition: background 0.15s;
+  }
+
+  .xray-item-row:hover {
+    background: #f8f9fa;
+  }
+
+  .seo-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: #dee2e6;
+    display: inline-block;
+    width: 80px;
+    vertical-align: middle;
+    overflow: hidden;
+  }
+
+  .seo-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  .kw-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    margin: 2px;
+    background: #e9ecef;
+    color: #495057;
+    cursor: default;
+  }
+
+  .kw-badge.gap {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .kw-badge.opp {
+    background: #cff4fc;
+    color: #055160;
+  }
+
+  .kw-badge.lt {
+    background: #d1e7dd;
+    color: #0f5132;
+  }
+
+  .severity-CRITICO {
+    border-left: 4px solid #dc3545 !important;
+  }
+
+  .severity-ALTO {
+    border-left: 4px solid #fd7e14 !important;
+  }
+
+  .severity-MEDIO {
+    border-left: 4px solid #ffc107 !important;
+  }
+
+  .severity-BAIXO {
+    border-left: 4px solid #0dcaf0 !important;
+  }
+
+  .account-card {
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 2px solid transparent !important;
+  }
+
+  .account-card:hover {
+    border-color: #0d6efd !important;
+  }
+
+  .account-card.selected {
+    border-color: #0d6efd !important;
+    background: #f0f5ff;
+  }
+
+  .classification-ANCHOR {
+    color: #f59e0b;
+    font-weight: 700;
+  }
+
+  .classification-SAUDAVEL {
+    color: #059669;
+  }
+
+  .classification-EM_RISCO {
+    color: #d97706;
+  }
+
+  .classification-FRACO {
+    color: #6b7280;
+  }
+
+  .classification-MORTO {
+    color: #374151;
+  }
+
+  .classification-TOXICO {
+    color: #dc2626;
+    font-weight: 700;
+  }
+
+  .classification-POLUIDOR {
+    color: #ea580c;
+  }
+
+  .classification-SEM_ESTOQUE {
+    color: #7c3aed;
+  }
 </style>
 
 <!-- ─── JAVASCRIPT ─────────────────────────────────────────────── -->
-<script>
-const XRay = (() => {
-  let currentAccountId = null;
-  let currentReport    = null;
-  let currentReportId  = null;
-  let allAccounts      = [];
-  let allSEOItems      = [];
-  let applyDryRun      = true;
+<script nonce="<?= CSP_NONCE ?>">
+  const XRay = (() => {
+    let currentAccountId = null;
+    let currentReport = null;
+    let currentReportId = null;
+    let allAccounts = [];
+    let allSEOItems = [];
+    let applyDryRun = true;
+    let uiEventsBound = false;
 
-  // ── inicialização ──────────────────────────────────────────
-  function init() {
-    loadAccounts();
-  }
+    // ── inicialização ──────────────────────────────────────────
+    function init() {
+      bindUIActions();
+      loadAccounts();
+    }
 
-  async function loadAccounts() {
-    try {
-      const res  = await fetch('/api/xray/accounts');
-      const data = await res.json();
-      allAccounts = data.accounts || [];
+    function getRunModalElement() {
+      return document.getElementById('xray-run-modal');
+    }
 
+    function getRunModalInstance() {
+      if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return null;
+      const modalEl = getRunModalElement();
+      if (!modalEl) return null;
+      return bootstrap.Modal.getOrCreateInstance(modalEl);
+    }
+
+    function bindUIActions() {
+      if (uiEventsBound) return;
+      uiEventsBound = true;
+
+      document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+
+        const action = target.dataset.action;
+        if (!action) return;
+
+        if (target.tagName === 'A') {
+          e.preventDefault();
+        }
+
+        switch (action) {
+          case 'load-history':
+            e.preventDefault();
+            loadHistory();
+            break;
+          case 'export-pdf':
+            e.preventDefault();
+            exportPdf();
+            break;
+          case 'open-run-modal':
+            e.preventDefault();
+            openRunModal();
+            break;
+          case 'close-history-card':
+            e.preventDefault();
+            document.getElementById('history-card')?.classList.add('d-none');
+            break;
+          case 'start-xray':
+            e.preventDefault();
+            start();
+            break;
+          case 'apply-plan':
+            e.preventDefault();
+            applyPlan();
+            break;
+          case 'select-account': {
+            e.preventDefault();
+            const accountId = Number(target.dataset.accountId || 0);
+            if (accountId > 0) selectAccount(accountId);
+            break;
+          }
+          case 'open-apply-modal':
+            e.preventDefault();
+            openApplyModal(target.dataset.dryRun === 'true');
+            break;
+          case 'load-report-by-id': {
+            e.preventDefault();
+            const reportId = Number(target.dataset.reportId || 0);
+            const accountId = Number(target.dataset.accountId || currentAccountId || 0);
+            if (reportId > 0) loadReportById(reportId, accountId);
+            break;
+          }
+        }
+      });
+
+      document.addEventListener('change', function(e) {
+        const target = e.target.closest('[data-changeaction]');
+        if (!target) return;
+
+        if (target.dataset.changeaction === 'filter-seo-items') {
+          filterSEOItems();
+        }
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const target = e.target.closest('[data-keyaction]');
+        if (!target) return;
+        if (target.dataset.keyaction !== 'select-account') return;
+        e.preventDefault();
+        const accountId = Number(target.dataset.accountId || 0);
+        if (accountId > 0) selectAccount(accountId);
+      });
+    }
+
+    async function loadAccounts() {
       const grid = document.getElementById('accounts-grid');
-      document.getElementById('accounts-loading').remove();
+      const loadingEl = document.getElementById('accounts-loading');
 
-      if (!allAccounts.length) {
-        grid.innerHTML = '<div class="col-12 text-center text-muted py-4"><i class="bi bi-person-x fs-2 d-block mb-2"></i>Nenhuma conta ML conectada. <a href="/settings">Conectar conta</a></div>';
-        return;
-      }
+      try {
+        const res = await fetch('/api/xray/accounts');
+        const data = await res.json();
+        allAccounts = data.accounts || [];
 
-      grid.innerHTML = allAccounts.map(a => `
+        if (!grid) return;
+        if (loadingEl) loadingEl.remove();
+
+        if (!allAccounts.length) {
+          grid.innerHTML = '<div class="col-12 text-center text-muted py-4"><i class="bi bi-person-x fs-2 d-block mb-2"></i>Nenhuma conta ML conectada. <a href="/settings">Conectar conta</a></div>';
+          return;
+        }
+
+        grid.innerHTML = allAccounts.map(a => `
         <div class="col-md-4">
-          <div class="card account-card border shadow-sm p-3" data-id="${a.id}" onclick="XRay.selectAccount(${a.id})">
+          <div class="card account-card border shadow-sm p-3" data-id="${a.id}" data-action="select-account" data-keyaction="select-account" data-account-id="${a.id}" role="button" tabindex="0">
             <div class="d-flex align-items-center gap-3">
               <div class="bg-primary-subtle rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;min-width:48px">
                 <i class="bi bi-person-fill text-primary fs-5"></i>
@@ -549,197 +752,231 @@ const XRay = (() => {
         </div>
       `).join('');
 
-      // Auto-selecionar primeira conta ativa
-      const active = allAccounts.find(a => a.status === 'active');
-      if (active) selectAccount(active.id);
+        // Auto-selecionar primeira conta ativa
+        const active = allAccounts.find(a => a.status === 'active');
+        if (active) selectAccount(active.id);
 
-      // Preencher select do modal
-      populateModalSelect();
-    } catch (e) {
-      document.getElementById('accounts-loading').textContent = 'Erro ao carregar contas: ' + e.message;
-    }
-  }
+        // Preencher select do modal
+        populateModalSelect();
+      } catch (e) {
+        if (loadingEl) {
+          loadingEl.textContent = 'Erro ao carregar contas: ' + e.message;
+          return;
+        }
 
-  function selectAccount(id) {
-    currentAccountId = id;
-    document.querySelectorAll('.account-card').forEach(c => {
-      c.classList.toggle('selected', parseInt(c.dataset.id) === id);
-    });
-    // Carregar último relatório se existir
-    loadLastReport(id);
-  }
-
-  async function loadLastReport(accountId) {
-    try {
-      const res  = await fetch(`/api/xray/list?account_id=${accountId}&limit=1`);
-      const data = await res.json();
-      const reports = data.reports || [];
-      if (reports.length && reports[0].status === 'completed') {
-        const r = await fetch(`/api/xray/results/${reports[0].id}`);
-        const d = await r.json();
-        if (d.success && d.report?.report) {
-          renderReport(d.report.report);
+        if (grid) {
+          grid.innerHTML = `<div class="col-12 text-center text-danger py-4">Erro ao carregar contas: ${escHtml(e.message || 'falha desconhecida')}</div>`;
         }
       }
-    } catch (_) {}
-  }
-
-  function populateModalSelect() {
-    const sel = document.getElementById('modal-account-select');
-    sel.innerHTML = allAccounts.map(a =>
-      `<option value="${a.id}">${escHtml(a.nickname || 'Conta #' + a.id)} — ${escHtml(a.status)}</option>`
-    ).join('');
-    if (currentAccountId) sel.value = currentAccountId;
-  }
-
-  // ── abrir modal ─────────────────────────────────────────────
-  function openRunModal() {
-    populateModalSelect();
-    if (currentAccountId) {
-      document.getElementById('modal-account-select').value = currentAccountId;
     }
-    new bootstrap.Modal('#xray-run-modal').show();
-  }
 
-  // ── iniciar análise ─────────────────────────────────────────
-  async function start() {
-    const accountId = parseInt(document.getElementById('modal-account-select').value);
-    if (!accountId) { alert('Selecione uma conta'); return; }
-
-    const options = {
-      account_id:        accountId,
-      max_items:         parseInt(document.getElementById('modal-max-items').value),
-      include_paused:    document.getElementById('modal-include-paused').checked,
-      deep_seo:          document.getElementById('modal-deep-seo').checked,
-      include_financial: document.getElementById('modal-include-financial').checked,
-    };
-
-    bootstrap.Modal.getInstance('#xray-run-modal')?.hide();
-
-    // Mostrar estado de execução
-    document.getElementById('result-dashboard').classList.add('d-none');
-    document.getElementById('running-card').classList.remove('d-none');
-
-    const phases = [
-      [5,  'Conectando à API do Mercado Livre...'],
-      [10, 'Buscando dados do vendedor e reputação...'],
-      [20, 'Listando anúncios da conta...'],
-      [35, 'Coletando métricas de visitas e conversão...'],
-      [50, 'Executando diagnóstico de governança...'],
-      [65, 'Auditando qualidade SEO dos títulos...'],
-      [75, 'Analisando lacunas vs concorrentes...'],
-      [85, 'Consultando Mercado Pago...'],
-      [95, 'Calculando score e gerando plano de recuperação...'],
-    ];
-
-    let phaseIdx = 0;
-    const phaseTimer = setInterval(() => {
-      if (phaseIdx < phases.length) {
-        document.getElementById('running-phase').textContent = phases[phaseIdx][1];
-        document.getElementById('running-progress').style.width = phases[phaseIdx][0] + '%';
-        phaseIdx++;
-      }
-    }, 15000);
-
-    const startTs = Date.now();
-    const elapsedTimer = setInterval(() => {
-      const s = Math.round((Date.now() - startTs) / 1000);
-      document.getElementById('running-elapsed').textContent = `${s}s em execução...`;
-    }, 1000);
-
-    try {
-      const res  = await fetch('/api/xray/run', {
-        method:  'POST',
-        headers: {'Content-Type': 'application/json'},
-        body:    JSON.stringify(options),
+    function selectAccount(id) {
+      currentAccountId = id;
+      document.querySelectorAll('.account-card').forEach(c => {
+        c.classList.toggle('selected', parseInt(c.dataset.id) === id);
       });
-      const data = await res.json();
+      // Carregar último relatório se existir
+      loadLastReport(id);
+    }
 
-      clearInterval(phaseTimer);
-      clearInterval(elapsedTimer);
-      document.getElementById('running-card').classList.add('d-none');
+    async function loadLastReport(accountId) {
+      try {
+        const res = await fetch(`/api/xray/list?account_id=${accountId}&limit=1`);
+        const data = await res.json();
+        const reports = data.reports || [];
+        if (reports.length && reports[0].status === 'completed') {
+          const r = await fetch(`/api/xray/results/${reports[0].id}`);
+          const d = await r.json();
+          if (d.success && d.report?.report) {
+            renderReport(d.report.report);
+          }
+        }
+      } catch (_) {}
+    }
 
-      if (!data.success) {
-        alert('Erro: ' + (data.error || 'Falha desconhecida'));
+    function populateModalSelect() {
+      const sel = document.getElementById('modal-account-select');
+      sel.innerHTML = allAccounts.map(a =>
+        `<option value="${a.id}">${escHtml(a.nickname || 'Conta #' + a.id)} — ${escHtml(a.status)}</option>`
+      ).join('');
+      if (currentAccountId) sel.value = currentAccountId;
+    }
+
+    // ── abrir modal ─────────────────────────────────────────────
+    function openRunModal() {
+      populateModalSelect();
+      if (currentAccountId) {
+        document.getElementById('modal-account-select').value = currentAccountId;
+      }
+
+      const modal = getRunModalInstance();
+      modal?.show();
+    }
+
+    // ── iniciar análise ─────────────────────────────────────────
+    async function start() {
+      const accountId = parseInt(document.getElementById('modal-account-select').value);
+      if (!accountId) {
+        alert('Selecione uma conta');
         return;
       }
 
-      // Buscar relatório completo
-      const repRes  = await fetch(`/api/xray/results/${data.report_id}`);
-      const repData = await repRes.json();
-      if (repData.success && repData.report?.report) {
-        renderReport(repData.report.report);
+      const options = {
+        account_id: accountId,
+        max_items: parseInt(document.getElementById('modal-max-items').value),
+        include_paused: document.getElementById('modal-include-paused').checked,
+        deep_seo: document.getElementById('modal-deep-seo').checked,
+        include_financial: document.getElementById('modal-include-financial').checked,
+      };
+
+      // Evita warning de aria-hidden com foco retido no botão dentro do modal
+      const activeEl = document.activeElement;
+      if (activeEl && typeof activeEl.blur === 'function') {
+        activeEl.blur();
       }
 
-      // Recarregar cards de conta
-      loadAccounts();
-    } catch (e) {
-      clearInterval(phaseTimer);
-      clearInterval(elapsedTimer);
-      document.getElementById('running-card').classList.add('d-none');
-      alert('Erro ao executar Raio X: ' + e.message);
+      const modalEl = getRunModalElement();
+      const modalInstance = getRunModalInstance();
+      if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function onHidden() {
+          document.getElementById('btn-start-xray')?.focus();
+          modalEl.removeEventListener('hidden.bs.modal', onHidden);
+        });
+      }
+      modalInstance?.hide();
+
+      // Mostrar estado de execução
+      document.getElementById('result-dashboard').classList.add('d-none');
+      document.getElementById('running-card').classList.remove('d-none');
+
+      const phases = [
+        [5, 'Conectando à API do Mercado Livre...'],
+        [10, 'Buscando dados do vendedor e reputação...'],
+        [20, 'Listando anúncios da conta...'],
+        [35, 'Coletando métricas de visitas e conversão...'],
+        [50, 'Executando diagnóstico de governança...'],
+        [65, 'Auditando qualidade SEO dos títulos...'],
+        [75, 'Analisando lacunas vs concorrentes...'],
+        [85, 'Consultando Mercado Pago...'],
+        [95, 'Calculando score e gerando plano de recuperação...'],
+      ];
+
+      let phaseIdx = 0;
+      const phaseTimer = setInterval(() => {
+        if (phaseIdx < phases.length) {
+          document.getElementById('running-phase').textContent = phases[phaseIdx][1];
+          document.getElementById('running-progress').style.width = phases[phaseIdx][0] + '%';
+          phaseIdx++;
+        }
+      }, 15000);
+
+      const startTs = Date.now();
+      const elapsedTimer = setInterval(() => {
+        const s = Math.round((Date.now() - startTs) / 1000);
+        document.getElementById('running-elapsed').textContent = `${s}s em execução...`;
+      }, 1000);
+
+      try {
+        const res = await fetch('/api/xray/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(options),
+        });
+        const data = await res.json();
+
+        clearInterval(phaseTimer);
+        clearInterval(elapsedTimer);
+        document.getElementById('running-card').classList.add('d-none');
+
+        if (!data.success) {
+          alert('Erro: ' + (data.error || 'Falha desconhecida'));
+          return;
+        }
+
+        // Buscar relatório completo
+        const repRes = await fetch(`/api/xray/results/${data.report_id}`);
+        const repData = await repRes.json();
+        if (repData.success && repData.report?.report) {
+          renderReport(repData.report.report);
+        }
+
+        // Recarregar cards de conta
+        loadAccounts();
+      } catch (e) {
+        clearInterval(phaseTimer);
+        clearInterval(elapsedTimer);
+        document.getElementById('running-card').classList.add('d-none');
+        alert('Erro ao executar Raio X: ' + e.message);
+      }
     }
-  }
 
-  // ── renderizar relatório ─────────────────────────────────────
-  function renderReport(report) {
-    currentReport   = report;
-    currentReportId = report.report_id || report.id || null;
-    document.getElementById('result-dashboard').classList.remove('d-none');
+    // ── renderizar relatório ─────────────────────────────────────
+    function renderReport(report) {
+      currentReport = report;
+      currentReportId = report.report_id || report.id || null;
+      document.getElementById('result-dashboard').classList.remove('d-none');
 
-    renderScoreCard(report);
-    renderSummaryStats(report);
-    renderDiagnosis(report);
-    renderSEOItems(report);
-    renderGaps(report);
-    renderLongTail(report);
-    renderFinancial(report);
-    renderPlan(report);
-  }
+      // Mostrar botão de exportar PDF quando há relatório carregado
+      const btnPdf = document.getElementById('btn-export-pdf');
+      if (btnPdf && currentReportId) {
+        btnPdf.classList.remove('d-none');
+      }
 
-  function renderScoreCard(r) {
-    const score = r.score_overall ?? 0;
-    const circle = document.getElementById('score-circle');
-    circle.textContent = score;
-    circle.className = 'score-circle mx-auto mb-2 ' + (
-      score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'medium' : score >= 20 ? 'bad' : 'critical'
-    );
+      renderScoreCard(report);
+      renderSummaryStats(report);
+      renderDiagnosis(report);
+      renderSEOItems(report);
+      renderGaps(report);
+      renderLongTail(report);
+      renderFinancial(report);
+      renderPlan(report);
+    }
 
-    const statusEl = document.getElementById('account-status-badge');
-    statusEl.textContent = r.account_status || '--';
-    statusEl.className   = 'h5 fw-bold mb-2 ' + statusColor(r.account_status);
+    function renderScoreCard(r) {
+      const score = r.score_overall ?? 0;
+      const circle = document.getElementById('score-circle');
+      circle.textContent = score;
+      circle.className = 'score-circle mx-auto mb-2 ' + (
+        score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'medium' : score >= 20 ? 'bad' : 'critical'
+      );
 
-    document.getElementById('main-bottleneck').textContent =
-      r.diagnosis?.main_bottleneck || '—';
-  }
+      const statusEl = document.getElementById('account-status-badge');
+      statusEl.textContent = r.account_status || '--';
+      statusEl.className = 'h5 fw-bold mb-2 ' + statusColor(r.account_status);
 
-  function renderSummaryStats(r) {
-    const seo    = r.seo_audit || {};
-    const plan   = r.recovery_plan || {};
-    const diag   = r.diagnosis || {};
-    const meta   = r.meta || {};
+      document.getElementById('main-bottleneck').textContent =
+        r.diagnosis?.main_bottleneck || '—';
+    }
 
-    document.getElementById('stat-total').textContent    = meta.items_fetched || 0;
-    document.getElementById('stat-below50').textContent  = seo.items_below_50 || 0;
-    document.getElementById('stat-critical').textContent = diag.critical_count || 0;
-    document.getElementById('stat-recovery').textContent =
-      (plan.estimated_recovery_days || '--') + ' dias';
+    function renderSummaryStats(r) {
+      const seo = r.seo_audit || {};
+      const plan = r.recovery_plan || {};
+      const diag = r.diagnosis || {};
+      const meta = r.meta || {};
 
-    const stLen = (diag.strengths || []).length;
-    document.getElementById('stat-strengths').textContent = stLen + ' ponto' + (stLen !== 1 ? 's' : '') + ' forte' + (stLen !== 1 ? 's' : '');
-  }
+      document.getElementById('stat-total').textContent = meta.items_fetched || 0;
+      document.getElementById('stat-below50').textContent = seo.items_below_50 || 0;
+      document.getElementById('stat-critical').textContent = diag.critical_count || 0;
+      document.getElementById('stat-recovery').textContent =
+        (plan.estimated_recovery_days || '--') + ' dias';
 
-  function renderDiagnosis(r) {
-    const problems  = r.diagnosis?.problems  || [];
-    const strengths = r.diagnosis?.strengths || [];
+      const stLen = (diag.strengths || []).length;
+      document.getElementById('stat-strengths').textContent = stLen + ' ponto' + (stLen !== 1 ? 's' : '') + ' forte' + (stLen !== 1 ? 's' : '');
+    }
 
-    // Problems
-    const pList = document.getElementById('problems-list');
-    document.getElementById('problems-count').textContent = problems.length;
-    if (!problems.length) {
-      pList.innerHTML = '<div class="list-group-item text-center text-success py-3"><i class="bi bi-check-circle fs-4 d-block mb-1"></i>Nenhum problema crítico!</div>';
-    } else {
-      pList.innerHTML = problems.map(p => `
+    function renderDiagnosis(r) {
+      const problems = r.diagnosis?.problems || [];
+      const strengths = r.diagnosis?.strengths || [];
+
+      // Problems
+      const pList = document.getElementById('problems-list');
+      document.getElementById('problems-count').textContent = problems.length;
+      if (!problems.length) {
+        pList.innerHTML = '<div class="list-group-item text-center text-success py-3"><i class="bi bi-check-circle fs-4 d-block mb-1"></i>Nenhum problema crítico!</div>';
+      } else {
+        pList.innerHTML = problems.map(p => `
         <div class="list-group-item border-0 severity-${escHtml(p.severity)}">
           <div class="d-flex gap-2">
             <span class="badge bg-${severityColor(p.severity)} mt-1 flex-shrink-0">${escHtml(p.severity)}</span>
@@ -750,53 +987,53 @@ const XRay = (() => {
           </div>
         </div>
       `).join('');
-    }
+      }
 
-    // Strengths
-    const sList = document.getElementById('strengths-list');
-    if (!strengths.length) {
-      sList.innerHTML = '<div class="list-group-item text-center text-muted py-3">Nenhum ponto forte ainda</div>';
-    } else {
-      sList.innerHTML = strengths.map(s => `
+      // Strengths
+      const sList = document.getElementById('strengths-list');
+      if (!strengths.length) {
+        sList.innerHTML = '<div class="list-group-item text-center text-muted py-3">Nenhum ponto forte ainda</div>';
+      } else {
+        sList.innerHTML = strengths.map(s => `
         <div class="list-group-item border-0">
           <i class="bi bi-check-circle text-success me-2"></i>${escHtml(s)}
         </div>
       `).join('');
-    }
-  }
-
-  function renderSEOItems(r) {
-    allSEOItems = r.seo_audit?.items || [];
-    const avgSeo = r.seo_audit?.avg_seo_score || 0;
-
-    const badge = document.getElementById('avg-seo-badge');
-    badge.textContent = avgSeo + '/100';
-    badge.className   = 'badge ' + (avgSeo >= 70 ? 'bg-success' : avgSeo >= 50 ? 'bg-warning text-dark' : 'bg-danger');
-
-    filterSEOItems();
-  }
-
-  function filterSEOItems() {
-    const cls  = document.getElementById('seo-filter-class')?.value || '';
-    const sort = document.getElementById('seo-sort')?.value || 'seo_score_asc';
-
-    let items = [...allSEOItems];
-    if (cls) items = items.filter(i => i.classification === cls);
-
-    items.sort((a, b) => {
-      if (sort === 'seo_score_asc')  return a.seo_score - b.seo_score;
-      if (sort === 'seo_score_desc') return b.seo_score - a.seo_score;
-      if (sort === 'visits_desc')    return (b.visits_30d || 0) - (a.visits_30d || 0);
-      return 0;
-    });
-
-    const container = document.getElementById('seo-items-table');
-    if (!items.length) {
-      container.innerHTML = '<p class="text-center text-muted py-4">Nenhum anúncio com esse filtro</p>';
-      return;
+      }
     }
 
-    container.innerHTML = `
+    function renderSEOItems(r) {
+      allSEOItems = r.seo_audit?.items || [];
+      const avgSeo = r.seo_audit?.avg_seo_score || 0;
+
+      const badge = document.getElementById('avg-seo-badge');
+      badge.textContent = avgSeo + '/100';
+      badge.className = 'badge ' + (avgSeo >= 70 ? 'bg-success' : avgSeo >= 50 ? 'bg-warning text-dark' : 'bg-danger');
+
+      filterSEOItems();
+    }
+
+    function filterSEOItems() {
+      const cls = document.getElementById('seo-filter-class')?.value || '';
+      const sort = document.getElementById('seo-sort')?.value || 'seo_score_asc';
+
+      let items = [...allSEOItems];
+      if (cls) items = items.filter(i => i.classification === cls);
+
+      items.sort((a, b) => {
+        if (sort === 'seo_score_asc') return a.seo_score - b.seo_score;
+        if (sort === 'seo_score_desc') return b.seo_score - a.seo_score;
+        if (sort === 'visits_desc') return (b.visits_30d || 0) - (a.visits_30d || 0);
+        return 0;
+      });
+
+      const container = document.getElementById('seo-items-table');
+      if (!items.length) {
+        container.innerHTML = '<p class="text-center text-muted py-4">Nenhum anúncio com esse filtro</p>';
+        return;
+      }
+
+      container.innerHTML = `
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0 small">
           <thead class="table-light">
@@ -837,51 +1074,51 @@ const XRay = (() => {
       </div>
       ${items.length > 100 ? `<p class="text-muted text-center small py-2">Mostrando 100 de ${items.length}</p>` : ''}
     `;
-  }
+    }
 
-  function renderGaps(r) {
-    const comp = r.competitive || {};
-    const hidden = comp.hidden_gaps || [];
-    const opps   = comp.opportunity_keywords || [];
+    function renderGaps(r) {
+      const comp = r.competitive || {};
+      const hidden = comp.hidden_gaps || [];
+      const opps = comp.opportunity_keywords || [];
 
-    const gList = document.getElementById('hidden-gaps-list');
-    gList.innerHTML = hidden.length
-      ? hidden.map(k => `<span class="kw-badge gap">${escHtml(k)}</span>`).join('')
-      : '<p class="text-muted small">Nenhuma lacuna oculta encontrada (ótimo!)</p>';
+      const gList = document.getElementById('hidden-gaps-list');
+      gList.innerHTML = hidden.length ?
+        hidden.map(k => `<span class="kw-badge gap">${escHtml(k)}</span>`).join('') :
+        '<p class="text-muted small">Nenhuma lacuna oculta encontrada (ótimo!)</p>';
 
-    const oList = document.getElementById('opportunity-kws-list');
-    oList.innerHTML = opps.length
-      ? opps.map(k => `<span class="kw-badge opp">${escHtml(k)}</span>`).join('')
-      : '<p class="text-muted small">—</p>';
-  }
+      const oList = document.getElementById('opportunity-kws-list');
+      oList.innerHTML = opps.length ?
+        opps.map(k => `<span class="kw-badge opp">${escHtml(k)}</span>`).join('') :
+        '<p class="text-muted small">—</p>';
+    }
 
-  function renderLongTail(r) {
-    const ltSummary = r.seo_audit?.long_tail_summary || [];
-    const container = document.getElementById('longtail-list');
-    container.innerHTML = ltSummary.length
-      ? ltSummary.map(k => `<div class="col-auto"><span class="kw-badge lt">${escHtml(k)}</span></div>`).join('')
-      : '<div class="col-12"><p class="text-muted">Nenhuma sugestão de cauda longa gerada</p></div>';
-  }
+    function renderLongTail(r) {
+      const ltSummary = r.seo_audit?.long_tail_summary || [];
+      const container = document.getElementById('longtail-list');
+      container.innerHTML = ltSummary.length ?
+        ltSummary.map(k => `<div class="col-auto"><span class="kw-badge lt">${escHtml(k)}</span></div>`).join('') :
+        '<div class="col-12"><p class="text-muted">Nenhuma sugestão de cauda longa gerada</p></div>';
+    }
 
-  function renderFinancial(r) {
-    const fin = r.financial || {};
-    if (!fin.configured) {
-      document.getElementById('financial-cards').innerHTML = `
+    function renderFinancial(r) {
+      const fin = r.financial || {};
+      if (!fin.configured) {
+        document.getElementById('financial-cards').innerHTML = `
         <div class="col-12 text-center py-4">
           <i class="bi bi-bank2 fs-2 mb-2 d-block text-muted"></i>
           <p class="text-muted">${escHtml(fin.message || 'Mercado Pago não configurado')}</p>
           <a href="/settings" class="btn btn-primary btn-sm">Configurar Mercado Pago</a>
         </div>
       `;
-      return;
-    }
+        return;
+      }
 
-    const bal  = fin.balance || {};
-    const cb   = fin.chargebacks || {};
-    const dis  = fin.disputes || {};
-    const fh   = fin.financial_health || {};
+      const bal = fin.balance || {};
+      const cb = fin.chargebacks || {};
+      const dis = fin.disputes || {};
+      const fh = fin.financial_health || {};
 
-    document.getElementById('financial-cards').innerHTML = `
+      document.getElementById('financial-cards').innerHTML = `
       <div class="col-md-4">
         <div class="card border-0 bg-light h-100">
           <div class="card-body">
@@ -915,18 +1152,18 @@ const XRay = (() => {
         </div>
       </div>
     `;
-  }
+    }
 
-  function renderPlan(r) {
-    const plan = r.recovery_plan || {};
-    const container = document.getElementById('plan-content');
+    function renderPlan(r) {
+      const plan = r.recovery_plan || {};
+      const container = document.getElementById('plan-content');
 
-    const criticalActions = plan.critical || [];
-    const highActions     = plan.high     || [];
-    const seoActions      = plan.seo_actions || [];
-    const weekPlan        = plan.week_plan  || [];
+      const criticalActions = plan.critical || [];
+      const highActions = plan.high || [];
+      const seoActions = plan.seo_actions || [];
+      const weekPlan = plan.week_plan || [];
 
-    container.innerHTML = `
+      container.innerHTML = `
       <div class="row g-4">
         <div class="col-md-8">
           ${criticalActions.length ? `
@@ -981,38 +1218,41 @@ const XRay = (() => {
           </div>
 
           <div class="mt-3 d-grid gap-2">
-            <button class="btn btn-outline-primary btn-sm" onclick="XRay.openApplyModal(true)">
+            <button class="btn btn-outline-primary btn-sm" data-action="open-apply-modal" data-dry-run="true">
               <i class="bi bi-eye me-1"></i> Simular Aplicação (Dry Run)
             </button>
-            <button class="btn btn-success btn-sm" onclick="XRay.openApplyModal(false)">
+            <button class="btn btn-success btn-sm" data-action="open-apply-modal" data-dry-run="false">
               <i class="bi bi-lightning-fill me-1"></i> Aplicar Plano Agora
             </button>
           </div>
         </div>
       </div>
     `;
-  }
+    }
 
-  // ── histórico ─────────────────────────────────────────────────
-  async function loadHistory() {
-    const accountId = currentAccountId;
-    if (!accountId) { alert('Selecione uma conta primeiro'); return; }
-
-    const card = document.getElementById('history-card');
-    card.classList.remove('d-none');
-    document.getElementById('history-table').innerHTML = '<p class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></p>';
-
-    try {
-      const res  = await fetch(`/api/xray/list?account_id=${accountId}&limit=20`);
-      const data = await res.json();
-      const reports = data.reports || [];
-
-      if (!reports.length) {
-        document.getElementById('history-table').innerHTML = '<p class="text-center text-muted py-4">Nenhum relatório para essa conta</p>';
+    // ── histórico ─────────────────────────────────────────────────
+    async function loadHistory() {
+      const accountId = currentAccountId;
+      if (!accountId) {
+        alert('Selecione uma conta primeiro');
         return;
       }
 
-      document.getElementById('history-table').innerHTML = `
+      const card = document.getElementById('history-card');
+      card.classList.remove('d-none');
+      document.getElementById('history-table').innerHTML = '<p class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></p>';
+
+      try {
+        const res = await fetch(`/api/xray/list?account_id=${accountId}&limit=20`);
+        const data = await res.json();
+        const reports = data.reports || [];
+
+        if (!reports.length) {
+          document.getElementById('history-table').innerHTML = '<p class="text-center text-muted py-4">Nenhum relatório para essa conta</p>';
+          return;
+        }
+
+        document.getElementById('history-table').innerHTML = `
         <table class="table table-hover small mb-0">
           <thead class="table-light"><tr><th>Data</th><th>Status</th><th>Score</th><th>Conta Status</th><th>Itens</th><th>Issues</th><th></th></tr></thead>
           <tbody>
@@ -1024,159 +1264,214 @@ const XRay = (() => {
                 <td>${r.account_status ? `<span class="${statusColor(r.account_status)}">${escHtml(r.account_status)}</span>` : '—'}</td>
                 <td>${r.items_analyzed || 0}/${r.items_total || 0}</td>
                 <td class="${r.critical_issues > 0 ? 'text-danger fw-bold' : ''}">${r.critical_issues || 0}</td>
-                <td><button class="btn btn-sm btn-outline-primary py-0" onclick="XRay.loadReportById(${r.id}, ${r.account_id || currentAccountId})">Ver</button></td>
+                <td><button class="btn btn-sm btn-outline-primary py-0" data-action="load-report-by-id" data-report-id="${r.id}" data-account-id="${r.account_id || currentAccountId}">Ver</button></td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       `;
-    } catch (e) {
-      document.getElementById('history-table').innerHTML = `<p class="text-center text-danger py-3">${escHtml(e.message)}</p>`;
-    }
-  }
-
-  async function loadReportById(reportId, accountId) {
-    document.getElementById('history-card').classList.add('d-none');
-    document.getElementById('result-dashboard').classList.add('d-none');
-    document.getElementById('running-card').classList.remove('d-none');
-    document.getElementById('running-phase').textContent = 'Carregando relatório...';
-
-    try {
-      const res  = await fetch(`/api/xray/results/${reportId}`);
-      const data = await res.json();
-      document.getElementById('running-card').classList.add('d-none');
-      if (data.success && data.report?.report) {
-        renderReport(data.report.report);
-      } else {
-        alert('Erro ao carregar relatório');
+      } catch (e) {
+        document.getElementById('history-table').innerHTML = `<p class="text-center text-danger py-3">${escHtml(e.message)}</p>`;
       }
-    } catch (e) {
-      document.getElementById('running-card').classList.add('d-none');
-      alert('Erro: ' + e.message);
-    }
-  }
-
-  // ── utilitários ───────────────────────────────────────────────
-  function escHtml(s) {
-    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-  function fmt(n) { return Number(n || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-  function relDate(d) {
-    if (!d) return '—';
-    const diff = (Date.now() - new Date(d).getTime()) / 60000;
-    if (diff < 2)    return 'agora';
-    if (diff < 60)   return Math.round(diff) + 'min atrás';
-    if (diff < 1440) return Math.round(diff / 60) + 'h atrás';
-    return Math.round(diff / 1440) + ' dias atrás';
-  }
-  function statusBadge(s) {
-    const m = {active:'success',inactive:'secondary',expired:'warning',disconnected:'danger'};
-    return `<span class="badge bg-${m[s]||'secondary'}">${s}</span>`;
-  }
-  function statusColor(s) {
-    return {
-      FORTE:'text-success', ESTAVEL:'text-primary',
-      EM_RECUPERACAO:'text-warning', PENALIZADA:'text-orange',
-      TRAVADA:'text-danger', UNKNOWN:'text-muted'
-    }[s] || 'text-secondary';
-  }
-  function severityColor(s) {
-    return {CRITICO:'danger', ALTO:'warning', MEDIO:'info', BAIXO:'secondary'}[s] || 'secondary';
-  }
-  function urgencyColor(s) {
-    return {CRITICA:'danger', ALTA:'warning', MEDIA:'info', BAIXA:'secondary'}[s] || 'secondary';
-  }
-  function seoColor(score) {
-    return score >= 70 ? '#198754' : score >= 50 ? '#ffc107' : '#dc3545';
-  }
-  function classIcon(cls) {
-    return {ANCHOR:'⭐', SAUDAVEL:'🟢', EM_RISCO:'🟡', FRACO:'🔵', MORTO:'⚫', TOXICO:'🔴', POLUIDOR:'🟠', SEM_ESTOQUE:'🟣'}[cls] || '?';
-  }
-
-// ── aplicar plano de recuperação ────────────────────────────
-
-  function openApplyModal(dryRun) {
-    if (!currentReportId) {
-      alert('Execute o Raio X primeiro para gerar um relatório.');
-      return;
-    }
-    applyDryRun = dryRun;
-
-    // Reset UI
-    document.getElementById('apply-result').classList.add('d-none');
-    document.getElementById('apply-paused-list').classList.add('d-none');
-    document.getElementById('apply-titles-list').classList.add('d-none');
-    document.getElementById('apply-alerts-list').classList.add('d-none');
-    document.getElementById('apply-result-summary').textContent = '';
-
-    const dryWarn  = document.getElementById('apply-dry-run-warning');
-    const realWarn = document.getElementById('apply-real-warning');
-    const title    = document.getElementById('apply-modal-title');
-    const btnLabel = document.getElementById('btn-apply-label');
-    const btn      = document.getElementById('btn-apply-confirm');
-
-    if (dryRun) {
-      dryWarn.classList.remove('d-none');
-      realWarn.classList.add('d-none');
-      title.textContent   = 'Simular Plano de Recuperação (Dry Run)';
-      btnLabel.textContent= 'Simular Agora';
-      btn.className       = 'btn btn-primary px-4 fw-semibold';
-    } else {
-      dryWarn.classList.add('d-none');
-      realWarn.classList.remove('d-none');
-      title.textContent   = '⚡ Aplicar Plano de Recuperação';
-      btnLabel.textContent= 'Aplicar Agora';
-      btn.className       = 'btn btn-success px-4 fw-semibold';
     }
 
-    new bootstrap.Modal(document.getElementById('apply-modal')).show();
-  }
+    async function loadReportById(reportId, accountId) {
+      document.getElementById('history-card').classList.add('d-none');
+      document.getElementById('result-dashboard').classList.add('d-none');
+      document.getElementById('running-card').classList.remove('d-none');
+      document.getElementById('running-phase').textContent = 'Carregando relatório...';
 
-  async function applyPlan() {
-    if (!currentReportId) return;
+      try {
+        const res = await fetch(`/api/xray/results/${reportId}`);
+        const data = await res.json();
+        document.getElementById('running-card').classList.add('d-none');
+        if (data.success && data.report?.report) {
+          renderReport(data.report.report);
+        } else {
+          alert('Erro ao carregar relatório');
+        }
+      } catch (e) {
+        document.getElementById('running-card').classList.add('d-none');
+        alert('Erro: ' + e.message);
+      }
+    }
 
-    const btn = document.getElementById('btn-apply-confirm');
-    btn.disabled   = true;
-    btn.innerHTML  = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...';
+    // ── utilitários ───────────────────────────────────────────────
+    function escHtml(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
-    const onlyActions = ['apply-action-pause','apply-action-title','apply-action-stock','apply-action-price']
-      .filter(id => document.getElementById(id)?.checked)
-      .map(id => document.getElementById(id).value);
-
-    try {
-      const res  = await fetch(`/api/xray/apply/${currentReportId}`, {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ dry_run: applyDryRun, only_actions: onlyActions }),
+    function fmt(n) {
+      return Number(n || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
       });
-      const json = await res.json();
-
-      if (!json.success) throw new Error(json.error || 'Erro desconhecido');
-
-      const data = json.data;
-      renderApplyResult(data);
-    } catch (err) {
-      alert('Erro ao aplicar plano: ' + err.message);
-    } finally {
-      btn.disabled  = false;
-      btn.innerHTML = `<i class="bi bi-lightning-fill me-1"></i> ${applyDryRun ? 'Simular Novamente' : 'Aplicar Novamente'}`;
     }
-  }
 
-  function renderApplyResult(data) {
-    const resultDiv = document.getElementById('apply-result');
-    resultDiv.classList.remove('d-none');
+    function relDate(d) {
+      if (!d) return '—';
+      const diff = (Date.now() - new Date(d).getTime()) / 60000;
+      if (diff < 2) return 'agora';
+      if (diff < 60) return Math.round(diff) + 'min atrás';
+      if (diff < 1440) return Math.round(diff / 60) + 'h atrás';
+      return Math.round(diff / 1440) + ' dias atrás';
+    }
 
-    const titleEl = document.getElementById('apply-result-title');
-    titleEl.textContent = data.dry_run ? '🔍 Resultado da Simulação' : '✅ Resultado da Aplicação';
+    function statusBadge(s) {
+      const m = {
+        active: 'success',
+        inactive: 'secondary',
+        expired: 'warning',
+        disconnected: 'danger'
+      };
+      return `<span class="badge bg-${m[s]||'secondary'}">${s}</span>`;
+    }
 
-    document.getElementById('apply-result-summary').textContent = data.summary || '';
+    function statusColor(s) {
+      return {
+        FORTE: 'text-success',
+        ESTAVEL: 'text-primary',
+        EM_RECUPERACAO: 'text-warning',
+        PENALIZADA: 'text-orange',
+        TRAVADA: 'text-danger',
+        UNKNOWN: 'text-muted'
+      } [s] || 'text-secondary';
+    }
 
-    // Itens pausados
-    const pausedItems = data.paused_items || [];
-    if (pausedItems.length > 0) {
-      document.getElementById('apply-paused-list').classList.remove('d-none');
-      document.getElementById('apply-paused-items').innerHTML = pausedItems.map(item => `
+    function severityColor(s) {
+      return {
+        CRITICO: 'danger',
+        ALTO: 'warning',
+        MEDIO: 'info',
+        BAIXO: 'secondary'
+      } [s] || 'secondary';
+    }
+
+    function urgencyColor(s) {
+      return {
+        CRITICA: 'danger',
+        ALTA: 'warning',
+        MEDIA: 'info',
+        BAIXA: 'secondary'
+      } [s] || 'secondary';
+    }
+
+    function seoColor(score) {
+      return score >= 70 ? '#198754' : score >= 50 ? '#ffc107' : '#dc3545';
+    }
+
+    function classIcon(cls) {
+      return {
+        ANCHOR: '⭐',
+        SAUDAVEL: '🟢',
+        EM_RISCO: '🟡',
+        FRACO: '🔵',
+        MORTO: '⚫',
+        TOXICO: '🔴',
+        POLUIDOR: '🟠',
+        SEM_ESTOQUE: '🟣'
+      } [cls] || '?';
+    }
+
+    // ── exportar PDF ──────────────────────────────────────────────
+
+    function exportPdf() {
+      if (!currentReportId) {
+        alert('Execute o Raio X primeiro para gerar um relatório.');
+        return;
+      }
+      window.location.href = '/api/xray/export/pdf/' + currentReportId;
+    }
+
+    // ── aplicar plano de recuperação ────────────────────────────
+
+    function openApplyModal(dryRun) {
+      if (!currentReportId) {
+        alert('Execute o Raio X primeiro para gerar um relatório.');
+        return;
+      }
+      applyDryRun = dryRun;
+
+      // Reset UI
+      document.getElementById('apply-result').classList.add('d-none');
+      document.getElementById('apply-paused-list').classList.add('d-none');
+      document.getElementById('apply-titles-list').classList.add('d-none');
+      document.getElementById('apply-alerts-list').classList.add('d-none');
+      document.getElementById('apply-result-summary').textContent = '';
+
+      const dryWarn = document.getElementById('apply-dry-run-warning');
+      const realWarn = document.getElementById('apply-real-warning');
+      const title = document.getElementById('apply-modal-title');
+      const btnLabel = document.getElementById('btn-apply-label');
+      const btn = document.getElementById('btn-apply-confirm');
+
+      if (dryRun) {
+        dryWarn.classList.remove('d-none');
+        realWarn.classList.add('d-none');
+        title.textContent = 'Simular Plano de Recuperação (Dry Run)';
+        btnLabel.textContent = 'Simular Agora';
+        btn.className = 'btn btn-primary px-4 fw-semibold';
+      } else {
+        dryWarn.classList.add('d-none');
+        realWarn.classList.remove('d-none');
+        title.textContent = '⚡ Aplicar Plano de Recuperação';
+        btnLabel.textContent = 'Aplicar Agora';
+        btn.className = 'btn btn-success px-4 fw-semibold';
+      }
+
+      new bootstrap.Modal(document.getElementById('apply-modal')).show();
+    }
+
+    async function applyPlan() {
+      if (!currentReportId) return;
+
+      const btn = document.getElementById('btn-apply-confirm');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...';
+
+      const onlyActions = ['apply-action-pause', 'apply-action-title', 'apply-action-stock', 'apply-action-price']
+        .filter(id => document.getElementById(id)?.checked)
+        .map(id => document.getElementById(id).value);
+
+      try {
+        const res = await fetch(`/api/xray/apply/${currentReportId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            dry_run: applyDryRun,
+            only_actions: onlyActions
+          }),
+        });
+        const json = await res.json();
+
+        if (!json.success) throw new Error(json.error || 'Erro desconhecido');
+
+        const data = json.data;
+        renderApplyResult(data);
+      } catch (err) {
+        alert('Erro ao aplicar plano: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-lightning-fill me-1"></i> ${applyDryRun ? 'Simular Novamente' : 'Aplicar Novamente'}`;
+      }
+    }
+
+    function renderApplyResult(data) {
+      const resultDiv = document.getElementById('apply-result');
+      resultDiv.classList.remove('d-none');
+
+      const titleEl = document.getElementById('apply-result-title');
+      titleEl.textContent = data.dry_run ? '🔍 Resultado da Simulação' : '✅ Resultado da Aplicação';
+
+      document.getElementById('apply-result-summary').textContent = data.summary || '';
+
+      // Itens pausados
+      const pausedItems = data.paused_items || [];
+      if (pausedItems.length > 0) {
+        document.getElementById('apply-paused-list').classList.remove('d-none');
+        document.getElementById('apply-paused-items').innerHTML = pausedItems.map(item => `
         <div class="list-group-item border-0 py-1 small">
           <span class="me-2">${item.applied ? '✅' : (data.dry_run ? '🔍' : '❌')}</span>
           <strong>${escHtml(item.item_id)}</strong>
@@ -1185,13 +1480,13 @@ const XRay = (() => {
           <span class="ms-1 text-muted">(score: ${item.score || 0})</span>
         </div>
       `).join('');
-    }
+      }
 
-    // Títulos otimizados
-    const titleItems = data.optimized_titles || [];
-    if (titleItems.length > 0) {
-      document.getElementById('apply-titles-list').classList.remove('d-none');
-      document.getElementById('apply-title-items').innerHTML = titleItems.map(item => `
+      // Títulos otimizados
+      const titleItems = data.optimized_titles || [];
+      if (titleItems.length > 0) {
+        document.getElementById('apply-titles-list').classList.remove('d-none');
+        document.getElementById('apply-title-items').innerHTML = titleItems.map(item => `
         <div class="list-group-item border-0 py-2 small">
           <div class="mb-1">
             <span class="me-2">${item.applied ? '✅' : (data.dry_run ? '🔍' : '❌')}</span>
@@ -1202,26 +1497,37 @@ const XRay = (() => {
           <div class="text-success ps-4 fw-semibold">Depois: ${escHtml(item.optimized_title || '')}</div>
         </div>
       `).join('');
-    }
+      }
 
-    // Alertas
-    const alerts = [...(data.stock_alerts || []), ...(data.price_alerts || [])];
-    if (alerts.length > 0) {
-      document.getElementById('apply-alerts-list').classList.remove('d-none');
-      document.getElementById('apply-alert-items').innerHTML = alerts.map(a => `
+      // Alertas
+      const alerts = [...(data.stock_alerts || []), ...(data.price_alerts || [])];
+      if (alerts.length > 0) {
+        document.getElementById('apply-alerts-list').classList.remove('d-none');
+        document.getElementById('apply-alert-items').innerHTML = alerts.map(a => `
         <div class="alert alert-warning py-2 small mb-1">
           <strong>${escHtml(a.item_id)}</strong> — ${escHtml(a.message || '')}
         </div>
       `).join('');
+      }
+
+      // Cancelar → Fechar
+      document.getElementById('apply-cancel-btn').textContent = 'Fechar';
     }
 
-    // Cancelar → Fechar
-    document.getElementById('apply-cancel-btn').textContent = 'Fechar';
-  }
+    // API pública do módulo
+    return {
+      init,
+      openRunModal,
+      start,
+      selectAccount,
+      filterSEOItems,
+      loadHistory,
+      loadReportById,
+      openApplyModal,
+      applyPlan,
+      exportPdf
+    };
+  })();
 
-  // API pública do módulo
-  return { init, openRunModal, start, selectAccount, filterSEOItems, loadHistory, loadReportById, openApplyModal, applyPlan };
-})();
-
-document.addEventListener('DOMContentLoaded', () => XRay.init());
+  document.addEventListener('DOMContentLoaded', () => XRay.init());
 </script>

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Teste com Produtos Reais - SEO Strategies
  * Busca produtos reais do ML e aplica as 12 estratégias

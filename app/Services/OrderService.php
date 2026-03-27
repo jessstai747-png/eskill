@@ -731,9 +731,11 @@ class OrderService
         $params = [];
 
         $userId = SessionHelper::getUserId();
+        $userFilterApplied = false;
         if ($userId) {
             $where[] = 'user_id = :user_id';
             $params['user_id'] = $userId;
+            $userFilterApplied = true;
         }
 
         if ($this->accountId) {
@@ -762,12 +764,6 @@ class OrderService
             $params['search'] = '%' . $searchTerm . '%';
         }
 
-        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-
-        $countStmt = $this->db->prepare("SELECT COUNT(*) FROM ml_orders {$whereSql}");
-        $countStmt->execute($params);
-        $total = (int)$countStmt->fetchColumn();
-
         $sortField = $filters['sort'] ?? 'date_created';
         $sortOrder = strtoupper($filters['order'] ?? 'DESC');
 
@@ -780,12 +776,47 @@ class OrderService
         }
 
         $orderSql = "ORDER BY {$sortField} {$sortOrder}";
-        $selectSql = "SELECT id, ml_order_id, ml_account_id, order_data, status, total_amount, date_created, synced_at "
-            . "FROM ml_orders {$whereSql} {$orderSql} LIMIT {$limit} OFFSET {$offset}";
+        $runLocalQuery = function (array $whereClauses, array $queryParams) use ($orderSql, $limit, $offset): array {
+            $whereSql = $whereClauses ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
 
-        $stmt = $this->db->prepare($selectSql);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $countStmt = $this->db->prepare("SELECT COUNT(*) FROM ml_orders {$whereSql}");
+            $countStmt->execute($queryParams);
+            $total = (int)$countStmt->fetchColumn();
+
+            $selectSql = "SELECT id, ml_order_id, ml_account_id, order_data, status, total_amount, date_created, synced_at "
+                . "FROM ml_orders {$whereSql} {$orderSql} LIMIT {$limit} OFFSET {$offset}";
+
+            $stmt = $this->db->prepare($selectSql);
+            $stmt->execute($queryParams);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [$total, $rows];
+        };
+
+        try {
+            [$total, $rows] = $runLocalQuery($where, $params);
+        } catch (Throwable $e) {
+            if ($userFilterApplied && $this->isUnknownColumnError($e, 'user_id')) {
+                Log::warning('OrderService: coluna user_id ausente em ml_orders; retry sem filtro de usuário', [
+                    'account_id' => $this->accountId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $where = array_values(array_filter(
+                    $where,
+                    fn(string $clause): bool => $clause !== 'user_id = :user_id'
+                ));
+                unset($params['user_id']);
+
+                if (!isset($context['warning']) || !is_string($context['warning']) || $context['warning'] === '') {
+                    $context['warning'] = 'Filtro por usuário indisponível no cache local (schema legado).';
+                }
+
+                [$total, $rows] = $runLocalQuery($where, $params);
+            } else {
+                throw $e;
+            }
+        }
 
         $orders = [];
         foreach ($rows as $row) {
@@ -823,6 +854,16 @@ class OrderService
             'total' => $total,
             'has_more' => ($offset + $limit) < $total,
         ];
+    }
+
+    private function isUnknownColumnError(Throwable $e, string $column): bool
+    {
+        $message = strtolower($e->getMessage());
+        if ($message === '') {
+            return false;
+        }
+
+        return str_contains($message, 'unknown column') && str_contains($message, strtolower($column));
     }
 
     private function unwrapMlResponse(array $response): array

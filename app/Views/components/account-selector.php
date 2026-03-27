@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Componente de Seleção de Conta
  * Deve ser incluído no início de cada módulo que requer contexto de conta
@@ -262,7 +265,7 @@ $moduleTitle = $moduleTitle ?? 'Este Módulo';
 </style>
 
 <!-- JavaScript -->
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 /**
  * Account Selector Manager
  * Gerencia seleção e troca de contas

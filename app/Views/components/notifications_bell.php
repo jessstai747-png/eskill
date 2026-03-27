@@ -59,7 +59,7 @@
     </ul>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // Estado do som de notificação
     let soundEnabled = localStorage.getItem('notification_sound') !== 'false';
     updateSoundIcon();

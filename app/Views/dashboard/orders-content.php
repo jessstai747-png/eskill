@@ -47,7 +47,11 @@
 </style>
 
 <!-- Page Header -->
-<?php include __DIR__ . '/../layouts/modern/partials/page-header.php'; ?>
+<?php
+
+declare(strict_types=1);
+
+include __DIR__ . '/../layouts/modern/partials/page-header.php'; ?>
 
 <!-- Export Actions -->
 <div class="d-flex justify-content-end mb-4">
@@ -260,7 +264,7 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';

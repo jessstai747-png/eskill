@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone Seller Recommendations Dashboard
  * Interface para recomendações de vendedores via ML
@@ -216,7 +219,7 @@ $this->layout('layouts/dashboard', ['title' => 'Recomendações de Vendedores - 
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';

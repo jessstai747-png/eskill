@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // Simple script to run acceptance tests for the SEO system
 // This verifies that all business requirements are met
 

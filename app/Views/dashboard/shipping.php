@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Expedição & Logística';
 $subtitle = 'Gerencie separação e envio de pedidos';
 include __DIR__ . '/../layouts/modern/partials/page-header.php';
@@ -73,7 +76,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const shippingRequestJson = async (url, options = {}) => {
         if (typeof window.requestJson === 'function') {
             return window.requestJson(url, options);

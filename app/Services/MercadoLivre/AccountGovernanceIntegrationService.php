@@ -396,22 +396,24 @@ class AccountGovernanceIntegrationService
             $salesByItem = $this->fetchSalesByItem($sellerId, $itemIds);
         }
 
-        // Buscar visitas (rate limited)
-        $visitsLimit = min(count($items), 100);
-        $visitIds = array_slice($itemIds, 0, $visitsLimit);
+        // Buscar visitas em batch via getMultiItemVisits (50 IDs por chamada, sem limite de 100)
+        if ($fetchVisits && !empty($itemIds)) {
+            $this->log('info', 'Buscando visitas para items (batch)', ['count' => count($itemIds)]);
 
-        if ($fetchVisits && !empty($visitIds)) {
-            $this->log('info', 'Buscando visitas para items', ['count' => count($visitIds)]);
-
-            foreach ($visitIds as $itemId) {
+            $chunks = array_chunk($itemIds, 50); // ML aceita até 50 IDs por chamada
+            foreach ($chunks as $chunk) {
                 try {
-                    $visitsData = $this->metricsService->getItemVisitsByPeriod($itemId, 'month');
-                    if (isset($itemMap[$itemId])) {
-                        $itemMap[$itemId]['visits_30d'] = (int) ($visitsData['total_visits'] ?? 0);
-                        $itemMap[$itemId]['conversion_30d'] = (float) ($visitsData['conversion_rate'] ?? 0);
+                    $visitsResult = $this->mlClient->getMultiItemVisits($chunk, 30);
+                    foreach ($visitsResult as $itemId => $visitData) {
+                        if (isset($itemMap[$itemId])) {
+                            $itemMap[$itemId]['visits_30d'] = (int) ($visitData['total'] ?? $visitData['visits'] ?? 0);
+                        }
                     }
                 } catch (\Exception $e) {
-                    // Continua com outros items
+                    $this->log('warning', 'Erro ao buscar visitas em batch', [
+                        'chunk_size' => count($chunk),
+                        'error' => $e->getMessage(),
+                    ]);
                 }
                 usleep(self::BATCH_DELAY_MS * 1000);
             }
@@ -503,7 +505,7 @@ class AccountGovernanceIntegrationService
 
         $this->log('info', 'Vendas buscadas', [
             'orders_processed' => $fetchedOrders,
-            'items_with_sales' => count(array_filter($salesByItem, fn($v) => $v > 0)),
+            'items_with_sales' => count(array_filter($salesByItem, fn(int $v): bool => $v > 0)),
         ]);
 
         return $salesByItem;
@@ -542,7 +544,7 @@ class AccountGovernanceIntegrationService
         arsort($categoryCount);
         $dominantCategory = array_key_first($categoryCount) ?? '';
 
-        $prices = array_filter(array_column($items, 'price'), fn($p) => $p > 0);
+        $prices = array_filter(array_column($items, 'price'), fn(float $p): bool => $p > 0);
         $avgPrice = count($prices) > 0 ? array_sum($prices) / count($prices) : 0;
 
         return [

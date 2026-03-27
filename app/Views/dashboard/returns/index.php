@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Gestão de Devoluções (RMA)';
 ob_start();
 ?>
@@ -263,7 +266,7 @@ ob_start();
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 function openInspection(id, sku) {
     document.getElementById('inspect_id').value = id;
     document.getElementById('inspect_sku').textContent = sku;

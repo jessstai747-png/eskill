@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'AI Autonomous Agents';
 $activePage = 'agents';
 ?>
@@ -177,7 +180,7 @@ $activePage = 'agents';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 let activeProjectId = null;
 let pollInterval = null;

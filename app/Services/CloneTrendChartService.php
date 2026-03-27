@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * CloneTrendChartService
- * 
+ *
  * Prepara dados formatados para gráficos Chart.js
  * Análise de tendências, performance e métricas do módulo Clone
  */
@@ -46,7 +46,7 @@ class CloneTrendChartService
     public function getClonesPerDayChart(int $days = 30): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(created_at) as date,
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'created' THEN 1 ELSE 0 END) as success,
@@ -66,7 +66,7 @@ class CloneTrendChartService
         return [
             'type' => 'line',
             'data' => [
-                'labels' => array_map(fn($d) => date('d/m', strtotime($d['date'])), $filled),
+                'labels' => array_map(fn(array $d): string => date('d/m', strtotime($d['date'])), $filled),
                 'datasets' => [
                     [
                         'label' => 'Total',
@@ -104,7 +104,7 @@ class CloneTrendChartService
     public function getSuccessRateByHourChart(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 HOUR(created_at) as hour,
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'created' THEN 1 ELSE 0 END) as success
@@ -128,7 +128,7 @@ class CloneTrendChartService
             ];
         }
 
-        $labels = array_map(fn($h) => sprintf('%02d:00', $h), range(0, 23));
+        $labels = array_map(fn(int $h): string => sprintf('%02d:00', $h), range(0, 23));
 
         return [
             'type' => 'bar',
@@ -139,7 +139,7 @@ class CloneTrendChartService
                         'label' => 'Taxa de Sucesso (%)',
                         'data' => array_column($hourlyData, 'rate'),
                         'backgroundColor' => array_map(
-                            fn($d) => $d['rate'] >= 90 ? self::COLORS['success'] : 
+                            fn(array $d): string => $d['rate'] >= 90 ? self::COLORS['success'] :
                                      ($d['rate'] >= 70 ? self::COLORS['warning'] : self::COLORS['danger']),
                             $hourlyData
                         ),
@@ -160,7 +160,7 @@ class CloneTrendChartService
         $limitSql = max(1, min((int)$limit, 200));
 
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COALESCE(ci.source_account_id, 0) as category,
                 COUNT(*) as total
             FROM cloned_items ci
@@ -173,7 +173,7 @@ class CloneTrendChartService
         $stmt->bindValue(':account_id', $this->accountId, PDO::PARAM_INT);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Renomear para "Conta #X"
         foreach ($data as &$row) {
             $row['category'] = 'Conta #' . $row['category'];
@@ -207,7 +207,7 @@ class CloneTrendChartService
         $limitSql = max(1, min((int)$limit, 200));
 
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 ci.source_account_id as seller_id,
                 COUNT(*) as clones,
                 SUM(CASE WHEN ci.status = 'created' THEN 1 ELSE 0 END) as success,
@@ -227,7 +227,7 @@ class CloneTrendChartService
         return [
             'type' => 'bar',
             'data' => [
-                'labels' => array_map(fn($d) => 'Conta #' . (string)$d['seller_id'], $data),
+                'labels' => array_map(fn(array $d): string => 'Conta #' . (string)$d['seller_id'], $data),
                 'datasets' => [
                     [
                         'label' => 'Clones',
@@ -255,7 +255,7 @@ class CloneTrendChartService
     public function getCloneTimeChart(int $days = 14): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(created_at) as date,
                 ROUND(AVG(processing_time_ms / 1000), 1) as avg_time,
                 ROUND(MIN(processing_time_ms / 1000), 1) as min_time,
@@ -276,7 +276,7 @@ class CloneTrendChartService
         return [
             'type' => 'line',
             'data' => [
-                'labels' => array_map(fn($d) => date('d/m', strtotime($d['date'])), $filled),
+                'labels' => array_map(fn(array $d): string => date('d/m', strtotime($d['date'])), $filled),
                 'datasets' => [
                     [
                         'label' => 'Tempo Médio (s)',
@@ -314,7 +314,7 @@ class CloneTrendChartService
     public function getStatusDistributionChart(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 status,
                 COUNT(*) as total
             FROM cloned_items
@@ -340,12 +340,12 @@ class CloneTrendChartService
         return [
             'type' => 'pie',
             'data' => [
-                'labels' => array_map(fn($d) => $statusLabels[$d['status']] ?? $d['status'], $data),
+                'labels' => array_map(fn(array $d): string => $statusLabels[$d['status']] ?? $d['status'], $data),
                 'datasets' => [
                     [
                         'data' => array_map('intval', array_column($data, 'total')),
                         'backgroundColor' => array_map(
-                            fn($d) => $statusColors[$d['status']] ?? self::COLORS['primary'],
+                            fn(array $d): string => $statusColors[$d['status']] ?? self::COLORS['primary'],
                             $data
                         ),
                         'borderWidth' => 0,
@@ -362,7 +362,7 @@ class CloneTrendChartService
     public function getScheduleExecutionsChart(int $days = 14): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(started_at) as date,
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
@@ -380,7 +380,7 @@ class CloneTrendChartService
         return [
             'type' => 'bar',
             'data' => [
-                'labels' => array_map(fn($d) => date('d/m', strtotime($d['date'])), $filled),
+                'labels' => array_map(fn(array $d): string => date('d/m', strtotime($d['date'])), $filled),
                 'datasets' => [
                     [
                         'label' => 'Execuções',
@@ -410,7 +410,7 @@ class CloneTrendChartService
     public function getEventsByTypeChart(int $days = 7): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 event_type,
                 COUNT(*) as total
             FROM clone_event_trigger_logs
@@ -437,12 +437,12 @@ class CloneTrendChartService
         return [
             'type' => 'polarArea',
             'data' => [
-                'labels' => array_map(fn($d) => $eventLabels[$d['event_type']] ?? $d['event_type'], $data),
+                'labels' => array_map(fn(array $d): string => $eventLabels[$d['event_type']] ?? $d['event_type'], $data),
                 'datasets' => [
                     [
                         'data' => array_map('intval', array_column($data, 'total')),
                         'backgroundColor' => array_map(
-                            fn($d) => str_replace('1)', '0.7)', $eventColors[$d['event_type']] ?? self::COLORS['primary']),
+                            fn(array $d): string => str_replace('1)', '0.7)', $eventColors[$d['event_type']] ?? self::COLORS['primary']),
                             $data
                         ),
                         'borderWidth' => 0,
@@ -526,7 +526,7 @@ class CloneTrendChartService
     {
         // Taxa de sucesso
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'created' THEN 1 ELSE 0 END) as success
             FROM cloned_items
@@ -535,9 +535,9 @@ class CloneTrendChartService
         ");
         $stmt->execute(['account_id' => $this->accountId]);
         $cloneStats = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $successRate = $cloneStats['total'] > 0 
-            ? round(($cloneStats['success'] / $cloneStats['total']) * 100, 1) 
+
+        $successRate = $cloneStats['total'] > 0
+            ? round(($cloneStats['success'] / $cloneStats['total']) * 100, 1)
             : 0;
 
         // Velocidade (baseada no tempo médio vs benchmark de 30s)
@@ -553,7 +553,7 @@ class CloneTrendChartService
 
         // SEO Score - média baseada nos dados reais de otimização de clones
         $stmtSeo = $this->db->prepare("
-            SELECT AVG(CASE 
+            SELECT AVG(CASE
                 WHEN LENGTH(title) >= 45 AND LENGTH(title) <= 60 THEN 80
                 WHEN LENGTH(title) >= 30 THEN 60
                 ELSE 40
@@ -567,7 +567,7 @@ class CloneTrendChartService
 
         // Completude (% de clones com título, preço e pelo menos 1 imagem)
         $stmtComplete = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN title IS NOT NULL AND title != '' AND price > 0 THEN 1 ELSE 0 END) as complete
             FROM cloned_items
@@ -593,7 +593,7 @@ class CloneTrendChartService
         $dailyRates = array_column($stmtConsist->fetchAll(PDO::FETCH_ASSOC), 'daily_rate');
         if (count($dailyRates) >= 2) {
             $mean = array_sum($dailyRates) / count($dailyRates);
-            $variance = array_sum(array_map(fn($r) => pow((float) $r - $mean, 2), $dailyRates)) / count($dailyRates);
+            $variance = array_sum(array_map(fn(float $r): float => pow((float) $r - $mean, 2), $dailyRates)) / count($dailyRates);
             $consistency = max(0, min(100, round(100 - sqrt($variance), 1)));
         } else {
             $consistency = $successRate; // Fallback ao rate geral
@@ -615,7 +615,7 @@ class CloneTrendChartService
     {
         $result = [];
         $dataByDate = [];
-        
+
         foreach ($data as $row) {
             $dataByDate[$row['date']] = $row;
         }

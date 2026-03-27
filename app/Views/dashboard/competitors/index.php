@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Central de Espionagem 2.0';
 ob_start();
 

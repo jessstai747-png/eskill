@@ -899,6 +899,8 @@ class MercadoLivreClient
             '#^/messages#',
             '#^/items/[^/]+/visits#',
             '#^/items/[^/]+/health#',
+            '#^/item/[^/]+/performance#',
+            '#^/reputation/items/[^/]+/purchase_experience#',
             '#^/items/[^/]+/shipping#',
             '#^/items/[^/]+/fulfillment#',
             '#^/answers#',
@@ -980,7 +982,7 @@ class MercadoLivreClient
             // Então usamos o client autenticado quando houver token; e só usamos client público quando não há token.
             $client = ($requiresAuth || $this->hasAccessToken) ? $this->httpClient : $this->getPublicHttpClient();
             $response = $client->request($method, $url, $options);
-            $result = json_decode($response->getBody(), true) ?: [];
+            $result = json_decode((string)$response->getBody(), true) ?: [];
 
             // CIRCUIT BREAKER: Registra sucesso
             if ($circuitBreaker) {
@@ -1090,6 +1092,20 @@ class MercadoLivreClient
                     sleep($delaySeconds);
                 }
                 return $this->requestWithRetry($method, $endpoint, $options, false, $requiresAuth);
+            }
+
+            // PolicyAgent 403 em endpoint público sem client_id (pré-bloqueado ou nunca enviado):
+            // é comportamento esperado — downgrade de ERROR para WARNING para evitar ruído nos logs.
+            if (!$requiresAuth && $this->isPolicyBlockedHttpError($status, $body, $e->getMessage())) {
+                log_warning('ML API public endpoint bloqueado por policy (sem client_id)', [
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'status' => $status,
+                ]);
+
+                return $this->decorateLegacyResponse(
+                    $this->normalizeHttpError($method, $endpoint, $status, $body, $e->getMessage())
+                );
             }
 
             log_error('ML API HTTP Error', [
@@ -1356,7 +1372,8 @@ class MercadoLivreClient
 
         try {
             $user = $this->get('/users/me');
-            $this->sellerId = $user['id'] ?? null;
+            $rawSellerId = $user['id'] ?? null;
+            $this->sellerId = $rawSellerId !== null ? (string)$rawSellerId : null;
             return $this->sellerId;
         } catch (\Exception $e) {
             log_error('Erro ao obter seller ID da ML API', [
@@ -1639,19 +1656,106 @@ class MercadoLivreClient
     }
 
     /**
+     * Get listing quality performance for a specific item (new API, replaces /health).
+     *
+     * ML API: GET /item/{id}/performance
+     * Returns quality score (0-100), level, and improvement actions grouped in buckets.
+     * Note: /items/{id}/health was deprecated in Feb 2025.
+     *
+     * @return array Raw performance data from ML
+     */
+    public function getItemPerformance(string $itemId): array
+    {
+        try {
+            return $this->get("/item/{$itemId}/performance");
+        } catch (\Exception $e) {
+            log_error('Erro ao obter performance do item', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Get listing quality health for a specific item.
      *
-     * ML API: GET /items/{id}/health
-     * Returns quality score, warnings, and recommendations.
+     * Internally uses /item/{id}/performance (replaces deprecated /items/{id}/health).
+     * Returns a normalized response compatible with legacy callers.
      *
-     * @return array Item health data from ML
+     * @return array{item_id: string, health_score: int, status: string, level_wording: string, issues: array, recommendations: array, buckets: array}
      */
     public function getItemHealth(string $itemId): array
     {
         try {
-            return $this->get("/items/{$itemId}/health");
+            $data = $this->get("/item/{$itemId}/performance");
+
+            if (isset($data['error'])) {
+                return ['error' => $data['error']];
+            }
+
+            $issues = [];
+            $recommendations = [];
+            foreach ($data['buckets'] ?? [] as $bucket) {
+                foreach ($bucket['variables'] ?? [] as $variable) {
+                    if (($variable['status'] ?? '') !== 'PENDING') {
+                        continue;
+                    }
+                    foreach ($variable['rules'] ?? [] as $rule) {
+                        if (($rule['status'] ?? '') === 'PENDING') {
+                            $issues[] = [
+                                'bucket' => $bucket['key'] ?? '',
+                                'key' => $rule['key'] ?? '',
+                                'mode' => $rule['mode'] ?? '',
+                                'title' => $rule['wordings']['title'] ?? '',
+                                'label' => $rule['wordings']['label'] ?? '',
+                            ];
+                            if (!empty($rule['wordings']['title'])) {
+                                $recommendations[] = $rule['wordings']['title'];
+                            }
+                        }
+                    }
+                }
+            }
+
+            return [
+                'item_id' => $itemId,
+                'health_score' => (int) ($data['score'] ?? 0),
+                'status' => $data['level'] ?? 'unknown',
+                'level_wording' => $data['level_wording'] ?? '',
+                'issues' => $issues,
+                'recommendations' => array_values(array_unique($recommendations)),
+                'buckets' => $data['buckets'] ?? [],
+                'calculated_at' => $data['calculated_at'] ?? null,
+            ];
         } catch (\Exception $e) {
             log_error('Erro ao obter saúde do item', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage(),
+            ]);
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get buyer purchase experience for a specific item.
+     *
+     * ML API: GET /reputation/items/{id}/purchase_experience/integrators
+     * Returns reputation color/value, metrics detail (complaints, cancellations).
+     *
+     * @param string $itemId ML item ID
+     * @param string $locale BCP47 locale, e.g. 'pt_BR'
+     * @return array Purchase experience data or ['error' => ...]
+     */
+    public function getPurchaseExperience(string $itemId, string $locale = 'pt_BR'): array
+    {
+        try {
+            return $this->get(
+                "/reputation/items/{$itemId}/purchase_experience/integrators",
+                ['locale' => $locale]
+            );
+        } catch (\Exception $e) {
+            log_error('Erro ao obter experiência de compra do item', [
                 'item_id' => $itemId,
                 'error' => $e->getMessage(),
             ]);
@@ -1699,30 +1803,36 @@ class MercadoLivreClient
             $itemIds = $data['results'] ?? [];
             $paging = $data['paging'] ?? ['total' => 0, 'offset' => 0, 'limit' => 50];
 
-            // Fetch basic details for each item (multi-get)
+            // Fetch basic details for each item in chunks of 20 (ML multi-get limit)
             $items = [];
             if (!empty($itemIds)) {
-                $idsChunk = array_slice($itemIds, 0, 20); // Max 20 per multi-get
-                $multiGet = $this->get('/items', ['ids' => implode(',', $idsChunk)], 120, true);
+                $chunks = array_chunk($itemIds, 20);
+                foreach ($chunks as $idsChunk) {
+                    $multiGet = $this->get('/items', ['ids' => implode(',', $idsChunk)], 120, true);
 
-                if (is_array($multiGet)) {
-                    foreach ($multiGet as $entry) {
-                        $body = $entry['body'] ?? $entry;
-                        if (isset($body['id'])) {
-                            $items[] = [
-                                'id' => $body['id'],
-                                'title' => $body['title'] ?? '',
-                                'price' => $body['price'] ?? 0,
-                                'status' => $body['status'] ?? '',
-                                'category_id' => $body['category_id'] ?? '',
-                                'permalink' => $body['permalink'] ?? '',
-                                'sold_quantity' => $body['sold_quantity'] ?? 0,
-                                'available_quantity' => $body['available_quantity'] ?? 0,
-                                'thumbnail' => $body['thumbnail'] ?? '',
-                                'listing_type_id' => $body['listing_type_id'] ?? '',
-                                'health' => $body['health'] ?? null,
-                            ];
+                    if (is_array($multiGet)) {
+                        foreach ($multiGet as $entry) {
+                            $body = $entry['body'] ?? $entry;
+                            if (isset($body['id'])) {
+                                $items[] = [
+                                    'id' => $body['id'],
+                                    'title' => $body['title'] ?? '',
+                                    'price' => $body['price'] ?? 0,
+                                    'status' => $body['status'] ?? '',
+                                    'category_id' => $body['category_id'] ?? '',
+                                    'permalink' => $body['permalink'] ?? '',
+                                    'sold_quantity' => $body['sold_quantity'] ?? 0,
+                                    'available_quantity' => $body['available_quantity'] ?? 0,
+                                    'thumbnail' => $body['thumbnail'] ?? '',
+                                    'listing_type_id' => $body['listing_type_id'] ?? '',
+                                    'health' => $body['health'] ?? null,
+                                ];
+                            }
                         }
+                    }
+
+                    if (count($chunks) > 1) {
+                        usleep(100_000); // 100ms entre batches para rate limiting
                     }
                 }
             }

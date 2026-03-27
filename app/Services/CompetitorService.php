@@ -77,7 +77,7 @@ class CompetitorService
                 ) VALUES (
                     :account_id, :ml_item_id, :seller_id, :title, :price, :permalink, :status, NOW()
                 )
-                ON DUPLICATE KEY UPDATE 
+                ON DUPLICATE KEY UPDATE
                     price = VALUES(price),
                     status = VALUES(status),
                     title = VALUES(title)
@@ -258,9 +258,9 @@ class CompetitorService
         if (!$id) return [];
 
         $stmt = $this->db->prepare("
-            SELECT price, recorded_at 
-            FROM competitor_price_history 
-            WHERE competitor_item_id = ? 
+            SELECT price, recorded_at
+            FROM competitor_price_history
+            WHERE competitor_item_id = ?
             AND recorded_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
             ORDER BY recorded_at ASC
         ");
@@ -276,7 +276,7 @@ class CompetitorService
         $limitSql = max(1, min((int)$limit, 200));
 
         $stmt = $this->db->prepare("
-            SELECT l.*, i.title, i.permalink 
+            SELECT l.*, i.title, i.permalink
             FROM competitor_logs l
             JOIN competitor_items i ON l.ml_item_id = i.ml_item_id
             WHERE l.account_id = :account_id
@@ -330,7 +330,7 @@ class CompetitorService
     private function updateLocalItem(array $item): void
     {
         $stmt = $this->db->prepare("
-            UPDATE competitor_items 
+            UPDATE competitor_items
             SET price = :price, status = :status, updated_at = NOW()
             WHERE ml_item_id = :ml_item_id
         ");
@@ -358,7 +358,7 @@ class CompetitorService
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
         } catch (\Exception $e) {
-            // Table already exists or error
+            log_warning('CompetitorService: failed to create competitor_sellers table', ['error' => $e->getMessage()]);
         }
 
         try {
@@ -385,7 +385,7 @@ class CompetitorService
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
         } catch (\Exception $e) {
-            // Table already exists or error
+            log_warning('CompetitorService: failed to create competitor_items table', ['error' => $e->getMessage()]);
         }
 
         try {
@@ -404,7 +404,7 @@ class CompetitorService
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
         } catch (\Exception $e) {
-            // Table already exists or error
+            log_warning('CompetitorService: failed to create competitor_logs table', ['error' => $e->getMessage()]);
         }
 
         try {
@@ -425,7 +425,7 @@ class CompetitorService
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
         } catch (\Exception $e) {
-            // Table already exists or error
+            log_warning('CompetitorService: failed to create competitor_price_history table', ['error' => $e->getMessage()]);
         }
 
         // Adicionar colunas novas para tabelas existentes

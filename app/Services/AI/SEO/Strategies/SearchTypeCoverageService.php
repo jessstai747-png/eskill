@@ -200,7 +200,7 @@ class SearchTypeCoverageService
                 // scoreWords(array $words, string $title, string $categoryId)
                 $scored = $this->scoreService->scoreWords($typeKeywords, $baseKeyword, $categoryId);
                 $typeKeywords = $scored['scored_words'] ?? array_map(
-                    fn($k) => ['keyword' => $k, 'score' => 0.5],
+                    fn(string $k): array => ['keyword' => $k, 'score' => 0.5],
                     $typeKeywords
                 );
             }
@@ -726,7 +726,7 @@ class SearchTypeCoverageService
         }
 
         // Filtrar strings vazias
-        $allKeywords = array_filter($allKeywords, fn($k) => !empty($k));
+        $allKeywords = array_filter($allKeywords, fn(string $k): bool => !empty($k));
 
         return $injector->injectInDescription($description, $allKeywords);
     }

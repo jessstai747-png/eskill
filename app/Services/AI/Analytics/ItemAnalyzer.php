@@ -328,10 +328,10 @@ class ItemAnalyzer
      */
     public function generateOptimizationPlan(array $analyzedItems): array
     {
-        $critical = array_filter($analyzedItems, fn($i) => $i['priority_level'] === 'critical');
-        $high = array_filter($analyzedItems, fn($i) => $i['priority_level'] === 'high');
-        $medium = array_filter($analyzedItems, fn($i) => $i['priority_level'] === 'medium');
-        $low = array_filter($analyzedItems, fn($i) => $i['priority_level'] === 'low');
+        $critical = array_filter($analyzedItems, fn(array $i): bool => $i['priority_level'] === 'critical');
+        $high = array_filter($analyzedItems, fn(array $i): bool => $i['priority_level'] === 'high');
+        $medium = array_filter($analyzedItems, fn(array $i): bool => $i['priority_level'] === 'medium');
+        $low = array_filter($analyzedItems, fn(array $i): bool => $i['priority_level'] === 'low');
 
         $totalCost = array_sum(array_column($analyzedItems, 'optimization_cost'));
         $totalRevenue = array_sum(array_column(array_column($analyzedItems, 'estimated_roi'), 'additional_revenue'));

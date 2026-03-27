@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // TAB: Ficha Técnica (Atualização Inteligente)
 ?>
 
@@ -150,7 +153,7 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 (function() {
     const q = document.getElementById('tech-sheet-q');
     const perPage = document.getElementById('tech-sheet-per-page');

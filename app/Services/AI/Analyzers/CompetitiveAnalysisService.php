@@ -205,9 +205,9 @@ class CompetitiveAnalysisService
             'avg' => round(array_sum($prices) / $count, 2),
             'median' => round($median, 2),
             'distribution' => [
-                'low' => count(array_filter($prices, fn($p) => $p < $median * 0.8)),
-                'medium' => count(array_filter($prices, fn($p) => $p >= $median * 0.8 && $p <= $median * 1.2)),
-                'high' => count(array_filter($prices, fn($p) => $p > $median * 1.2)),
+                'low' => count(array_filter($prices, fn(float|int $p): bool => $p < $median * 0.8)),
+                'medium' => count(array_filter($prices, fn(float|int $p): bool => $p >= $median * 0.8 && $p <= $median * 1.2)),
+                'high' => count(array_filter($prices, fn(float|int $p): bool => $p > $median * 1.2)),
             ],
             'recommended_range' => [
                 'min' => round($median * 0.9, 2),
@@ -266,7 +266,7 @@ class CompetitiveAnalysisService
         return [
             'total_unique_attributes' => count($attributeFrequency),
             'avg_attributes_per_listing' => round(
-                array_sum(array_map(fn($c) => count($c['attributes']), $competitors)) / $totalCompetitors
+                array_sum(array_map(fn(array $c): int => count($c['attributes']), $competitors)) / $totalCompetitors
             ),
             'attribute_usage' => array_slice($attributeFrequency, 0, 15, true),
         ];

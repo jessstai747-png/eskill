@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 require __DIR__ . '/../vendor/autoload.php';
 
 // Load env only when not in production to avoid accidental fallback to .env files

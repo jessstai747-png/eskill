@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Teste Completo do SEO Killer com Autenticação
  * Testa todos os endpoints que estavam com HTTP 500

@@ -197,7 +197,7 @@ class CentralizedLogService
             $sql .= " ORDER BY created_at DESC LIMIT {$limitSql} OFFSET {$offsetSql}";
 
             $stmt = $this->db->prepare($sql);
-            
+
             foreach ($params as $key => $value) {
                 $stmt->bindValue(":{$key}", $value);
             }
@@ -234,8 +234,8 @@ class CentralizedLogService
 
             // Log levels distribution
             $stmt = $this->db->prepare("
-                SELECT level, COUNT(*) as count 
-                FROM system_logs 
+                SELECT level, COUNT(*) as count
+                FROM system_logs
                 WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$interval})
                 GROUP BY level
                 ORDER BY count DESC
@@ -245,8 +245,8 @@ class CentralizedLogService
 
             // Categories distribution
             $stmt = $this->db->prepare("
-                SELECT category, COUNT(*) as count 
-                FROM system_logs 
+                SELECT category, COUNT(*) as count
+                FROM system_logs
                 WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$interval})
                 GROUP BY category
                 ORDER BY count DESC
@@ -258,7 +258,7 @@ class CentralizedLogService
             // Hourly distribution
             $stmt = $this->db->prepare("
                 SELECT HOUR(created_at) as hour, COUNT(*) as count
-                FROM system_logs 
+                FROM system_logs
                 WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$interval})
                 GROUP BY HOUR(created_at)
                 ORDER BY hour
@@ -269,7 +269,7 @@ class CentralizedLogService
             // Top error messages
             $stmt = $this->db->prepare("
                 SELECT message, COUNT(*) as count
-                FROM system_logs 
+                FROM system_logs
                 WHERE level IN ('error', 'critical', 'alert', 'emergency')
                 AND created_at >= DATE_SUB(NOW(), INTERVAL {$interval})
                 GROUP BY message
@@ -308,7 +308,7 @@ class CentralizedLogService
             // Cleanup database logs
             if ($this->config['database_logging']) {
                 $stmt = $this->db->prepare("
-                    DELETE FROM system_logs 
+                    DELETE FROM system_logs
                     WHERE created_at < DATE_SUB(NOW(), INTERVAL :retention_days DAY)
                 ");
                 $stmt->bindValue(':retention_days', $this->config['retention_days'], PDO::PARAM_INT);
@@ -347,7 +347,7 @@ class CentralizedLogService
      */
     private function categorizeLog(string $message, array $context): string {
         $type = $context['type'] ?? null;
-        
+
         if ($type) {
             return $type;
         }
@@ -356,15 +356,15 @@ class CentralizedLogService
         if (str_contains($message, 'SQL') || str_contains($message, 'database')) {
             return 'database';
         }
-        
+
         if (str_contains($message, 'API') || str_contains($message, 'HTTP')) {
             return 'api';
         }
-        
+
         if (str_contains($message, 'Auth') || str_contains($message, 'Login')) {
             return 'auth';
         }
-        
+
         if (str_contains($message, 'Security') || str_contains($message, 'Suspicious')) {
             return 'security';
         }
@@ -381,9 +381,9 @@ class CentralizedLogService
      */
     private function writeToFile(string $level, array $logEntry): void {
         $filename = $this->logPath . DIRECTORY_SEPARATOR . "{$level}.log";
-        
+
         // Check file size for rotation
-        if ($this->config['rotation_enabled'] && file_exists($filename) && 
+        if ($this->config['rotation_enabled'] && file_exists($filename) &&
             filesize($filename) > $this->config['max_file_size']) {
             $this->rotateFile($filename);
         }
@@ -461,11 +461,11 @@ class CentralizedLogService
      */
     private function getRequestId(): string {
         static $requestId = null;
-        
+
         if ($requestId === null) {
             $requestId = uniqid('req_', true);
         }
-        
+
         return $requestId;
     }
 
@@ -474,11 +474,11 @@ class CentralizedLogService
      */
     private function getExecutionTime(): float {
         static $startTime = null;
-        
+
         if ($startTime === null) {
             $startTime = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
         }
-        
+
         return microtime(true) - $startTime;
     }
 
@@ -488,7 +488,16 @@ class CentralizedLogService
     private function getDiskUsage(): array {
         $total = disk_total_space('/');
         $free = disk_free_space('/');
-        
+
+        if ($total === false || $free === false || $total == 0) {
+            return [
+                'total' => 0,
+                'free' => 0,
+                'used' => 0,
+                'usage_percent' => 0.0
+            ];
+        }
+
         return [
             'total' => $total,
             'free' => $free,

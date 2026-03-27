@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Teste Avançado com API do Mercado Livre
  * Busca produtos reais e aplica análise completa

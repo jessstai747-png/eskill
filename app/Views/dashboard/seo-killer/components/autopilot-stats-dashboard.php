@@ -139,7 +139,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // AutoPilot Stats Functions
     if (!window.SEOKiller) window.SEOKiller = {};
 

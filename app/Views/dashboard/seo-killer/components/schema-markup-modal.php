@@ -40,7 +40,7 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const SchemaMarkup = {
         init() {
             this.loadProducts();
@@ -49,9 +49,7 @@
         async loadProducts() {
             const select = document.getElementById('schema-product-select');
             try {
-                const {
-                    data
-                } = await requestJson('/api/items?limit=100');
+                const data = await requestJson('/api/items?limit=100');
                 if (data.results) {
                     select.innerHTML = '<option value="">Selecione...</option>' +
                         data.results.map(item => `<option value="${item.id}">${item.title}</option>`).join('');
@@ -73,9 +71,7 @@
             document.getElementById('schema-result-area').style.display = 'block';
 
             try {
-                const {
-                    data
-                } = await requestJson(`/api/seo-killer/schema/${itemId}`);
+                const data = await requestJson(`/api/seo-killer/schema/${itemId}`);
 
                 if (data.success) {
                     textarea.value = data.json_ld;

@@ -206,7 +206,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const TitleGenerator = {
         currentProduct: null,
         suggestions: [],

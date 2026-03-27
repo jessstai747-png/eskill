@@ -9,15 +9,15 @@ use App\Services\AI\ML\SynonymGenerator;
 
 /**
  * 🔗 E7: Long Tail Generator Service
- * 
+ *
  * Gera keywords long-tail automaticamente combinando:
  * - Keyword base + especificação
  * - Keyword base + marca + modelo
  * - Keyword base + contexto de uso
  * - Keyword base + benefício
- * 
+ *
  * Long-tail = baixo volume + altíssima conversão
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class LongTailGeneratorService
@@ -82,16 +82,33 @@ class LongTailGeneratorService
      * Marcas comuns (categoria motos como exemplo)
      */
     private const COMMON_BRANDS = [
-        'honda', 'yamaha', 'suzuki', 'kawasaki', 'bmw', 'harley',
-        'givi', 'proos', 'protork', 'shad', 'kappa'
+        'honda',
+        'yamaha',
+        'suzuki',
+        'kawasaki',
+        'bmw',
+        'harley',
+        'givi',
+        'proos',
+        'protork',
+        'shad',
+        'kappa'
     ];
 
     /**
      * Modelos comuns
      */
     private const COMMON_MODELS = [
-        'cg 160', 'cg 150', 'fan 160', 'fazer 250', 'cb 300',
-        'bros 160', 'xre 300', 'cb 500', 'pcx 150', 'nmax 160'
+        'cg 160',
+        'cg 150',
+        'fan 160',
+        'fazer 250',
+        'cb 300',
+        'bros 160',
+        'xre 300',
+        'cb 500',
+        'pcx 150',
+        'nmax 160'
     ];
 
     public function __construct(?int $accountId = null)
@@ -104,7 +121,7 @@ class LongTailGeneratorService
 
     /**
      * Gera keywords long-tail a partir de uma base
-     * 
+     *
      * @param string $baseKeyword Keyword base
      * @param array $options Opções de geração
      * @return array Keywords long-tail geradas
@@ -178,7 +195,7 @@ class LongTailGeneratorService
 
             foreach ($suggestions['suggested_queries'] ?? [] as $suggestion) {
                 $query = $suggestion['q'] ?? '';
-                
+
                 // Filtrar apenas long-tail (3+ palavras)
                 if (str_word_count($query) >= 3 && stripos($query, $baseKeyword) !== false) {
                     $longTails[] = [
@@ -204,7 +221,7 @@ class LongTailGeneratorService
      * Gera long-tails a partir de concorrentes
      */
     public function generateFromCompetitors(
-        string $categoryId, 
+        string $categoryId,
         string $searchQuery,
         int $limit = 20
     ): array {
@@ -224,10 +241,10 @@ class LongTailGeneratorService
 
             foreach ($search['results'] ?? [] as $item) {
                 $title = $item['title'] ?? '';
-                
+
                 // Extrair potenciais long-tails do título
                 $extracted = $this->extractLongTailsFromTitle($title);
-                
+
                 foreach ($extracted as $lt) {
                     $longTails[] = [
                         'keyword' => $lt,
@@ -263,15 +280,15 @@ class LongTailGeneratorService
      * Gera long-tails via IA
      */
     public function generateWithAI(
-        string $baseKeyword, 
+        string $baseKeyword,
         array $context,
         int $limit = 15
     ): array {
         try {
             $generator = new SynonymGenerator();
-            
+
             $result = $generator->generateLongTail($baseKeyword, $context, $limit);
-            
+
             return [
                 'base_keyword' => $baseKeyword,
                 'long_tails' => $result['long_tails'] ?? [],
@@ -344,7 +361,7 @@ class LongTailGeneratorService
 
         foreach ($allPossible['long_tails'] as $lt) {
             $keyword = mb_strtolower($lt['keyword']);
-            
+
             // Verificar se NÃO está presente
             if (stripos($fullText, $keyword) === false) {
                 $missing[] = $lt;
@@ -436,7 +453,7 @@ class LongTailGeneratorService
 
         foreach ($contextData['keywords'] as $kw) {
             $keyword = $kw['keyword'];
-            
+
             $longTails[] = [
                 'keyword' => "{$base} {$keyword}",
                 'type' => 'context',
@@ -478,9 +495,9 @@ class LongTailGeneratorService
     }
 
     private function generateComplex(
-        string $base, 
-        ?string $brand, 
-        ?string $model, 
+        string $base,
+        ?string $brand,
+        ?string $model,
         array $specs,
         array $contexts
     ): array {
@@ -490,7 +507,7 @@ class LongTailGeneratorService
 
         // Pegar primeira spec de capacidade
         $capacity = $specs['capacity'] ?? (self::COMMON_SPECS['capacity'][0] ?? '');
-        
+
         // Pegar primeiro contexto
         $use = $contexts[0] ?? 'uso geral';
 
@@ -531,7 +548,7 @@ class LongTailGeneratorService
 
         foreach ($longTails as $lt) {
             $key = mb_strtolower(trim($lt['keyword']));
-            
+
             if (!isset($unique[$key])) {
                 // Calcular score
                 $score = $this->calculateScore($lt);
@@ -577,11 +594,11 @@ class LongTailGeneratorService
     private function extractLongTailsFromTitle(string $title): array
     {
         $longTails = [];
-        
+
         // Remover caracteres especiais
         $clean = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $title);
         $words = preg_split('/\s+/', mb_strtolower($clean));
-        $words = array_filter($words, fn($w) => strlen($w) > 2);
+        $words = array_filter($words, fn(string $w): bool => strlen($w) > 2);
         $words = array_values($words);
 
         // Gerar n-gramas (3-5 palavras)
@@ -599,7 +616,7 @@ class LongTailGeneratorService
     {
         $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na', 'e', 'ou'];
         $words = preg_split('/\s+/', mb_strtolower($title));
-        
+
         $keywords = [];
         foreach ($words as $word) {
             $word = preg_replace('/[^\p{L}\p{N}]/u', '', $word);
@@ -675,7 +692,7 @@ class LongTailGeneratorService
     private function estimateConversion(int $wordCount, int $characteristicCount): string
     {
         $score = $wordCount * 0.5 + $characteristicCount * 1.5;
-        
+
         if ($score >= 4) return 'very_high';
         if ($score >= 3) return 'high';
         if ($score >= 2) return 'medium';

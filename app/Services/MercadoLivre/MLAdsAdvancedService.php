@@ -8,7 +8,7 @@ use App\Services\CacheService;
 
 /**
  * ML Ads Advanced Service - Smart Advertising Optimization
- * 
+ *
  * Features:
  * - Smart Campaign Optimization
  * - Dynamic Bid Management
@@ -41,7 +41,7 @@ class MLAdsAdvancedService
     {
         try {
             $results = [];
-            
+
             // Get all campaigns if none specified
             if (empty($campaignIds)) {
                 $campaignIds = $this->getAllActiveCampaignIds();
@@ -50,7 +50,7 @@ class MLAdsAdvancedService
             foreach ($campaignIds as $campaignId) {
                 $optimization = $this->optimizeSingleCampaign($campaignId);
                 $results[] = $optimization;
-                
+
                 // Apply optimizations
                 if ($optimization['recommended_actions']) {
                     $this->applyCampaignOptimizations($campaignId, $optimization['recommended_actions']);
@@ -63,7 +63,7 @@ class MLAdsAdvancedService
                 'results' => $results,
                 'summary' => $this->generateOptimizationSummary($results)
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -80,10 +80,10 @@ class MLAdsAdvancedService
         try {
             $rules = array_merge($this->config['bid_rules'], $config);
             $bidAdjustments = [];
-            
+
             // Get all active campaigns and items
             $campaigns = $this->getActiveCampaignsWithItems();
-            
+
             foreach ($campaigns as $campaign) {
                 foreach ($campaign['items'] as $item) {
                     $adjustment = $this->calculateOptimalBid($item, $campaign, $rules);
@@ -100,7 +100,7 @@ class MLAdsAdvancedService
                 'adjustments' => $bidAdjustments,
                 'estimated_impact' => $this->estimateBidImpact($bidAdjustments)
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -136,7 +136,7 @@ class MLAdsAdvancedService
                 'results' => $results,
                 'estimated_reach' => $this->calculateTotalReach($targeting)
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -152,11 +152,11 @@ class MLAdsAdvancedService
     {
         try {
             $upsellCampaigns = [];
-            
+
             foreach ($baseProducts as $product) {
                 $relatedProducts = $this->findRelatedProducts($product);
                 $upsellConfig = $this->generateUpsellConfiguration($product, $relatedProducts);
-                
+
                 $campaign = $this->createUpsellCampaign($upsellConfig);
                 if ($campaign['success']) {
                     $upsellCampaigns[] = [
@@ -174,7 +174,7 @@ class MLAdsAdvancedService
                 'campaigns' => $upsellCampaigns,
                 'total_estimated_lift' => array_sum(array_column($upsellCampaigns, 'estimated_conversion_lift'))
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -191,12 +191,12 @@ class MLAdsAdvancedService
         try {
             $rules = array_merge($this->config['budget_rules'], $budgetRules);
             $budgetChanges = [];
-            
+
             $campaigns = $this->getAllCampaignsWithMetrics();
-            
+
             foreach ($campaigns as $campaign) {
                 $newBudget = $this->calculateOptimalBudget($campaign, $rules);
-                
+
                 if ($newBudget['adjust']) {
                     $budgetChanges[] = $newBudget;
                     $this->applyBudgetChange($campaign['id'], $newBudget);
@@ -209,7 +209,7 @@ class MLAdsAdvancedService
                 'changes' => $budgetChanges,
                 'total_budget_reallocated' => array_sum(array_column($budgetChanges, 'amount_change'))
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -240,7 +240,7 @@ class MLAdsAdvancedService
                 'generated_at' => time(),
                 'data_freshness' => $this->getDataFreshness()
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -256,13 +256,13 @@ class MLAdsAdvancedService
     {
         // Get campaign performance data
         $performance = $this->getCampaignPerformanceData($campaignId);
-        
+
         // Analyze performance patterns
         $analysis = $this->analyzeCampaignPerformance($performance);
-        
+
         // Generate recommendations
         $recommendations = $this->generateCampaignRecommendations($analysis);
-        
+
         return [
             'campaign_id' => $campaignId,
             'current_performance' => $performance,
@@ -280,7 +280,7 @@ class MLAdsAdvancedService
     {
         $currentBid = $item['current_bid'] ?? 0;
         $performance = $this->getItemBidPerformance($item['id']);
-        
+
         // Calculate bid adjustment factors
         $factors = [
             'conversion_rate' => $this->calculateConversionRateFactor($performance),
@@ -293,7 +293,7 @@ class MLAdsAdvancedService
 
         $adjustmentPercentage = $this->calculateBidAdjustment($factors);
         $newBid = $currentBid * (1 + $adjustmentPercentage);
-        
+
         // Apply bid limits
         $newBid = max($rules['min_bid'] ?? 0.01, $newBid);
         $newBid = min($rules['max_bid'] ?? 10.00, $newBid);
@@ -401,7 +401,7 @@ class MLAdsAdvancedService
 
         // Sort by score and return top related products
         usort($scoredProducts, fn($a, $b) => $b['score'] <=> $a['score']);
-        
+
         return array_slice($scoredProducts, 0, 10);
     }
 
@@ -411,10 +411,10 @@ class MLAdsAdvancedService
     private function getAllActiveCampaignIds(): array
     {
         $stmt = $this->db->prepare("
-            SELECT campaign_id FROM ml_ad_campaigns 
+            SELECT campaign_id FROM ml_ad_campaigns
             WHERE account_id = :account_id AND status = 'active'
         ");
-        
+
         $stmt->execute(['account_id' => $this->accountId]);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
@@ -426,10 +426,10 @@ class MLAdsAdvancedService
     {
         $cacheKey = "campaign_performance_{$campaignId}_{$this->accountId}";
         $data = $this->cache->get($cacheKey);
-        
+
         if (!$data) {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     c.*,
                     COUNT(DISTINCT i.item_id) as total_items,
                     SUM(i.impressions) as total_impressions,
@@ -442,14 +442,14 @@ class MLAdsAdvancedService
                 WHERE c.campaign_id = :campaign_id AND c.account_id = :account_id
                 GROUP BY c.campaign_id
             ");
-            
+
             $stmt->execute(['campaign_id' => $campaignId, 'account_id' => $this->accountId]);
             $data = $stmt->fetch(\PDO::FETCH_ASSOC);
-            
+
             // Cache for 1 hour
             $this->cache->set($cacheKey, $data, 3600);
         }
-        
+
         return $data ?: [];
     }
 
@@ -610,7 +610,7 @@ class MLAdsAdvancedService
         foreach ($results as $r) {
             $recs = $r['recommended_actions'] ?? [];
             $totalRecs += count($recs);
-            $applied += count(array_filter($recs, fn($a) => ($a['applied'] ?? false)));
+            $applied += count(array_filter($recs, fn(array $a): bool => ($a['applied'] ?? false)));
             $estImprovements[] = $r['estimated_improvement']['revenue_lift_pct'] ?? 0;
             if (($r['status'] ?? '') === 'optimized') {
                 $optimized++;
@@ -771,8 +771,8 @@ class MLAdsAdvancedService
             'total_adjustments' => count($adjustments),
             'avg_change_pct' => count($adjustments) > 0
                 ? round(array_sum(array_column($adjustments, 'adjustment_percentage')) / count($adjustments), 2) : 0,
-            'bid_increases' => count(array_filter($adjustments, fn($a) => ($a['adjustment_percentage'] ?? 0) > 0)),
-            'bid_decreases' => count(array_filter($adjustments, fn($a) => ($a['adjustment_percentage'] ?? 0) < 0)),
+            'bid_increases' => count(array_filter($adjustments, fn(array $a): bool => ($a['adjustment_percentage'] ?? 0) > 0)),
+            'bid_decreases' => count(array_filter($adjustments, fn(array $a): bool => ($a['adjustment_percentage'] ?? 0) < 0)),
             'estimated_cost_change_pct' => round(($totalIncrease - $totalDecrease) / max(1, count($adjustments)), 2)
         ];
 

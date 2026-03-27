@@ -342,7 +342,7 @@ class TrendsService extends MercadoLivreClient
             $totalSales = array_sum(array_column($results, 'total_sales'));
             $avgMonthlySales = $totalSales / count($results);
 
-            return array_map(function ($row) use ($avgMonthlySales) {
+            return array_map(function (array $row) use ($avgMonthlySales): array {
                 $factor = $avgMonthlySales > 0
                     ? round($row['total_sales'] / $avgMonthlySales, 2)
                     : 1.0;
@@ -393,7 +393,7 @@ class TrendsService extends MercadoLivreClient
             $totalRevenue = array_sum(array_column($results, 'total_revenue'));
             $avgMonthlyRevenue = $totalRevenue / count($results);
 
-            return array_map(function ($row) use ($avgMonthlyRevenue) {
+            return array_map(function (array $row) use ($avgMonthlyRevenue): array {
                 $factor = $avgMonthlyRevenue > 0
                     ? round($row['total_revenue'] / $avgMonthlyRevenue, 2)
                     : 1.0;
@@ -498,7 +498,7 @@ class TrendsService extends MercadoLivreClient
 
             return [
                 'total' => count($opportunities),
-                'opportunities' => array_map(function ($opp) {
+                'opportunities' => array_map(function (array $opp): array {
                     return [
                         'keyword' => $opp['keyword'],
                         'search_volume' => $opp['search_volume'],
@@ -637,7 +637,7 @@ class TrendsService extends MercadoLivreClient
         $sorted = $months;
         usort($sorted, fn($a, $b) => $b['search_volume'] <=> $a['search_volume']);
 
-        return array_slice(array_map(fn($m) => [
+        return array_slice(array_map(fn(array $m): array => [
             'month' => date('F', strtotime($m['month'])),
             'volume' => $m['search_volume'],
         ], $sorted), 0, 3);
@@ -648,7 +648,7 @@ class TrendsService extends MercadoLivreClient
         $sorted = $months;
         usort($sorted, fn($a, $b) => $a['search_volume'] <=> $b['search_volume']);
 
-        return array_slice(array_map(fn($m) => [
+        return array_slice(array_map(fn(array $m): array => [
             'month' => date('F', strtotime($m['month'])),
             'volume' => $m['search_volume'],
         ], $sorted), 0, 3);
@@ -685,7 +685,7 @@ class TrendsService extends MercadoLivreClient
 
     private function formatKeywords(array $keywords): array
     {
-        return array_map(function ($kw) {
+        return array_map(function (array $kw): array {
             return [
                 'keyword' => $kw['keyword'] ?? $kw,
                 'search_volume' => $kw['search_volume'] ?? 0,
@@ -696,7 +696,7 @@ class TrendsService extends MercadoLivreClient
 
     private function formatTopProducts(array $products): array
     {
-        return array_map(function ($p) {
+        return array_map(function (array $p): array {
             return [
                 'id' => $p['id'],
                 'title' => $p['title'],
@@ -708,7 +708,7 @@ class TrendsService extends MercadoLivreClient
 
     private function formatHotProducts(array $products): array
     {
-        return array_map(function ($p) {
+        return array_map(function (array $p): array {
             return [
                 'id' => $p['id'],
                 'title' => $p['title'],

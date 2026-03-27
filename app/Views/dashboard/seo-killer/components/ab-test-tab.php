@@ -268,7 +268,7 @@
 </div>
 
 <!-- A/B Testing JavaScript -->
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const ABTesting = {
         currentTest: null,
 

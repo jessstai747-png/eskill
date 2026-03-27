@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone Real-Time Dashboard View
  * 
@@ -294,7 +297,7 @@ ob_start();
 .alert-info { border-left-color: #0dcaf0; }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 let eventSource = null;
 let isConnected = false;
@@ -313,7 +316,7 @@ function connectSSE() {
 
     updateConnectionStatus('connecting');
 
-    eventSource = new EventSource('/api/clone/dashboard/stream');
+    eventSource = new EventSource('/api/catalog/clone/dashboard/stream');
 
     eventSource.onopen = function() {
         isConnected = true;

@@ -1,5 +1,8 @@
 <!-- GSC Dashboard Tab -->
 <?php
+
+declare(strict_types=1);
+
 // Check connection status (simulated or real call)
 // Ideally this would be passed from controller, but for include we might need an AJAX check on load
 ?>
@@ -98,7 +101,7 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const GSCManager = {
         init() {
             this.checkStatus();
@@ -106,9 +109,7 @@
 
         async checkStatus() {
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/gsc/status');
+                const data = await requestJson('/api/seo-killer/gsc/status');
 
                 const statusDiv = document.getElementById('gsc-connection-status');
                 const connectSection = document.getElementById('gsc-connect-section');
@@ -131,9 +132,7 @@
 
         async connect() {
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/gsc/auth-url', {
+                const data = await requestJson('/api/seo-killer/gsc/auth-url', {
                     method: 'POST'
                 });
 
@@ -149,9 +148,7 @@
 
         async loadData() {
             try {
-                const {
-                    data: payload
-                } = await requestJson('/api/seo-killer/gsc/data');
+                const payload = await requestJson('/api/seo-killer/gsc/data');
 
                 if (!payload.success || !payload.data) {
                     console.warn('Nenhum dado GSC disponível:', payload.error || '');

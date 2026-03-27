@@ -624,7 +624,7 @@ class AdvancedSEOMaximizer
         // Fallback: palavras do título que não são stopwords
         $stopwords = ['de', 'da', 'do', 'para', 'com', 'em', 'e', 'a', 'o', 'os', 'as'];
         $words = preg_split('/\W+/', mb_strtolower($itemData['title'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
-        return array_values(array_filter($words, fn($w) => mb_strlen($w) > 3 && !in_array($w, $stopwords)));
+        return array_values(array_filter($words, fn(string $w): bool => mb_strlen($w) > 3 && !in_array($w, $stopwords)));
     }
 
     private function injectLSIKeywords(string $description, array $lsiKeywords): string
@@ -634,7 +634,7 @@ class AdvancedSEOMaximizer
         }
 
         // Filtrar keywords que já estão presentes
-        $missing = array_filter($lsiKeywords, fn($kw) => stripos($description, $kw) === false);
+        $missing = array_filter($lsiKeywords, fn(string $kw): bool => stripos($description, $kw) === false);
         if (empty($missing)) {
             return $description;
         }
@@ -679,7 +679,7 @@ class AdvancedSEOMaximizer
 
         // 2. Quebrar frases muito longas (> 200 chars sem quebra de linha)
         if ($result !== null) {
-            $result = preg_replace_callback('/([^\n]{200,}?)([.!?])\s/', function ($m) {
+            $result = preg_replace_callback('/([^\n]{200,}?)([.!?])\s/', function (array $m): string {
                 return $m[1] . $m[2] . "\n";
             }, $result);
         }
@@ -690,12 +690,12 @@ class AdvancedSEOMaximizer
         //    mas somente dentro de blocos que pareçam listas (3+ itens separados por vírgula)
         $result = preg_replace_callback(
             '/(?::\s*)([\w][^\n.]{0,60}(?:,\s*[\w][^,\n]{0,40}){2,})\.?/',
-            function ($m) {
+            function (array $m): string {
                 $items = array_map('trim', explode(',', $m[1]));
                 if (count($items) < 3) {
                     return $m[0];
                 }
-                return ":\n" . implode("\n", array_map(fn($i) => '• ' . $i, $items));
+                return ":\n" . implode("\n", array_map(fn(string $i): string => '• ' . $i, $items));
             },
             $result
         ) ?? $result;
@@ -717,12 +717,12 @@ class AdvancedSEOMaximizer
 
         // Mapear ids dos atributos existentes no item
         $existingIds = array_map(
-            fn($a) => strtoupper($a['id'] ?? ''),
+            fn(array $a): string => strtoupper($a['id'] ?? ''),
             $itemData['attributes'] ?? []
         );
 
         // Retornar apenas os obrigatórios que não estão preenchidos
-        return array_values(array_filter($required, function ($req) use ($existingIds) {
+        return array_values(array_filter($required, function (array $req) use ($existingIds): bool {
             return !in_array(strtoupper($req['id'] ?? ''), $existingIds, true);
         }));
     }
@@ -961,7 +961,7 @@ class AdvancedSEOMaximizer
         $stopwords = ['de', 'da', 'do', 'para', 'com', 'em', 'e', 'a', 'o', 'os', 'as', 'um', 'uma'];
         $words = array_filter(
             preg_split('/\W+/', mb_strtolower($title), -1, PREG_SPLIT_NO_EMPTY) ?? [],
-            fn($w) => mb_strlen($w) > 3 && !in_array($w, $stopwords)
+            fn(string $w): bool => mb_strlen($w) > 3 && !in_array($w, $stopwords)
         );
         $baseWords = array_values($words);
 
@@ -1093,7 +1093,7 @@ class AdvancedSEOMaximizer
             return $opportunities;
         }
 
-        $prices = array_filter(array_column($competitors, 'price'), fn($p) => $p > 0);
+        $prices = array_filter(array_column($competitors, 'price'), fn(float|int $p): bool => $p > 0);
         if (!empty($prices) && $myPrice > 0) {
             $avgComp = array_sum($prices) / count($prices);
             if ($myPrice <= $avgComp * 0.95) {
@@ -1101,7 +1101,7 @@ class AdvancedSEOMaximizer
             }
         }
 
-        $lowStock = array_filter($competitors, fn($c) => (int)($c['available_quantity'] ?? 99) < 3);
+        $lowStock = array_filter($competitors, fn(array $c): bool => (int)($c['available_quantity'] ?? 99) < 3);
         if (count($lowStock) >= count($competitors) * 0.5) {
             $opportunities[] = 'Mais de 50% dos concorrentes com estoque baixo — manter estoque gera vantagem';
         }
@@ -1114,7 +1114,7 @@ class AdvancedSEOMaximizer
         $threats = [];
         $myPrice = (float)($itemData['price'] ?? 0);
 
-        $prices = array_filter(array_column($competitors, 'price'), fn($p) => $p > 0);
+        $prices = array_filter(array_column($competitors, 'price'), fn(float|int $p): bool => $p > 0);
         if (!empty($prices) && $myPrice > 0) {
             $minComp = min($prices);
             if ($minComp < $myPrice * 0.75) {
@@ -1122,7 +1122,7 @@ class AdvancedSEOMaximizer
             }
         }
 
-        $highSales = array_filter($competitors, fn($c) => (int)($c['sold_quantity'] ?? 0) > 200);
+        $highSales = array_filter($competitors, fn(array $c): bool => (int)($c['sold_quantity'] ?? 0) > 200);
         if (!empty($highSales)) {
             $threats[] = count($highSales) . ' concorrente(s) com 200+ vendas — posição consolidada';
         }

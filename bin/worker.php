@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Core\Container;
 use App\Services\JobService;
 use App\Database;

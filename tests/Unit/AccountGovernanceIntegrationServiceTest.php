@@ -373,4 +373,157 @@ class AccountGovernanceIntegrationServiceTest extends TestCase
             'last_updated' => '2024-01-15T00:00:00.000-00:00',
         ];
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIX-ML-003: enrichItemsWithMetrics usa batch getMultiItemVisits para TODOS os itens
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Quando há mais de 100 itens, getMultiItemVisits deve ser chamado para TODOS
+     * (em batches de 50), não apenas os primeiros 100.
+     * Regressão para bug onde $visitsLimit = min(count($items), 100) truncava.
+     *
+     * @covers \App\Services\MercadoLivre\AccountGovernanceIntegrationService::enrichItemsWithMetrics
+     */
+    public function testEnrichVisitsFetchesAllItemsAbove100WithBatch(): void
+    {
+        // Gerar 150 IDs
+        $allIds = [];
+        for ($i = 1; $i <= 150; $i++) {
+            $allIds[] = "MLB{$i}";
+        }
+
+        $this->mockClient->method('getAccessToken')->willReturn('valid_token');
+        $this->mockClient->method('getSellerId')->willReturn('123456789');
+        $this->mockClient->method('getMe')->willReturn($this->createSellerResponse());
+
+        // Resposta de search retorna 150 IDs
+        $this->mockClient->method('get')->willReturnCallback(
+            function (string $endpoint, array $params = []) use ($allIds): array {
+                if (strpos($endpoint, '/items/search') !== false) {
+                    return [
+                        'results' => $allIds,
+                        'paging' => ['total' => 150, 'offset' => 0, 'limit' => 200],
+                    ];
+                }
+                if ($endpoint === '/items') {
+                    $ids = explode(',', $params['ids'] ?? '');
+                    return array_map(fn(string $id): array => [
+                        'body' => $this->createItemResponse($id),
+                    ], $ids);
+                }
+                if (strpos($endpoint, '/orders/search') !== false) {
+                    return ['results' => [], 'paging' => ['total' => 0]];
+                }
+                return [];
+            }
+        );
+
+        // getMultiItemVisits chamado pelo novo código de enriquecimento
+        // Com 150 itens e batch=50, espera-se 3 chamadas
+        $multiVisitsCallCount = 0;
+        $capturedChunks = [];
+        $this->mockClient
+            ->method('getMultiItemVisits')
+            ->willReturnCallback(
+                function (array $ids, int $days) use (&$multiVisitsCallCount, &$capturedChunks): array {
+                    $multiVisitsCallCount++;
+                    $capturedChunks[] = $ids;
+                    // Retornar visitas fictícias no formato correto (indexado por item_id)
+                    $result = [];
+                    foreach ($ids as $itemId) {
+                        $result[$itemId] = ['total' => 10, 'visits' => 10, 'daily' => []];
+                    }
+                    return $result;
+                }
+            );
+
+        $result = $this->service->runDiagnosticFromAPI([
+            'max_items'    => 150,
+            'fetch_visits' => true,
+            'fetch_sales'  => false,
+        ]);
+
+        // Diagnóstico deve ter completado sem erro
+        $this->assertFalse($result['error'] ?? false, 'runDiagnosticFromAPI não deve retornar erro');
+
+        // getMultiItemVisits deve ter sido chamado pelo menos 3 vezes (3 batches de 50)
+        $this->assertGreaterThanOrEqual(3, $multiVisitsCallCount,
+            "getMultiItemVisits deve ser chamado para todos os 150 itens (≥3 batches de 50); foram {$multiVisitsCallCount}");
+
+        // A união dos chunks deve cobrir todos os 150 IDs
+        $allProcessed = array_merge(...$capturedChunks);
+        $this->assertCount(150, $allProcessed, 'Todos os 150 IDs devem ter sido processados em getMultiItemVisits');
+    }
+
+    /**
+     * O valor de visits_30d deve ser preenchido corretamente a partir do
+     * retorno de getMultiItemVisits (formato: array<itemId, ['total'=>int, ...]>).
+     * Regressão para bug onde o formato de retorno não era interpretado corretamente.
+     *
+     * @covers \App\Services\MercadoLivre\AccountGovernanceIntegrationService::enrichItemsWithMetrics
+     */
+    public function testEnrichVisitsMapsReturnFormatToVisits30d(): void
+    {
+        $this->mockClient->method('getAccessToken')->willReturn('valid_token');
+        $this->mockClient->method('getSellerId')->willReturn('123456789');
+        $this->mockClient->method('getMe')->willReturn($this->createSellerResponse());
+
+        $this->mockClient->method('get')->willReturnCallback(
+            function (string $endpoint, array $params = []): array {
+                if (strpos($endpoint, '/items/search') !== false) {
+                    return [
+                        'results' => ['MLB1', 'MLB2', 'MLB3'],
+                        'paging' => ['total' => 3, 'offset' => 0, 'limit' => 50],
+                    ];
+                }
+                if ($endpoint === '/items') {
+                    $ids = explode(',', $params['ids'] ?? '');
+                    return array_map(fn(string $id): array => [
+                        'body' => $this->createItemResponse($id),
+                    ], $ids);
+                }
+                if (strpos($endpoint, '/orders/search') !== false) {
+                    return ['results' => [], 'paging' => ['total' => 0]];
+                }
+                return [];
+            }
+        );
+
+        // Retornar visitas reais no formato correto do getMultiItemVisits
+        $this->mockClient
+            ->method('getMultiItemVisits')
+            ->willReturn([
+                'MLB1' => ['total' => 42, 'visits' => 42, 'daily' => []],
+                'MLB2' => ['total' => 0,  'visits' => 0,  'daily' => []],
+                'MLB3' => ['total' => 17, 'visits' => 17, 'daily' => []],
+            ]);
+
+        $result = $this->service->runDiagnosticFromAPI([
+            'max_items'    => 10,
+            'fetch_visits' => true,
+            'fetch_sales'  => false,
+        ]);
+
+        $this->assertFalse($result['error'] ?? false, 'runDiagnosticFromAPI não deve retornar erro');
+        $this->assertArrayHasKey('items', $result, 'Resultado deve conter chave items');
+
+        // Indexar os itens retornados por ID para verificação
+        $itemsById = [];
+        foreach ($result['items'] as $item) {
+            $itemsById[$item['id']] = $item;
+        }
+
+        $this->assertArrayHasKey('MLB1', $itemsById, 'MLB1 deve estar nos itens retornados');
+        $this->assertSame(42, $itemsById['MLB1']['visits_30d'] ?? null,
+            'MLB1 deve ter visits_30d = 42 (do total retornado por getMultiItemVisits)');
+
+        $this->assertArrayHasKey('MLB2', $itemsById, 'MLB2 deve estar nos itens retornados');
+        $this->assertSame(0, $itemsById['MLB2']['visits_30d'] ?? -1,
+            'MLB2 deve ter visits_30d = 0');
+
+        $this->assertArrayHasKey('MLB3', $itemsById, 'MLB3 deve estar nos itens retornados');
+        $this->assertSame(17, $itemsById['MLB3']['visits_30d'] ?? null,
+            'MLB3 deve ter visits_30d = 17');
+    }
 }

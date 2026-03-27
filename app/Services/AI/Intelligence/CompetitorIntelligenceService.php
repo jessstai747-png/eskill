@@ -9,17 +9,17 @@ use PDO;
 
 /**
  * Competitor Intelligence Service
- * 
+ *
  * Unifies competitor tracking, strategy detection, and market share analysis.
  * Replaces legacy component CompetitorSpy.
- * 
+ *
  * @author AI Development Team
  * @version 2.0.0
  */
 class CompetitorIntelligenceService
 {
     private $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
@@ -27,7 +27,7 @@ class CompetitorIntelligenceService
 
     /**
      * Track a specific competitor's activity
-     * 
+     *
      * @param string $competitorId
      * @return array Current status and recent changes
      */
@@ -54,7 +54,7 @@ class CompetitorIntelligenceService
 
     /**
      * Detect competitor's pricing or inventory strategy
-     * 
+     *
      * @param string $competitorId
      * @return string Strategy name (e.g., 'aggressive_undercut', 'premium_value')
      */
@@ -97,7 +97,7 @@ class CompetitorIntelligenceService
 
     /**
      * Estimate market share for a category
-     * 
+     *
      * @param string $categoryId
      * @return array Market share distribution
      */
@@ -117,7 +117,7 @@ class CompetitorIntelligenceService
             }
             return [
                 'category_id' => $categoryId,
-                'leaders' => array_map(fn($row) => [
+                'leaders' => array_map(fn(array $row): array => [
                     'name' => $row['competitor_name'],
                     'share' => $row['share_percent']
                 ], $rows)

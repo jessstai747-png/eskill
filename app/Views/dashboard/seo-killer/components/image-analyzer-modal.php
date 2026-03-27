@@ -246,7 +246,7 @@
 </div>
 
 <!-- Image Analyzer JavaScript -->
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const ImageAnalyzer = {
         currentProduct: null,
         currentImages: [],
@@ -306,11 +306,7 @@
 
         async loadProductsList() {
             try {
-                const {
-                    response,
-                    data
-                } = await requestJson('/api/items?limit=100');
-                if (!response.ok) throw new Error('Failed to load products');
+                const data = await requestJson('/api/items?limit=100');
                 const select = document.getElementById('imageAnalyzerProductSelect');
 
                 if (!select) return;
@@ -349,11 +345,7 @@
             }
 
             try {
-                const {
-                    response,
-                    data
-                } = await requestJson(`/api/seo-killer/images/analyze/${this.currentProduct}`);
-                if (!response.ok) throw new Error('Failed to analyze images');
+                const data = await requestJson(`/api/seo-killer/images/analyze/${this.currentProduct}`);
 
                 this.currentImages = data.images || [];
 
@@ -431,10 +423,10 @@
 
             gridDiv.innerHTML = images.map((img, index) => `
             <div class="col-md-3" data-image-id="${img.id}">
-                <div class="card h-100 image-card ${this.getImageStatusClass(img.status)}" 
+                <div class="card h-100 image-card ${this.getImageStatusClass(img.status)}"
                      onclick="ImageAnalyzer.showImageDetail('${img.id}')">
                     <div class="position-relative">
-                        <img src="${img.url}" class="card-img-top" alt="Imagem ${index + 1}" 
+                        <img src="${img.url}" class="card-img-top" alt="Imagem ${index + 1}"
                              style="height: 200px; object-fit: cover; cursor: pointer;">
                         <div class="position-absolute top-0 start-0 m-2">
                             <span class="badge bg-dark bg-opacity-75">#${index + 1}</span>
@@ -535,16 +527,16 @@
                 <div class="text-center mb-4">
                     <img src="${image.url}" class="img-fluid rounded" alt="Imagem" style="max-height: 400px;">
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <strong>Score de Qualidade:</strong>
                         <div class="progress mt-2" style="height: 25px;">
-                            <div class="progress-bar bg-${image.score >= 80 ? 'success' : image.score >= 60 ? 'warning' : 'danger'}" 
-                                 role="progressbar" 
+                            <div class="progress-bar bg-${image.score >= 80 ? 'success' : image.score >= 60 ? 'warning' : 'danger'}"
+                                 role="progressbar"
                                  style="width: ${image.score}%"
-                                 aria-valuenow="${image.score}" 
-                                 aria-valuemin="0" 
+                                 aria-valuenow="${image.score}"
+                                 aria-valuemin="0"
                                  aria-valuemax="100">
                                 ${image.score}/100
                             </div>
@@ -555,7 +547,7 @@
                         ${this.getStatusBadge(image.status)}
                     </div>
                 </div>
-                
+
                 <div class="mb-3">
                     <strong>Informações Técnicas:</strong>
                     <ul class="list-unstyled mt-2">
@@ -564,7 +556,7 @@
                         <li><i class="bi bi-palette me-2"></i>Formato: ${image.format || 'N/A'}</li>
                     </ul>
                 </div>
-                
+
                 ${image.problems && image.problems.length > 0 ? `
                     <div class="mb-3">
                         <strong class="text-danger">Problemas Detectados:</strong>
@@ -644,15 +636,10 @@
             }
 
             try {
-                const {
-                    response,
-                    data
-                } = await requestJson('/api/seo-killer/images/upload', {
+                const data = await requestJson('/api/seo-killer/images/upload', {
                     method: 'POST',
                     body: formData
                 });
-
-                if (!response.ok) throw new Error('Upload failed');
 
                 this.showSuccess('Imagens enviadas com sucesso!');
 
@@ -760,10 +747,7 @@
             }
 
             try {
-                const {
-                    response,
-                    data
-                } = await requestJson(`/api/seo-killer/images/update/${this.currentProduct}`, {
+                const data = await requestJson(`/api/seo-killer/images/update/${this.currentProduct}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -772,8 +756,6 @@
                         changes: this.pendingChanges
                     })
                 });
-
-                if (!response.ok) throw new Error('Failed to apply changes');
 
                 this.showSuccess('Mudanças aplicadas com sucesso!');
 
@@ -841,4 +823,4 @@
 </style>
 
 <!-- Load SortableJS for drag & drop -->
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script nonce="<?= CSP_NONCE ?>" src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>

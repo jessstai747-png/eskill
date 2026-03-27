@@ -147,7 +147,7 @@ class JobService
             $this->ensureIndexExists($idxMap, 'idx_claim_token', "ALTER TABLE jobs ADD INDEX idx_claim_token (claim_token)");
             $this->ensureIndexExists($idxMap, 'idx_claimed_at', "ALTER TABLE jobs ADD INDEX idx_claimed_at (claimed_at)");
         } catch (\Exception $e) {
-            error_log('JobService: schema migration skipped - ' . $e->getMessage());
+            log_warning('JobService: schema migration skipped', ['exception' => $e->getMessage(), 'service' => 'JobService']);
         }
     }
 

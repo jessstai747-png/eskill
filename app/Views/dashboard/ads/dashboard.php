@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Meus Anúncios';
 $subtitle = 'Veja como seus anúncios estão performando — de forma simples e clara';
 $breadcrumbs = [['label' => 'Meus Anúncios', 'url' => '']];
@@ -206,4 +209,4 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script src="/js/ads-manager.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ads-manager.js') ?: '1' ?>" nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>"></script>
+<script src="/js/ads-manager.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ads-manager.js') ?: '1' ?>" nonce="<?= CSP_NONCE ?>"></script>

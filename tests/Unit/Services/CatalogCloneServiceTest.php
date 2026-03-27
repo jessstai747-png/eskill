@@ -106,6 +106,8 @@ class CatalogCloneServiceTest extends TestCase
             ['normalizeFacets'],
             ['normalizeSummaryResponse'],
             ['resolveSellerByNickname'],
+            ['getSellerSnapshot'],
+            ['saveSellerSnapshot'],
         ];
     }
 

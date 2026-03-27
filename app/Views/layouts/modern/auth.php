@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <?php
+
+declare(strict_types=1);
+
 $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? ''));
 ?>
 <html lang="pt-BR" data-theme="light">

@@ -137,7 +137,7 @@ class AccountSyncService
                 $orderService = new OrderService($accountId);
                 $orderStats = $orderService->syncOrders($accountId, 50);
                 $result['steps'][] = ['step' => 'sync_orders', 'status' => 'success', 'data' => $orderStats];
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $this->logger->warning('ACCOUNT_SYNC_ORDERS_WARNING', 'Falha parcial ao sincronizar pedidos', ['error' => $e->getMessage()]);
                 $result['steps'][] = ['step' => 'sync_orders', 'status' => 'warning', 'error' => $e->getMessage()];
             }
@@ -147,7 +147,7 @@ class AccountSyncService
                 $questionService = new QuestionService($accountId);
                 $questionStats = $questionService->syncQuestions(50);
                 $result['steps'][] = ['step' => 'sync_questions', 'status' => 'success', 'data' => $questionStats];
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $this->logger->warning('ACCOUNT_SYNC_QUESTIONS_WARNING', 'Falha parcial ao sincronizar perguntas', ['error' => $e->getMessage()]);
                 $result['steps'][] = ['step' => 'sync_questions', 'status' => 'warning', 'error' => $e->getMessage()];
             }
@@ -161,7 +161,7 @@ class AccountSyncService
 
             $result['success'] = true;
             $this->logger->info('ACCOUNT_SYNC_COMPLETE', "Sincronização da conta {$accountId} concluída", $result);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $result['error'] = $e->getMessage();
             $result['steps'][] = [
                 'step' => $this->getCurrentStep($result['steps']),
@@ -349,7 +349,7 @@ class AccountSyncService
     {
         try {
             return $this->authService->ensureValidToken($accountId, 5);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->warning('TOKEN_VALIDATION_FAILED', "Falha ao validar token da conta {$accountId}", [
                 'error' => $e->getMessage(),
             ]);

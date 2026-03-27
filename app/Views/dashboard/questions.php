@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Perguntas';
 $subtitle = 'Gerencie as perguntas dos seus anúncios';
 $actions = '
@@ -145,7 +148,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 let currentQuestionId = null;
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 

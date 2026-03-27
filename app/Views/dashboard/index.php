@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Dashboard Principal - Design Moderno e Profissional
  * Visão geral completa do ecossistema de vendas

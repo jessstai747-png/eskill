@@ -63,7 +63,9 @@ class ItemMetricsService extends MercadoLivreClient
     }
 
     /**
-     * Obtém saúde (health) de um anúncio
+     * Obtém saúde (health/performance) de um anúncio
+     *
+     * Usa o endpoint /item/{id}/performance (substitui /items/{id}/health depreciado em fev/2025).
      *
      * @param string $itemId ID do anúncio
      * @return array Dados de saúde do anúncio
@@ -71,19 +73,42 @@ class ItemMetricsService extends MercadoLivreClient
     public function getItemHealth(string $itemId): array
     {
         try {
-            // Endpoint não documentado oficialmente, mas usado internamente pelo ML
-            $response = $this->get("/items/{$itemId}/health");
+            $response = $this->get("/item/{$itemId}/performance");
 
             if (isset($response['error'])) {
                 return $this->getEmptyHealth();
             }
 
+            $issues = [];
+            $recommendations = [];
+            foreach ($response['buckets'] ?? [] as $bucket) {
+                foreach ($bucket['variables'] ?? [] as $variable) {
+                    if (($variable['status'] ?? '') !== 'PENDING') {
+                        continue;
+                    }
+                    foreach ($variable['rules'] ?? [] as $rule) {
+                        if (($rule['status'] ?? '') === 'PENDING') {
+                            $issues[] = [
+                                'bucket' => $bucket['key'] ?? '',
+                                'key' => $rule['key'] ?? '',
+                                'mode' => $rule['mode'] ?? '',
+                                'title' => $rule['wordings']['title'] ?? '',
+                            ];
+                            if (!empty($rule['wordings']['title'])) {
+                                $recommendations[] = $rule['wordings']['title'];
+                            }
+                        }
+                    }
+                }
+            }
+
             return [
                 'item_id' => $itemId,
-                'health_score' => $response['score'] ?? 0,
-                'status' => $response['status'] ?? 'unknown',
-                'issues' => $response['issues'] ?? [],
-                'recommendations' => $response['recommendations'] ?? [],
+                'health_score' => (int) ($response['score'] ?? 0),
+                'status' => $response['level'] ?? 'unknown',
+                'level_wording' => $response['level_wording'] ?? '',
+                'issues' => $issues,
+                'recommendations' => array_values(array_unique($recommendations)),
                 'details' => $this->formatHealthDetails($response),
             ];
         } catch (\Exception $e) {
@@ -400,6 +425,33 @@ class ItemMetricsService extends MercadoLivreClient
 
     private function formatHealthDetails(array $response): array
     {
+        // New /performance response uses buckets instead of flat fields
+        if (isset($response['buckets'])) {
+            $bucketScores = [];
+            foreach ($response['buckets'] as $bucket) {
+                $bucketScores[$bucket['key'] ?? ''] = $bucket['score'] ?? 0;
+            }
+
+            $varScores = [];
+            foreach ($response['buckets'] as $bucket) {
+                foreach ($bucket['variables'] ?? [] as $variable) {
+                    $varScores[$variable['key'] ?? ''] = [
+                        'score' => $variable['score'] ?? 0,
+                        'status' => $variable['status'] ?? 'unknown',
+                    ];
+                }
+            }
+
+            return [
+                'title_quality' => ($varScores['TITLE']['status'] ?? 'unknown') === 'COMPLETED' ? 'good' : 'poor',
+                'description_quality' => ($varScores['DESCRIPTION']['status'] ?? 'unknown') === 'COMPLETED' ? 'good' : 'unknown',
+                'images_quality' => ($varScores['PICTURES']['status'] ?? 'unknown') === 'COMPLETED' ? 'good' : 'poor',
+                'attributes_completeness' => (int) round(($varScores['TECHNICAL_SPECIFICATIONS_MAIN']['score'] ?? 0)),
+                'shipping_quality' => ($varScores['FREE_SHIPPING']['status'] ?? 'unknown') === 'COMPLETED' ? 'good' : 'poor',
+            ];
+        }
+
+        // Legacy /health response (fallback)
         return [
             'title_quality' => $response['title_quality'] ?? 'unknown',
             'description_quality' => $response['description_quality'] ?? 'unknown',

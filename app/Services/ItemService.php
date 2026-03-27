@@ -352,14 +352,14 @@ class ItemService
     private function filterItemsByCustomCriteria(array $items, array $filters): array
     {
         if (!empty($filters['low_stock']) && $filters['low_stock'] === true) {
-            $items = array_filter($items, function ($item) {
+            $items = array_filter($items, function (array $item): bool {
                 $stock = $item['available_quantity'] ?? 0;
                 return $stock < 5 && $stock >= 0;
             });
         }
 
         if (!empty($filters['high_sales']) && $filters['high_sales'] === true) {
-            $items = array_filter($items, function ($item) {
+            $items = array_filter($items, function (array $item): bool {
                 // sold_quantity can come from direct field or from data JSON
                 $sold = $item['sold_quantity'] ??
                     ($item['data']['sold_quantity'] ??
@@ -773,7 +773,7 @@ class ItemService
 
         // Imagens
         if (isset($data['pictures']) && is_array($data['pictures'])) {
-            $itemData['pictures'] = array_map(function ($url) {
+            $itemData['pictures'] = array_map(function (string $url): array {
                 return ['source' => $url];
             }, $data['pictures']);
         }
@@ -845,7 +845,7 @@ class ItemService
 
         // Formatar imagens se necessário
         if (isset($updateData['pictures']) && is_array($updateData['pictures'])) {
-            $updateData['pictures'] = array_map(function ($url) {
+            $updateData['pictures'] = array_map(function (string|array $url): array {
                 return is_array($url) ? $url : ['source' => $url];
             }, $updateData['pictures']);
         }
@@ -947,7 +947,7 @@ class ItemService
 
         // Filtrar por categoria
         if (isset($items['items'])) {
-            $items['items'] = array_filter($items['items'], function ($item) use ($categoryId) {
+            $items['items'] = array_filter($items['items'], function (array $item) use ($categoryId): bool {
                 return isset($item['category_id']) && $item['category_id'] === $categoryId;
             });
             $items['items'] = array_values($items['items']); // Reindexar
@@ -1454,7 +1454,7 @@ class ItemService
                 'name' => $row['category_name'] ?: $row['category_id'],
                 'results' => (int)($row['total'] ?? 0),
             ];
-        }, array_filter($rows, fn($row) => !empty($row['category_id'])));
+        }, array_filter($rows, fn(array $row): bool => !empty($row['category_id'])));
 
         return [
             'success' => true,

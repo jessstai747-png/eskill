@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Diagnóstico da Conta - Página Única de Saúde da Conta ML
  * Mostra score geral, 5 pilares, ações prioritárias e itens com problemas
@@ -2255,8 +2257,7 @@ $currentPage = 'account-health';
 require __DIR__ . '/account-health-advanced.php';
 ?>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
-
+<script nonce="<?= CSP_NONCE ?>">
     // ===================================================================
     // ACCOUNT HEALTH DIAGNOSTIC
     // ===================================================================
@@ -2300,6 +2301,7 @@ require __DIR__ . '/account-health-advanced.php';
     let autoRefreshInterval = null;
     let trendData = null;
     let completedActions = new Set();
+    let dataQualityConnectionErrors = {};
     let retryCount = 0;
     const MAX_RETRIES = 3;
     const CACHE_KEY = 'accountHealthCache';
@@ -2360,7 +2362,8 @@ require __DIR__ . '/account-health-advanced.php';
                 try {
                     errorData = await response.json();
                 } catch (e) {
-                    /* resposta não é JSON */ }
+                    /* resposta não é JSON */
+                }
 
                 if (errorData?.error === 'account_disconnected') {
                     if (showLoading) hideLoadingBar();
@@ -2473,7 +2476,8 @@ require __DIR__ . '/account-health-advanced.php';
                 ts: Date.now()
             }));
         } catch (e) {
-            /* quota exceeded */ }
+            /* quota exceeded */
+        }
     }
 
     function loadFromCache() {
@@ -2817,7 +2821,8 @@ require __DIR__ . '/account-health-advanced.php';
             if (goal) localStorage.setItem(GOAL_KEY, goal);
             else localStorage.removeItem(GOAL_KEY);
         } catch (e) {
-            /* localStorage indisponível */ }
+            /* localStorage indisponível */
+        }
     }
 
     function setScoreGoal() {
@@ -2890,7 +2895,8 @@ require __DIR__ . '/account-health-advanced.php';
             });
             localStorage.setItem(COMPLETED_KEY, JSON.stringify(data));
         } catch (e) {
-            /* localStorage indisponível */ }
+            /* localStorage indisponível */
+        }
     }
 
     function toggleActionComplete(actionKey, el) {
@@ -2911,7 +2917,8 @@ require __DIR__ . '/account-health-advanced.php';
             });
             localStorage.setItem(COMPLETED_KEY, JSON.stringify(data));
         } catch (e) {
-            /* localStorage indisponível */ }
+            /* localStorage indisponível */
+        }
 
         updateCompletedCounter();
     }
@@ -3067,6 +3074,12 @@ require __DIR__ . '/account-health-advanced.php';
 
         // Se não houver data_quality no response, ocultar badge
         if (!dataQuality || dataQuality.percentage_real === 100) {
+            dataQualityConnectionErrors = {};
+            badge.removeAttribute('data-action');
+            badge.removeAttribute('data-keyaction');
+            badge.removeAttribute('tabindex');
+            badge.removeAttribute('role');
+            badge.style.cursor = '';
             badge.style.display = 'none';
             return;
         }
@@ -3102,12 +3115,21 @@ require __DIR__ . '/account-health-advanced.php';
         badge.title = title;
         badge.style.display = 'inline-flex';
 
-        // Se needs_connection, adicionar botão de reconexão
+        dataQualityConnectionErrors = dataQuality.errors || {};
+
+        // Se needs_connection, habilitar ação delegada de reconexão
         if (dataQuality.needs_connection) {
             badge.style.cursor = 'pointer';
-            badge.onclick = () => {
-                showReconnectionPrompt(dataQuality.errors);
-            };
+            badge.setAttribute('data-action', 'show-reconnection-prompt');
+            badge.setAttribute('data-keyaction', 'show-reconnection-prompt');
+            badge.setAttribute('tabindex', '0');
+            badge.setAttribute('role', 'button');
+        } else {
+            badge.style.cursor = '';
+            badge.removeAttribute('data-action');
+            badge.removeAttribute('data-keyaction');
+            badge.removeAttribute('tabindex');
+            badge.removeAttribute('role');
         }
     }
 
@@ -3210,7 +3232,7 @@ require __DIR__ . '/account-health-advanced.php';
 
             html += `
         <div class="col-12 col-sm-6 col-lg">
-            <div class="card pillar-card h-100" data-action="show-pillar-detail" data-pillar="${key}" data-keyaction="show-pillar-detail" data-pillar="${key}" tabindex="0" role="button" aria-label="${escapeHtml(p.name)}: score ${p.score} de 100">
+            <div class="card pillar-card h-100" data-action="show-pillar-detail" data-pillar="${key}" data-keyaction="show-pillar-detail" tabindex="0" role="button" aria-label="${escapeHtml(p.name)}: score ${p.score} de 100">
                 <div class="card-body">
                     <div class="d-flex align-items-start gap-3 mb-2">
                         <div class="pillar-icon ${bgColor}">
@@ -3311,6 +3333,23 @@ require __DIR__ . '/account-health-advanced.php';
         return trimmed;
     }
 
+    function bindImageFallbacks(container) {
+        if (!container) return;
+
+        container.querySelectorAll('img[data-fallback-src]').forEach(img => {
+            const fallbackSrc = img.getAttribute('data-fallback-src');
+            if (!fallbackSrc) return;
+
+            img.addEventListener('error', () => {
+                if (img.dataset.fallbackApplied === '1') return;
+                img.dataset.fallbackApplied = '1';
+                img.src = fallbackSrc;
+            }, {
+                once: true
+            });
+        });
+    }
+
     function renderWorstItems(items) {
         const container = document.getElementById('worstItemsList');
 
@@ -3385,7 +3424,7 @@ require __DIR__ . '/account-health-advanced.php';
             html += `
         <div class="item-row d-flex align-items-start gap-3">
             <img src="${escapeHtml(normalizeExternalUrl(item.thumbnail) || fallbackImg)}" class="item-thumb" alt="" loading="lazy"
-                 onerror="this.onerror=null;this.src='${fallbackImg}'">
+                 data-fallback-src="${fallbackImg}">
             <div style="flex:1;min-width:0;">
                 <div class="fw-medium text-truncate small">${escapeHtml(item.title)}</div>
                 <div class="text-muted small text-truncate">${escapeHtml(problems || 'Verificar anúncio')}</div>
@@ -3406,6 +3445,7 @@ require __DIR__ . '/account-health-advanced.php';
         });
 
         container.innerHTML = html;
+        bindImageFallbacks(container);
     }
 
     function renderPriceAnalysis(details) {
@@ -3653,6 +3693,7 @@ require __DIR__ . '/account-health-advanced.php';
         // Render items
         const container = document.getElementById('staleItemsList');
         let html = '';
+        const staleFallbackImg = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27 fill=%27%23ccc%27%3E%3Crect width=%2764%27 height=%2764%27 fill=%27%23f0f0f0%27/%3E%3Ctext x=%2732%27 y=%2736%27 text-anchor=%27middle%27 font-size=%2712%27%3ESem img%3C/text%3E%3C/svg%3E';
 
         items.forEach((item, index) => {
             const hiddenClass = index >= STALE_INITIAL_SHOW ? 'stale-hidden' : '';
@@ -3666,9 +3707,9 @@ require __DIR__ . '/account-health-advanced.php';
 
             html += `
         <div class="stale-item ${severityClass} ${hiddenClass}" data-stale-index="${index}">
-            <img src="${escapeHtml(normalizeExternalUrl(item.thumbnail) || 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27 fill=%27%23ccc%27%3E%3Crect width=%2764%27 height=%2764%27 fill=%27%23f0f0f0%27/%3E%3Ctext x=%2732%27 y=%2736%27 text-anchor=%27middle%27 font-size=%2712%27%3ESem img%3C/text%3E%3C/svg%3E') }"
+              <img src="${escapeHtml(normalizeExternalUrl(item.thumbnail) || staleFallbackImg)}"
                  alt="" class="stale-item-thumb"
-                 onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27 fill=%27%23ccc%27%3E%3Crect width=%2764%27 height=%2764%27 fill=%27%23f0f0f0%27/%3E%3Ctext x=%2732%27 y=%2736%27 text-anchor=%27middle%27 font-size=%2712%27%3ESem img%3C/text%3E%3C/svg%3E'">
+                  data-fallback-src="${staleFallbackImg}">
             <div class="stale-item-info">
                 <div class="stale-item-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
                 <div class="stale-item-meta">
@@ -3701,6 +3742,7 @@ require __DIR__ . '/account-health-advanced.php';
         });
 
         container.innerHTML = html;
+        bindImageFallbacks(container);
 
         // Show more toggle
         const showMoreWrap = document.getElementById('staleShowMoreWrap');
@@ -3784,7 +3826,6 @@ require __DIR__ . '/account-health-advanced.php';
                 label: 'Anúncios Parados',
                 badge: stale.total_stale,
                 badgeClass: 'bg-danger text-white',
-                onclick: "document.getElementById('staleSection').scrollIntoView({behavior:'smooth'})",
             });
         }
 
@@ -3874,9 +3915,8 @@ require __DIR__ . '/account-health-advanced.php';
             const badgeHtml = a.badge !== null ?
                 `<span class="qa-badge ${a.badgeClass}">${a.badge}</span>` :
                 '';
-            const onclickAttr = a.onclick ? `data-action="custom-action"` : '';
             return `
-        <a href="${a.href}" class="quick-action-btn" ${onclickAttr}>
+        <a href="${a.href}" class="quick-action-btn">
             <span class="qa-icon ${a.iconBg}"><i class="bi ${a.icon}"></i></span>
             <span>${a.label}</span>
             ${badgeHtml}
@@ -5227,7 +5267,10 @@ require __DIR__ . '/account-health-advanced.php';
         container.style.display = 'inline-flex';
         container.style.cursor = 'pointer';
         container.title = 'Clique para ver histórico completo';
-        container.onclick = showFullHistoryChart;
+        container.setAttribute('data-action', 'open-history-chart');
+        container.setAttribute('data-keyaction', 'open-history-chart');
+        container.setAttribute('tabindex', '0');
+        container.setAttribute('role', 'button');
 
         // Sparkline chart
         const ctx = document.getElementById('trendSparkline');
@@ -5326,15 +5369,14 @@ require __DIR__ . '/account-health-advanced.php';
         };
 
         document.querySelectorAll('.pillar-card').forEach(card => {
-            const onclick = card.getAttribute('onclick') || '';
-            const match = onclick.match(/showPillarDetail\('(\w+)'\)/);
-            if (!match) return;
+            const pillarKey = card.dataset.pillar;
+            if (!pillarKey) return;
 
-            const pillarKey = match[1];
             const trendKey = pillarMap[pillarKey];
             if (!trendKey || trend[trendKey] === undefined) return;
 
             const change = trend[trendKey];
+            card.querySelector('.pillar-trend')?.remove();
             if (change === 0) return;
 
             const scoreEl = card.querySelector('.pillar-score-value');
@@ -5758,52 +5800,110 @@ require __DIR__ . '/account-health-advanced.php';
             </div>
         </div>`;
     }
-</script>
 
-// ========================================
-// EVENT DELEGATION FOR CSP COMPLIANCE
-// ========================================
-document.addEventListener('click', function(e) {
-const target = e.target.closest('[data-action]');
-if (!target) return;
+    // ========================================
+    // EVENT DELEGATION FOR CSP COMPLIANCE
+    // ========================================
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
 
-const action = target.dataset.action;
-if (!action) return;
+        const action = target.dataset.action;
+        if (!action) return;
 
-// Don't prevent default for links without special actions
-if (!['refresh-diagnostic', 'toggle-export-menu', 'export-diagnostic-txt',
-'export-actions-csv', 'export-json', 'share-diagnostic', 'print-diagnostic',
-'set-score-goal', 'filter-actions', 'toggle-stale-items', 'show-pillar-detail',
-'toggle-action-complete', 'retry-load-diagnostic'].includes(action)) {
-return;
-}
+        // Don't prevent default for links without special actions
+        if (![
+                'refresh-diagnostic',
+                'toggle-export-menu',
+                'export-diagnostic-txt',
+                'export-actions-csv',
+                'export-json',
+                'share-diagnostic',
+                'print-diagnostic',
+                'set-score-goal',
+                'filter-actions',
+                'toggle-stale-items',
+                'show-pillar-detail',
+                'toggle-action-complete',
+                'retry-load-diagnostic',
+                'open-history-chart',
+                'show-reconnection-prompt',
+            ].includes(action)) {
+            return;
+        }
 
-e.preventDefault();
+        e.preventDefault();
 
-switch(action) {
-case 'refresh-diagnostic': refreshDiagnostic(); break;
-case 'toggle-export-menu': toggleExportMenu(); break;
-case 'export-diagnostic-txt': exportDiagnostic(); closeExportMenu(); break;
-case 'export-actions-csv': exportActionsCsv(); closeExportMenu(); break;
-case 'export-json': exportJson(); closeExportMenu(); break;
-case 'share-diagnostic': shareDiagnostic(); break;
-case 'print-diagnostic': window.print(); break;
-case 'set-score-goal': setScoreGoal(); break;
-case 'filter-actions': filterActions(target.dataset.filter, target); break;
-case 'toggle-stale-items': toggleStaleItems(); break;
-case 'show-pillar-detail': showPillarDetail(target.dataset.pillar); break;
-case 'toggle-action-complete': toggleActionComplete(target.dataset.actionKey, target); break;
-case 'retry-load-diagnostic': retryCount = 0; loadDiagnostic(); break;
-}
-});
+        switch (action) {
+            case 'refresh-diagnostic':
+                refreshDiagnostic();
+                break;
+            case 'toggle-export-menu':
+                toggleExportMenu();
+                break;
+            case 'export-diagnostic-txt':
+                exportDiagnostic();
+                closeExportMenu();
+                break;
+            case 'export-actions-csv':
+                exportActionsCsv();
+                closeExportMenu();
+                break;
+            case 'export-json':
+                exportJson();
+                closeExportMenu();
+                break;
+            case 'share-diagnostic':
+                shareDiagnostic();
+                break;
+            case 'print-diagnostic':
+                window.print();
+                break;
+            case 'set-score-goal':
+                setScoreGoal();
+                break;
+            case 'filter-actions':
+                filterActions(target.dataset.filter, target);
+                break;
+            case 'toggle-stale-items':
+                toggleStaleItems();
+                break;
+            case 'show-pillar-detail':
+                showPillarDetail(target.dataset.pillar);
+                break;
+            case 'toggle-action-complete':
+                toggleActionComplete(target.dataset.actionKey, target);
+                break;
+            case 'retry-load-diagnostic':
+                retryCount = 0;
+                loadDiagnostic();
+                break;
+            case 'open-history-chart':
+                showFullHistoryChart();
+                break;
+            case 'show-reconnection-prompt':
+                showReconnectionPrompt(dataQualityConnectionErrors);
+                break;
+        }
+    });
 
-// Handle keyboard events for accessibility
-document.addEventListener('keydown', function(e) {
-const target = e.target.closest('[data-keyaction]');
-if (!target || e.key !== 'Enter') return;
-e.preventDefault();
-if (target.dataset.keyaction === 'show-pillar-detail') {
-showPillarDetail(target.dataset.pillar);
-}
-});
+    // Handle keyboard events for accessibility
+    document.addEventListener('keydown', function(e) {
+        const target = e.target.closest('[data-keyaction]');
+        if (!target || e.key !== 'Enter') return;
+        e.preventDefault();
+        if (target.dataset.keyaction === 'show-pillar-detail') {
+            showPillarDetail(target.dataset.pillar);
+            return;
+        }
+
+        if (target.dataset.keyaction === 'open-history-chart') {
+            showFullHistoryChart();
+            return;
+        }
+
+        if (target.dataset.keyaction === 'show-reconnection-prompt') {
+            showReconnectionPrompt(dataQualityConnectionErrors);
+        }
+    });
 </script>

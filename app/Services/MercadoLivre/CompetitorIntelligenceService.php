@@ -69,7 +69,7 @@ class CompetitorIntelligenceService
             return [
                 'success' => true,
                 'competitors_monitored' => count($competitors),
-                'alerts_generated' => count(array_filter($results, fn($r) => !empty($r['alerts']))),
+                'alerts_generated' => count(array_filter($results, fn(array $r): bool => !empty($r['alerts']))),
                 'monitoring_results' => $results,
                 'market_intelligence' => $marketIntelligence,
                 'summary' => $this->generateMonitoringSummary($results)
@@ -416,7 +416,7 @@ class CompetitorIntelligenceService
             'report_date' => date('Y-m-d'),
             'competitors_with_changes' => count($dailyChanges),
             'total_changes' => array_sum(array_column($dailyChanges, 'changes_count')),
-            'high_impact_changes' => count(array_filter($dailyChanges, fn($c) => $c['impact_level'] === 'high')),
+            'high_impact_changes' => count(array_filter($dailyChanges, fn(array $c): bool => $c['impact_level'] === 'high')),
             'daily_changes' => $dailyChanges,
             'market_summary' => $this->generateDailyMarketSummary($dailyChanges),
             'recommendations' => $this->generateDailyRecommendations($dailyChanges)
@@ -580,9 +580,9 @@ class CompetitorIntelligenceService
 
         return [
             'items_analyzed' => count($analysis),
-            'below_market' => count(array_filter($analysis, fn($a) => $a['position'] === 'below_market')),
-            'at_market' => count(array_filter($analysis, fn($a) => $a['position'] === 'at_market')),
-            'above_market' => count(array_filter($analysis, fn($a) => $a['position'] === 'above_market')),
+            'below_market' => count(array_filter($analysis, fn(array $a): bool => $a['position'] === 'below_market')),
+            'at_market' => count(array_filter($analysis, fn(array $a): bool => $a['position'] === 'at_market')),
+            'above_market' => count(array_filter($analysis, fn(array $a): bool => $a['position'] === 'above_market')),
             'details' => $analysis,
         ];
     }
@@ -633,8 +633,8 @@ class CompetitorIntelligenceService
                 time()
             );
 
-            $priceDrops = array_filter($changes, fn($c) => ($c['type'] ?? '') === 'price_decrease');
-            $newProducts = array_filter($changes, fn($c) => ($c['type'] ?? '') === 'new_listing');
+            $priceDrops = array_filter($changes, fn(array $c): bool => ($c['type'] ?? '') === 'price_decrease');
+            $newProducts = array_filter($changes, fn(array $c): bool => ($c['type'] ?? '') === 'new_listing');
 
             if (count($priceDrops) > 3 || count($newProducts) > 5) {
                 $threats[] = [
@@ -751,8 +751,8 @@ class CompetitorIntelligenceService
 
     private function generateMonitoringSummary(array $results): array
     {
-        $competitorsWithAlerts = count(array_filter($results, fn($r) => !empty($r['alerts'])));
-        $totalAlerts = array_sum(array_map(fn($r) => count($r['alerts'] ?? []), $results));
+        $competitorsWithAlerts = count(array_filter($results, fn(array $r): bool => !empty($r['alerts'])));
+        $totalAlerts = array_sum(array_map(fn(array $r): int => count($r['alerts'] ?? []), $results));
 
         return [
             'total_competitors' => count($results),
@@ -780,7 +780,7 @@ class CompetitorIntelligenceService
         $categories = array_column($opportunities, 'category');
 
         // Find categories with high opportunity that could complement each other
-        $highOpportunity = array_filter($opportunities, fn($o) => ($o['opportunity_score'] ?? 0) > 7.0);
+        $highOpportunity = array_filter($opportunities, fn(array $o): bool => ($o['opportunity_score'] ?? 0) > 7.0);
 
         foreach ($highOpportunity as $i => $opp1) {
             foreach (array_slice($highOpportunity, $i + 1) as $opp2) {
@@ -1136,7 +1136,7 @@ class CompetitorIntelligenceService
         foreach ($monitoringResults as $result) {
             $changes = $result['changes'] ?? [];
             $totalChanges += count($changes);
-            $highSeverity += count(array_filter($changes, fn($c) => ($c['severity'] ?? '') === 'high'));
+            $highSeverity += count(array_filter($changes, fn(array $c): bool => ($c['severity'] ?? '') === 'high'));
         }
 
         if ($highSeverity > 3) {
@@ -1291,7 +1291,7 @@ class CompetitorIntelligenceService
 
         // Identify new products (created in last 24h)
         $recentThreshold = date('Y-m-d H:i:s', time() - 86400);
-        $newProducts = array_filter($allListings, fn($l) => ($l['created_at'] ?? '') > $recentThreshold);
+        $newProducts = array_filter($allListings, fn(array $l): bool => ($l['created_at'] ?? '') > $recentThreshold);
 
         return [
             'total_listings' => count($allListings),
@@ -1714,7 +1714,7 @@ class CompetitorIntelligenceService
         }
 
         $actionItems = $this->extractActionItems($reports);
-        $highPriorityItems = count(array_filter($actionItems, fn($a) => $a['priority'] === 'high'));
+        $highPriorityItems = count(array_filter($actionItems, fn(array $a): bool => $a['priority'] === 'high'));
 
         return [
             'generated_at' => date('Y-m-d H:i:s'),
@@ -1772,7 +1772,7 @@ class CompetitorIntelligenceService
         $alerts = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         // Map alert_type to change types
-        return array_map(function ($alert) {
+        return array_map(function (array $alert): array {
             return [
                 'type' => $this->mapAlertTypeToChangeType($alert['type']),
                 'severity' => $alert['severity'],
@@ -1796,7 +1796,7 @@ class CompetitorIntelligenceService
 
     private function assessChangeImpact(array $changes): string
     {
-        $highSeverity = count(array_filter($changes, fn($c) => ($c['severity'] ?? '') === 'high' || ($c['severity'] ?? '') === 'critical'));
+        $highSeverity = count(array_filter($changes, fn(array $c): bool => ($c['severity'] ?? '') === 'high' || ($c['severity'] ?? '') === 'critical'));
 
         if ($highSeverity > 2) {
             return 'high';
@@ -1809,8 +1809,8 @@ class CompetitorIntelligenceService
 
     private function generateDailyMarketSummary(array $changes): array
     {
-        $totalChanges = array_sum(array_map(fn($c) => count($c['changes'] ?? []), $changes));
-        $competitorsChanged = count(array_filter($changes, fn($c) => !empty($c['changes'])));
+        $totalChanges = array_sum(array_map(fn(array $c): int => count($c['changes'] ?? []), $changes));
+        $competitorsChanged = count(array_filter($changes, fn(array $c): bool => !empty($c['changes'])));
 
         return [
             'date' => date('Y-m-d'),

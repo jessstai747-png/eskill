@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Integrations\Brevo;
 
 use App\Services\Integrations\Brevo\BrevoApiException;

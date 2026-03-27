@@ -105,8 +105,30 @@ function extractKeywordFromTitle(string $title): ?string
     }
 
     $stop = [
-        'de', 'da', 'do', 'das', 'dos', 'para', 'com', 'sem', 'e', 'ou', 'a', 'o', 'as', 'os',
-        'em', 'no', 'na', 'nos', 'nas', 'por', 'um', 'uma', 'uns', 'umas',
+        'de',
+        'da',
+        'do',
+        'das',
+        'dos',
+        'para',
+        'com',
+        'sem',
+        'e',
+        'ou',
+        'a',
+        'o',
+        'as',
+        'os',
+        'em',
+        'no',
+        'na',
+        'nos',
+        'nas',
+        'por',
+        'um',
+        'uma',
+        'uns',
+        'umas',
     ];
 
     $rawTokens = preg_split('/\s+/u', preg_replace('/[^\p{L}\p{N}\s\-]+/u', ' ', $title)) ?: [];
@@ -136,10 +158,10 @@ function fetchRevenueAndOrders(PDO $db, int $accountId, string $dateFrom, string
 {
     $stmt = $db->prepare(
         "SELECT COALESCE(SUM(total_amount), 0) AS revenue, COUNT(*) AS orders\n"
-        . "FROM ml_orders\n"
-        . "WHERE ml_account_id = :account_id\n"
-        . "  AND status = 'paid'\n"
-        . "  AND date_created BETWEEN :date_from AND :date_to"
+            . "FROM ml_orders\n"
+            . "WHERE ml_account_id = :account_id\n"
+            . "  AND status = 'paid'\n"
+            . "  AND date_created BETWEEN :date_from AND :date_to"
     );
     $stmt->execute([
         'account_id' => $accountId,
@@ -157,7 +179,7 @@ function fetchLatestOrderSync(PDO $db, int $accountId): array
 {
     $stmt = $db->prepare(
         "SELECT MAX(synced_at) AS last_synced_at, MAX(date_created) AS last_order_date\n"
-        . "FROM ml_orders WHERE ml_account_id = :account_id"
+            . "FROM ml_orders WHERE ml_account_id = :account_id"
     );
     $stmt->execute(['account_id' => $accountId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -173,11 +195,11 @@ function fetchItemCounts(PDO $db, int $accountId): array
     try {
         $stmt = $db->prepare(
             "SELECT\n"
-            . "  SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_count,\n"
-            . "  SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) AS paused_count,\n"
-            . "  SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed_count,\n"
-            . "  SUM(CASE WHEN status = 'active' AND available_quantity = 0 THEN 1 ELSE 0 END) AS stockout_count\n"
-            . "FROM ml_items WHERE account_id = :account_id"
+                . "  SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_count,\n"
+                . "  SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) AS paused_count,\n"
+                . "  SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed_count,\n"
+                . "  SUM(CASE WHEN status = 'active' AND available_quantity = 0 THEN 1 ELSE 0 END) AS stockout_count\n"
+                . "FROM ml_items WHERE account_id = :account_id"
         );
         $stmt->execute(['account_id' => $accountId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -209,19 +231,18 @@ function extractTopItemsFromOrders(PDO $db, int $accountId, int $days, int $orde
 {
     $dateFrom = date('Y-m-d', strtotime("-{$days} days"));
 
-    $ordersSampleSql = max(1, min(2000, (int)$ordersSample));
-
     $stmt = $db->prepare(
         "SELECT order_data\n"
-        . "FROM ml_orders\n"
-        . "WHERE ml_account_id = :account_id\n"
-        . "  AND status = 'paid'\n"
-        . "  AND date_created >= :date_from\n"
-        . "ORDER BY date_created DESC\n"
-        . "LIMIT {$ordersSampleSql}"
+            . "FROM ml_orders\n"
+            . "WHERE ml_account_id = :account_id\n"
+            . "  AND status = 'paid'\n"
+            . "  AND date_created >= :date_from\n"
+            . "ORDER BY date_created DESC\n"
+            . "LIMIT :limit"
     );
     $stmt->bindValue(':account_id', $accountId, PDO::PARAM_INT);
     $stmt->bindValue(':date_from', $dateFrom . ' 00:00:00');
+    $stmt->bindValue(':limit', $ordersSample, PDO::PARAM_INT);
     $stmt->execute();
 
     $counts = [];
@@ -269,12 +290,12 @@ function fetchDailyRevenueAndOrders(PDO $db, int $accountId, int $days): array
 
     $stmt = $db->prepare(
         "SELECT DATE(date_created) AS d, COUNT(*) AS orders, SUM(total_amount) AS revenue\n"
-        . "FROM ml_orders\n"
-        . "WHERE ml_account_id = :account_id\n"
-        . "  AND status = 'paid'\n"
-        . "  AND date_created >= :date_from\n"
-        . "GROUP BY DATE(date_created)\n"
-        . "ORDER BY d ASC"
+            . "FROM ml_orders\n"
+            . "WHERE ml_account_id = :account_id\n"
+            . "  AND status = 'paid'\n"
+            . "  AND date_created >= :date_from\n"
+            . "GROUP BY DATE(date_created)\n"
+            . "ORDER BY d ASC"
     );
     $stmt->execute([
         'account_id' => $accountId,
@@ -372,19 +393,19 @@ function fetchItemVisitsTotalByPeriod(int $accountId, string $itemId, string $da
 
 function extractTopItemsFromOrdersBetween(PDO $db, int $accountId, string $dateFrom, string $dateTo, int $ordersSample): array
 {
-    $ordersSampleSql = max(1, min(2000, (int)$ordersSample));
     $stmt = $db->prepare(
         "SELECT order_data\n"
-        . "FROM ml_orders\n"
-        . "WHERE ml_account_id = :account_id\n"
-        . "  AND status = 'paid'\n"
-        . "  AND date_created BETWEEN :date_from AND :date_to\n"
-        . "ORDER BY date_created DESC\n"
-        . "LIMIT {$ordersSampleSql}"
+            . "FROM ml_orders\n"
+            . "WHERE ml_account_id = :account_id\n"
+            . "  AND status = 'paid'\n"
+            . "  AND date_created BETWEEN :date_from AND :date_to\n"
+            . "ORDER BY date_created DESC\n"
+            . "LIMIT :limit"
     );
     $stmt->bindValue(':account_id', $accountId, PDO::PARAM_INT);
     $stmt->bindValue(':date_from', $dateFrom . ' 00:00:00');
     $stmt->bindValue(':date_to', $dateTo . ' 23:59:59');
+    $stmt->bindValue(':limit', $ordersSample, PDO::PARAM_INT);
     $stmt->execute();
 
     $counts = [];
@@ -428,7 +449,7 @@ function extractTopItemsFromOrdersBetween(PDO $db, int $accountId, string $dateF
 
 function fetchItemsFromLocalTable(PDO $db, int $accountId, array $itemIds): array
 {
-    $itemIds = array_values(array_filter(array_unique(array_values($itemIds)), fn ($v) => is_string($v) && $v !== ''));
+    $itemIds = array_values(array_filter(array_unique(array_values($itemIds)), fn($v) => is_string($v) && $v !== ''));
     if (empty($itemIds)) {
         return [];
     }
@@ -587,15 +608,15 @@ try {
         $prev = (int)($prevMap[$id] ?? 0);
         $itemDelta[] = ['item_id' => $id, 'qty_last7' => $cur, 'qty_prev7' => $prev, 'delta' => $cur - $prev];
     }
-    usort($itemDelta, fn ($a, $b) => ($a['delta'] <=> $b['delta']));
+    usort($itemDelta, fn($a, $b) => ($a['delta'] <=> $b['delta']));
     $topDrops = array_slice($itemDelta, 0, 10);
 
     $localItemMap = fetchItemsFromLocalTable(
         $db,
         $accountId,
         array_merge(
-            array_map(fn ($r) => (string)$r['item_id'], $topItemsForSeo),
-            array_map(fn ($r) => (string)$r['item_id'], $topDrops)
+            array_map(fn($r) => (string)$r['item_id'], $topItemsForSeo),
+            array_map(fn($r) => (string)$r['item_id'], $topDrops)
         )
     );
 

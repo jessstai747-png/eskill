@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Comprehensive All-Modules Test Suite
  * Tests all major dashboard modules systematically

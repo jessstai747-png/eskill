@@ -378,7 +378,7 @@ class ClaimDisputeService
         );
 
         // Filtrar por período
-        $filteredClaims = array_filter($allClaims, function ($claim) use ($startDate, $endDate) {
+        $filteredClaims = array_filter($allClaims, function (array $claim) use ($startDate, $endDate): bool {
             $claimDate = $claim['date_created'] ?? null;
             if (!$claimDate) {
                 return false;

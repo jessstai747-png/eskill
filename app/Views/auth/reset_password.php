@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Redefinir Senha - Mercado Livre Manager';
 ob_start();
 
@@ -67,7 +70,7 @@ $token = $_GET['token'] ?? '';
     </p>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     document.getElementById('resetForm')?.addEventListener('submit', function(e) {
         const password = document.getElementById('password').value;
         const passwordConfirm = document.getElementById('password_confirm').value;

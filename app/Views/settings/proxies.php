@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Página de Gerenciamento de Proxies
  * 
@@ -374,7 +376,7 @@ ML_PROXY_PASS=sua_senha</code></pre>
     <div class="toast-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
         // Load proxies on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadProxies();

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone Notifications Settings View
  * Configuração de webhooks Slack/Discord para notificações de clonagem
@@ -216,7 +219,7 @@ ob_start();
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 const CloneNotifications = {
     events: [],

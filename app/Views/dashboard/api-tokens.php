@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Tokens de API';
 $activePage = 'api-tokens';
 ?>
@@ -199,7 +202,7 @@ https://eskill.com.br/api/v1/orders</pre>
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 (() => {
     const alertContainer = document.getElementById('alert-container');

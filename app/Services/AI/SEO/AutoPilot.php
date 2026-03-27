@@ -11,13 +11,13 @@ use PDO;
 
 /**
  * 🤖 AUTO-PILOT MODE - Otimização Automática
- * 
+ *
  * Modo piloto automático para otimização contínua:
  * - Agendamento de otimizações
  * - Monitoramento de performance
  * - Ajustes automáticos
  * - Alertas proativos
- * 
+ *
  * @author AI Development Team
  * @version 1.0.0
  */
@@ -27,7 +27,7 @@ class AutoPilot
     private int $accountId;
     private ?MercadoLivreClient $mlClient = null;
     private ?ItemService $itemService = null;
-    
+
     // Auto-pilot configuration
     private const DEFAULT_CONFIG = [
         'enabled' => false,
@@ -42,17 +42,17 @@ class AutoPilot
         'excluded_items' => [],
         'priority_categories' => [],
     ];
-    
+
     public function __construct(int $accountId)
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
         $this->mlClient = new MercadoLivreClient($accountId);
         $this->itemService = new ItemService($accountId);
-        
+
         $this->ensureTablesExist();
     }
-    
+
     /**
      * Ensure auto-pilot tables exist
      */
@@ -74,7 +74,7 @@ class AutoPilot
                     INDEX idx_next_run (next_run)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
-            
+
             $this->db->exec("
                 CREATE TABLE IF NOT EXISTS seo_autopilot_runs (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -94,7 +94,7 @@ class AutoPilot
                     INDEX idx_status (status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
-            
+
             $this->db->exec("
                 CREATE TABLE IF NOT EXISTS seo_item_scores (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -121,7 +121,7 @@ class AutoPilot
             ]);
         }
     }
-    
+
     /**
      * 🔧 Obter configuração atual
      */
@@ -130,19 +130,30 @@ class AutoPilot
         $stmt = $this->db->prepare("SELECT * FROM seo_autopilot_config WHERE account_id = ?");
         $stmt->execute([$this->accountId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
+        if (!is_array($row)) {
+            return array_merge(self::DEFAULT_CONFIG, [
+                'last_run' => null,
+                'next_run' => null,
+                'total_runs' => 0,
+                'total_optimizations' => 0,
+            ]);
+        }
+
+        $configData = json_decode((string)$row['config'], true);
+
         return array_merge(
             self::DEFAULT_CONFIG,
-            json_decode($row['config'], true) ?? [],
+            is_array($configData) ? $configData : [],
             [
                 'last_run' => $row['last_run'],
                 'next_run' => $row['next_run'],
-                'total_runs' => $row['total_runs'],
-                'total_optimizations' => $row['total_optimizations'],
+                'total_runs' => (int)($row['total_runs'] ?? 0),
+                'total_optimizations' => (int)($row['total_optimizations'] ?? 0),
             ]
         );
     }
-    
+
     /**
      * 💾 Salvar configuração
      */
@@ -150,7 +161,7 @@ class AutoPilot
     {
         $config = array_merge(self::DEFAULT_CONFIG, $config);
         $nextRun = $this->calculateNextRun($config);
-        
+
         $stmt = $this->db->prepare("
             INSERT INTO seo_autopilot_config (account_id, config, next_run)
             VALUES (?, ?, ?)
@@ -159,20 +170,20 @@ class AutoPilot
             next_run = VALUES(next_run),
             updated_at = NOW()
         ");
-        
+
         $stmt->execute([
             $this->accountId,
             json_encode($config),
             $nextRun
         ]);
-        
+
         return [
             'success' => true,
             'config' => $config,
             'next_run' => $nextRun,
         ];
     }
-    
+
     /**
      * ▶️ Ativar auto-pilot
      */
@@ -182,7 +193,7 @@ class AutoPilot
         $config['enabled'] = true;
         return $this->saveConfig($config);
     }
-    
+
     /**
      * ⏸️ Desativar auto-pilot
      */
@@ -192,21 +203,21 @@ class AutoPilot
         $config['enabled'] = false;
         return $this->saveConfig($config);
     }
-    
+
     /**
      * 🚀 Executar otimização automática
      */
     public function run(): array
     {
         $config = $this->getConfig();
-        
+
         if (!$config['enabled']) {
             return ['error' => 'Auto-pilot está desativado'];
         }
-        
+
         // Create run record
         $runId = $this->createRun();
-        
+
         $result = [
             'run_id' => $runId,
             'status' => 'running',
@@ -216,40 +227,40 @@ class AutoPilot
             'items_failed' => 0,
             'details' => [],
         ];
-        
+
         try {
             // Get items to optimize
             $items = $this->getItemsToOptimize($config);
             $result['items_analyzed'] = count($items);
-            
+
             $scoresBefore = [];
             $scoresAfter = [];
-            
+
             foreach ($items as $item) {
                 try {
                     // Calculate score before
                     $scoreBefore = $this->calculateItemScore($item);
                     $scoresBefore[] = $scoreBefore['overall'];
-                    
+
                     // Skip if above threshold
                     if ($scoreBefore['overall'] >= $config['min_score_threshold']) {
                         $result['items_skipped']++;
                         continue;
                     }
-                    
+
                     // Optimize
                     $optimized = $this->optimizeItem($item, $config);
-                    
+
                     if ($optimized['success']) {
                         $result['items_optimized']++;
                         $scoresAfter[] = $optimized['new_score'] ?? $scoreBefore['overall'];
-                        
+
                         // Save score
                         $this->saveItemScore($item['id'], $optimized['score_details'] ?? $scoreBefore);
                     } else {
                         $result['items_failed']++;
                     }
-                    
+
                     $result['details'][] = [
                         'item_id' => $item['id'],
                         'title' => $item['title'],
@@ -257,10 +268,9 @@ class AutoPilot
                         'score_after' => $optimized['new_score'] ?? $scoreBefore['overall'],
                         'optimized' => $optimized['success'],
                     ];
-                    
+
                     // Small delay
                     usleep(500000);
-                    
                 } catch (\Exception $e) {
                     $result['items_failed']++;
                     $result['details'][] = [
@@ -269,28 +279,27 @@ class AutoPilot
                     ];
                 }
             }
-            
+
             // Calculate averages
             $result['avg_score_before'] = count($scoresBefore) ? round(array_sum($scoresBefore) / count($scoresBefore), 1) : 0;
             $result['avg_score_after'] = count($scoresAfter) ? round(array_sum($scoresAfter) / count($scoresAfter), 1) : 0;
             $result['improvement'] = $result['avg_score_after'] - $result['avg_score_before'];
-            
+
             // Complete run
             $result['status'] = 'completed';
             $this->completeRun($runId, $result);
-            
+
             // Update next run
             $this->updateNextRun($config);
-            
         } catch (\Exception $e) {
             $result['status'] = 'failed';
             $result['error'] = $e->getMessage();
             $this->failRun($runId, $e->getMessage());
         }
-        
+
         return $result;
     }
-    
+
     /**
      * 📊 Obter histórico de runs (Legacy alias)
      */
@@ -298,7 +307,7 @@ class AutoPilot
     {
         return $this->getRunHistory($limit);
     }
-    
+
     /**
      * 📈 Estatísticas consolidadas do AutoPilot
      */
@@ -312,25 +321,28 @@ class AutoPilot
         ");
         $stmt->execute([$this->accountId]);
         $config = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+        if (!is_array($config)) {
+            $config = [];
+        }
+
         // Estatísticas dos últimos 30 dias
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as runs_last_30_days,
                 SUM(items_optimized) as items_optimized_30d,
                 AVG(avg_score_after - avg_score_before) as avg_improvement,
                 SUM(items_failed) as total_failures
             FROM seo_autopilot_runs
-            WHERE account_id = ? 
+            WHERE account_id = ?
             AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             AND status = 'completed'
         ");
         $stmt->execute([$this->accountId]);
         $recent = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Última run
         $stmt = $this->db->prepare("
-            SELECT status, items_optimized, avg_score_before, avg_score_after, 
+            SELECT status, items_optimized, avg_score_before, avg_score_after,
                    completed_at
             FROM seo_autopilot_runs
             WHERE account_id = ?
@@ -339,7 +351,7 @@ class AutoPilot
         ");
         $stmt->execute([$this->accountId]);
         $lastRun = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Score médio atual dos itens
         $stmt = $this->db->prepare("
             SELECT AVG(overall_score) as current_avg_score
@@ -349,7 +361,7 @@ class AutoPilot
         ");
         $stmt->execute([$this->accountId]);
         $currentScore = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return [
             'total_runs' => (int)($config['total_runs'] ?? 0),
             'total_optimizations' => (int)($config['total_optimizations'] ?? 0),
@@ -363,14 +375,14 @@ class AutoPilot
             'last_run_details' => $lastRun,
         ];
     }
-    
+
     /**
      * 📈 Obter evolução de scores
      */
     public function getScoreEvolution(int $days = 30): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 score_date,
                 AVG(overall_score) as avg_score,
                 AVG(title_score) as avg_title,
@@ -384,10 +396,10 @@ class AutoPilot
             ORDER BY score_date ASC
         ");
         $stmt->execute([$this->accountId, $days]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * 🎯 Calcular score do item
      */
@@ -400,7 +412,7 @@ class AutoPilot
             'images' => $this->scoreImages($item),
             'visibility' => $this->scoreVisibility($item),
         ];
-        
+
         // Weighted average
         $weights = [
             'title' => 25,
@@ -409,78 +421,78 @@ class AutoPilot
             'images' => 15,
             'visibility' => 15,
         ];
-        
+
         $weightedSum = 0;
         $totalWeight = 0;
-        
+
         foreach ($scores as $key => $score) {
             $weightedSum += $score * $weights[$key];
             $totalWeight += $weights[$key];
         }
-        
+
         $scores['overall'] = (int) round($weightedSum / $totalWeight);
         $scores['grade'] = $this->getGrade($scores['overall']);
-        
+
         return $scores;
     }
-    
+
     // Scoring methods
-    
+
     private function scoreTi(array $item): int
     {
         $score = 100;
         $title = $item['title'] ?? '';
         $len = mb_strlen($title);
-        
+
         if ($len < 30) $score -= 30;
         elseif ($len < 40) $score -= 15;
         elseif ($len > 60) $score -= 10;
-        
+
         if (!preg_match('/\d/', $title)) $score -= 10;
         if ($title === mb_strtoupper($title)) $score -= 15;
-        
+
         return max(0, $score);
     }
-    
+
     private function scoreDescription(array $item): int
     {
         // Would need to fetch description
         return 70; // Default for now
     }
-    
+
     private function scoreAttributes(array $item): int
     {
         $attrCount = count($item['attributes'] ?? []);
-        
+
         if ($attrCount >= 20) return 100;
         if ($attrCount >= 15) return 85;
         if ($attrCount >= 10) return 70;
         if ($attrCount >= 5) return 50;
         return 30;
     }
-    
+
     private function scoreImages(array $item): int
     {
         $imgCount = count($item['pictures'] ?? []);
-        
+
         if ($imgCount >= 6) return 100;
         if ($imgCount >= 4) return 80;
         if ($imgCount >= 2) return 60;
         if ($imgCount >= 1) return 40;
         return 0;
     }
-    
+
     private function scoreVisibility(array $item): int
     {
         $score = 50;
-        
+
         if ($item['shipping']['free_shipping'] ?? false) $score += 25;
         if (($item['sold_quantity'] ?? 0) > 0) $score += 15;
         if ($item['listing_type_id'] !== 'free') $score += 10;
-        
+
         return min(100, $score);
     }
-    
+
     private function getGrade(int $score): string
     {
         if ($score >= 90) return 'A+';
@@ -490,9 +502,9 @@ class AutoPilot
         if ($score >= 50) return 'D';
         return 'F';
     }
-    
+
     // Private helpers
-    
+
     private function getItemsToOptimize(array $config): array
     {
         try {
@@ -500,40 +512,42 @@ class AutoPilot
                 'limit' => $config['max_items_per_run'],
                 'status' => 'active'
             ]);
-            
+
             $items = $result['items'] ?? [];
-            
+
             // Filter excluded items
             if (!empty($config['excluded_items'])) {
-                $items = array_filter($items, fn($i) => 
+                $items = array_filter(
+                    $items,
+                    fn(array $i): bool =>
                     !in_array($i['id'], $config['excluded_items'])
                 );
             }
-            
+
             return $items;
         } catch (\Exception $e) {
             return [];
         }
     }
-    
+
     private function optimizeItem(array $item, array $config): array
     {
         $optimizer = new BulkOptimizer($this->accountId);
-        
+
         $result = $optimizer->optimizeSingleItem($item['id'], [
             'optimize_title' => $config['optimize_titles'],
             'optimize_description' => $config['optimize_descriptions'],
             'fill_attributes' => $config['fill_attributes'],
             'apply' => $config['auto_apply'],
         ]);
-        
+
         return $result;
     }
-    
+
     private function calculateNextRun(array $config): string
     {
         $now = new \DateTime();
-        
+
         switch ($config['optimization_frequency']) {
             case 'daily':
                 $now->modify('+1 day');
@@ -547,24 +561,24 @@ class AutoPilot
             default:
                 $now->modify('+1 week');
         }
-        
+
         return $now->format('Y-m-d H:i:s');
     }
-    
+
     private function updateNextRun(array $config): void
     {
         $nextRun = $this->calculateNextRun($config);
-        
+
         $stmt = $this->db->prepare("
-            UPDATE seo_autopilot_config 
-            SET last_run = NOW(), 
+            UPDATE seo_autopilot_config
+            SET last_run = NOW(),
                 next_run = ?,
                 total_runs = total_runs + 1
             WHERE account_id = ?
         ");
         $stmt->execute([$nextRun, $this->accountId]);
     }
-    
+
     private function createRun(): int
     {
         $stmt = $this->db->prepare("
@@ -572,14 +586,14 @@ class AutoPilot
             VALUES (?, 'running', NOW())
         ");
         $stmt->execute([$this->accountId]);
-        
+
         return (int) $this->db->lastInsertId();
     }
-    
+
     private function completeRun(int $runId, array $result): void
     {
         $stmt = $this->db->prepare("
-            UPDATE seo_autopilot_runs 
+            UPDATE seo_autopilot_runs
             SET status = 'completed',
                 items_analyzed = ?,
                 items_optimized = ?,
@@ -591,7 +605,7 @@ class AutoPilot
                 completed_at = NOW()
             WHERE id = ?
         ");
-        
+
         $stmt->execute([
             $result['items_analyzed'],
             $result['items_optimized'],
@@ -602,28 +616,28 @@ class AutoPilot
             json_encode($result['details']),
             $runId
         ]);
-        
+
         // Update total optimizations
         $stmt = $this->db->prepare("
-            UPDATE seo_autopilot_config 
+            UPDATE seo_autopilot_config
             SET total_optimizations = total_optimizations + ?
             WHERE account_id = ?
         ");
         $stmt->execute([$result['items_optimized'], $this->accountId]);
     }
-    
+
     private function failRun(int $runId, string $error): void
     {
         $stmt = $this->db->prepare("
-            UPDATE seo_autopilot_runs 
-            SET status = 'failed', 
+            UPDATE seo_autopilot_runs
+            SET status = 'failed',
                 details = ?,
                 completed_at = NOW()
             WHERE id = ?
         ");
         $stmt->execute([json_encode(['error' => $error]), $runId]);
     }
-    
+
     /**
      * 📜 Obter histórico de execuções
      */
@@ -631,20 +645,20 @@ class AutoPilot
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT * FROM seo_autopilot_runs 
-            WHERE account_id = ? 
-            ORDER BY completed_at DESC 
+            SELECT * FROM seo_autopilot_runs
+            WHERE account_id = ?
+            ORDER BY completed_at DESC
             LIMIT {$limitSql}
         ");
         $stmt->execute([$this->accountId]);
         $runs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($runs as &$run) {
             $run['details'] = json_decode($run['details'], true);
         }
         return ['runs' => $runs];
     }
-    
+
     /**
      * 📈 Obter evolução de scores (Legacy alias)
      */
@@ -656,8 +670,8 @@ class AutoPilot
     private function saveItemScore(string $itemId, array $scores): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO seo_item_scores 
-            (account_id, item_id, score_date, overall_score, title_score, 
+            INSERT INTO seo_item_scores
+            (account_id, item_id, score_date, overall_score, title_score,
              description_score, attributes_score, images_score, visibility_score)
             VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
@@ -668,7 +682,7 @@ class AutoPilot
             images_score = VALUES(images_score),
             visibility_score = VALUES(visibility_score)
         ");
-        
+
         $stmt->execute([
             $this->accountId,
             $itemId,
@@ -687,21 +701,21 @@ class AutoPilot
     public function getRunDetails(int $runId): array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM seo_autopilot_runs 
+            SELECT * FROM seo_autopilot_runs
             WHERE id = ? AND account_id = ?
         ");
         $stmt->execute([$runId, $this->accountId]);
         $run = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$run) {
             return ['error' => 'Execução não encontrada'];
         }
-        
+
         // Decode JSON details
         if (isset($run['details'])) {
             $run['details'] = json_decode($run['details'], true);
         }
-        
+
         return $run;
     }
 }

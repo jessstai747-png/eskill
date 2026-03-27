@@ -218,7 +218,7 @@ class SynonymGenerator
     private function buildSynonymPrompt(string $term, string $categoryId): string
     {
         return <<<PROMPT
-Você é um especialista em SEO para Mercado Livre. Gere sinônimos para o termo "{$term}" 
+Você é um especialista em SEO para Mercado Livre. Gere sinônimos para o termo "{$term}"
 organizado em 4 níveis hierárquicos:
 
 REGRAS:
@@ -289,7 +289,7 @@ Gere keywords de busca relacionadas ao termo "{$term}" para Mercado Livre Brasil
 
 Classifique cada keyword em um dos tipos:
 - CORE: Keywords principais, alta relevância
-- SUPORTE: Keywords complementares, média relevância  
+- SUPORTE: Keywords complementares, média relevância
 - TECNICA: Especificações técnicas (medidas, materiais, etc)
 - CONTEXTO: Contexto de uso (para que serve, onde usar)
 
@@ -310,7 +310,7 @@ PROMPT;
      */
     private function buildClassificationPrompt(array $keywords, string $context): string
     {
-        $keywordList = implode(', ', array_map(fn($k) => is_array($k) ? $k['keyword'] : $k, $keywords));
+        $keywordList = implode(', ', array_map(fn(mixed $k): string => is_array($k) ? $k['keyword'] : $k, $keywords));
 
         return <<<PROMPT
 Classifique as seguintes keywords em categorias:
@@ -584,7 +584,7 @@ PROMPT;
      */
     private function fallbackClassification(array $keywords): array
     {
-        return array_map(function ($kw) {
+        return array_map(function (mixed $kw): array {
             $word = is_array($kw) ? ($kw['keyword'] ?? '') : $kw;
             $wordCount = str_word_count($word);
 

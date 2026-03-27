@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Configurações - Versão Moderna
  * Integrado com o layout moderno (sidebar, temas, etc.)
@@ -151,7 +154,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     function saveNotifications() {
         const settings = {

@@ -174,7 +174,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // Performance Analytics Functions
     if (!window.SEOKiller) window.SEOKiller = {};
 
@@ -427,7 +427,7 @@
                     </strong>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" 
+                    <button class="btn btn-sm btn-outline-primary"
                             onclick="SEOKiller.viewItemDetails('${item.item_id}')">
                         <i class="bi bi-eye"></i>
                     </button>
@@ -463,13 +463,17 @@
             Toastify({
                 text: "Relatório exportado com sucesso!",
                 duration: 3000,
-                backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)"
+                style: {
+                    background: "linear-gradient(to right, #00b09b, #96c93d)"
+                }
             }).showToast();
         } catch (error) {
             Toastify({
                 text: "Erro ao exportar: " + error.message,
                 duration: 3000,
-                backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)"
+                style: {
+                    background: "linear-gradient(to right, #ff5f6d, #ffc371)"
+                }
             }).showToast();
         }
     };

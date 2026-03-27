@@ -329,8 +329,20 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // AI Pricing Optimizer JavaScript
+    function unwrapApiResponse(payload) {
+        if (!payload || typeof payload !== 'object') {
+            return payload;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'data') && payload.data !== undefined) {
+            return payload.data;
+        }
+
+        return payload;
+    }
+
     let pricingData = {
         currentItem: null,
         suggestion: null,
@@ -353,9 +365,8 @@
     // Load Products
     async function loadProductsForPricing() {
         try {
-            const {
-                data: result
-            } = await requestJson('/api/items?status=active');
+            const payload = await requestJson('/api/items?status=active');
+            const result = unwrapApiResponse(payload) || {};
 
             // Handle different response structures
             let items = [];

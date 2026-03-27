@@ -102,19 +102,19 @@ class RealMarketDataService
         $result = [
             'id' => $category['id'] ?? $categoryId,
             'name' => $category['name'] ?? '',
-            'path_from_root' => array_map(function ($p) {
+            'path_from_root' => array_map(function (array $p): array {
                 return ['id' => $p['id'] ?? '', 'name' => $p['name'] ?? ''];
             }, $category['path_from_root'] ?? []),
             'total_items_in_this_category' => $category['total_items_in_this_category'] ?? null,
             'attribute_count' => count($attributes),
             'required_attributes' => array_filter(
                 $attributes,
-                fn($a) => ($a['tags']['required'] ?? false) ||
+                fn(array $a): bool => ($a['tags']['required'] ?? false) ||
                     in_array('required', $a['tags'] ?? [])
             ),
             'filter_attributes' => array_filter(
                 $attributes,
-                fn($a) => ($a['tags']['allow_variations'] ?? false) ||
+                fn(array $a): bool => ($a['tags']['allow_variations'] ?? false) ||
                     ($a['tags']['defines_picture'] ?? false)
             ),
         ];
@@ -531,22 +531,22 @@ class RealMarketDataService
         $insights['avg_top_seller_price'] = round(array_sum($prices) / count($prices), 2);
 
         // % com frete grátis
-        $freeShipping = count(array_filter($competitors, fn($c) => $c['shipping']['free'] ?? false));
+        $freeShipping = count(array_filter($competitors, fn(array $c): bool => $c['shipping']['free'] ?? false));
         $insights['free_shipping_rate'] = round(($freeShipping / count($competitors)) * 100);
 
         // % com desconto
-        $withDiscount = count(array_filter($competitors, fn($c) => ($c['discount_percent'] ?? 0) > 0));
+        $withDiscount = count(array_filter($competitors, fn(array $c): bool => ($c['discount_percent'] ?? 0) > 0));
         $insights['discount_rate'] = round(($withDiscount / count($competitors)) * 100);
 
         // % Full
-        $fullCount = count(array_filter($competitors, function ($c) {
+        $fullCount = count(array_filter($competitors, function (array $c): bool {
             $tags = $c['shipping']['tags'] ?? [];
             return in_array('fulfillment', $tags) || in_array('self_service_in', $tags);
         }));
         $insights['full_rate'] = round(($fullCount / count($competitors)) * 100);
 
         // % no catálogo
-        $catalogCount = count(array_filter($competitors, fn($c) => !empty($c['catalog_product_id'])));
+        $catalogCount = count(array_filter($competitors, fn(array $c): bool => !empty($c['catalog_product_id'])));
         $insights['catalog_rate'] = round(($catalogCount / count($competitors)) * 100);
 
         // Vendas médias
@@ -708,7 +708,7 @@ class RealMarketDataService
         $words = preg_split('/\s+/', $title, -1, PREG_SPLIT_NO_EMPTY);
 
         // Filtrar stopwords e palavras curtas
-        $keywords = array_filter($words, function ($word) use ($stopwords) {
+        $keywords = array_filter($words, function (string $word) use ($stopwords): bool {
             return mb_strlen($word) >= 3 && !in_array($word, $stopwords);
         });
 

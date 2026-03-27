@@ -10,7 +10,7 @@ use PDO;
 
 /**
  * 🎭 Automation Orchestrator Service
- * 
+ *
  * Intelligent workflow orchestration that:
  * - Coordinates multiple automation tasks
  * - Manages dependencies between tasks
@@ -92,7 +92,6 @@ class AutomationOrchestratorService
                 'started' => $started,
                 'creation_time' => round(microtime(true) - $startTime, 3),
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -111,10 +110,16 @@ class AutomationOrchestratorService
         }
 
         $validTypes = [
-            self::TASK_SEO_OPTIMIZE, self::TASK_PRICE_UPDATE, self::TASK_INVENTORY_SYNC,
-            self::TASK_LISTING_CREATE, self::TASK_KEYWORD_UPDATE, self::TASK_IMAGE_OPTIMIZE,
-            self::TASK_DESCRIPTION_UPDATE, self::TASK_ATTRIBUTE_SYNC, 
-            self::TASK_LEARNING_INGEST, self::TASK_DECISION_PROCESS,
+            self::TASK_SEO_OPTIMIZE,
+            self::TASK_PRICE_UPDATE,
+            self::TASK_INVENTORY_SYNC,
+            self::TASK_LISTING_CREATE,
+            self::TASK_KEYWORD_UPDATE,
+            self::TASK_IMAGE_OPTIMIZE,
+            self::TASK_DESCRIPTION_UPDATE,
+            self::TASK_ATTRIBUTE_SYNC,
+            self::TASK_LEARNING_INGEST,
+            self::TASK_DECISION_PROCESS,
         ];
 
         foreach ($tasks as $index => $task) {
@@ -217,7 +222,7 @@ class AutomationOrchestratorService
         // Create workflow
         $stmt = $this->db->prepare("
             INSERT INTO automation_workflows (
-                account_id, name, tasks_json, graph_json, 
+                account_id, name, tasks_json, graph_json,
                 options_json, status, created_at
             ) VALUES (
                 :account_id, :name, :tasks_json, :graph_json,
@@ -285,7 +290,6 @@ class AutomationOrchestratorService
             $this->executeReadyTasks($workflowId);
 
             return true;
-
         } catch (\Exception $e) {
             return false;
         }
@@ -386,7 +390,6 @@ class AutomationOrchestratorService
                 'result' => $result,
                 'execution_time' => round(microtime(true) - $startTime, 3),
             ];
-
         } catch (\Exception $e) {
             // Mark as failed
             $this->updateTaskStatus($taskDbId, self::STATUS_FAILED, ['error' => $e->getMessage()]);
@@ -716,7 +719,6 @@ class AutomationOrchestratorService
                 'tasks_rolled_back' => count($rolledBack),
                 'details' => $rolledBack,
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -732,7 +734,7 @@ class AutomationOrchestratorService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                     SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
@@ -803,7 +805,6 @@ class AutomationOrchestratorService
                 'tasks' => $tasks,
                 'progress' => $this->calculateProgress($tasks),
             ];
-
         } catch (\Exception $e) {
             return null;
         }
@@ -815,9 +816,9 @@ class AutomationOrchestratorService
     private function calculateProgress(array $tasks): array
     {
         $total = count($tasks);
-        $completed = count(array_filter($tasks, fn($t) => $t['status'] === self::STATUS_COMPLETED));
-        $failed = count(array_filter($tasks, fn($t) => $t['status'] === self::STATUS_FAILED));
-        $running = count(array_filter($tasks, fn($t) => $t['status'] === self::STATUS_RUNNING));
+        $completed = count(array_filter($tasks, fn(array $t): bool => $t['status'] === self::STATUS_COMPLETED));
+        $failed = count(array_filter($tasks, fn(array $t): bool => $t['status'] === self::STATUS_FAILED));
+        $running = count(array_filter($tasks, fn(array $t): bool => $t['status'] === self::STATUS_RUNNING));
 
         return [
             'total' => $total,
@@ -851,7 +852,6 @@ class AutomationOrchestratorService
             $stmt->execute();
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (\Exception $e) {
             return [];
         }

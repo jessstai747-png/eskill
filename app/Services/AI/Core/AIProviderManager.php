@@ -36,7 +36,7 @@ class AIProviderManager
     public function __construct(array $config = [])
     {
         $this->config = $config;
-        $this->preferredProvider = $_ENV['AI_PREFERRED_PROVIDER'] ?? 'openai';
+        $this->preferredProvider = $_ENV['AI_PREFERRED_PROVIDER'] ?? 'claude';
 
         $this->loadCircuitState();
         $this->initializeProviders();
@@ -68,7 +68,7 @@ class AIProviderManager
 
     /**
      * Get primary provider
-     * 
+     *
      * @return AbstractAIProvider|null
      */
     public function getPrimaryProvider(): ?AbstractAIProvider
@@ -83,7 +83,7 @@ class AIProviderManager
 
     /**
      * Get provider by name
-     * 
+     *
      * @param string $name
      * @return AbstractAIProvider|null
      */
@@ -201,7 +201,7 @@ class AIProviderManager
 
     /**
      * Chat with automatic fallback
-     * 
+     *
      * @param array $messages
      * @param array $options
      * @return array
@@ -213,7 +213,7 @@ class AIProviderManager
 
     /**
      * Complete with automatic fallback
-     * 
+     *
      * @param string $prompt
      * @param array $options
      * @return array
@@ -225,7 +225,7 @@ class AIProviderManager
 
     /**
      * Get all available providers
-     * 
+     *
      * @return array
      */
     public function getAvailableProviders(): array
@@ -245,7 +245,7 @@ class AIProviderManager
 
     /**
      * Get provider statistics
-     * 
+     *
      * @return array
      */
     public function getStats(): array
@@ -261,7 +261,7 @@ class AIProviderManager
     /**
      * Compare providers for same prompt
      * Useful for testing and choosing best provider
-     * 
+     *
      * @param string $prompt
      * @param array $options
      * @return array Results from all providers
@@ -291,7 +291,7 @@ class AIProviderManager
 
     /**
      * Select best provider based on criteria
-     * 
+     *
      * @param string $criteria (cost, speed, quality)
      * @return string|null Provider name
      */
@@ -302,9 +302,9 @@ class AIProviderManager
         }
 
         $rankings = [
-            'cost' => ['gemini' => 1, 'openai' => 2, 'claude' => 3], // Gemini cheapest
-            'speed' => ['gemini' => 1, 'openai' => 2, 'claude' => 3],
-            'quality' => ['claude' => 1, 'openai' => 2, 'gemini' => 3], // Claude best quality
+            'cost'    => ['gemini' => 1, 'gpt-4o-mini' => 2, 'openai' => 3, 'claude' => 4], // Gemini/mini cheapest
+            'speed'   => ['gemini' => 1, 'openai' => 2, 'claude' => 3],
+            'quality' => ['claude' => 1, 'openai' => 2, 'gemini' => 3], // Claude 3.7 best quality
         ];
 
         $ranking = $rankings[$criteria] ?? $rankings['cost'];
@@ -320,7 +320,7 @@ class AIProviderManager
 
     /**
      * Get the preferred provider instance
-     * 
+     *
      * @return AbstractAIProvider|null
      */
     public function getPreferredProvider(): ?AbstractAIProvider
@@ -330,7 +330,7 @@ class AIProviderManager
 
     /**
      * Get provider with fallback if the specified one is not available
-     * 
+     *
      * @param string $preferredName
      * @return AbstractAIProvider|null
      */
@@ -347,12 +347,12 @@ class AIProviderManager
 
     /**
      * Get provider statistics with counts
-     * 
+     *
      * @return array
      */
     public function getProviderStats(): array
     {
-        $availableCount = count(array_filter($this->providers, function ($provider) {
+        $availableCount = count(array_filter($this->providers, function (object $provider): bool {
             return $provider->isAvailable();
         }));
 
@@ -367,7 +367,7 @@ class AIProviderManager
 
     /**
      * Check if a specific provider is available
-     * 
+     *
      * @param string $name Provider name
      * @return bool
      */
@@ -378,7 +378,7 @@ class AIProviderManager
 
     /**
      * Get the cheapest available provider
-     * 
+     *
      * @return AbstractAIProvider|null
      */
     public function getCheapestProvider(): ?AbstractAIProvider
@@ -389,7 +389,7 @@ class AIProviderManager
 
     /**
      * Get the fastest available provider
-     * 
+     *
      * @return AbstractAIProvider|null
      */
     public function getFastestProvider(): ?AbstractAIProvider
@@ -400,7 +400,7 @@ class AIProviderManager
 
     /**
      * Get provider based on strategy
-     * 
+     *
      * @param string $strategy (cost, speed, quality)
      * @return AbstractAIProvider|null
      */

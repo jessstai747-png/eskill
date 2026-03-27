@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * View de Clonagem de Catálogo - Versão Melhorada
  *

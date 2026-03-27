@@ -9,14 +9,14 @@ use PDO;
 
 /**
  * Bulk Price Editor Service
- * 
+ *
  * Edição em massa de preços:
  * - Preview antes de aplicar
  * - Filtros avançados (categoria, margem, status)
  * - Modificadores: percentual, fixo, arredondar
  * - Rollback completo
  * - Validações e limites de segurança
- * 
+ *
  * @package App\Services
  */
 class BulkPriceEditorService
@@ -92,8 +92,8 @@ class BulkPriceEditorService
                 ];
             }
 
-            $changePercent = $currentPrice > 0 
-                ? (($newPrice - $currentPrice) / $currentPrice) * 100 
+            $changePercent = $currentPrice > 0
+                ? (($newPrice - $currentPrice) / $currentPrice) * 100
                 : 0;
 
             $preview[] = [
@@ -123,7 +123,7 @@ class BulkPriceEditorService
                 'total_original_value' => round($totalOriginal, 2),
                 'total_new_value' => round($totalNew, 2),
                 'total_change' => round($totalNew - $totalOriginal, 2),
-                'avg_change_percent' => count($preview) > 0 
+                'avg_change_percent' => count($preview) > 0
                     ? round(array_sum(array_column($preview, 'change_percent')) / count($preview), 2)
                     : 0
             ],
@@ -490,6 +490,13 @@ class BulkPriceEditorService
             return $result;
         }
 
+        // Verificar preço atual válido para cálculo percentual
+        if ($currentPrice <= 0) {
+            $result['valid'] = false;
+            $result['error'] = "Preço atual inválido (R$ 0.00)";
+            return $result;
+        }
+
         // Verificar mudança percentual máxima
         $changePercent = abs((($newPrice - $currentPrice) / $currentPrice) * 100);
         if ($changePercent > self::MAX_PERCENT_CHANGE) {
@@ -518,7 +525,7 @@ class BulkPriceEditorService
     private function calculateNewMargin(array $item, float $newPrice): ?float
     {
         $cost = (float)($item['product_cost'] ?? 0);
-        if ($cost <= 0) {
+        if ($cost <= 0 || $newPrice <= 0) {
             return null;
         }
 
@@ -540,7 +547,7 @@ class BulkPriceEditorService
     {
         $stmt = $this->db->prepare("
             INSERT INTO pricing_bulk_batches
-            (account_id, operation, filters, total_items, success_count, 
+            (account_id, operation, filters, total_items, success_count,
              error_count, status, created_at)
             VALUES
             (:account_id, :operation, :filters, :total_items, 0, 0, 'processing', NOW())
@@ -606,7 +613,7 @@ class BulkPriceEditorService
     {
         $stmt = $this->db->prepare("
             INSERT INTO pricing_history
-            (account_id, item_id, old_price, new_price, change_type, 
+            (account_id, item_id, old_price, new_price, change_type,
              change_source, batch_id, created_at)
             VALUES
             (:account_id, :item_id, :old_price, :new_price, :change_type,

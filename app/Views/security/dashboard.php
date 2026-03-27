@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Dashboard de Segurança
  * 
@@ -264,7 +266,7 @@ ob_start();
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     // Carregar status dos tokens na inicialização
     document.addEventListener('DOMContentLoaded', function() {

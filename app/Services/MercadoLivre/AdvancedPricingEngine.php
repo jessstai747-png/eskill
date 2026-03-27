@@ -507,7 +507,7 @@ class AdvancedPricingEngine
             $stmt->execute();
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getProductsForPricing failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getProductsForPricing failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -527,7 +527,7 @@ class AdvancedPricingEngine
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getActiveCompetitorItems failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getActiveCompetitorItems failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -548,7 +548,7 @@ class AdvancedPricingEngine
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getProductsForPsychologicalPricing failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getProductsForPsychologicalPricing failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -573,7 +573,7 @@ class AdvancedPricingEngine
             $stmt->execute(['account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getProductsWithElasticityData failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getProductsWithElasticityData failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -608,7 +608,7 @@ class AdvancedPricingEngine
             $stmt->execute();
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getProductsForBatchOptimization failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getProductsForBatchOptimization failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -624,7 +624,7 @@ class AdvancedPricingEngine
             $price = $stmt->fetchColumn();
             return $price !== false ? (float)$price : 0.0;
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getProductPrice failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getProductPrice failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return 0.0;
         }
     }
@@ -653,7 +653,7 @@ class AdvancedPricingEngine
             $stmt2->execute(['account_id' => $this->accountId, 'category_id' => $cat]);
             return $stmt2->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getCompetitorPrices failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getCompetitorPrices failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -664,7 +664,7 @@ class AdvancedPricingEngine
             $data = $this->getHistoricalPricingData($productId);
             return count($data) >= 5 ? $this->calculateElasticityCoefficient($data) : 1.0;
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getProductElasticity failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getProductElasticity failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return 1.0;
         }
     }
@@ -699,7 +699,7 @@ class AdvancedPricingEngine
             }
             return round($recent / $avg, 2);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getDemandLevel failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getDemandLevel failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return 1.0;
         }
     }
@@ -720,7 +720,7 @@ class AdvancedPricingEngine
             $stmt->execute(['competitor_id' => $competitorId, 'account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getCompetitorPriceHistory failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getCompetitorPriceHistory failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -743,7 +743,7 @@ class AdvancedPricingEngine
             $stmt->execute(['account_id' => $this->accountId, 'category_id' => $cat]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getOurCompetingProducts failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getOurCompetingProducts failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -764,7 +764,7 @@ class AdvancedPricingEngine
             $stmt->execute(['item_id' => $productId, 'account_id' => $this->accountId]);
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\Exception $e) {
-            error_log('AdvancedPricingEngine::getHistoricalPricingData failed: ' . $e->getMessage());
+            log_error('AdvancedPricingEngine::getHistoricalPricingData failed', ['exception' => $e->getMessage(), 'service' => 'AdvancedPricingEngine']);
             return [];
         }
     }
@@ -909,7 +909,7 @@ class AdvancedPricingEngine
 
     private function generatePricingSummary(array $results): array
     {
-        $applied = array_filter($results, fn($r) => ($r['applied'] ?? false));
+        $applied = array_filter($results, fn(array $r): bool => ($r['applied'] ?? false));
         $increases = 0;
         $decreases = 0;
         foreach ($applied as $r) {
@@ -949,7 +949,7 @@ class AdvancedPricingEngine
 
     private function generateBatchOptimizationSummary(array $generated, array $applied): array
     {
-        $ok = count(array_filter($applied, fn($a) => ($a['applied'] ?? false)));
+        $ok = count(array_filter($applied, fn(array $a): bool => ($a['applied'] ?? false)));
         $avgAdj = count($applied) > 0
             ? array_sum(array_column($applied, 'adjustment_percentage')) / count($applied)
             : 0;
@@ -967,8 +967,8 @@ class AdvancedPricingEngine
 
     private function generateMarketIntelligence(array $results): array
     {
-        $actions = count(array_filter($results, fn($r) => ($r['requires_action'] ?? false)));
-        $changes = count(array_filter($results, fn($r) => ($r['price_change_detected'] ?? false)));
+        $actions = count(array_filter($results, fn(array $r): bool => ($r['requires_action'] ?? false)));
+        $changes = count(array_filter($results, fn(array $r): bool => ($r['price_change_detected'] ?? false)));
 
         $urgency = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
         $trends  = ['increasing' => 0, 'decreasing' => 0, 'stable' => 0];
@@ -992,13 +992,13 @@ class AdvancedPricingEngine
 
     private function generateElasticityInsights(array $results): array
     {
-        $elastic = count(array_filter($results, fn($r) => ($r['elasticity_type'] ?? '') === 'elasticity'));
+        $elastic = count(array_filter($results, fn(array $r): bool => ($r['elasticity_type'] ?? '') === 'elasticity'));
         return [
             'total_analyzed' => count($results),
-            'adjustments_applied' => count(array_filter($results, fn($r) => ($r['applied'] ?? false))),
+            'adjustments_applied' => count(array_filter($results, fn(array $r): bool => ($r['applied'] ?? false))),
             'elastic_products' => $elastic,
             'avg_adjustment_pct' => count($results) > 0
-                ? round(array_sum(array_map(fn($r) => abs((float)($r['new_price'] ?? 0) - (float)($r['old_price'] ?? 0)) / max(1, (float)($r['old_price'] ?? 1)) * 100, $results)) / count($results), 2)
+                ? round(array_sum(array_map(fn(array $r): float => abs((float)($r['new_price'] ?? 0) - (float)($r['old_price'] ?? 0)) / max(1, (float)($r['old_price'] ?? 1)) * 100, $results)) / count($results), 2)
                 : 0
         ];
     }
@@ -1241,8 +1241,8 @@ class AdvancedPricingEngine
             }
             return [
                 'products_analyzed' => count($analysis),
-                'elastic' => count(array_filter($analysis, fn($a) => ($a['elasticity']['elasticity_type'] ?? '') === 'elastic')),
-                'inelastic' => count(array_filter($analysis, fn($a) => ($a['elasticity']['elasticity_type'] ?? '') === 'inelastic')),
+                'elastic' => count(array_filter($analysis, fn(array $a): bool => ($a['elasticity']['elasticity_type'] ?? '') === 'elastic')),
+                'inelastic' => count(array_filter($analysis, fn(array $a): bool => ($a['elasticity']['elasticity_type'] ?? '') === 'inelastic')),
                 'details' => $analysis
             ];
         } catch (\Exception $e) {
@@ -1467,8 +1467,8 @@ class AdvancedPricingEngine
         if (empty($competitorPrices)) {
             return 0.5;
         }
-        $prices = array_map(fn($cp) => (float)($cp['price'] ?? $cp), $competitorPrices);
-        $cheaper = count(array_filter($prices, fn($p) => $p < $currentPrice));
+        $prices = array_map(fn(array|float $cp): float => (float)($cp['price'] ?? $cp), $competitorPrices);
+        $cheaper = count(array_filter($prices, fn(float $p): bool => $p < $currentPrice));
         return round($cheaper / count($prices), 2);
     }
 
@@ -1608,7 +1608,7 @@ class AdvancedPricingEngine
             return ['is_more_expensive' => false, 'cheapest_our_price' => 0, 'price_difference' => 0, 'products_count' => 0];
         }
 
-        $ourPrices = array_map(fn($p) => (float)$p['price'], $ourProducts);
+        $ourPrices = array_map(fn(array $p): float => (float)$p['price'], $ourProducts);
         $cheapest  = min($ourPrices);
 
         return [

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Script de Teste - SEO Strategies Engine
  * Testa todas as 12 estratégias implementadas

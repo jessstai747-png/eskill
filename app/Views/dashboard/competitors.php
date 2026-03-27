@@ -91,7 +91,7 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     async function loadCompetitors() {
         try {
             const data = await requestJson('/api/competitors');

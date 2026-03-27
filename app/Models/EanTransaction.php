@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -12,12 +13,12 @@ use PDO;
 class EanTransaction
 {
     private PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Registrar transação
      */
@@ -33,14 +34,14 @@ class EanTransaction
         ?int $createdBy = null
     ): int {
         $stmt = $this->db->prepare("
-            INSERT INTO ean_transactions 
-            (account_id, type, quantity, balance_before, balance_after, 
+            INSERT INTO ean_transactions
+            (account_id, type, quantity, balance_before, balance_after,
              reference_type, reference_id, description, created_by)
-            VALUES 
+            VALUES
             (:account_id, :type, :quantity, :balance_before, :balance_after,
              :reference_type, :reference_id, :description, :created_by)
         ");
-        
+
         $stmt->execute([
             'account_id' => $accountId,
             'type' => $type,
@@ -52,10 +53,10 @@ class EanTransaction
             'description' => $description,
             'created_by' => $createdBy,
         ]);
-        
+
         return (int) $this->db->lastInsertId();
     }
-    
+
     /**
      * Registrar crédito (compra)
      */
@@ -72,7 +73,7 @@ class EanTransaction
             $description ?? "Compra de {$quantity} EANs"
         );
     }
-    
+
     /**
      * Registrar débito (uso)
      */
@@ -89,7 +90,7 @@ class EanTransaction
             $description ?? "Uso de {$quantity} EAN(s)"
         );
     }
-    
+
     /**
      * Registrar reembolso
      */
@@ -106,7 +107,7 @@ class EanTransaction
             $description ?? "Reembolso de {$quantity} EANs"
         );
     }
-    
+
     /**
      * Registrar ajuste manual
      */
@@ -124,7 +125,7 @@ class EanTransaction
             $createdBy
         );
     }
-    
+
     /**
      * Histórico de um seller
      */
@@ -132,16 +133,18 @@ class EanTransaction
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT * FROM ean_transactions 
-            WHERE account_id = :account_id 
-            ORDER BY created_at DESC 
+            SELECT id, account_id, type, quantity, balance_before, balance_after,
+                   reference_type, reference_id, description, created_by, created_at
+            FROM ean_transactions
+            WHERE account_id = :account_id
+            ORDER BY created_at DESC
             LIMIT {$limitSql}
         ");
         $stmt->bindValue(':account_id', $accountId, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
     }
-    
+
     /**
      * Histórico geral (admin)
      */
@@ -154,16 +157,16 @@ class EanTransaction
         $offsetSql = max(0, min(1000000, (int)$offset));
         $where = '';
         $params = [];
-        
+
         if ($type) {
             $where = "WHERE t.type = :type";
             $params['type'] = $type;
         }
-        
+
         $countStmt = $this->db->prepare("SELECT COUNT(*) as total FROM ean_transactions t {$where}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetch()['total'];
-        
+
         $sql = "
             SELECT t.*, a.nickname as account_name
             FROM ean_transactions t
@@ -172,13 +175,13 @@ class EanTransaction
             ORDER BY t.created_at DESC
             LIMIT {$limitSql} OFFSET {$offsetSql}
         ";
-        
+
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue(":{$key}", $value);
         }
         $stmt->execute();
-        
+
         return [
             'data' => $stmt->fetchAll(),
             'total' => $total,

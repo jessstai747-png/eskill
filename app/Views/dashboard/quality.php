@@ -74,7 +74,11 @@
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../layouts/header.php'; ?>
+    <?php
+
+declare(strict_types=1);
+
+include __DIR__ . '/../layouts/header.php'; ?>
 
     <div class="container-fluid py-4">
         <div class="row mb-4">

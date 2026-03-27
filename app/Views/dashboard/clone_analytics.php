@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone Analytics Dashboard View
  * 
@@ -351,7 +354,7 @@ ob_start();
 .trend-stable { color: #6c757d; }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 let charts = {};
 let currentPeriod = '30d';

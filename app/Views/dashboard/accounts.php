@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Gerenciamento de Contas Mercado Livre
  *
@@ -49,6 +51,17 @@ $userId = $_SESSION['user_id'] ?? 0;
                 <i class="bi bi-arrow-clockwise me-1"></i>
                 Renovar Tokens
             </button>
+        </div>
+    </div>
+
+    <!-- OAuth Config Alert -->
+    <div id="oauthConfigAlert" class="alert d-none mb-4">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-shield-exclamation me-2 fs-4"></i>
+            <div>
+                <strong id="oauthConfigTitle">Configuração OAuth</strong>
+                <p class="mb-0" id="oauthConfigMessage"></p>
+            </div>
         </div>
     </div>
 
@@ -250,7 +263,7 @@ $userId = $_SESSION['user_id'] ?? 0;
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     function normalizeExternalUrl(url) {
         if (!url || typeof url !== 'string') return '';
         const trimmed = url.trim();
@@ -261,46 +274,21 @@ $userId = $_SESSION['user_id'] ?? 0;
         return trimmed;
     }
 
-    console.log('=== Script accounts.php iniciado ===');
-
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOMContentLoaded fired');
-
         try {
             // Bind event listeners
-            const btnConnect = document.getElementById('connectNewAccountBtn');
-            const btnConnectEmpty = document.getElementById('connectNewAccountEmptyBtn');
             const btnSyncAll = document.getElementById('syncAllBtn');
             const btnRefreshAllTokens = document.getElementById('refreshAllTokensBtn');
             const accountsGrid = document.getElementById('accountsGrid');
 
-            console.log('Botões encontrados:', {
-                btnConnect,
-                btnConnectEmpty,
-                btnSyncAll,
-                btnRefreshAllTokens
-            });
-
-            if (btnConnect) {
-                btnConnect.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('Click em connectNewAccountBtn');
-                    connectNewAccount(e.currentTarget);
-                });
-            }
-
-            if (btnConnectEmpty) {
-                btnConnectEmpty.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('Click em connectNewAccountEmptyBtn');
-                    connectNewAccount(e.currentTarget);
-                });
-            }
+            // "Conectar Nova Conta" buttons (connectNewAccountBtn, connectNewAccountEmptyBtn)
+            // are plain <a href="/auth/authorize"> links — native link behaviour is sufficient.
+            // Previously, e.preventDefault() + window.location.href duplicated what
+            // the <a> tag already does and silently broke when any JS error occurred.
 
             if (btnSyncAll) {
                 btnSyncAll.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('Click em syncAllBtn');
                     syncAllAccounts();
                 });
             }
@@ -343,6 +331,16 @@ $userId = $_SESSION['user_id'] ?? 0;
                 });
             }
 
+            document.addEventListener('click', function(e) {
+                const authLink = e.target.closest('a[data-oauth-disabled="1"]');
+                if (!authLink) return;
+
+                e.preventDefault();
+                const reason = authLink.dataset.oauthDisabledReason || 'Configuração OAuth inválida';
+                showToast(reason, 'warning');
+            });
+
+            checkOAuthConfigStatus();
             loadAccounts();
             checkTokenStatus();
         } catch (err) {
@@ -351,12 +349,78 @@ $userId = $_SESSION['user_id'] ?? 0;
     });
 
     let accountsData = [];
+    let oauthConfigReady = true;
+    let oauthConfigIssues = [];
+
+    function setConnectButtonsEnabled(enabled, reason = '') {
+        const connectButtons = document.querySelectorAll('#connectNewAccountBtn, #connectNewAccountEmptyBtn');
+
+        connectButtons.forEach((button) => {
+            if (enabled) {
+                button.classList.remove('disabled');
+                button.removeAttribute('aria-disabled');
+                button.removeAttribute('tabindex');
+                button.dataset.oauthDisabled = '0';
+                button.dataset.oauthDisabledReason = '';
+                button.removeAttribute('title');
+                return;
+            }
+
+            button.classList.add('disabled');
+            button.setAttribute('aria-disabled', 'true');
+            button.setAttribute('tabindex', '-1');
+            button.dataset.oauthDisabled = '1';
+            button.dataset.oauthDisabledReason = reason;
+            button.setAttribute('title', reason);
+        });
+    }
+
+    async function checkOAuthConfigStatus() {
+        try {
+            const response = await requestJson('/api/auth/oauth-config-status');
+            const data = response.data || {};
+
+            oauthConfigReady = data.ready === true;
+            oauthConfigIssues = Array.isArray(data.issues) ? data.issues : [];
+
+            const alert = document.getElementById('oauthConfigAlert');
+            const title = document.getElementById('oauthConfigTitle');
+            const message = document.getElementById('oauthConfigMessage');
+
+            if (!alert || !title || !message) {
+                return;
+            }
+
+            if (!oauthConfigReady) {
+                const msg = data.message || 'Configuração OAuth incompleta. Ajuste ML_APP_ID e ML_REDIRECT_URI.';
+                alert.classList.remove('d-none');
+                alert.className = 'alert alert-danger mb-4';
+                title.textContent = 'OAuth indisponível';
+                message.textContent = msg;
+                setConnectButtonsEnabled(false, msg);
+                return;
+            }
+
+            setConnectButtonsEnabled(true);
+
+            if (oauthConfigIssues.length > 0) {
+                const msg = data.message || oauthConfigIssues.join('; ');
+                alert.classList.remove('d-none');
+                alert.className = 'alert alert-warning mb-4';
+                title.textContent = 'OAuth pronto com avisos';
+                message.textContent = msg;
+                return;
+            }
+
+            alert.classList.add('d-none');
+        } catch (error) {
+            console.error('Erro ao verificar configuração OAuth:', error);
+        }
+    }
 
     async function loadAccounts() {
-        console.log('loadAccounts() iniciando...');
         try {
             const data = await requestJson('/api/auth/accounts');
-            console.log('loadAccounts() data:', data);
 
             accountsData = data.accounts || [];
 
@@ -368,7 +432,6 @@ $userId = $_SESSION['user_id'] ?? 0;
 
             if (accountsData.length === 0) {
                 if (empty) empty.classList.remove('d-none');
-                console.log('loadAccounts() - sem contas, mostrando empty state');
                 return;
             }
 
@@ -478,25 +541,21 @@ $userId = $_SESSION['user_id'] ?? 0;
         return normalizedTokenStatus === 'expired' || normalizedTokenStatus === 'invalid';
     }
 
-    async function loadSyncStatuses() {
+    function loadSyncStatuses() {
         for (const account of accountsData) {
-            try {
-                const data = await requestJson(`/api/accounts/${account.id}/sync/status`);
+            const card = document.querySelector(`.account-card[data-account-id="${account.id}"]`);
+            if (!card) continue;
 
-                if (data.success && data.data) {
-                    const card = document.querySelector(`.account-card[data-account-id="${account.id}"]`);
-                    if (card) {
-                        const itemsCount = card.querySelector('.account-items-count');
-                        const lastSync = card.querySelector('.account-last-sync');
+            const itemsCount = card.querySelector('.account-items-count');
+            const lastSync = card.querySelector('.account-last-sync');
 
-                        itemsCount.textContent = data.data.items_count ?? '-';
-                        lastSync.textContent = data.data.last_synced_at ?
-                            `Último sync: ${formatRelativeTime(data.data.last_synced_at)}` :
-                            'Nunca sincronizado';
-                    }
-                }
-            } catch (e) {
-                console.warn(`Erro ao carregar status de sync da conta ${account.id}:`, e);
+            if (itemsCount) {
+                itemsCount.textContent = account.items_count ?? '-';
+            }
+            if (lastSync) {
+                lastSync.textContent = account.last_synced_at ?
+                    `Último sync: ${formatRelativeTime(account.last_synced_at)}` :
+                    'Nunca sincronizado';
             }
         }
     }
@@ -552,7 +611,8 @@ $userId = $_SESSION['user_id'] ?? 0;
             'active': 'Ativo',
             'inactive': 'Inativo',
             'expired': 'Expirado',
-            'error': 'Erro'
+            'error': 'Erro',
+            'disconnected': 'Desconectado'
         };
         return labels[status] || 'Desconhecido';
     }
@@ -562,7 +622,8 @@ $userId = $_SESSION['user_id'] ?? 0;
             'active': 'bg-success',
             'inactive': 'bg-secondary',
             'expired': 'bg-danger',
-            'error': 'bg-danger'
+            'error': 'bg-danger',
+            'disconnected': 'bg-danger'
         };
         return classes[status] || 'bg-secondary';
     }
@@ -622,13 +683,14 @@ $userId = $_SESSION['user_id'] ?? 0;
         return `${hours}h ${minutes}min`;
     }
 
-    function connectNewAccount(el) {
-        console.log('=== connectNewAccount() chamada ===');
-        const url = el?.getAttribute('href') || '/auth/authorize';
-        window.location.href = url;
-    }
+    // connectNewAccount() removed — native <a href="/auth/authorize"> is sufficient.
 
     function reconnectAccount(el) {
+        if (!oauthConfigReady) {
+            showToast('Configuração OAuth incompleta. Corrija as variáveis ML_APP_ID/ML_REDIRECT_URI e tente novamente.', 'warning');
+            return;
+        }
+
         const card = el.closest('.account-card');
         const accountId = card.dataset.accountId;
         window.location.href = `/auth/authorize?reconnect=${accountId}`;
@@ -824,7 +886,8 @@ $userId = $_SESSION['user_id'] ?? 0;
             const data = await requestJson(`/auth/account/${deleteAccountId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
                 }
             });
 

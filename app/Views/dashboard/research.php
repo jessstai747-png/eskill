@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Deep Research';
 $subtitle = 'Pesquisa avançada de mercado e inteligência de marcas';
 $breadcrumbs = [
@@ -268,7 +271,7 @@ $breadcrumbs = [
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('research-form');
     const compareForm = document.getElementById('compare-form');

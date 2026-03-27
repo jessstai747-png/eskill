@@ -67,8 +67,8 @@ class SmartQAService
             return [
                 'success' => true,
                 'processed_questions' => count($results),
-                'auto_answered' => count(array_filter($results, fn($r) => $r['auto_respond'])),
-                'escalated' => count(array_filter($results, fn($r) => $r['escalate'])),
+                'auto_answered' => count(array_filter($results, fn(array $r): bool => $r['auto_respond'])),
+                'escalated' => count(array_filter($results, fn(array $r): bool => $r['escalate'])),
                 'results' => $results,
                 'summary' => $this->generateProcessingSummary($results)
             ];
@@ -147,7 +147,7 @@ class SmartQAService
                 'success' => true,
                 'batch_id' => $batchId,
                 'total_questions' => count($results),
-                'auto_answered' => count(array_filter($results, fn($r) => $r['auto_respond'])),
+                'auto_answered' => count(array_filter($results, fn(array $r): bool => $r['auto_respond'])),
                 'optimizations_applied' => count($batchOptimizations),
                 'results' => $results,
                 'batch_optimizations' => $batchOptimizations
@@ -753,7 +753,7 @@ class SmartQAService
         }
 
         // Keywords extraction
-        $words = array_filter(preg_split('/\s+/', $text), fn($w) => mb_strlen($w) > 3);
+        $words = array_filter(preg_split('/\s+/', $text), fn(string $w): bool => mb_strlen($w) > 3);
 
         return [
             'category'   => $category,
@@ -807,7 +807,7 @@ class SmartQAService
         $aText = mb_strtolower($answer);
 
         // Keyword overlap boosts confidence
-        $qWords = array_filter(preg_split('/\s+/', $qText), fn($w) => mb_strlen($w) > 3);
+        $qWords = array_filter(preg_split('/\s+/', $qText), fn(string $w): bool => mb_strlen($w) > 3);
         $matches = 0;
         foreach ($qWords as $w) {
             if (mb_strpos($aText, $w) !== false) $matches++;
@@ -1281,8 +1281,8 @@ class SmartQAService
 
     private function generateProcessingSummary(array $results): array
     {
-        $auto   = count(array_filter($results, fn($r) => $r['auto_respond'] ?? false));
-        $escal  = count(array_filter($results, fn($r) => $r['escalate'] ?? false));
+        $auto   = count(array_filter($results, fn(array $r): bool => $r['auto_respond'] ?? false));
+        $escal  = count(array_filter($results, fn(array $r): bool => $r['escalate'] ?? false));
         $total  = count($results);
         $avgConf = $total > 0
             ? round(array_sum(array_column($results, 'confidence')) / $total, 2) : 0;

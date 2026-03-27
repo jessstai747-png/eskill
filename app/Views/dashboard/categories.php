@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Navegador de Categorias';
 $activePage = 'categories';
 
@@ -107,7 +110,7 @@ include __DIR__ . '/../components/account-selector.php';
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     (() => {
         const treeContainer = document.getElementById('category-tree');

@@ -174,7 +174,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // Worker Monitor Functions
     if (!window.SEOKiller) window.SEOKiller = {};
 
@@ -193,9 +193,7 @@
         content.style.display = 'none';
 
         try {
-            const {
-                data
-            } = await requestJson('/api/seo-killer/bulk/monitor');
+            const data = await requestJson('/api/seo-killer/bulk/monitor');
 
             if (data.error) {
                 throw new Error(data.error);
@@ -269,11 +267,11 @@
                             <div class="d-flex align-items-center mb-2">
                                 <div class="flex-grow-1">
                                     <div class="progress">
-                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                             role="progressbar" 
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                             role="progressbar"
                                              style="width: ${progress}%"
-                                             aria-valuenow="${progress}" 
-                                             aria-valuemin="0" 
+                                             aria-valuenow="${progress}"
+                                             aria-valuemin="0"
                                              aria-valuemax="100">
                                         </div>
                                     </div>
@@ -320,8 +318,8 @@
                 <td>
                     ${job.status === 'running' || job.status === 'completed' ? `
                         <div class="progress" style="height: 8px; min-width: 80px;">
-                            <div class="progress-bar ${job.status === 'completed' ? 'bg-success' : ''}" 
-                                 role="progressbar" 
+                            <div class="progress-bar ${job.status === 'completed' ? 'bg-success' : ''}"
+                                 role="progressbar"
                                  style="width: ${progress}%"></div>
                         </div>
                         <small class="text-muted">${job.processed_items}/${job.total_items}</small>
@@ -396,9 +394,7 @@
 
     SEOKiller.viewJobDetails = async function(jobId) {
         try {
-            const {
-                data
-            } = await requestJson(`/api/seo-killer/bulk/status/${jobId}`);
+            const data = await requestJson(`/api/seo-killer/bulk/status/${jobId}`);
 
             const detailsHtml = `
             <div class="modal-dialog modal-lg">
@@ -428,9 +424,7 @@
         }
 
         try {
-            const {
-                data
-            } = await requestJson(`/api/seo-killer/bulk/cancel/${jobId}`, {
+            const data = await requestJson(`/api/seo-killer/bulk/cancel/${jobId}`, {
                 method: 'POST'
             });
 
@@ -441,7 +435,9 @@
             Toastify({
                 text: "Job cancelado com sucesso!",
                 duration: 3000,
-                backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)"
+                style: {
+                    background: "linear-gradient(to right, #00b09b, #96c93d)"
+                }
             }).showToast();
 
             await this.refreshWorkerMonitor();
@@ -451,7 +447,9 @@
             Toastify({
                 text: "Erro ao cancelar job: " + error.message,
                 duration: 3000,
-                backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)"
+                style: {
+                    background: "linear-gradient(to right, #ff5f6d, #ffc371)"
+                }
             }).showToast();
         }
     };
@@ -462,9 +460,7 @@
         }
 
         try {
-            const {
-                data
-            } = await requestJson(`/api/seo-killer/bulk/retry/${jobId}`, {
+            const data = await requestJson(`/api/seo-killer/bulk/retry/${jobId}`, {
                 method: 'POST'
             });
 
@@ -475,7 +471,9 @@
             Toastify({
                 text: `Novo job #${data.job_id} criado com sucesso!`,
                 duration: 3000,
-                backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)"
+                style: {
+                    background: "linear-gradient(to right, #00b09b, #96c93d)"
+                }
             }).showToast();
 
             await this.refreshWorkerMonitor();
@@ -485,7 +483,9 @@
             Toastify({
                 text: "Erro ao reprocessar job: " + error.message,
                 duration: 3000,
-                backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)"
+                style: {
+                    background: "linear-gradient(to right, #ff5f6d, #ffc371)"
+                }
             }).showToast();
         }
     };

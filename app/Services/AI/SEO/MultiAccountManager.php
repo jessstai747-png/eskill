@@ -119,7 +119,7 @@ class MultiAccountManager
                 'optimizations_7d' => (int)$totals['optimizations_7d'],
                 'optimizations_30d' => (int)$totals['optimizations_30d'],
                 'total_accounts' => count($accounts),
-                'active_accounts' => count(array_filter($accounts, fn($a) => ($a['status'] ?? '') === 'active'))
+                'active_accounts' => count(array_filter($accounts, fn(array $a): bool => ($a['status'] ?? '') === 'active'))
             ],
             'trends' => $trends,
             'alerts' => $alerts,
@@ -237,7 +237,7 @@ class MultiAccountManager
         // Merge data
         $report = [];
         foreach ($accountStats as $stat) {
-            $perf = array_filter($performance, fn($p) => $p['account_id'] == $stat['id']);
+            $perf = array_filter($performance, fn(array $p): bool => $p['account_id'] == $stat['id']);
             $perf = reset($perf) ?: ['avg_score_gain' => 0, 'total_views_increase' => 0, 'total_sales_increase' => 0];
 
             $report[] = [
@@ -320,7 +320,7 @@ class MultiAccountManager
 
                 $selection = $bulkOptimizer->selectPriorityItems((int)($options['max_items_per_account'] ?? 50));
                 $items = $selection['items'] ?? [];
-                $itemIds = array_values(array_filter(array_map(fn($item) => $item['id'] ?? null, $items)));
+                $itemIds = array_values(array_filter(array_map(fn(array $item): mixed => $item['id'] ?? null, $items)));
 
                 if (empty($itemIds)) {
                     $results[] = [
@@ -669,7 +669,7 @@ class MultiAccountManager
         if (empty($values)) return 0;
 
         $mean = array_sum($values) / count($values);
-        $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $values)) / count($values);
+        $variance = array_sum(array_map(fn(float|int $x): float|int => pow($x - $mean, 2), $values)) / count($values);
 
         return sqrt($variance);
     }

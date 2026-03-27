@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * @deprecated Use /dashboard/seo-killer instead. This view is no longer routed directly.
  */
@@ -222,7 +225,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 let currentPage = 0;
 let currentFilters = {};

@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <?php
+
+declare(strict_types=1);
+
 // CSP_NONCE is a PHP constant defined in public/index.php, accessible from any scope.
 $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? ''));
 ?>

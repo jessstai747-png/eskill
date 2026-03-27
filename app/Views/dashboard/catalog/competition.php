@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Monitor de Concorrência';
 $subtitle = 'Análise Competitiva de Preços e Buy Box';
 include __DIR__ . '/../../layouts/modern/partials/page-header.php';
@@ -249,7 +252,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';

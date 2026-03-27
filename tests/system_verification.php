@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Script de Verificação Sistemática (System Sanity Check)
  * Este script testa os principais módulos implementados na refatoração:

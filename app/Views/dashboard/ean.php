@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Painel de Gestão de EANs - Versão Moderna
  * Integrado com layouts/modern/app.php
@@ -583,7 +586,7 @@ include __DIR__ . '/../components/account-selector.php';
 
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     // Helper para mudar tabs
     function switchToPackagesTab() {

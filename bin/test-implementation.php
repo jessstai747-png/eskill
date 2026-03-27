@@ -1,6 +1,8 @@
 #!/usr/bin/env php
 <?php
 
+declare(strict_types=1);
+
 /**
  * Script de teste das funcionalidades implementadas
  * Testa: SalesAnalyticsService, Quality Dashboard, Shipping Customizado

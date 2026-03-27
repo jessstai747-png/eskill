@@ -204,7 +204,7 @@ class HiddenFieldsService
             'suggestions' => $suggestions,
             'category_id' => $categoryId,
             'generated_at' => date('Y-m-d H:i:s'),
-            'total_fields' => count(array_filter($suggestions, fn($s) => !empty($s['value'])))
+            'total_fields' => count(array_filter($suggestions, fn(array $s): bool => !empty($s['value'])))
         ];
     }
 
@@ -553,7 +553,7 @@ class HiddenFieldsService
                 'fields' => $available,
                 'total_available' => count(array_filter(
                     $available,
-                    fn($f) => $f['available_in_category'] ?? true
+                    fn(array $f): bool => $f['available_in_category'] ?? true
                 ))
             ];
         } catch (\Exception $e) {

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Smart Notifications';
 $subtitle = 'Gerencie seus canais de notificação';
 include __DIR__ . '/../../layouts/modern/partials/page-header.php';
@@ -125,7 +128,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const settingsManager = {
         init: function() {
             this.loadSettings();

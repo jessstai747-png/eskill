@@ -253,6 +253,41 @@ class MercadoLivreWebhookService
             );
         }
 
+        $text = $question['text'] ?? '';
+        $itemId = $question['item_id'] ?? '';
+        $status = $question['status'] ?? '';
+        
+        // Passar para NLP se for pergunta não respondida
+        if ($status === 'UNANSWERED' && !empty($text)) {
+            $nlpService = new \App\Services\AI\ML\NLPIntegrationService($this->logger);
+            
+            // Buscar preço do item para passar ao modelo
+            $itemDetails = $this->getItemService()->getItem($itemId);
+            $price = isset($itemDetails['price']) ? (float)$itemDetails['price'] : 0.0;
+            
+            $prediction = $nlpService->predictIntent($questionId, $text, $itemId, $price);
+            
+            if ($prediction && $prediction['is_critical']) {
+                $this->logger->warning("NLP Detectou Pergunta Crítica", [
+                    'question_id' => $questionId,
+                    'intent' => $prediction['intent'],
+                    'urgency' => $prediction['urgency_score']
+                ]);
+                
+                // Dispara alerta imediato se for crítico
+                $userId = $this->getUserIdFromAccount();
+                if ($userId) {
+                    $this->getNotificationService()->create(
+                        $userId,
+                        'critical_question',
+                        "⚠️ Pergunta Crítica Detectada",
+                        "Intenção: {$prediction['intent']} | Urgência: {$prediction['urgency_score']}",
+                        ['question_id' => $questionId, 'item_id' => $itemId]
+                    );
+                }
+            }
+        }
+
         // Attempt auto-reply or draft generation
         try {
             $qService->generateDraftAnswer($questionId);

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Dashboard de Tokens ML
  * 
@@ -287,7 +290,7 @@ ob_start();
 </style>
 
 <!-- JavaScript -->
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 // Estado global
 const TokenDashboard = {

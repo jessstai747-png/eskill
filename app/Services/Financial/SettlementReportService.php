@@ -165,7 +165,7 @@ class SettlementReportService
 
         return [
             'total' => count($data),
-            'reports' => array_map(function ($report) {
+            'reports' => array_map(function (array $report): array {
                 return [
                     'id' => $report['id'] ?? null,
                     'report_id' => $report['report_id'] ?? null,
@@ -420,7 +420,7 @@ class SettlementReportService
 
         return [
             'total' => count($data),
-            'reports' => array_map(function ($report) {
+            'reports' => array_map(function (array $report): array {
                 return [
                     'id' => $report['id'] ?? null,
                     'report_id' => $report['report_id'] ?? null,

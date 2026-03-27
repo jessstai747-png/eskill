@@ -267,7 +267,7 @@ class UseContextService
             if (isset(self::USE_CONTEXTS[$contextId])) {
                 foreach (self::USE_CONTEXTS[$contextId]['keywords'] as $kw => $weight) {
                     // Evitar duplicatas
-                    $exists = array_filter($keywords, fn($k) => $k['keyword'] === $kw);
+                    $exists = array_filter($keywords, fn(array $k): bool => $k['keyword'] === $kw);
                     if (empty($exists)) {
                         $keywords[] = [
                             'keyword' => $kw,

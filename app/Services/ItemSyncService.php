@@ -44,7 +44,7 @@ class ItemSyncService
             if (!$account || empty($account['ml_user_id'])) {
                 throw new \Exception("Could not find Mercado Livre user ID for account {$accountId}");
             }
-            $mlUserId = $account['ml_user_id'];
+            $mlUserId = (string)$account['ml_user_id'];
 
             // 2. Fetch all item IDs
             $itemIds = $this->fetchAllItemIds($mlUserId);
@@ -58,30 +58,29 @@ class ItemSyncService
 
             // 3. Fetch full item details in batches
             $itemBatches = array_chunk($itemIds, 20); // ML API allows up to 20 IDs per multiget request
-            
+
             foreach ($itemBatches as $batch) {
                 $stats['batches']++;
                 try {
                     $itemDetails = $this->fetchItemDetails($batch);
-                    
+
                     // 4. Salvar diretamente na tabela 'items' (ml_items é apenas uma VIEW)
                     $syncedCount = $this->syncToItemsTable($itemDetails, $accountId);
-                    
+
                     $stats['total_synced'] += $syncedCount;
                     $this->logger->info('ITEM_SYNC_BATCH', "Synced batch of {$syncedCount} items.");
-                } catch (\Exception $e) {
-                     // Log error but continue with next batch
-                     $this->logger->error('ITEM_SYNC_BATCH_ERROR', "Failed to sync batch", [
-                         'batch_ids' => $batch,
-                         'error' => $e->getMessage()
-                     ]);
+                } catch (\Throwable $e) {
+                    // Log error but continue with next batch
+                    $this->logger->error('ITEM_SYNC_BATCH_ERROR', "Failed to sync batch", [
+                        'batch_ids' => $batch,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
 
             $this->logger->info('ITEM_SYNC_COMPLETE', "Item sync completed for account {$accountId}", $stats);
             return $stats;
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('ITEM_SYNC_ERROR', "Error during item sync for account {$accountId}: " . $e->getMessage());
             throw $e;
         }
@@ -113,7 +112,6 @@ class ItemSyncService
 
             $offset += $limit;
             $total = $response['paging']['total'] ?? 0;
-
         } while ($offset < $total);
 
         return $itemIds;
@@ -266,7 +264,7 @@ class ItemSyncService
             ]);
         }
     }
-    
+
     /**
      * Sincroniza itens para a tabela 'items' (usada pelo TechSheet e outros módulos)
      */
@@ -334,7 +332,7 @@ class ItemSyncService
                         ':data' => json_encode($itemData),
                     ]);
                     $count++;
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     $this->logger->warning('ITEM_SYNC_ITEMS_TABLE_ERROR', 'Erro ao salvar item na tabela items', [
                         'item_id' => $itemData['id'],
                         'error' => $e->getMessage()

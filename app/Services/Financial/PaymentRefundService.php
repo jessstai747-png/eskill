@@ -222,7 +222,7 @@ class PaymentRefundService
 
         return [
             'paging' => $data['paging'] ?? ['total' => 0, 'limit' => 30, 'offset' => 0],
-            'results' => array_map(function ($payment) {
+            'results' => array_map(function (array $payment): array {
                 return [
                     'id' => $payment['id'],
                     'date_created' => $payment['date_created'] ?? null,
@@ -313,7 +313,7 @@ class PaymentRefundService
             return ['error' => $data['message'] ?? 'Erro ao buscar reembolsos'];
         }
 
-        return array_map(function ($refund) use ($paymentId) {
+        return array_map(function (array $refund) use ($paymentId): array {
             return [
                 'id' => $refund['id'],
                 'payment_id' => $paymentId,
@@ -481,7 +481,7 @@ class PaymentRefundService
 
         return [
             'total' => $data['paging']['total'] ?? count($data),
-            'withdrawals' => array_map(function ($w) {
+            'withdrawals' => array_map(function (array $w): array {
                 return [
                     'id' => $w['id'] ?? null,
                     'type' => $w['type'] ?? null,

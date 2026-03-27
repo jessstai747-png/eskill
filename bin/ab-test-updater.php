@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * 🧪 A/B TEST UPDATER - Atualizador de Testes A/B
  * 

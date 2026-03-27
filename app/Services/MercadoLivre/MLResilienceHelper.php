@@ -13,14 +13,14 @@ use GuzzleHttp\Exception\RequestException;
 
 /**
  * 🚀 ML API Resilience Helper
- * 
+ *
  * Adiciona camada de resiliência robusta para chamadas à API do Mercado Livre:
  * - Rate limiting automático
  * - Retry com exponential backoff
  * - Circuit breaker
  * - Cache inteligente
  * - Logging estruturado
- * 
+ *
  * @package App\Services\MercadoLivre
  */
 class MLResilienceHelper
@@ -28,16 +28,16 @@ class MLResilienceHelper
     private object $circuitBreaker;  // CircuitBreakerService ou fallback em memória
     private ?CacheService $cache;
     private Client $httpClient;
-    
+
     // Rate Limiting (requests por segundo)
     private int $rateLimitPerSecond = 10;
     private array $requestTimestamps = [];
-    
+
     // Retry Configuration
     private int $maxRetries = 3;
     private array $retryStatusCodes = [429, 500, 502, 503, 504];
     private array $retryDelays = [1, 2, 4]; // segundos (exponential backoff)
-    
+
     public function __construct(?CircuitBreakerService $circuitBreaker = null, ?CacheService $cache = null)
     {
         // Circuit breaker opcional - se não passar e DB não disponível, cria um mock
@@ -55,7 +55,7 @@ class MLResilienceHelper
                 $this->circuitBreaker = $this->createInMemoryCircuitBreaker();
             }
         }
-        
+
         $this->cache = $cache;
         $this->httpClient = new Client([
             'timeout' => 30,
@@ -79,7 +79,7 @@ class MLResilienceHelper
 
     /**
      * Faz requisição resiliente à API do ML
-     * 
+     *
      * @param string $method HTTP method (GET, POST, PUT, DELETE)
      * @param string $url Full URL or path
      * @param array $options Guzzle request options
@@ -100,7 +100,7 @@ class MLResilienceHelper
                 'url' => $url,
                 'method' => $method
             ]);
-            
+
             return [
                 'success' => false,
                 'data' => null,
@@ -113,7 +113,7 @@ class MLResilienceHelper
         if ($cacheable && $method === 'GET' && $this->cache !== null) {
             $cacheKey = $this->getCacheKey($url, $options);
             $cached = $this->cache->get($cacheKey);
-            
+
             if ($cached !== null) {
                 logger()->debug('ML API cache hit', ['url' => $url]);
                 return [
@@ -172,7 +172,7 @@ class MLResilienceHelper
                 // Erro retryable?
                 if (in_array($statusCode, $this->retryStatusCodes, true) && $attempt < $this->maxRetries) {
                     $delay = $this->retryDelays[$attempt] ?? 4;
-                    
+
                     logger()->warning('ML API retrying', [
                         'method' => $method,
                         'url' => $url,
@@ -205,11 +205,11 @@ class MLResilienceHelper
 
             } catch (RequestException $e) {
                 $lastException = $e;
-                
+
                 // Retry em exceções de rede
                 if ($attempt < $this->maxRetries) {
                     $delay = $this->retryDelays[$attempt] ?? 4;
-                    
+
                     logger()->warning('ML API network error, retrying', [
                         'method' => $method,
                         'url' => $url,
@@ -253,24 +253,24 @@ class MLResilienceHelper
     private function enforceRateLimit(): void
     {
         $now = microtime(true);
-        
+
         // Remover timestamps antigos (mais de 1 segundo)
         $this->requestTimestamps = array_filter(
             $this->requestTimestamps,
-            fn($ts) => ($now - $ts) < 1.0
+            fn(float $ts): bool => ($now - $ts) < 1.0
         );
 
         // Se atingiu o limite, aguardar
         if (count($this->requestTimestamps) >= $this->rateLimitPerSecond) {
             $oldestTimestamp = min($this->requestTimestamps);
             $waitTime = 1.0 - ($now - $oldestTimestamp);
-            
+
             if ($waitTime > 0) {
                 logger()->debug('Rate limit wait', [
                     'wait_time' => $waitTime,
                     'requests_last_second' => count($this->requestTimestamps)
                 ]);
-                
+
                 usleep((int)($waitTime * 1000000));
             }
         }

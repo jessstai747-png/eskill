@@ -519,7 +519,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const AttributeFiller = {
         currentProduct: null,
         attributes: [],
@@ -535,9 +535,7 @@
             const select = document.getElementById('attr-product-select');
 
             try {
-                const {
-                    data
-                } = await requestJson('/api/items?limit=100');
+                const data = await requestJson('/api/items?limit=100');
 
                 if (data.results) {
                     select.innerHTML = '<option value="">Escolha um produto...</option>' +
@@ -600,9 +598,7 @@
 
         async loadHiddenAttributes(categoryId) {
             try {
-                const {
-                    data
-                } = await requestJson(`/api/seo-killer/hidden-attributes/${categoryId}`);
+                const data = await requestJson(`/api/seo-killer/hidden-attributes/${categoryId}`);
 
                 if (data.success) {
                     this.hiddenAttributes = data.attributes || [];
@@ -674,23 +670,23 @@
                             <span class="attribute-current-value">${attr.value}</span>
                         </div>
                     ` : ''}
-                    
+
                     ${hasSuggestion ? `
                         <div class="attribute-suggestion">
                             <div class="attribute-suggestion-label">💡 Sugestão da IA:</div>
                             <div>${attr.suggestion}</div>
                         </div>
                     ` : ''}
-                    
+
                     <div>
-                        <input type="text" 
-                               class="attribute-input" 
+                        <input type="text"
+                               class="attribute-input"
                                id="attr-input-${attr.id}"
                                placeholder="Digite o valor do atributo..."
                                value="${attr.value || ''}"
                                onchange="AttributeFiller.trackChange('${attr.id}', this.value)">
                     </div>
-                    
+
                     <div class="attribute-actions">
                         ${hasSuggestion ? `
                             <button class="btn btn-sm btn-success" onclick="AttributeFiller.applySuggestion('${attr.id}', '${attr.suggestion.replace(/'/g, "\\'")}')">
@@ -701,7 +697,7 @@
                             <i class="bi bi-magic"></i> Sugerir
                         </button>
                     </div>
-                    
+
                     ${attr.explanation ? `
                         <div class="attribute-explanation">
                             ${attr.explanation}
@@ -733,8 +729,8 @@
                         <strong>Por que é importante:</strong> ${attr.seo_impact || 'Este atributo aumenta significativamente o ranking nos resultados de busca.'}
                     </div>
                     <div>
-                        <input type="text" 
-                               class="attribute-input" 
+                        <input type="text"
+                               class="attribute-input"
                                id="attr-input-${attr.id}"
                                placeholder="Digite o valor..."
                                onchange="AttributeFiller.trackChange('${attr.id}', this.value)">
@@ -781,9 +777,7 @@
             input.disabled = true;
 
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/attributes', {
+                const data = await requestJson('/api/seo-killer/attributes', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -819,9 +813,7 @@
             SEOKiller.showLoading(document.getElementById('list-all-attrs'), 'Preenchendo atributos...');
 
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/attributes', {
+                const data = await requestJson('/api/seo-killer/attributes', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -860,9 +852,7 @@
             SEOKiller.showLoading(document.getElementById('list-missing-attrs'), 'Analisando gaps...');
 
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/attributes', {
+                const data = await requestJson('/api/seo-killer/attributes', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -897,7 +887,7 @@
 
             // Calculate incomplete attributes (filled but might be invalid or too short)
             const incomplete = this.attributes.filter(a => {
-                // Check if value exists but might be invalid or incomplete  
+                // Check if value exists but might be invalid or incomplete
                 return a.value && a.value.length > 0 && a.value.length < (a.min_length || 3);
             }).length;
 
@@ -929,9 +919,7 @@
             if (!this.currentProduct) return;
 
             try {
-                const {
-                    data: scoreData
-                } = await requestJson(`/api/seo-killer/score/${this.currentProduct.id}`);
+                const scoreData = await requestJson(`/api/seo-killer/score/${this.currentProduct.id}`);
                 const currentScore = scoreData.success !== false ? Math.round(scoreData.overall_score || 60) : 60;
 
                 // Estimate potential score improvement from missing attributes
@@ -1041,9 +1029,7 @@
             if (!confirmed) return;
 
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/attributes', {
+                const data = await requestJson('/api/seo-killer/attributes', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

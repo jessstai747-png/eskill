@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * CLI Worker para Envio Automático de Relatórios Diários
  * 

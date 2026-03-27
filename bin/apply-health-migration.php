@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * @deprecated Use `php bin/migrate.php` instead. This script applies only a single
  * hardcoded migration. The unified runner tracks all migrations automatically.

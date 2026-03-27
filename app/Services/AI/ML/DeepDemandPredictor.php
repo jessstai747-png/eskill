@@ -186,7 +186,6 @@ class DeepDemandPredictor
 
             // Fill in missing days with zeros
             return $this->fillMissingDays($results, $days);
-
         } catch (\Throwable $e) {
             log_warning('Erro ao obter histórico de vendas', [
                 'service' => 'DeepDemandPredictor',
@@ -283,7 +282,6 @@ class DeepDemandPredictor
             }
 
             return $this->fillMissingDays($results, $days);
-
         } catch (\Throwable $e) {
             // Table might not exist, return empty
             return [];
@@ -328,7 +326,7 @@ class DeepDemandPredictor
         $mean = $sum / $count;
 
         // Calculate standard deviation
-        $squaredDiffs = array_map(function ($val) use ($mean) {
+        $squaredDiffs = array_map(function (float|int $val) use ($mean): float|int {
             return pow($val - $mean, 2);
         }, $values);
 
@@ -395,7 +393,7 @@ class DeepDemandPredictor
             $currentWeight = 0.6;
             $nextWeight = 0.4;
             return (self::SEASONALITY_FACTORS[$currentMonth] * $currentWeight) +
-                   (self::SEASONALITY_FACTORS[$nextMonth] * $nextWeight);
+                (self::SEASONALITY_FACTORS[$nextMonth] * $nextWeight);
         }
     }
 

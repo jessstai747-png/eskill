@@ -207,7 +207,7 @@
 <!-- Toast Container para Notificações -->
 <div id="notification-toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 // Funções de configuração de notificações
 async function loadNotificationSettings() {
     try {

@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * Quick Setup Script for AI Optimization System
  * Automates initial configuration and testing
@@ -67,7 +70,12 @@ function check_database()
     echo "🗄️  Step 2: Checking database connection...\n";
 
     try {
-        require __DIR__ . '/../vendor/autoload.php';
+        require_once __DIR__ . '/../vendor/autoload.php';
+        if (class_exists(\Dotenv\Dotenv::class)) {
+            $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+            $dotenv->safeLoad();
+        }
+
         $db = App\Database::getInstance();
         echo "  ✓ Database connected\n\n";
         return true;

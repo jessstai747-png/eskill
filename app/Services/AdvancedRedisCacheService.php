@@ -36,12 +36,12 @@ class AdvancedRedisCacheService
             $this->redis = new $redisClass();
             
             $host = $config['host'] ?? $_ENV['REDIS_HOST'] ?? '127.0.0.1';
-            $port = $config['port'] ?? $_ENV['REDIS_PORT'] ?? 6379;
+            $port = (int) ($config['port'] ?? $_ENV['REDIS_PORT'] ?? 6379);
             $password = $config['password'] ?? $_ENV['REDIS_PASSWORD'] ?? null;
             if ($password === 'null' || $password === '') {
                 $password = null;
             }
-            $database = $config['database'] ?? $_ENV['REDIS_DB'] ?? 0;
+            $database = (int) ($config['database'] ?? $_ENV['REDIS_DB'] ?? 0);
             
             $connected = $this->redis->connect($host, $port, 2.5); // 2.5s timeout
             

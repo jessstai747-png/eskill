@@ -404,11 +404,11 @@ class FieldWeightService
     private function scoreKeywords(array $keywords, ?string $categoryId, string $title = ''): array
     {
         if (!$categoryId || empty($keywords)) {
-            return array_map(fn($kw) => ['keyword' => $kw, 'score' => 0.5], $keywords);
+            return array_map(fn(string $kw): array => ['keyword' => $kw, 'score' => 0.5], $keywords);
         }
 
         $result = $this->scoreService->scoreWords($keywords, $title, $categoryId);
-        return $result['scored_words'] ?? array_map(fn($kw) => ['keyword' => $kw, 'score' => 0.5], $keywords);
+        return $result['scored_words'] ?? array_map(fn(string $kw): array => ['keyword' => $kw, 'score' => 0.5], $keywords);
     }
 
     private function allocateToFields(array $scoredKeywords, array $currentValues): array
@@ -564,7 +564,7 @@ class FieldWeightService
             'a'
         ];
 
-        return array_values(array_filter($words, function ($w) use ($stopWords) {
+        return array_values(array_filter($words, function (string $w) use ($stopWords): bool {
             return strlen($w) > 2 && !in_array($w, $stopWords);
         }));
     }

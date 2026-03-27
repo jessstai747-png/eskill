@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // Simulate environment
 $_ENV['DB_HOST'] = $_ENV['DB_HOST'] ?? (getenv('DB_HOST') ?: 'localhost');
 $_ENV['DB_PORT'] = $_ENV['DB_PORT'] ?? (getenv('DB_PORT') ?: '3306');

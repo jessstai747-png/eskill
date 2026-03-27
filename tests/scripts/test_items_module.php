@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Items Module Comprehensive Test Script
  * Tests view rendering, API endpoints, and data integrity

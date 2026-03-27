@@ -416,8 +416,20 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // AI Image Analyzer State
+    function unwrapApiResponse(payload) {
+        if (!payload || typeof payload !== 'object') {
+            return payload;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'data') && payload.data !== undefined) {
+            return payload.data;
+        }
+
+        return payload;
+    }
+
     const imageAnalyzerState = {
         currentItemId: null,
         images: [],
@@ -428,9 +440,8 @@
     // Load products for image analysis
     async function loadProductsForImageAnalysis() {
         try {
-            const {
-                data
-            } = await requestJson('/api/items?status=active&limit=50');
+            const payload = await requestJson('/api/items?status=active&limit=50');
+            const data = unwrapApiResponse(payload) || {};
 
             const select = document.getElementById('imageProductSelect');
             select.innerHTML = '<option value="">Selecione um produto...</option>';
@@ -454,7 +465,9 @@
             Toastify({
                 text: 'Erro ao carregar produtos',
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
             }).showToast();
         }
     }
@@ -474,7 +487,9 @@
             Toastify({
                 text: 'Selecione um produto primeiro',
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
             }).showToast();
             return;
         }
@@ -483,13 +498,13 @@
         Toastify({
             text: 'Analisando imagens com IA...',
             duration: 2000,
-            backgroundColor: 'linear-gradient(to right, #667eea, #764ba2)'
+            style: {
+                background: 'linear-gradient(to right, #667eea, #764ba2)'
+            }
         }).showToast();
 
         try {
-            const {
-                data: payload
-            } = await requestJson(`/api/ai/images/analyze/${itemId}`);
+            const payload = await requestJson(`/api/ai/images/analyze/${itemId}`);
 
             imageAnalyzerState.analysis = payload;
             imageAnalyzerState.images = payload.images;
@@ -500,7 +515,9 @@
             Toastify({
                 text: 'Análise concluída!',
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)'
+                style: {
+                    background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                }
             }).showToast();
 
         } catch (error) {
@@ -508,7 +525,9 @@
             Toastify({
                 text: 'Erro ao analisar imagens',
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
             }).showToast();
         }
     }
@@ -695,8 +714,8 @@
                 <p class="mb-0 text-muted small">${practice.description}</p>
             </div>
             <div class="practice-status">
-                ${practice.passed ? 
-                    '<span class="badge bg-success">Cumprido</span>' : 
+                ${practice.passed ?
+                    '<span class="badge bg-success">Cumprido</span>' :
                     '<span class="badge bg-danger">Não cumprido</span>'}
             </div>
         </div>
@@ -802,9 +821,7 @@
         }
 
         try {
-            const {
-                data
-            } = await requestJson(`/api/ai/images/reorder/${imageAnalyzerState.currentItemId}`, {
+            const data = await requestJson(`/api/ai/images/reorder/${imageAnalyzerState.currentItemId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -822,7 +839,9 @@
                 Toastify({
                     text: 'Ordem aplicada com sucesso!',
                     duration: 3000,
-                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)'
+                    style: {
+                        background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                    }
                 }).showToast();
             }
         } catch (error) {
@@ -830,7 +849,9 @@
             Toastify({
                 text: 'Erro ao aplicar ordem',
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
             }).showToast();
         }
     }
@@ -860,7 +881,9 @@
             Toastify({
                 text: 'Imagem removida com sucesso!',
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)'
+                style: {
+                    background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                }
             }).showToast();
 
             bootstrap.Modal.getInstance(document.getElementById('imageDetailModal')).hide();
@@ -870,7 +893,9 @@
             Toastify({
                 text: 'Erro ao remover imagem',
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
             }).showToast();
         }
     }
@@ -899,12 +924,12 @@
             Toastify({
                 text: 'Enviando imagem...',
                 duration: 2000,
-                backgroundColor: 'linear-gradient(to right, #667eea, #764ba2)'
+                style: {
+                    background: 'linear-gradient(to right, #667eea, #764ba2)'
+                }
             }).showToast();
 
-            const {
-                data: result
-            } = await requestJson('/api/ai/images/upload', {
+            const result = await requestJson('/api/ai/images/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -913,7 +938,9 @@
                 Toastify({
                     text: 'Imagem substituída com sucesso!',
                     duration: 3000,
-                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)'
+                    style: {
+                        background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                    }
                 }).showToast();
                 bootstrap.Modal.getInstance(document.getElementById('imageDetailModal')).hide();
                 analyzeProductImages();
@@ -925,7 +952,9 @@
             Toastify({
                 text: error.message,
                 duration: 3000,
-                backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
             }).showToast();
         }
     }

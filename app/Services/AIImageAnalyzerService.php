@@ -978,7 +978,7 @@ class AIImageAnalyzerService
             if (count($values) < 4) return 70;
             // Calcular variância (imagens nítidas têm alta variância)
             $mean = array_sum($values) / count($values);
-            $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $values)) / count($values);
+            $variance = array_sum(array_map(fn(float|int $v): float|int => ($v - $mean) ** 2, $values)) / count($values);
             return min(100, max(0, (int)($variance / 20))); // Normalizar para 0-100
         } catch (\Exception $e) {
             return 70;
@@ -1148,7 +1148,7 @@ class AIImageAnalyzerService
                 return 0.0;
             }
             $mean = array_sum($samples) / count($samples);
-            $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $samples)) / count($samples);
+            $variance = array_sum(array_map(fn(float|int $v): float|int => ($v - $mean) ** 2, $samples)) / count($samples);
             return $variance;
         };
 
@@ -1479,7 +1479,7 @@ class AIImageAnalyzerService
         if (($summary['total_images'] ?? 0) < 6) {
             $recs[] = 'Adicione mais imagens (mínimo 6 recomendado pelo ML)';
         }
-        $lowRes = array_filter($results, fn($r) => ($r['resolution_score'] ?? 0) < 50);
+        $lowRes = array_filter($results, fn(array $r): bool => ($r['resolution_score'] ?? 0) < 50);
         if (!empty($lowRes)) {
             $recs[] = 'Substitua ' . count($lowRes) . ' imagens com baixa resolução (mínimo 1200x1200)';
         }

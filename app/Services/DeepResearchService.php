@@ -94,7 +94,7 @@ class DeepResearchService
             'brand' => $brand,
             'research_date' => date('Y-m-d H:i:s'),
             'status' => 'processing',
-            'filters_applied' => array_filter($filters, fn($v) => $v !== null),
+            'filters_applied' => array_filter($filters, fn(mixed $v): bool => $v !== null),
             'summary' => [],
             'listings' => [],
             'sellers' => [],
@@ -750,7 +750,7 @@ class DeepResearchService
 
             // Filtros adicionais que a API do ML não suporta nativamente
             if (!empty($filters['listing_type']) && $filters['listing_type'] !== 'all') {
-                $items = array_filter($items, function ($item) use ($filters) {
+                $items = array_filter($items, function (array $item) use ($filters): bool {
                     if ($filters['listing_type'] === 'catalog') {
                         return !empty($item['catalog_product_id']);
                     } else {
@@ -790,7 +790,7 @@ class DeepResearchService
      */
     private function filterBySellerReputation(array $items, string $reputation): array
     {
-        return array_filter($items, function ($item) use ($reputation) {
+        return array_filter($items, function (array $item) use ($reputation): bool {
             $seller = $item['seller'] ?? [];
             $powerStatus = strtolower($seller['power_seller_status'] ?? '');
 
@@ -1209,7 +1209,7 @@ class DeepResearchService
             $binMin = $min + ($i * $binSize);
             $binMax = $min + (($i + 1) * $binSize);
 
-            $count = count(array_filter($prices, function ($p) use ($binMin, $binMax, $i, $bins) {
+            $count = count(array_filter($prices, function (float|int $p) use ($binMin, $binMax, $i, $bins): bool {
                 return $i === $bins - 1
                     ? ($p >= $binMin && $p <= $binMax)
                     : ($p >= $binMin && $p < $binMax);
@@ -1438,7 +1438,7 @@ class DeepResearchService
         // Sem acesso ao peso real, usamos distribuição estimada
         $fullItems = array_filter(
             $items,
-            fn($item) => ($item['shipping']['logistic_type'] ?? '') === 'fulfillment'
+            fn(array $item): bool => ($item['shipping']['logistic_type'] ?? '') === 'fulfillment'
         );
 
         $count = count($fullItems);
@@ -1778,7 +1778,7 @@ class DeepResearchService
             'free_shipping_rate' => $data['shipping']['overview']['free_shipping']['percentage'] ?? 0,
             'full_rate' => $data['shipping']['logistics']['full']['percentage'] ?? 0,
             'total_opportunities' => count($data['opportunities'] ?? []),
-            'high_priority_opportunities' => count(array_filter($data['opportunities'] ?? [], fn($o) => $o['priority'] === 'high')),
+            'high_priority_opportunities' => count(array_filter($data['opportunities'] ?? [], fn(array $o): bool => $o['priority'] === 'high')),
         ];
     }
 
@@ -1816,7 +1816,7 @@ class DeepResearchService
         if ($count < 2) return 0;
 
         $mean = array_sum($values) / $count;
-        $sumSquares = array_sum(array_map(fn($v) => pow($v - $mean, 2), $values));
+        $sumSquares = array_sum(array_map(fn(float|int $v): float|int => pow($v - $mean, 2), $values));
 
         return round(sqrt($sumSquares / ($count - 1)), 2);
     }
@@ -2010,7 +2010,7 @@ class DeepResearchService
             $stopwords[] = mb_strtolower($this->collectedData['brand']);
         }
 
-        $words = array_filter($words, function ($w) use ($stopwords) {
+        $words = array_filter($words, function (string $w) use ($stopwords): bool {
             return !in_array($w, $stopwords) && mb_strlen($w) > 2;
         });
 

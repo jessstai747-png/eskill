@@ -310,7 +310,7 @@ class CompetitorMonitorService
         // Remover palavras comuns e caracteres especiais
         $stopWords = ['de', 'da', 'do', 'para', 'com', 'em', 'por', 'e', 'ou', 'a', 'o', 'as', 'os', 'um', 'uma'];
         $words = preg_split('/[\s\-\/\|\(\)]+/', mb_strtolower($title));
-        $words = array_filter($words, function ($word) use ($stopWords) {
+        $words = array_filter($words, function (string $word) use ($stopWords): bool {
             return mb_strlen($word) > 2 && !in_array($word, $stopWords) && !is_numeric($word);
         });
 
@@ -430,7 +430,7 @@ class CompetitorMonitorService
 
         // Calcular estatísticas de mercado
         $prices = array_column($competitors, 'competitor_price');
-        $prices = array_filter($prices, fn($p) => $p > 0);
+        $prices = array_filter($prices, fn(float|int $p): bool => $p > 0);
 
         if (empty($prices)) {
             return $alerts;
@@ -504,7 +504,7 @@ class CompetitorMonitorService
         }
 
         // Alerta: Concorrentes sem estoque
-        $outOfStock = array_filter($competitors, fn($c) => ($c['competitor_available_quantity'] ?? 0) === 0);
+        $outOfStock = array_filter($competitors, fn(array $c): bool => ($c['competitor_available_quantity'] ?? 0) === 0);
         if (count($outOfStock) >= 3) {
             $alerts[] = $this->createAlert(
                 $itemId,
@@ -684,24 +684,24 @@ class CompetitorMonitorService
         $myPrice = (float) ($myItem['price'] ?? 0);
 
         // Calcular estatísticas
-        $prices = array_filter(array_column($competitors, 'competitor_price'), fn($p) => $p > 0);
+        $prices = array_filter(array_column($competitors, 'competitor_price'), fn(float|int $p): bool => $p > 0);
         $minPrice = min($prices);
         $maxPrice = max($prices);
         $avgPrice = array_sum($prices) / count($prices);
         $medianPrice = $this->calculateMedian($prices);
 
         // Calcular posição de preço
-        $pricesBelow = count(array_filter($prices, fn($p) => $p < $myPrice));
+        $pricesBelow = count(array_filter($prices, fn(float|int $p): bool => $p < $myPrice));
         $pricePosition = count($prices) > 0 ? round(($pricesBelow / count($prices)) * 100) : 0;
 
         // Analisar frete grátis
-        $freeShippingCount = count(array_filter($competitors, fn($c) => $c['competitor_shipping_free']));
+        $freeShippingCount = count(array_filter($competitors, fn(array $c): bool => $c['competitor_shipping_free']));
         $freeShippingPercent = count($competitors) > 0 ? round(($freeShippingCount / count($competitors)) * 100) : 0;
 
         // Analisar vendedores premium
         $premiumSellers = count(array_filter(
             $competitors,
-            fn($c) =>
+            fn(array $c): bool =>
             str_contains(mb_strtolower($c['competitor_seller_reputation'] ?? ''), 'mercadolíder')
         ));
 
@@ -763,7 +763,7 @@ class CompetitorMonitorService
             $bucketMin = $min + ($i * $bucketSize);
             $bucketMax = $min + (($i + 1) * $bucketSize);
 
-            $count = count(array_filter($prices, function ($p) use ($bucketMin, $bucketMax, $i) {
+            $count = count(array_filter($prices, function (float|int $p) use ($bucketMin, $bucketMax, $i): bool {
                 return $i === 4 ? ($p >= $bucketMin && $p <= $bucketMax) : ($p >= $bucketMin && $p < $bucketMax);
             }));
 

@@ -68,4 +68,4 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/js/command-palette.js"></script>
+<script nonce="<?= CSP_NONCE ?>" src="/js/command-palette.js"></script>

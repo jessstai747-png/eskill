@@ -180,8 +180,12 @@ class RankingAlertService
             'average_price' => round($averagePrice, 2),
             'median_price' => $medianPrice,
             'price_range' => $highestPrice - $lowestPrice,
-            'distance_from_lowest' => round((($currentPrice - $lowestPrice) / $lowestPrice) * 100, 2),
-            'distance_from_average' => round((($currentPrice - $averagePrice) / $averagePrice) * 100, 2),
+            'distance_from_lowest' => $lowestPrice > 0
+                ? round((($currentPrice - $lowestPrice) / $lowestPrice) * 100, 2)
+                : 0.0,
+            'distance_from_average' => $averagePrice > 0
+                ? round((($currentPrice - $averagePrice) / $averagePrice) * 100, 2)
+                : 0.0,
         ];
     }
 

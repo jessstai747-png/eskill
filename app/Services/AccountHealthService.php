@@ -640,10 +640,10 @@ class AccountHealthService
             // ML quality score é a fonte mais confiável pois reflete o algoritmo real
             if ($mlQuality !== null && $mlQuality['overall_score'] !== null) {
                 $mlScore = (float) $mlQuality['overall_score'];
-                $score = round($mlScore * 0.6 + $avgScore * 0.4);
+                $score = (int) round($mlScore * 0.6 + $avgScore * 0.4);
                 $details['score_source'] = 'ml_quality_60_local_40';
             } else {
-                $score = round($avgScore);
+                $score = (int) round($avgScore);
                 $details['score_source'] = 'local_only';
             }
 
@@ -3017,8 +3017,8 @@ class AccountHealthService
                 'total_paused'   => $totalPaused,
                 'items'          => array_slice($items, 0, 10),
                 'recovery_value' => round($totalRecoveryValue, 2),
-                'reactivatable'  => count(array_filter($items, fn($i) => $i['reactivate_score'] >= 70)),
-                'needs_restock'  => count(array_filter($items, fn($i) => $i['recommendation'] === 'restock_needed')),
+                'reactivatable'  => count(array_filter($items, fn(array $i): bool => $i['reactivate_score'] >= 70)),
+                'needs_restock'  => count(array_filter($items, fn(array $i): bool => $i['recommendation'] === 'restock_needed')),
             ];
         } catch (\Exception $e) {
             log_error('Erro na análise de recuperação de pausados', [
@@ -3218,8 +3218,8 @@ class AccountHealthService
 
     private function generateSummary(int $score, array $pillars, array $actions): array
     {
-        $criticalCount = count(array_filter($actions, fn($a) => $a['severity'] === 'critical'));
-        $warningCount = count(array_filter($actions, fn($a) => $a['severity'] === 'warning'));
+        $criticalCount = count(array_filter($actions, fn(array $a): bool => $a['severity'] === 'critical'));
+        $warningCount = count(array_filter($actions, fn(array $a): bool => $a['severity'] === 'warning'));
 
         // Pilar mais fraco e mais forte
         $worstPillar = null;
@@ -3668,7 +3668,7 @@ class AccountHealthService
         $avgResponseHours = !empty($responseTimes) ? array_sum($responseTimes) / count($responseTimes) : 0;
         $responseRate24h = 0;
         if ($total > 0) {
-            $answeredIn24h = array_filter($responseTimes, fn($h) => $h <= 24);
+            $answeredIn24h = array_filter($responseTimes, fn(float|int $h): bool => $h <= 24);
             $responseRate24h = (count($answeredIn24h) / $total) * 100;
         }
 
@@ -3802,11 +3802,38 @@ class AccountHealthService
                 return $this->emptyCatalogHealth();
             }
 
-            $items = $this->getCachedActiveItems();
+            $activeData = $this->getCachedActiveItems();
+            $itemIds = $activeData['ids'] ?? [];
+            if (empty($itemIds)) {
+                return $this->emptyCatalogHealth();
+            }
+
+            $items = [];
+            $itemBatches = array_chunk(array_slice($itemIds, 0, 200), 20);
+            foreach ($itemBatches as $batch) {
+                $idsParam = implode(',', $batch);
+                $batchItems = $this->client->get('/items', [
+                    'ids'        => $idsParam,
+                    'attributes' => 'id,title,catalog_product_id',
+                ]);
+
+                foreach ($batchItems as $wrapper) {
+                    $item = $wrapper['body'] ?? $wrapper;
+                    if (!is_array($item) || empty($item['id'])) {
+                        continue;
+                    }
+
+                    $items[] = $item;
+                }
+            }
+
+            if (empty($items)) {
+                return $this->emptyCatalogHealth();
+            }
 
             // Analyze catalog participation
-            $catalogItems = array_filter($items, fn($item) => !empty($item['catalog_product_id']));
-            $nonCatalogItems = array_filter($items, fn($item) => empty($item['catalog_product_id']));
+            $catalogItems = array_filter($items, fn(array $item): bool => !empty($item['catalog_product_id']));
+            $nonCatalogItems = array_filter($items, fn(array $item): bool => empty($item['catalog_product_id']));
 
             $catalogRatio = count($items) > 0 ? (count($catalogItems) / count($items)) * 100 : 0;
 

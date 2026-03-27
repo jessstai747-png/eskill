@@ -13,7 +13,7 @@ use Exception;
 
 /**
  * Service para gerenciamento de Push Notifications via Web Push API
- * 
+ *
  * Usa VAPID (Voluntary Application Server Identification) para autenticação
  * Suporta armazenamento de subscriptions e envio de notificações
  * Utiliza minishlink/web-push para envio real de notificações
@@ -78,7 +78,7 @@ class PushNotificationService
                     'privateKey' => $this->vapidPrivateKey,
                 ]
             ];
-            
+
             $this->webPush = new WebPush($auth);
             $this->webPush->setReuseVAPIDHeaders(true);
         } catch (Exception $e) {
@@ -122,7 +122,7 @@ class PushNotificationService
             $keys = VAPID::createVapidKeys();
             $this->vapidPublicKey = $keys['publicKey'];
             $this->vapidPrivateKey = $keys['privateKey'];
-            
+
             // Salvar em .env se possível (ou logar para manual)
             log_warning('VAPID keys generated - add to .env', [
                 'service' => 'PushNotificationService',
@@ -163,7 +163,7 @@ class PushNotificationService
             if ($existing) {
                 // Atualizar subscription existente
                 $stmt = $this->db->prepare("
-                    UPDATE push_subscriptions 
+                    UPDATE push_subscriptions
                     SET user_id = :user_id,
                         p256dh_key = :p256dh,
                         auth_key = :auth,
@@ -187,7 +187,7 @@ class PushNotificationService
 
             // Criar nova subscription
             $stmt = $this->db->prepare("
-                INSERT INTO push_subscriptions 
+                INSERT INTO push_subscriptions
                 (user_id, endpoint, p256dh_key, auth_key, user_agent, created_at, updated_at)
                 VALUES (:user_id, :endpoint, :p256dh, :auth, :user_agent, NOW(), NOW())
             ");
@@ -227,7 +227,7 @@ class PushNotificationService
 
         try {
             $stmt = $this->db->prepare("
-                DELETE FROM push_subscriptions 
+                DELETE FROM push_subscriptions
                 WHERE user_id = :user_id AND endpoint = :endpoint
             ");
 
@@ -276,8 +276,8 @@ class PushNotificationService
         }
 
         $stmt = $this->db->prepare("
-            SELECT * FROM push_subscriptions 
-            WHERE user_id = :user_id 
+            SELECT * FROM push_subscriptions
+            WHERE user_id = :user_id
             ORDER BY created_at DESC
         ");
         $stmt->execute(['user_id' => $userId]);
@@ -317,8 +317,8 @@ class PushNotificationService
 
         return [
             'success' => true,
-            'sent' => count(array_filter($results, fn($r) => $r['success'])),
-            'failed' => count(array_filter($results, fn($r) => !$r['success'])),
+            'sent' => count(array_filter($results, fn(array $r): bool => $r['success'])),
+            'failed' => count(array_filter($results, fn(array $r): bool => !$r['success'])),
             'results' => $results
         ];
     }
@@ -334,43 +334,43 @@ class PushNotificationService
             if (!$this->webPush) {
                 return $this->sendNotificationFallback($subscription, $payload);
             }
-            
+
             $endpoint = $subscription['endpoint'];
             $p256dh = $subscription['p256dh_key'];
             $auth = $subscription['auth_key'];
-            
+
             // Criar objeto Subscription
             $sub = Subscription::create([
                 'endpoint' => $endpoint,
                 'publicKey' => $p256dh,
                 'authToken' => $auth,
             ]);
-            
+
             // Preparar payload
             $payloadJson = json_encode($payload);
-            
+
             // Enfileirar notificação
             $this->webPush->queueNotification($sub, $payloadJson);
-            
+
             // Enviar todas as notificações enfileiradas
             $reports = [];
             foreach ($this->webPush->flush() as $report) {
                 $reports[] = $report;
             }
-            
+
             // Verificar resultado
             if (empty($reports)) {
                 return ['success' => false, 'error' => 'Nenhum relatório de envio'];
             }
-            
+
             $report = $reports[0];
-            
+
             if ($report->isSuccess()) {
                 // Atualizar última notificação
                 $this->updateLastNotified($subscription['id']);
                 return ['success' => true];
             }
-            
+
             // Verificar se subscription expirou
             if ($report->isSubscriptionExpired()) {
                 return [
@@ -379,12 +379,11 @@ class PushNotificationService
                     'error' => 'Subscription expirada ou inválida'
                 ];
             }
-            
+
             return [
                 'success' => false,
                 'error' => $report->getReason()
             ];
-            
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -392,7 +391,7 @@ class PushNotificationService
             ];
         }
     }
-    
+
     /**
      * Fallback para envio de notificação via cURL (quando WebPush não disponível)
      */
@@ -449,8 +448,8 @@ class PushNotificationService
         }
 
         $stmt = $this->db->prepare("
-            UPDATE push_subscriptions 
-            SET last_notified_at = NOW() 
+            UPDATE push_subscriptions
+            SET last_notified_at = NOW()
             WHERE id = :id
         ");
         $stmt->execute(['id' => $subscriptionId]);
@@ -574,15 +573,15 @@ class PushNotificationService
 
         // Subscriptions ativas (notificadas nos últimos 30 dias)
         $stmt = $this->db->query("
-            SELECT COUNT(*) FROM push_subscriptions 
+            SELECT COUNT(*) FROM push_subscriptions
             WHERE last_notified_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
         ");
         $stats['active_subscriptions'] = (int) $stmt->fetchColumn();
 
         // Por navegador (baseado no endpoint)
         $stmt = $this->db->query("
-            SELECT 
-                CASE 
+            SELECT
+                CASE
                     WHEN endpoint LIKE '%fcm.googleapis.com%' THEN 'Chrome/Firefox'
                     WHEN endpoint LIKE '%mozilla%' THEN 'Firefox'
                     WHEN endpoint LIKE '%apple%' THEN 'Safari'
@@ -607,7 +606,7 @@ class PushNotificationService
         }
 
         $stmt = $this->db->prepare("
-            DELETE FROM push_subscriptions 
+            DELETE FROM push_subscriptions
             WHERE updated_at < DATE_SUB(NOW(), INTERVAL :days DAY)
         ");
         $stmt->execute(['days' => $daysOld]);

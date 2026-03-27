@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // Validar sessão
 if (!isset($_SESSION['user_id'])) {
     header('Location: /login');

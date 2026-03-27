@@ -18,6 +18,7 @@ class SecurityMiddleware
 {
     private array $config;
     private ?\PDO $db;
+    private array $tableExistsCache = [];
 
     // IPs whitelist (não bloqueados)
     private array $whitelist = ['127.0.0.1', '::1', '193.186.4.203'];
@@ -85,6 +86,8 @@ class SecurityMiddleware
         } catch (\Exception $e) {
             $this->db = null;
         }
+
+        $this->whitelist = $this->loadWhitelist();
     }
 
     /**
@@ -240,7 +243,7 @@ class SecurityMiddleware
      */
     private function isIpBlocked(string $ip): bool
     {
-        if (in_array($ip, $this->whitelist)) {
+        if (in_array($ip, $this->whitelist, true)) {
             return false;
         }
 
@@ -249,14 +252,25 @@ class SecurityMiddleware
         }
 
         try {
-            $sql = "SELECT id FROM blocked_ips
-                    WHERE ip_address = :ip
-                    AND (blocked_until IS NULL OR blocked_until > NOW())";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute(['ip' => $ip]);
+            foreach (['blocked_ips', 'auth_blocked_ips'] as $table) {
+                if (!$this->tableExists($table)) {
+                    continue;
+                }
 
-            return $stmt->fetch() !== false;
+                $stmt = $this->db->prepare($this->getBlockedIpLookupSql($table));
+                $stmt->execute(['ip' => $ip]);
+
+                if ($stmt->fetch() !== false) {
+                    return true;
+                }
+            }
+
+            return false;
         } catch (\Exception $e) {
+            log_warning('SecurityMiddleware: failed to check IP block status', [
+                'ip' => $ip,
+                'error' => $e->getMessage(),
+            ]);
             return false;
         }
     }
@@ -275,22 +289,40 @@ class SecurityMiddleware
                 ? date('Y-m-d H:i:s', time() + $durationSeconds)
                 : null;
 
-            $sql = "INSERT INTO blocked_ips (ip_address, reason, blocked_until, attempts)
-                    VALUES (:ip, :reason, :blocked_until, 1)
-                    ON DUPLICATE KEY UPDATE
-                        reason = :reason2,
-                        blocked_until = :blocked_until2,
-                        attempts = attempts + 1,
-                        updated_at = NOW()";
+            if ($this->tableExists('blocked_ips')) {
+                $sql = "INSERT INTO blocked_ips (ip_address, reason, blocked_until, attempts)
+                        VALUES (:ip, :reason, :blocked_until, 1)
+                        ON DUPLICATE KEY UPDATE
+                            reason = :reason2,
+                            blocked_until = :blocked_until2,
+                            attempts = attempts + 1,
+                            updated_at = NOW()";
 
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([
-                'ip' => $ip,
-                'reason' => $reason,
-                'blocked_until' => $blockedUntil,
-                'reason2' => $reason,
-                'blocked_until2' => $blockedUntil
-            ]);
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([
+                    'ip' => $ip,
+                    'reason' => $reason,
+                    'blocked_until' => $blockedUntil,
+                    'reason2' => $reason,
+                    'blocked_until2' => $blockedUntil
+                ]);
+            }
+
+            if ($this->tableExists('auth_blocked_ips')) {
+                $sql = "INSERT INTO auth_blocked_ips
+                        (ip_address, reason, failure_count, blocked_at, expires_at, is_permanent, created_by)
+                        VALUES (:ip, :reason, 1, NOW(), :expires_at, :is_permanent, 'SecurityMiddleware')";
+
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([
+                    'ip' => $ip,
+                    'reason' => $reason,
+                    'expires_at' => $blockedUntil,
+                    'is_permanent' => $blockedUntil === null ? 1 : 0,
+                ]);
+            }
+
+            return false;
         } catch (\Exception $e) {
             log_error('Erro ao bloquear IP', ['service' => 'SecurityMiddleware', 'error' => $e->getMessage()]);
             return false;
@@ -324,10 +356,24 @@ class SecurityMiddleware
      */
     private function hasAttackPatterns(): bool
     {
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        
+        // Whitelist explícita para rotas OAuth que naturalmente contêm URLs como parâmetros
+        // (ex: redirect_uri=https://...) que disparam falsos positivos de Remote File Inclusion (RFI)
+        // ou Path Traversal.
+        if (str_starts_with($uri, '/auth/authorize') || str_starts_with($uri, '/auth/callback')) {
+            return false;
+        }
+
+        // Only check URL and query string — NOT the request body (php://input).
+        // POST body (form fields, passwords, JSON payloads) should NOT be scanned
+        // here because legitimate values such as passwords containing '#', "'", '--'
+        // or '%23' would trigger false positives and lock out valid users.
+        // SQL-injection prevention for DB operations is handled by PDO prepared
+        // statements throughout the application.
         $checkData = [
             $_SERVER['REQUEST_URI'] ?? '',
             $_SERVER['QUERY_STRING'] ?? '',
-            file_get_contents('php://input') ?: ''
         ];
 
         $combined = implode(' ', $checkData);
@@ -494,17 +540,113 @@ class SecurityMiddleware
 
             $events = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            // IPs bloqueados
-            $blockedSql = "SELECT COUNT(*) FROM blocked_ips WHERE blocked_until IS NULL OR blocked_until > NOW()";
-            $blockedCount = $this->db->query($blockedSql)->fetchColumn();
-
             return [
                 'events' => $events,
-                'blocked_ips' => (int)$blockedCount,
+                'blocked_ips' => $this->countActiveBlockedIps(),
                 'period_hours' => $hours
             ];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Carrega whitelist estática + whitelist configurada via ambiente.
+     *
+     * AUTH_IP_WHITELIST é compartilhado com os scripts de operação.
+     *
+     * @return array<int, string>
+     */
+    private function loadWhitelist(): array
+    {
+        $whitelist = $this->whitelist;
+        $whitelistStr = (string)($_ENV['AUTH_IP_WHITELIST'] ?? getenv('AUTH_IP_WHITELIST') ?? '');
+
+        if ($whitelistStr !== '') {
+            foreach (explode(',', $whitelistStr) as $candidate) {
+                $ip = trim($candidate);
+                if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP)) {
+                    $whitelist[] = $ip;
+                }
+            }
+        }
+
+        return array_values(array_unique($whitelist));
+    }
+
+    private function tableExists(string $table): bool
+    {
+        if (isset($this->tableExistsCache[$table])) {
+            return $this->tableExistsCache[$table];
+        }
+
+        if (!$this->db) {
+            return false;
+        }
+
+        try {
+            $stmt = $this->db->prepare('SHOW TABLES LIKE :table');
+            $stmt->execute(['table' => $table]);
+            $this->tableExistsCache[$table] = $stmt->fetchColumn() !== false;
+        } catch (\Throwable $e) {
+            $this->tableExistsCache[$table] = false;
+        }
+
+        return $this->tableExistsCache[$table];
+    }
+
+    private function getBlockedIpLookupSql(string $table): string
+    {
+        return match ($table) {
+            'auth_blocked_ips' => "SELECT id FROM auth_blocked_ips
+                WHERE ip_address = :ip
+                AND (is_permanent = 1 OR expires_at IS NULL OR expires_at > NOW())
+                LIMIT 1",
+            default => "SELECT id FROM blocked_ips
+                WHERE ip_address = :ip
+                AND (blocked_until IS NULL OR blocked_until > NOW())
+                LIMIT 1",
+        };
+    }
+
+    private function countActiveBlockedIps(): int
+    {
+        if (!$this->db) {
+            return 0;
+        }
+
+        try {
+            $activeIps = [];
+
+            if ($this->tableExists('blocked_ips')) {
+                $stmt = $this->db->query(
+                    "SELECT ip_address FROM blocked_ips
+                     WHERE blocked_until IS NULL OR blocked_until > NOW()"
+                );
+
+                foreach ($stmt->fetchAll(\PDO::FETCH_COLUMN) as $ip) {
+                    if (is_string($ip) && $ip !== '') {
+                        $activeIps[$ip] = true;
+                    }
+                }
+            }
+
+            if ($this->tableExists('auth_blocked_ips')) {
+                $stmt = $this->db->query(
+                    "SELECT ip_address FROM auth_blocked_ips
+                     WHERE is_permanent = 1 OR expires_at IS NULL OR expires_at > NOW()"
+                );
+
+                foreach ($stmt->fetchAll(\PDO::FETCH_COLUMN) as $ip) {
+                    if (is_string($ip) && filter_var($ip, FILTER_VALIDATE_IP)) {
+                        $activeIps[$ip] = true;
+                    }
+                }
+            }
+
+            return count($activeIps);
+        } catch (\Throwable $e) {
+            return 0;
         }
     }
 }

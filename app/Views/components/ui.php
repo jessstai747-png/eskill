@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * UI Components Library
  * Componentes reutilizáveis para o dashboard

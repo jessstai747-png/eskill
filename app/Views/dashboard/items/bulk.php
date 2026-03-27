@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Editor em Massa';
 $subtitle = 'Atualize múltiplos anúncios simultaneamente';
 include __DIR__ . '/../../layouts/modern/partials/page-header.php';
@@ -75,7 +78,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';

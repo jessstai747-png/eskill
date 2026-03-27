@@ -608,7 +608,7 @@ class SEOKillerEngine
     private function generatePriorityActions(array $problems, array $opportunities): array
     {
         $actions = [];
-        $critical = array_filter($problems, fn($p) => $p['severity'] === 'critical');
+        $critical = array_filter($problems, fn(array $p): bool => $p['severity'] === 'critical');
 
         foreach (array_slice($critical, 0, 3) as $p) {
             $actions[] = [

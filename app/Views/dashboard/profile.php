@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Meu Perfil - Versão Moderna
  * Integrado com o layout moderno (sidebar, temas, etc.)
@@ -190,7 +193,7 @@ if (!$currentUser) {
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // Validação de senha
     document.getElementById('passwordForm').addEventListener('submit', function(e) {
         const newPassword = document.getElementById('new_password').value;

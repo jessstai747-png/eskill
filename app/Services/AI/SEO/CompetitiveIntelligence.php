@@ -9,29 +9,29 @@ use PDO;
 
 /**
  * 📊 Competitive Intelligence Dashboard
- * 
+ *
  * Análise avançada de mercado e oportunidades:
  * - Market share analysis
  * - Price trends e gap analysis
  * - Opportunity detection
  * - Strategic recommendations
- * 
+ *
  * @version 1.0.0
  */
 class CompetitiveIntelligence
 {
     private PDO $db;
     private int $accountId;
-    
+
     public function __construct(int $accountId)
     {
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
     }
-    
+
     /**
      * Dashboard principal de inteligência competitiva
-     * 
+     *
      * @param string $categoryId Categoria ML (opcional)
      * @param array $options Opções de filtro
      * @return array Dashboard data
@@ -46,22 +46,22 @@ class CompetitiveIntelligence
             'top_competitors' => $this->getTopCompetitors($categoryId, 10),
             'recommendations' => $this->generateRecommendations($categoryId),
         ];
-        
+
         return $data;
     }
-    
+
     /**
      * Overview geral do mercado
      */
     private function getOverview(string $categoryId = null): array
     {
         $whereClause = $categoryId ? "AND category_id = :category_id" : "";
-        
+
         // Total de concorrentes monitorados
         $stmt = $this->db->prepare("
             SELECT COUNT(*) as total
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               {$whereClause}
         ");
@@ -69,44 +69,44 @@ class CompetitiveIntelligence
         if ($categoryId) $params['category_id'] = $categoryId;
         $stmt->execute($params);
         $totalCompetitors = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-        
+
         // Mudanças nas últimas 24h
         $stmt = $this->db->prepare("
             SELECT COUNT(*) as total
             FROM competitor_history
             WHERE watchlist_id IN (
-                SELECT id FROM competitor_watchlist 
+                SELECT id FROM competitor_watchlist
                 WHERE account_id = :account_id {$whereClause}
             )
             AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
         ");
         $stmt->execute($params);
         $recentChanges = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-        
+
         // Alertas não lidos
         $stmt = $this->db->prepare("
             SELECT COUNT(*) as total
             FROM competitor_alerts
             WHERE watchlist_id IN (
-                SELECT id FROM competitor_watchlist 
+                SELECT id FROM competitor_watchlist
                 WHERE account_id = :account_id {$whereClause}
             )
             AND status = 'unread'
         ");
         $stmt->execute($params);
         $unreadAlerts = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-        
+
         // Preço médio do mercado
         $stmt = $this->db->prepare("
             SELECT AVG(CAST(current_price AS DECIMAL(10,2))) as avg_price
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               {$whereClause}
         ");
         $stmt->execute($params);
         $avgPrice = $stmt->fetch(PDO::FETCH_ASSOC)['avg_price'] ?? 0;
-        
+
         return [
             'total_competitors' => $totalCompetitors,
             'recent_changes_24h' => $recentChanges,
@@ -114,22 +114,22 @@ class CompetitiveIntelligence
             'market_avg_price' => round($avgPrice, 2),
         ];
     }
-    
+
     /**
      * Tendências de mercado (últimos 30 dias)
      */
     private function getMarketTrends(string $categoryId = null): array
     {
         $whereClause = $categoryId ? "AND w.category_id = :category_id" : "";
-        
+
         // Mudanças de preço por dia (últimos 30 dias)
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(h.created_at) as date,
                 COUNT(*) as total_changes,
-                AVG(CASE 
+                AVG(CASE
                     WHEN h.field = 'price' AND CAST(h.new_value AS DECIMAL(10,2)) < CAST(h.old_value AS DECIMAL(10,2))
-                    THEN 1 ELSE 0 
+                    THEN 1 ELSE 0
                 END) as price_decrease_ratio
             FROM competitor_history h
             JOIN competitor_watchlist w ON w.id = h.watchlist_id
@@ -143,14 +143,14 @@ class CompetitiveIntelligence
         if ($categoryId) $params['category_id'] = $categoryId;
         $stmt->execute($params);
         $dailyChanges = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Tendência de preços (sobe/desce)
         $priceIncreases = 0;
         $priceDecreases = 0;
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
-                CASE 
+            SELECT
+                CASE
                     WHEN CAST(new_value AS DECIMAL(10,2)) > CAST(old_value AS DECIMAL(10,2)) THEN 'increase'
                     WHEN CAST(new_value AS DECIMAL(10,2)) < CAST(old_value AS DECIMAL(10,2)) THEN 'decrease'
                     ELSE 'stable'
@@ -166,7 +166,7 @@ class CompetitiveIntelligence
         ");
         $stmt->execute($params);
         $trends = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         foreach ($trends as $trend) {
             if ($trend['trend'] === 'increase') {
                 $priceIncreases = $trend['count'];
@@ -174,7 +174,7 @@ class CompetitiveIntelligence
                 $priceDecreases = $trend['count'];
             }
         }
-        
+
         return [
             'daily_changes' => $dailyChanges,
             'price_trend' => [
@@ -184,22 +184,22 @@ class CompetitiveIntelligence
             ],
         ];
     }
-    
+
     /**
      * Análise de preços competitivos
      */
     private function getPriceAnalysis(string $categoryId = null): array
     {
         $whereClause = $categoryId ? "AND category_id = :category_id" : "";
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 MIN(CAST(current_price AS DECIMAL(10,2))) as min_price,
                 MAX(CAST(current_price AS DECIMAL(10,2))) as max_price,
                 AVG(CAST(current_price AS DECIMAL(10,2))) as avg_price,
                 STDDEV(CAST(current_price AS DECIMAL(10,2))) as price_stddev
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               AND current_price IS NOT NULL
               {$whereClause}
@@ -208,25 +208,25 @@ class CompetitiveIntelligence
         if ($categoryId) $params['category_id'] = $categoryId;
         $stmt->execute($params);
         $stats = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Distribuição de preços (ranges)
         $ranges = [
             'low' => ['min' => 0, 'max' => $stats['avg_price'] * 0.7, 'count' => 0],
             'medium' => ['min' => $stats['avg_price'] * 0.7, 'max' => $stats['avg_price'] * 1.3, 'count' => 0],
             'high' => ['min' => $stats['avg_price'] * 1.3, 'max' => PHP_FLOAT_MAX, 'count' => 0],
         ];
-        
+
         $stmt = $this->db->prepare("
             SELECT current_price
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               AND current_price IS NOT NULL
               {$whereClause}
         ");
         $stmt->execute($params);
         $prices = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
+
         foreach ($prices as $price) {
             $price = (float)$price;
             if ($price <= $ranges['low']['max']) {
@@ -237,7 +237,7 @@ class CompetitiveIntelligence
                 $ranges['high']['count']++;
             }
         }
-        
+
         return [
             'min' => round($stats['min_price'], 2),
             'max' => round($stats['max_price'], 2),
@@ -250,7 +250,7 @@ class CompetitiveIntelligence
             ],
         ];
     }
-    
+
     /**
      * Detecta oportunidades de mercado
      */
@@ -260,12 +260,12 @@ class CompetitiveIntelligence
         $whereClause = $categoryId ? "AND category_id = :category_id" : "";
         $params = ['account_id' => $this->accountId];
         if ($categoryId) $params['category_id'] = $categoryId;
-        
+
         // Oportunidade 1: Concorrentes com score SEO baixo (<50)
         $stmt = $this->db->prepare("
             SELECT item_id, current_title, current_seo_score, current_price
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               AND current_seo_score < 50
               {$whereClause}
@@ -274,7 +274,7 @@ class CompetitiveIntelligence
         ");
         $stmt->execute($params);
         $lowSeoCompetitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (!empty($lowSeoCompetitors)) {
             $opportunities[] = [
                 'type' => 'low_seo_competitors',
@@ -285,12 +285,12 @@ class CompetitiveIntelligence
                 'action' => 'Otimize seu SEO para superar esses concorrentes',
             ];
         }
-        
+
         // Oportunidade 2: Quedas de preço recentes (últimas 48h)
         $stmt = $this->db->prepare("
-            SELECT 
-                w.item_id, 
-                w.current_title, 
+            SELECT
+                w.item_id,
+                w.current_title,
                 h.old_value as old_price,
                 h.new_value as new_price,
                 h.created_at,
@@ -307,7 +307,7 @@ class CompetitiveIntelligence
         ");
         $stmt->execute($params);
         $priceDrops = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (!empty($priceDrops)) {
             $opportunities[] = [
                 'type' => 'recent_price_drops',
@@ -318,12 +318,12 @@ class CompetitiveIntelligence
                 'action' => 'Revisar sua precificação ou destacar diferenciais',
             ];
         }
-        
+
         // Oportunidade 3: Concorrentes sem frete grátis
         $stmt = $this->db->prepare("
             SELECT item_id, current_title, current_price, current_seo_score
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               AND (current_shipping_free = 0 OR current_shipping_free IS NULL)
               {$whereClause}
@@ -332,7 +332,7 @@ class CompetitiveIntelligence
         ");
         $stmt->execute($params);
         $noFreeShipping = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (!empty($noFreeShipping)) {
             $opportunities[] = [
                 'type' => 'no_free_shipping',
@@ -343,12 +343,12 @@ class CompetitiveIntelligence
                 'action' => 'Ativar frete grátis para ganhar vantagem competitiva',
             ];
         }
-        
+
         // Oportunidade 4: Gap de atributos
         $stmt = $this->db->prepare("
             SELECT item_id, current_title, current_attributes_filled, current_seo_score
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               AND current_attributes_filled < 10
               {$whereClause}
@@ -357,7 +357,7 @@ class CompetitiveIntelligence
         ");
         $stmt->execute($params);
         $missingAttributes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (!empty($missingAttributes)) {
             $opportunities[] = [
                 'type' => 'missing_attributes',
@@ -368,19 +368,19 @@ class CompetitiveIntelligence
                 'action' => 'Preencher todos os atributos relevantes do seu produto',
             ];
         }
-        
+
         return $opportunities;
     }
-    
+
     /**
      * Top concorrentes por score SEO
      */
     private function getTopCompetitors(string $categoryId = null, int $limit = 10): array
     {
         $whereClause = $categoryId ? "AND category_id = :category_id" : "";
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 item_id,
                 current_title,
                 current_price,
@@ -390,7 +390,7 @@ class CompetitiveIntelligence
                 current_shipping_free,
                 updated_at
             FROM competitor_watchlist
-            WHERE account_id = :account_id 
+            WHERE account_id = :account_id
               AND status = 'active'
               {$whereClause}
             ORDER BY current_seo_score DESC
@@ -399,20 +399,20 @@ class CompetitiveIntelligence
         $params = ['account_id' => $this->accountId];
         if ($categoryId) $params['category_id'] = $categoryId;
         $stmt->execute($params);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Gera recomendações estratégicas
      */
     private function generateRecommendations(string $categoryId = null): array
     {
         $recommendations = [];
-        
+
         // Análise de preços
         $priceAnalysis = $this->getPriceAnalysis($categoryId);
-        
+
         $recommendations[] = [
             'category' => 'pricing',
             'title' => '💰 Estratégia de Preço',
@@ -429,7 +429,7 @@ class CompetitiveIntelligence
                 'Monitorar mudanças de preço dos top 3 concorrentes',
             ],
         ];
-        
+
         // Análise de SEO
         $stmt = $this->db->prepare("
             SELECT AVG(current_seo_score) as avg_score
@@ -438,7 +438,7 @@ class CompetitiveIntelligence
         ");
         $stmt->execute(['account_id' => $this->accountId]);
         $avgScore = $stmt->fetch(PDO::FETCH_ASSOC)['avg_score'] ?? 0;
-        
+
         $recommendations[] = [
             'category' => 'seo',
             'title' => '🔥 Otimização SEO',
@@ -454,10 +454,10 @@ class CompetitiveIntelligence
                 'Descrição com mínimo 500 caracteres',
             ],
         ];
-        
+
         // Análise de frete
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 SUM(CASE WHEN current_shipping_free = 1 THEN 1 ELSE 0 END) as with_free,
                 COUNT(*) as total
             FROM competitor_watchlist
@@ -466,7 +466,7 @@ class CompetitiveIntelligence
         $stmt->execute(['account_id' => $this->accountId]);
         $shipping = $stmt->fetch(PDO::FETCH_ASSOC);
         $freeShippingPercent = ($shipping['with_free'] / $shipping['total']) * 100;
-        
+
         if ($freeShippingPercent > 50) {
             $recommendations[] = [
                 'category' => 'shipping',
@@ -483,13 +483,13 @@ class CompetitiveIntelligence
                 ],
             ];
         }
-        
+
         return $recommendations;
     }
-    
+
     /**
      * Análise SWOT automatizada
-     * 
+     *
      * @param string $itemId Seu produto
      * @param array $competitorIds IDs dos concorrentes
      * @return array SWOT analysis
@@ -498,7 +498,7 @@ class CompetitiveIntelligence
     {
         // Buscar dados do seu produto
         $stmt = $this->db->prepare("
-            SELECT * FROM items 
+            SELECT * FROM items
             WHERE item_id = :item_id AND account_id = :account_id
         ");
         $stmt->execute([
@@ -506,7 +506,7 @@ class CompetitiveIntelligence
             'account_id' => $this->accountId,
         ]);
         $myProduct = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // Buscar concorrentes
         $placeholders = implode(',', array_fill(0, count($competitorIds), '?'));
         $stmt = $this->db->prepare("
@@ -515,17 +515,17 @@ class CompetitiveIntelligence
         ");
         $stmt->execute(array_merge([$this->accountId], $competitorIds));
         $competitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $strengths = [];
         $weaknesses = [];
         $opportunities = [];
         $threats = [];
-        
+
         // Calcular métricas médias dos concorrentes
         $avgPrice = array_sum(array_column($competitors, 'current_price')) / count($competitors);
         $avgScore = array_sum(array_column($competitors, 'current_seo_score')) / count($competitors);
         $avgImages = array_sum(array_column($competitors, 'current_pictures_count')) / count($competitors);
-        
+
         // STRENGTHS
         if (($myProduct['seo_score'] ?? 0) > $avgScore) {
             $strengths[] = 'SEO score acima da média do mercado';
@@ -533,7 +533,7 @@ class CompetitiveIntelligence
         if (($myProduct['price'] ?? 0) < $avgPrice) {
             $strengths[] = 'Preço competitivo (abaixo da média)';
         }
-        
+
         // WEAKNESSES
         if (($myProduct['seo_score'] ?? 0) < $avgScore) {
             $weaknesses[] = 'SEO score abaixo da média do mercado';
@@ -541,25 +541,25 @@ class CompetitiveIntelligence
         if (($myProduct['pictures_count'] ?? 0) < $avgImages) {
             $weaknesses[] = 'Menos imagens que a média dos concorrentes';
         }
-        
+
         // OPPORTUNITIES
-        $lowScoreCompetitors = array_filter($competitors, fn($c) => $c['current_seo_score'] < 50);
+        $lowScoreCompetitors = array_filter($competitors, fn(array $c): bool => $c['current_seo_score'] < 50);
         if (count($lowScoreCompetitors) > 0) {
             $opportunities[] = sprintf(
                 '%d concorrentes com SEO fraco - fácil superação',
                 count($lowScoreCompetitors)
             );
         }
-        
+
         // THREATS
-        $highScoreCompetitors = array_filter($competitors, fn($c) => $c['current_seo_score'] > 85);
+        $highScoreCompetitors = array_filter($competitors, fn(array $c): bool => $c['current_seo_score'] > 85);
         if (count($highScoreCompetitors) > 0) {
             $threats[] = sprintf(
                 '%d concorrentes com SEO excelente - alta competição',
                 count($highScoreCompetitors)
             );
         }
-        
+
         return [
             'strengths' => $strengths,
             'weaknesses' => $weaknesses,

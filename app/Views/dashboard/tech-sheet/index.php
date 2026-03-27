@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * 🧾 Ficha Técnica - Dashboard
  * Interface completa para gerenciamento de atributos ML
@@ -2926,7 +2928,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const requestJson = async (url, options = {}) => {
         if (window.ApiClient && typeof window.ApiClient.request === 'function') {
             return window.ApiClient.request(url, options);

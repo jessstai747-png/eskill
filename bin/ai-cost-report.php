@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * AI Optimization System - Cost Report Generator
  * Generates detailed cost reports for AI usage

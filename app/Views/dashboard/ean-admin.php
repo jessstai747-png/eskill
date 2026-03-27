@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Painel Admin de Gestão de EANs - Versão Moderna
  * Integrado com layouts/modern/app.php
@@ -297,7 +300,7 @@ if (!$isAdmin && $userRole !== 'admin') {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     document.addEventListener('DOMContentLoaded', function() {
         loadDashboard();
         

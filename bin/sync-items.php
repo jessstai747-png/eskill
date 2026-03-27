@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * Cron script to synchronize items from Mercado Livre accounts.
  *

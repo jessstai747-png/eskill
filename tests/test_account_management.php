@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Script de teste para gerenciamento de contas ML
  * Testa inclusão, listagem e exclusão de contas

@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * Gera link de redefinição de senha (CLI) sem expor o token no console.
  *

@@ -10,14 +10,14 @@ use PDO;
 
 /**
  * AI Image Analyzer - Computer Vision Powered
- * 
+ *
  * Análise avançada de imagens usando computer vision:
  * - Qualidade técnica (resolução, nitidez, iluminação)
  * - Composição e enquadramento
  * - Detecção de problemas (marca d'água, fundo ruim)
  * - Sugestões de melhoria
  * - Comparação com melhores práticas
- * 
+ *
  * @package App\Services\AI\SEO
  * @version 2.0.0
  * @since 2025-12-31
@@ -41,7 +41,7 @@ class AIImageAnalyzer
         $this->db = Database::getInstance();
         $this->accountId = $accountId;
         $this->apiKey = $_ENV['OPENAI_API_KEY'] ?? $_SERVER['OPENAI_API_KEY'] ?? getenv('OPENAI_API_KEY') ?? '';
-        
+
         if (empty($this->apiKey)) {
             // Manual .env parsing fallback
             $envPath = __DIR__ . '/../../../../.env';
@@ -71,7 +71,7 @@ class AIImageAnalyzer
 
     /**
      * Análise completa de todas as imagens de um produto
-     * 
+     *
      * @param string $itemId ID do produto ML
      * @return array Análise detalhada
      */
@@ -79,7 +79,7 @@ class AIImageAnalyzer
     {
         // Buscar imagens do produto via ML API
         $images = $this->fetchProductImages($itemId);
-        
+
         if (empty($images)) {
             return [
                 'error' => 'No images found',
@@ -96,17 +96,17 @@ class AIImageAnalyzer
             $analysis = $this->analyzeImage($imageUrl, $index);
             $analyses[] = $analysis;
             $overallScore += $analysis['score'];
-            
+
             if ($analysis['status'] === 'critical') {
                 $criticalIssues[] = $analysis['issues'];
             }
         }
 
         $overallScore = round($overallScore / count($images), 2);
-        
+
         // Análise de conjunto
         $setAnalysis = $this->analyzeImageSet($analyses);
-        
+
         // Recomendações priorizadas
         $recommendations = $this->generateRecommendations($analyses, $setAnalysis);
 
@@ -125,7 +125,7 @@ class AIImageAnalyzer
 
     /**
      * Análise individual de uma imagem
-     * 
+     *
      * @param string $imageUrl URL da imagem
      * @param int $index Posição da imagem
      * @return array Análise individual
@@ -134,16 +134,16 @@ class AIImageAnalyzer
     {
         // Análise técnica (sem IA - mais rápido)
         $technical = $this->analyzeTechnical($imageUrl);
-        
+
         // Análise de composição com GPT-4 Vision (opcional, mais lento)
         $composition = $this->analyzeComposition($imageUrl, $index);
-        
+
         // Detectar problemas comuns
         $issues = $this->detectIssues($technical, $composition);
-        
+
         // Calcular score
         $score = $this->calculateImageScore($technical, $composition, $issues);
-        
+
         return [
             'position' => $index,
             'url' => $imageUrl,
@@ -158,14 +158,14 @@ class AIImageAnalyzer
 
     /**
      * Compara imagem com melhores práticas do ML
-     * 
+     *
      * @param string $imageUrl URL da imagem
      * @return array Comparação e sugestões
      */
     public function compareWithBestPractices(string $imageUrl): array
     {
         $analysis = $this->analyzeImage($imageUrl);
-        
+
         $bestPractices = $this->getMLBestPractices();
         $gaps = [];
 
@@ -190,25 +190,25 @@ class AIImageAnalyzer
 
     /**
      * Sugestão de ordem ideal para imagens
-     * 
+     *
      * @param array $images Array de URLs de imagens
      * @return array Ordem sugerida com explicações
      */
     public function suggestOptimalOrder(array $images): array
     {
         $analyses = [];
-        
+
         foreach ($images as $index => $imageUrl) {
             $analyses[] = $this->analyzeImage($imageUrl, $index);
         }
 
         // Ordenar por critérios do ML
-        usort($analyses, function($a, $b) {
+        usort($analyses, function ($a, $b) {
             return $this->compareImages($a, $b);
         });
 
         $reordered = array_values($analyses);
-        
+
         return [
             'original_order' => array_column($analyses, 'url'),
             'suggested_order' => array_column($reordered, 'url'),
@@ -219,18 +219,18 @@ class AIImageAnalyzer
 
     /**
      * Detecta imagens similares/duplicadas
-     * 
+     *
      * @param array $images URLs de imagens
      * @return array Grupos de imagens similares
      */
     public function detectSimilarImages(array $images): array
     {
         $similar = [];
-        
+
         for ($i = 0; $i < count($images); $i++) {
             for ($j = $i + 1; $j < count($images); $j++) {
                 $similarity = $this->calculateSimilarity($images[$i], $images[$j]);
-                
+
                 if ($similarity > 0.85) {
                     $similar[] = [
                         'image1' => $images[$i],
@@ -246,7 +246,7 @@ class AIImageAnalyzer
             'total_images' => count($images),
             'similar_pairs' => $similar,
             'has_duplicates' => count($similar) > 0,
-            'recommendation' => count($similar) > 0 
+            'recommendation' => count($similar) > 0
                 ? 'Remove duplicates and add diverse angles'
                 : 'Good variety of images'
         ];
@@ -289,7 +289,7 @@ class AIImageAnalyzer
     {
         // Obter informações da imagem
         $imageData = @getimagesize($imageUrl);
-        
+
         if ($imageData === false) {
             return [
                 'error' => 'Unable to load image',
@@ -303,10 +303,10 @@ class AIImageAnalyzer
         }
 
         [$width, $height, $type] = $imageData;
-        
+
         $resolution = min($width, $height);
         $aspectRatio = $width / $height;
-        
+
         return [
             'resolution' => $resolution,
             'width' => $width,
@@ -469,7 +469,7 @@ class AIImageAnalyzer
     {
         $totalImages = count($analyses);
         $avgScore = array_sum(array_column($analyses, 'score')) / $totalImages;
-        
+
         $hasMain = $totalImages > 0;
         $hasDetails = $totalImages >= 3;
         $hasVariety = $totalImages >= self::MIN_IMAGES;
@@ -496,14 +496,14 @@ class AIImageAnalyzer
                 'priority' => 'high',
                 'category' => 'quantity',
                 'title' => 'Add more images',
-                'description' => "You have {$setAnalysis['total_images']} images. Add at least " . 
-                                 ($setAnalysis['missing_count']) . " more.",
+                'description' => "You have {$setAnalysis['total_images']} images. Add at least " .
+                    ($setAnalysis['missing_count']) . " more.",
                 'impact' => 'high'
             ];
         }
 
         // Qualidade individual
-        $lowScoreImages = array_filter($analyses, fn($a) => $a['score'] < 70);
+        $lowScoreImages = array_filter($analyses, fn(array $a): bool => $a['score'] < 70);
         if (!empty($lowScoreImages)) {
             $recommendations[] = [
                 'priority' => 'high',
@@ -558,7 +558,7 @@ class AIImageAnalyzer
         }
 
         $metCount = count(array_filter($standards));
-        
+
         return [
             'standards' => $standards,
             'total_met' => $metCount,
@@ -634,16 +634,18 @@ class AIImageAnalyzer
 
     private function prioritizeActions(array $gaps): array
     {
-        usort($gaps, fn($a, $b) => 
+        usort(
+            $gaps,
+            fn($a, $b) =>
             $this->getImpactValue($b['impact']) <=> $this->getImpactValue($a['impact'])
         );
-        
+
         return array_slice($gaps, 0, 3);
     }
 
     private function getImpactValue(string $impact): int
     {
-        return match($impact) {
+        return match ($impact) {
             'high' => 3,
             'medium' => 2,
             'low' => 1,
@@ -656,7 +658,7 @@ class AIImageAnalyzer
         // Primeira imagem deve ser a melhor
         if ($a['position'] === 0) return -1;
         if ($b['position'] === 0) return 1;
-        
+
         // Depois por score
         return $b['score'] <=> $a['score'];
     }
@@ -664,13 +666,13 @@ class AIImageAnalyzer
     private function explainOrdering(array $reordered): array
     {
         $reasons = [];
-        
+
         if (isset($reordered[0])) {
             $reasons[] = "Image 1: Best overall score ({$reordered[0]['score']}/100) - ideal for main thumbnail";
         }
-        
+
         $reasons[] = "Remaining images ordered by quality score for best user experience";
-        
+
         return $reasons;
     }
 
@@ -678,12 +680,12 @@ class AIImageAnalyzer
     {
         // Simplificado: melhoria estimada em CTR
         $improvement = 0;
-        
+
         if ($reordered[0]['score'] > $original[0]['score']) {
             $diff = $reordered[0]['score'] - $original[0]['score'];
             $improvement = ($diff / 100) * 15; // 15% max CTR improvement
         }
-        
+
         return round($improvement, 2);
     }
 
@@ -702,9 +704,46 @@ class AIImageAnalyzer
         return max(0, 1 - ($distance / $maxLength));
     }
 
+    /**
+     * Validates that the URL points to a known trusted image host.
+     */
+    private function isAllowedImageUrl(string $url): bool
+    {
+        $parsed = parse_url($url);
+        if ($parsed === false || empty($parsed['host']) || empty($parsed['scheme'])) {
+            return false;
+        }
+
+        if (!in_array($parsed['scheme'], ['http', 'https'], true)) {
+            return false;
+        }
+
+        $allowedHosts = [
+            'http2.mlstatic.com',
+            'mlstatic.com',
+            'mercadolibre.com',
+            'mercadolivre.com.br',
+        ];
+
+        $host = strtolower($parsed['host']);
+        foreach ($allowedHosts as $allowed) {
+            if ($host === $allowed || str_ends_with($host, '.' . $allowed)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function getFileSize(string $url): int
     {
-        $headers = @get_headers($url, 1);
+        if (!$this->isAllowedImageUrl($url)) {
+            return 0;
+        }
+        $headers = get_headers($url, true);
+        if ($headers === false) {
+            return 0;
+        }
         return isset($headers['Content-Length']) ? (int)$headers['Content-Length'] : 0;
     }
 
@@ -713,12 +752,16 @@ class AIImageAnalyzer
      */
     private function createImageResource(string $imageUrl): ?\GdImage
     {
+        if (!$this->isAllowedImageUrl($imageUrl)) {
+            return null;
+        }
+
         try {
-            $raw = @file_get_contents($imageUrl);
+            $raw = file_get_contents($imageUrl);
             if ($raw === false) {
                 return null;
             }
-            $image = @imagecreatefromstring($raw);
+            $image = imagecreatefromstring($raw);
             return $image ?: null;
         } catch (\Throwable $e) {
             log_warning('AIImageAnalyzer: erro ao criar recurso de imagem', [

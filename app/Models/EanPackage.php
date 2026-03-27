@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -24,8 +25,9 @@ class EanPackage
     public function getAllActive(): array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM ean_packages 
-            WHERE is_active = TRUE 
+            SELECT id, name, slug, quantity, price, price_per_ean, discount_percent, description, badge, is_featured, is_active, sort_order, created_at, updated_at
+            FROM ean_packages
+            WHERE is_active = TRUE
             ORDER BY sort_order ASC
         ");
         $stmt->execute();
@@ -37,7 +39,7 @@ class EanPackage
      */
     public function getById(int $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT * FROM ean_packages WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT id, name, slug, quantity, price, price_per_ean, discount_percent, description, badge, is_featured, is_active, sort_order, created_at, updated_at FROM ean_packages WHERE id = :id");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch() ?: null;
     }
@@ -47,7 +49,7 @@ class EanPackage
      */
     public function getBySlug(string $slug): ?array
     {
-        $stmt = $this->db->prepare("SELECT * FROM ean_packages WHERE slug = :slug AND is_active = TRUE");
+        $stmt = $this->db->prepare("SELECT id, name, slug, quantity, price, price_per_ean, discount_percent, description, badge, is_featured, is_active, sort_order, created_at, updated_at FROM ean_packages WHERE slug = :slug AND is_active = TRUE");
         $stmt->execute(['slug' => $slug]);
         return $stmt->fetch() ?: null;
     }
@@ -58,9 +60,9 @@ class EanPackage
     public function create(array $data): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO ean_packages 
+            INSERT INTO ean_packages
             (name, slug, quantity, price, price_per_ean, discount_percent, description, badge, is_featured, is_active, sort_order)
-            VALUES 
+            VALUES
             (:name, :slug, :quantity, :price, :price_per_ean, :discount_percent, :description, :badge, :is_featured, :is_active, :sort_order)
         ");
 
@@ -139,8 +141,9 @@ class EanPackage
     public function getFeatured(): array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM ean_packages 
-            WHERE is_active = TRUE AND is_featured = TRUE 
+            SELECT id, name, slug, quantity, price, price_per_ean, discount_percent, description, badge, is_featured, is_active, sort_order, created_at, updated_at
+            FROM ean_packages
+            WHERE is_active = TRUE AND is_featured = TRUE
             ORDER BY sort_order ASC
         ");
         $stmt->execute();

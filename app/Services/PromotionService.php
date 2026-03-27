@@ -102,7 +102,7 @@ class PromotionService extends MercadoLivreClient
         try {
             $payload = [
                 'promotion_id' => $promotionId,
-                'items' => array_map(function ($item) {
+                'items' => array_map(function (array $item): array {
                     return [
                         'item_id' => $item['item_id'],
                         'price' => $item['price'] ?? null,
@@ -461,7 +461,7 @@ class PromotionService extends MercadoLivreClient
 
             return [
                 'total' => count($items),
-                'items' => array_map(function ($item) {
+                'items' => array_map(function (array $item): array {
                     return [
                         'item_id' => $item['item_id'],
                         'title' => $item['title'],
@@ -502,7 +502,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatPromotions(array $promotions): array
     {
-        return array_map(function ($p) {
+        return array_map(function (array $p): array {
             return [
                 'id' => $p['id'],
                 'type' => $p['type'],
@@ -517,7 +517,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatPromotionItems(array $items, string $promotionId): array
     {
-        return array_map(function ($item) use ($promotionId) {
+        return array_map(function (array $item) use ($promotionId): array {
             return [
                 'id' => $item['id'],
                 'title' => $item['name'] ?? $item['id'],
@@ -531,7 +531,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatCoupons(array $coupons): array
     {
-        return array_map(function ($c) {
+        return array_map(function (array $c): array {
             return [
                 'id' => $c['id'],
                 'code' => $c['code'],
@@ -548,7 +548,7 @@ class PromotionService extends MercadoLivreClient
 
     private function formatCampaigns(array $campaigns): array
     {
-        return array_map(function ($c) {
+        return array_map(function (array $c): array {
             return [
                 'id' => $c['id'],
                 'name' => $c['name'],

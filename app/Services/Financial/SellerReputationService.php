@@ -811,7 +811,7 @@ class SellerReputationService
         }
 
         $uniqueCustomers = count($buyerPurchases);
-        $repeatCustomers = count(array_filter($buyerPurchases, fn($b) => $b['count'] > 1));
+        $repeatCustomers = count(array_filter($buyerPurchases, fn(array $b): bool => $b['count'] > 1));
 
         // Calcular métricas
         $avgOrderValue = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;

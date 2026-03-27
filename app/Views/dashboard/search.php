@@ -29,7 +29,11 @@
 </div>
 
 <div id="searchResults">
-    <?php if (empty($query)): ?>
+    <?php
+
+declare(strict_types=1);
+
+if (empty($query)): ?>
         <div class="text-center py-5 text-muted">
             <i class="bi bi-search fs-1 d-block mb-3"></i>
             <h5>Digite algo para buscar</h5>
@@ -43,7 +47,7 @@
     <?php endif; ?>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     function normalizeExternalUrl(url) {
         if (!url || typeof url !== 'string') return '';

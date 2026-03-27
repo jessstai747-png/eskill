@@ -34,6 +34,6 @@ if [ $EXIT_CODE -ne 0 ] || [ -z "$TOKEN" ]; then
 fi
 
 # Executar mcp-remote com o token
-exec npx -y mcp-remote \
+exec npx -y mcp-remote@0.1.38 \
     "https://mcp.mercadolibre.com/mcp" \
     --header "Authorization:${TOKEN}"

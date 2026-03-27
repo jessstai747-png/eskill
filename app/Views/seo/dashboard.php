@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * @deprecated Use /dashboard/seo-killer instead. This view is no longer routed directly.
  * SEO Dashboard - Interface Moderna para Otimização com IA
@@ -826,7 +829,7 @@ $useModernLayout = true;
 }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 // API Base URL
 const API_BASE = '/api/seo';
 

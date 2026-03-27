@@ -90,7 +90,16 @@ class BackupService
             $sql .= "-- Estrutura da tabela `{$safeTable}`\n";
             $sql .= "DROP TABLE IF EXISTS `{$safeTable}`;\n";
 
-            $createTable = $this->db->query("SHOW CREATE TABLE `{$safeTable}`")->fetch();
+            $createResult = $this->db->query("SHOW CREATE TABLE `{$safeTable}`");
+            if ($createResult === false) {
+                log_warning('BackupService: falha ao obter CREATE TABLE', ['table' => $safeTable]);
+                continue;
+            }
+            $createTable = $createResult->fetch();
+            if ($createTable === false || !isset($createTable['Create Table'])) {
+                log_warning('BackupService: CREATE TABLE retornou resultado vazio', ['table' => $safeTable]);
+                continue;
+            }
             $sql .= $createTable['Create Table'] . ";\n\n";
 
             // Dados da tabela

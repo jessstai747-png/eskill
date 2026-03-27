@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Clone de Catálogo';
 $subtitle = 'Replique produtos entre contas do Mercado Livre';
 include __DIR__ . '/../layouts/modern/partials/page-header.php';
@@ -192,7 +195,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 </style>
 
 <script src="/js/catalog-clone.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';

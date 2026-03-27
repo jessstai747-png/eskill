@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // Simple test to verify that the core classes exist and can be instantiated
 // This avoids autoloader issues
 

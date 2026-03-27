@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Login - Dashboard | Mercado Livre Manager';
 ob_start();
 ?>

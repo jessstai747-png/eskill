@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Database;
+use App\Helpers\SessionHelper;
 
 /**
  * Serviço responsável pelo fluxo OAuth do Mercado Livre (autorização, troca de código e refresh)
@@ -102,12 +103,125 @@ class MercadoLivreAuthService
 
     private function getMercadoLivreTokenUrl(): string
     {
-        return (string)($this->getMercadoLivreConfig()['token_url'] ?? 'https://api.mercadolibre.com/oauth/token');
+        return $this->normalizeUrl(
+            (string)($this->getMercadoLivreConfig()['token_url'] ?? ''),
+            'https://api.mercadolibre.com/oauth/token'
+        );
     }
 
     private function getMercadoLivreApiUrl(): string
     {
-        return (string)($this->getMercadoLivreConfig()['api_url'] ?? 'https://api.mercadolibre.com');
+        return $this->normalizeUrl(
+            (string)($this->getMercadoLivreConfig()['api_url'] ?? ''),
+            'https://api.mercadolibre.com'
+        );
+    }
+
+    /**
+     * Normaliza URL com fallback e opcionalmente valida host permitido.
+     *
+     * @param list<string> $allowedHosts
+     */
+    private function normalizeUrl(string $rawUrl, string $fallbackUrl, array $allowedHosts = []): string
+    {
+        $candidate = trim($rawUrl);
+
+        if ($candidate === '') {
+            return $fallbackUrl;
+        }
+
+        if (str_starts_with($candidate, '//')) {
+            $candidate = 'https:' . $candidate;
+        } elseif (!preg_match('#^https?://#i', $candidate)) {
+            $candidate = 'https://' . $candidate;
+        }
+
+        if (!filter_var($candidate, FILTER_VALIDATE_URL)) {
+            return $fallbackUrl;
+        }
+
+        if ($allowedHosts !== []) {
+            $host = strtolower((string)(parse_url($candidate, PHP_URL_HOST) ?? ''));
+            if ($host === '') {
+                return $fallbackUrl;
+            }
+
+            $allowed = false;
+            foreach ($allowedHosts as $allowedHost) {
+                $allowedHost = strtolower(trim($allowedHost));
+                if ($allowedHost === '') {
+                    continue;
+                }
+
+                if ($host === $allowedHost || str_ends_with($host, '.' . $allowedHost)) {
+                    $allowed = true;
+                    break;
+                }
+            }
+
+            if (!$allowed) {
+                return $fallbackUrl;
+            }
+        }
+
+        return $candidate;
+    }
+
+    private function getMercadoLivreAuthUrl(): string
+    {
+        $authUrl = $this->normalizeUrl(
+            (string)($this->getMercadoLivreConfig()['auth_url'] ?? ''),
+            'https://auth.mercadolibre.com/authorization',
+            ['auth.mercadolibre.com', 'auth.mercadolibre.com.br']
+        );
+
+        $path = (string)(parse_url($authUrl, PHP_URL_PATH) ?? '');
+        if ($path === '' || $path === '/') {
+            $authUrl = rtrim($authUrl, '/') . '/authorization';
+        }
+
+        return $authUrl;
+    }
+
+    private function pruneOAuthSessionState(int $maxAgeSeconds = 1800, int $maxEntries = 20): void
+    {
+        if (!isset($_SESSION['ml_oauth_states']) || !is_array($_SESSION['ml_oauth_states'])) {
+            return;
+        }
+
+        $now = time();
+        $states = $_SESSION['ml_oauth_states'];
+
+        foreach ($states as $state => $context) {
+            $createdAt = is_array($context) ? (int)($context['created_at'] ?? 0) : 0;
+            if ($createdAt <= 0 || ($now - $createdAt) > $maxAgeSeconds) {
+                unset($states[$state]);
+                if (isset($_SESSION['ml_oauth_pkce']) && is_array($_SESSION['ml_oauth_pkce'])) {
+                    unset($_SESSION['ml_oauth_pkce'][$state]);
+                }
+            }
+        }
+
+        if (count($states) > $maxEntries) {
+            uasort($states, static function ($a, $b): int {
+                $aCreated = is_array($a) ? (int)($a['created_at'] ?? 0) : 0;
+                $bCreated = is_array($b) ? (int)($b['created_at'] ?? 0) : 0;
+                return $aCreated <=> $bCreated;
+            });
+
+            while (count($states) > $maxEntries) {
+                $oldestState = array_key_first($states);
+                if ($oldestState === null) {
+                    break;
+                }
+                unset($states[$oldestState]);
+                if (isset($_SESSION['ml_oauth_pkce']) && is_array($_SESSION['ml_oauth_pkce'])) {
+                    unset($_SESSION['ml_oauth_pkce'][$oldestState]);
+                }
+            }
+        }
+
+        $_SESSION['ml_oauth_states'] = $states;
     }
 
     private function shouldRetryTokenRequest(int $httpCode, string $curlError): bool
@@ -344,12 +458,40 @@ class MercadoLivreAuthService
         }
 
         $ml = $this->config['mercadolivre'] ?? [];
-        $clientId = $ml['app_id'] ?? '';
-        $redirect = $ml['redirect_uri'] ?? '';
-        $authBase = $ml['auth_url'] ?? 'https://auth.mercadolibre.com/authorization';
+        $clientId = trim((string)($ml['app_id'] ?? ''));
+        $redirect = trim((string)($ml['redirect_uri'] ?? ''));
+        $authBase = $this->getMercadoLivreAuthUrl();
+
+        if ($clientId === '') {
+            throw new \RuntimeException('ML_APP_ID não configurado para o fluxo OAuth');
+        }
+
+        if ($redirect === '') {
+            throw new \RuntimeException('ML_REDIRECT_URI não configurado para o fluxo OAuth');
+        }
+
+        if (str_starts_with($redirect, '//')) {
+            $redirect = 'https:' . $redirect;
+        } elseif (!preg_match('#^https?://#i', $redirect)) {
+            $redirect = 'https://' . $redirect;
+        }
+
+        if (!filter_var($redirect, FILTER_VALIDATE_URL)) {
+            throw new \RuntimeException('ML_REDIRECT_URI inválido para o fluxo OAuth');
+        }
+
+        $this->pruneOAuthSessionState();
 
         $state = $userId . ':' . bin2hex(random_bytes(16));
         $_SESSION['ml_oauth_state'] = $state;
+        if (!isset($_SESSION['ml_oauth_states']) || !is_array($_SESSION['ml_oauth_states'])) {
+            $_SESSION['ml_oauth_states'] = [];
+        }
+        $_SESSION['ml_oauth_states'][$state] = [
+            'user_id' => $userId,
+            'created_at' => time(),
+            'reconnect_account_id' => $_SESSION['reconnect_account_id'] ?? null,
+        ];
 
         $codeVerifier = $this->base64UrlEncode(random_bytes(32));
         $codeChallenge = $this->base64UrlEncode(hash('sha256', $codeVerifier, true));
@@ -382,7 +524,10 @@ class MercadoLivreAuthService
         }
 
         $stored = $_SESSION['ml_oauth_state'] ?? null;
-        if (!$stored || $stored !== $state) {
+        $stateContexts = $_SESSION['ml_oauth_states'] ?? [];
+        $stateContext = is_array($stateContexts) ? ($stateContexts[$state] ?? null) : null;
+        $isLegacyMatch = is_string($stored) && hash_equals($stored, $state);
+        if (!is_array($stateContext) && !$isLegacyMatch) {
             throw new \Exception('Estado OAuth inválido ou expirado');
         }
 
@@ -396,7 +541,7 @@ class MercadoLivreAuthService
 
         // Extrair userId do state (formato: <userId>:<random>)
         $parts = explode(':', $state, 2);
-        $userId = (int)($parts[0] ?? 0);
+        $userId = (int)($stateContext['user_id'] ?? ($parts[0] ?? 0));
 
         $ml = $this->getMercadoLivreConfig();
         $tokenUrl = $this->getMercadoLivreTokenUrl();
@@ -482,11 +627,16 @@ class MercadoLivreAuthService
         }
 
         // Inserir ou atualizar ml_accounts
-        $stmt = $this->pdo()->prepare('SELECT id FROM ml_accounts WHERE ml_user_id = :ml_user_id LIMIT 1');
+        $stmt = $this->pdo()->prepare('SELECT id, user_id FROM ml_accounts WHERE ml_user_id = :ml_user_id LIMIT 1');
         $stmt->execute(['ml_user_id' => $mlUserId]);
         $existing = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if ($existing) {
+            $existingUserId = (int)($existing['user_id'] ?? 0);
+            if ($existingUserId > 0 && $existingUserId !== $userId) {
+                throw new \RuntimeException('Esta conta do Mercado Livre já está vinculada a outro usuário do sistema.');
+            }
+
             $accountId = (int)$existing['id'];
             $update = $this->pdo()->prepare("UPDATE ml_accounts SET
                 user_id = :user_id,
@@ -532,6 +682,9 @@ class MercadoLivreAuthService
         }
 
         unset($_SESSION['ml_oauth_state']);
+        if (isset($_SESSION['ml_oauth_states']) && is_array($_SESSION['ml_oauth_states'])) {
+            unset($_SESSION['ml_oauth_states'][$state]);
+        }
         if (isset($_SESSION['ml_oauth_pkce']) && is_array($_SESSION['ml_oauth_pkce'])) {
             unset($_SESSION['ml_oauth_pkce'][$state]);
         }
@@ -555,6 +708,8 @@ class MercadoLivreAuthService
         $this->pdo()->prepare(
             'UPDATE ml_accounts SET last_oauth_connection_at = NOW() WHERE id = :id'
         )->execute(['id' => $accountId]);
+
+        SessionHelper::setActiveAccountId($accountId);
 
         return ['success' => true, 'account_id' => $accountId, 'user_info' => $userInfo];
     }

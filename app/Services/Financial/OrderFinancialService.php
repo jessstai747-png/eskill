@@ -139,7 +139,7 @@ class OrderFinancialService
             'payment_method' => $paymentMethod,
             'buyer_id' => $order['buyer']['id'] ?? null,
             'buyer_nickname' => $order['buyer']['nickname'] ?? null,
-            'items' => array_map(fn($i) => [
+            'items' => array_map(fn(array $i): array => [
                 'item_id' => $i['item']['id'] ?? null,
                 'title' => $i['item']['title'] ?? null,
                 'quantity' => (int)($i['quantity'] ?? 1),
@@ -885,7 +885,7 @@ class OrderFinancialService
 
         return [
             'total' => $data['total'] ?? 0,
-            'elements' => array_map(function ($order) {
+            'elements' => array_map(function (array $order): array {
                 return [
                     'id' => $order['id'],
                     'status' => $order['status'] ?? null,
@@ -898,7 +898,7 @@ class OrderFinancialService
                     'date_created' => $order['date_created'] ?? null,
                     'last_updated' => $order['last_updated'] ?? null,
                     'items' => $order['items'] ?? [],
-                    'payments' => array_map(function ($p) {
+                    'payments' => array_map(function (array $p): array {
                         return [
                             'id' => $p['id'],
                             'status' => $p['status'] ?? null,

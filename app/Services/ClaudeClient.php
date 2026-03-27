@@ -6,7 +6,7 @@ namespace App\Services;
 
 /**
  * Claude API Client
- * 
+ *
  * Cliente para comunicação com a API da Anthropic Claude.
  * Implementa chamadas para o modelo Claude 3.5 Sonnet.
  */
@@ -21,7 +21,7 @@ class ClaudeClient
     public function __construct(?string $apiKey = null)
     {
         $this->apiKey = $apiKey ?? $_ENV['ANTHROPIC_API_KEY'] ?? '';
-        
+
         if (empty($this->apiKey)) {
             throw new \RuntimeException('ANTHROPIC_API_KEY not configured');
         }
@@ -110,7 +110,7 @@ class ClaudeClient
      */
     private function buildFeatureListPrompt(array $requirements, string $category): string
     {
-        $requirementsList = implode("\n", array_map(fn($r) => "- {$r}", $requirements));
+        $requirementsList = implode("\n", array_map(fn(string $r): string => "- {$r}", $requirements));
 
         return <<<PROMPT
 You are an expert software architect. Given these high-level requirements for a {$category} project:
@@ -161,12 +161,12 @@ PROJECT PATH: {$projectPath}
             2. Add necessary service layer logic
             3. Add controller endpoints if needed
             4. Add tests
-            
+
             Respond with JSON:
             {
               "files": [
                 {
-                  "path": "src/Service/Example.php", 
+                  "path": "src/Service/Example.php",
                   "content": "<?php ... (FULL FILE CONTENT)"
                 },
                 {
@@ -176,7 +176,7 @@ PROJECT PATH: {$projectPath}
               ],
               "summary": "What was implemented"
             }
-            
+
             Return ONLY the JSON, no other text. Ensure ALL PHP files start with <?php.
 PROMPT;
     }
@@ -259,7 +259,7 @@ PROMPT;
 
         return $data;
     }
-    
+
     /**
      * Track API call with intelligent rate limiter
      */
@@ -268,7 +268,7 @@ PROMPT;
         try {
             $tracker = new RateLimitTrackerService();
             $tracker->trackCall('anthropic');
-            
+
             // Check if we should alert
             $alert = $tracker->shouldAlert('anthropic');
             if ($alert) {

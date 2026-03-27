@@ -357,7 +357,7 @@
 }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';
     const trimmed = url.trim();

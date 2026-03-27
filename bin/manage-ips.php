@@ -59,54 +59,134 @@ function showHelp(): void
     echo "\n";
 }
 
+function tableExists(PDO $db, string $table): bool
+{
+    $stmt = $db->prepare('SHOW TABLES LIKE :table');
+    $stmt->execute([':table' => $table]);
+
+    return $stmt->fetchColumn() !== false;
+}
+
+/**
+ * @return array<int, string>
+ */
+function getBlockTables(PDO $db): array
+{
+    $tables = [];
+
+    foreach (['blocked_ips', 'auth_blocked_ips'] as $table) {
+        if (tableExists($db, $table)) {
+            $tables[] = $table;
+        }
+    }
+
+    return $tables;
+}
+
 function blockIP(PDO $db, string $ip, string $reason): void
 {
     echo "🔒 Bloqueando IP $ip permanentemente...\n";
-    
-    // Verificar se já está bloqueado
-    $stmt = $db->prepare("
-        SELECT * FROM auth_blocked_ips 
-        WHERE ip_address = :ip AND is_permanent = 1
-    ");
-    $stmt->execute([':ip' => $ip]);
-    
-    if ($stmt->fetch()) {
-        echo "⚠️  IP $ip já está bloqueado permanentemente!\n";
+
+    $tables = getBlockTables($db);
+    if ($tables === []) {
+        echo "❌ Nenhuma tabela de bloqueio encontrada.\n";
         return;
     }
-    
-    // Bloquear
-    $stmt = $db->prepare("
-        INSERT INTO auth_blocked_ips 
-        (ip_address, reason, failure_count, expires_at, is_permanent, created_by) 
-        VALUES (:ip, :reason, 0, NULL, 1, 'CLI')
-    ");
-    
-    $stmt->execute([
-        ':ip' => $ip,
-        ':reason' => $reason
-    ]);
-    
+
+    $alreadyBlocked = false;
+
+    foreach ($tables as $table) {
+        if ($table === 'blocked_ips') {
+            $stmt = $db->prepare("
+                SELECT id FROM blocked_ips
+                WHERE ip_address = :ip
+                  AND blocked_until IS NULL
+                LIMIT 1
+            ");
+            $stmt->execute([':ip' => $ip]);
+            $alreadyBlocked = $alreadyBlocked || $stmt->fetch() !== false;
+
+            $stmt = $db->prepare("
+                INSERT INTO blocked_ips (ip_address, reason, blocked_by, blocked_until, attempts)
+                VALUES (:ip, :reason, 'CLI', NULL, 1)
+                ON DUPLICATE KEY UPDATE
+                    reason = VALUES(reason),
+                    blocked_by = 'CLI',
+                    blocked_until = NULL,
+                    attempts = attempts + 1,
+                    updated_at = NOW()
+            ");
+            $stmt->execute([
+                ':ip' => $ip,
+                ':reason' => $reason,
+            ]);
+            continue;
+        }
+
+        $stmt = $db->prepare("
+            SELECT id FROM auth_blocked_ips
+            WHERE ip_address = :ip AND is_permanent = 1
+            LIMIT 1
+        ");
+        $stmt->execute([':ip' => $ip]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+        $alreadyBlocked = $alreadyBlocked || $existing !== false;
+
+        if ($existing !== false) {
+            $stmt = $db->prepare("
+                UPDATE auth_blocked_ips
+                SET reason = :reason,
+                    expires_at = NULL,
+                    is_permanent = 1,
+                    created_by = 'CLI'
+                WHERE id = :id
+            ");
+            $stmt->execute([
+                ':reason' => $reason,
+                ':id' => $existing['id'],
+            ]);
+            continue;
+        }
+
+        $stmt = $db->prepare("
+            INSERT INTO auth_blocked_ips
+            (ip_address, reason, failure_count, blocked_at, expires_at, is_permanent, created_by)
+            VALUES (:ip, :reason, 0, NOW(), NULL, 1, 'CLI')
+        ");
+        $stmt->execute([
+            ':ip' => $ip,
+            ':reason' => $reason,
+        ]);
+    }
+
+    if ($alreadyBlocked) {
+        echo "⚠️  IP $ip já constava como bloqueado em pelo menos uma tabela.\n";
+    }
+
     echo "✅ IP $ip bloqueado permanentemente!\n";
+    echo "   Tabelas: " . implode(', ', $tables) . "\n";
     echo "   Motivo: $reason\n";
 }
 
 function unblockIP(PDO $db, string $ip): void
 {
     echo "🔓 Desbloqueando IP $ip...\n";
-    
-    $stmt = $db->prepare("
-        DELETE FROM auth_blocked_ips 
-        WHERE ip_address = :ip AND is_permanent = 1
-    ");
-    $stmt->execute([':ip' => $ip]);
-    
-    $affected = $stmt->rowCount();
-    
+
+    $affected = 0;
+    foreach (getBlockTables($db) as $table) {
+        if ($table === 'blocked_ips') {
+            $stmt = $db->prepare("DELETE FROM blocked_ips WHERE ip_address = :ip");
+        } else {
+            $stmt = $db->prepare("DELETE FROM auth_blocked_ips WHERE ip_address = :ip");
+        }
+        $stmt->execute([':ip' => $ip]);
+        $affected += $stmt->rowCount();
+    }
+
     if ($affected > 0) {
         echo "✅ IP $ip desbloqueado com sucesso!\n";
     } else {
-        echo "⚠️  IP $ip não estava bloqueado permanentemente.\n";
+        echo "⚠️  IP $ip não estava bloqueado nas tabelas conhecidas.\n";
     }
 }
 
@@ -186,26 +266,40 @@ function listBlocked(PDO $db): void
     echo "╚═══════════════════════════════════════════════════════════════╝\n";
     echo "\n";
     
-    $stmt = $db->query("
-        SELECT ip_address, reason, blocked_at, created_by
-        FROM auth_blocked_ips
-        WHERE is_permanent = 1
-        ORDER BY blocked_at DESC
-    ");
-    
-    $blocked = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $blocked = [];
+
+    if (tableExists($db, 'blocked_ips')) {
+        $stmt = $db->query("
+            SELECT ip_address, reason, created_at AS blocked_at, blocked_by AS created_by, 'blocked_ips' AS source
+            FROM blocked_ips
+            WHERE blocked_until IS NULL OR blocked_until > NOW()
+        ");
+        $blocked = array_merge($blocked, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    if (tableExists($db, 'auth_blocked_ips')) {
+        $stmt = $db->query("
+            SELECT ip_address, reason, blocked_at, created_by, 'auth_blocked_ips' AS source
+            FROM auth_blocked_ips
+            WHERE is_permanent = 1 OR expires_at IS NULL OR expires_at > NOW()
+        ");
+        $blocked = array_merge($blocked, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
     
     if (empty($blocked)) {
         echo "✅ Nenhum IP bloqueado permanentemente.\n\n";
         return;
     }
     
+    usort($blocked, static fn(array $a, array $b): int => strcmp((string)($b['blocked_at'] ?? ''), (string)($a['blocked_at'] ?? '')));
+
     foreach ($blocked as $ip) {
         echo sprintf(
-            "🔒 %-15s | Bloqueado em: %s | Por: %s\n",
+            "🔒 %-15s | Bloqueado em: %s | Por: %s | Fonte: %s\n",
             $ip['ip_address'],
             $ip['blocked_at'],
-            $ip['created_by']
+            $ip['created_by'],
+            $ip['source']
         );
         echo "   Motivo: {$ip['reason']}\n\n";
     }
@@ -245,28 +339,49 @@ function showIPInfo(PDO $db, string $ip): void
     echo "╚═══════════════════════════════════════════════════════════════╝\n";
     echo "\n";
     
-    // Verificar bloqueio
-    $stmt = $db->prepare("
-        SELECT * FROM auth_blocked_ips 
-        WHERE ip_address = :ip 
-        ORDER BY blocked_at DESC 
-        LIMIT 1
-    ");
-    $stmt->execute([':ip' => $ip]);
-    $blockInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($blockInfo) {
-        $status = $blockInfo['is_permanent'] 
-            ? '🔒 Bloqueado PERMANENTEMENTE' 
-            : (strtotime($blockInfo['expires_at']) > time() 
-                ? '⏳ Bloqueado temporariamente (expira em ' . $blockInfo['expires_at'] . ')' 
-                : '✅ Bloqueio expirado');
-        
-        echo "Status: $status\n";
-        echo "Motivo: {$blockInfo['reason']}\n";
-        echo "Falhas registradas: {$blockInfo['failure_count']}\n";
-        echo "Bloqueado em: {$blockInfo['blocked_at']}\n";
-        echo "Bloqueado por: {$blockInfo['created_by']}\n\n";
+    $blocks = [];
+
+    if (tableExists($db, 'blocked_ips')) {
+        $stmt = $db->prepare("
+            SELECT ip_address, reason, attempts AS failure_count, created_at AS blocked_at,
+                   blocked_until AS expires_at, blocked_by AS created_by, 'blocked_ips' AS source,
+                   CASE WHEN blocked_until IS NULL THEN 1 ELSE 0 END AS is_permanent
+            FROM blocked_ips
+            WHERE ip_address = :ip
+        ");
+        $stmt->execute([':ip' => $ip]);
+        $blocks = array_merge($blocks, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    if (tableExists($db, 'auth_blocked_ips')) {
+        $stmt = $db->prepare("
+            SELECT ip_address, reason, failure_count, blocked_at, expires_at, created_by,
+                   'auth_blocked_ips' AS source, is_permanent
+            FROM auth_blocked_ips
+            WHERE ip_address = :ip
+        ");
+        $stmt->execute([':ip' => $ip]);
+        $blocks = array_merge($blocks, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    if ($blocks !== []) {
+        usort($blocks, static fn(array $a, array $b): int => strcmp((string)($b['blocked_at'] ?? ''), (string)($a['blocked_at'] ?? '')));
+
+        foreach ($blocks as $blockInfo) {
+            $isPermanent = (int)($blockInfo['is_permanent'] ?? 0) === 1;
+            $expiresAt = $blockInfo['expires_at'] ?? null;
+            $status = $isPermanent
+                ? '🔒 Bloqueado PERMANENTEMENTE'
+                : ($expiresAt !== null && strtotime((string)$expiresAt) > time()
+                    ? '⏳ Bloqueado temporariamente (expira em ' . $expiresAt . ')'
+                    : '✅ Bloqueio expirado');
+
+            echo "Status: $status | Fonte: {$blockInfo['source']}\n";
+            echo "Motivo: {$blockInfo['reason']}\n";
+            echo "Falhas registradas: {$blockInfo['failure_count']}\n";
+            echo "Bloqueado em: {$blockInfo['blocked_at']}\n";
+            echo "Bloqueado por: {$blockInfo['created_by']}\n\n";
+        }
     } else {
         echo "Status: ✅ Não bloqueado\n\n";
     }

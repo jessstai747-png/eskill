@@ -143,7 +143,7 @@ class KeywordSourceService
 
         return array_filter(
             $allKeywords['keywords'],
-            fn($kw) => ($kw['type'] ?? 'core') === $type
+            fn(array $kw): bool => ($kw['type'] ?? 'core') === $type
         );
     }
 
@@ -163,7 +163,7 @@ class KeywordSourceService
                 return [];
             }
 
-            return array_map(function ($trend) {
+            return array_map(function (array $trend): array {
                 return [
                     'keyword' => $trend['keyword'] ?? $trend['term'] ?? '',
                     'volume' => $trend['volume'] ?? 0,
@@ -195,7 +195,7 @@ class KeywordSourceService
             $client = $this->getMLClient();
             $suggestions = $client->getAutocompleteSuggestions($query, $categoryId);
 
-            return array_map(function ($suggestion) {
+            return array_map(function (mixed $suggestion): array {
                 if (is_array($suggestion)) {
                     $keyword = (string)($suggestion['q'] ?? $suggestion['suggestion'] ?? $suggestion['term'] ?? '');
                 } else {
@@ -229,8 +229,8 @@ class KeywordSourceService
         try {
             // Limpar cache do banco
             $stmt = $this->db->prepare("
-                UPDATE seo_keyword_cache 
-                SET is_valid = 0 
+                UPDATE seo_keyword_cache
+                SET is_valid = 0
                 WHERE category_id = :category_id
             ");
             $stmt->execute(['category_id' => $categoryId]);
@@ -470,7 +470,7 @@ class KeywordSourceService
             $generator = $this->getAIGenerator();
             $generated = $generator->generateKeywords($baseKeyword, $categoryId);
 
-            return array_map(function ($kw) {
+            return array_map(function (mixed $kw): array {
                 return [
                     'keyword' => is_array($kw) ? $kw['keyword'] : $kw,
                     'type' => is_array($kw) ? ($kw['type'] ?? 'core') : 'core',
@@ -542,7 +542,7 @@ class KeywordSourceService
     {
         $merged = $existing;
         $existingWords = array_map(
-            fn($kw) => mb_strtolower($kw['keyword'] ?? ''),
+            fn(array $kw): string => mb_strtolower($kw['keyword'] ?? ''),
             $existing
         );
 
@@ -567,7 +567,7 @@ class KeywordSourceService
 
             foreach ($keywords as $kw) {
                 $stmt = $this->db->prepare("
-                    INSERT INTO seo_keyword_cache 
+                    INSERT INTO seo_keyword_cache
                     (category_id, base_keyword, keyword, type, weight, source, is_valid, expires_at, created_at)
                     VALUES (:category_id, :base_keyword, :keyword, :type, :weight, :source, 1, :expires_at, NOW())
                     ON DUPLICATE KEY UPDATE
@@ -608,8 +608,8 @@ class KeywordSourceService
     {
         try {
             $stmt = $this->db->prepare("
-                UPDATE seo_keyword_cache 
-                SET is_valid = 0 
+                UPDATE seo_keyword_cache
+                SET is_valid = 0
                 WHERE category_id = :category_id AND base_keyword = :base_keyword
             ");
             $stmt->execute([
@@ -652,7 +652,7 @@ class KeywordSourceService
         $stopwords = ['de', 'da', 'do', 'e', 'para', 'com', 'em', 'a', 'o', 'um', 'uma', 'os', 'as'];
 
         $words = preg_split('/\s+/', mb_strtolower($text));
-        $words = array_filter($words, function ($w) use ($stopwords) {
+        $words = array_filter($words, function (string $w) use ($stopwords): bool {
             return strlen($w) > 2 && !in_array($w, $stopwords) && !is_numeric($w);
         });
 

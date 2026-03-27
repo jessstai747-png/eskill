@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone A/B Testing Dashboard
  * Interface para gerenciamento de testes A/B de clonagem
@@ -298,7 +301,7 @@ $this->layout('layouts/dashboard', ['title' => 'Testes A/B - Clonador']);
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 document.addEventListener('DOMContentLoaded', function() {
     loadStats();

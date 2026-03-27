@@ -166,13 +166,13 @@ class CloneROIAnalysisService
     private function identifyTopPerformers(array $items, int $limit = 10): array
     {
         // Filtrar itens com métricas e ordenar por receita
-        $withMetrics = array_filter($items, fn($i) => $i['revenue'] > 0);
+        $withMetrics = array_filter($items, fn(array $i): bool => $i['revenue'] > 0);
 
         usort($withMetrics, fn($a, $b) => floatval($b['revenue']) <=> floatval($a['revenue']));
 
         $topPerformers = array_slice($withMetrics, 0, $limit);
 
-        return array_map(function ($item) {
+        return array_map(function (array $item): array {
             return [
                 'target_item_id' => $item['target_item_id'],
                 'source_item_id' => $item['source_item_id'],
@@ -193,7 +193,7 @@ class CloneROIAnalysisService
     private function identifyUnderperformers(array $items, int $limit = 10): array
     {
         // Itens com visitas mas sem vendas ou conversão muito baixa
-        $candidates = array_filter($items, function ($item) {
+        $candidates = array_filter($items, function (array $item): bool {
             $visits = intval($item['visits'] ?? 0);
             $sales = intval($item['sales'] ?? 0);
             $conversion = floatval($item['conversion_rate'] ?? 0);
@@ -206,7 +206,7 @@ class CloneROIAnalysisService
 
         $underperformers = array_slice($candidates, 0, $limit);
 
-        return array_map(function ($item) {
+        return array_map(function (array $item): array {
             return [
                 'target_item_id' => $item['target_item_id'],
                 'source_item_id' => $item['source_item_id'],

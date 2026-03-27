@@ -190,7 +190,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
 
         let performanceChart = null;
         let refreshInterval = null;

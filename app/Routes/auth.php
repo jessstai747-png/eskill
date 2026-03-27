@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
@@ -34,6 +35,7 @@ $router->post('auth/2fa/setup', AuthController::class, 'doSetupTwoFactor');
 $router->get('auth/authorize', AuthController::class, 'authorize');
 $router->get('auth/callback', AuthController::class, 'callback');
 $router->get('api/auth/accounts', AuthController::class, 'accounts');
+$router->get('api/auth/oauth-config-status', AuthController::class, 'oauthConfigStatus');
 $router->post('auth/disconnect/{accountId}', AuthController::class, 'disconnect');
 $router->delete('auth/account/{accountId}', AuthController::class, 'deleteAccount');
 $router->get('auth/mobile/status', AuthController::class, 'status');

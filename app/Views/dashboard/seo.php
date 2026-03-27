@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * @deprecated Use /dashboard/seo-killer instead. This view is no longer routed directly.
  * SEO e Otimização - Versão Moderna
@@ -386,7 +388,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     function openAnalyzer() {
         new bootstrap.Modal(document.getElementById('analyzerModal')).show();
     }

@@ -97,7 +97,7 @@ class TitleVariationsService
 
         // Remover duplicatas e título original
         $variations = array_unique($variations);
-        $variations = array_filter($variations, fn($v) => $v !== $title);
+        $variations = array_filter($variations, fn(string $v): bool => $v !== $title);
 
         // Avaliar todas variações
         $evaluated = [];
@@ -498,12 +498,12 @@ class TitleVariationsService
     {
         if ($strategy === 'conservative') {
             // Apenas pequenas mudanças
-            return array_filter($variations, function ($v) {
+            return array_filter($variations, function (array $v): bool {
                 return abs($v['improvements']['score_change']) <= 10;
             });
         } elseif ($strategy === 'aggressive') {
             // Mudanças significativas
-            return array_filter($variations, function ($v) {
+            return array_filter($variations, function (array $v): bool {
                 return $v['improvements']['score_change'] > 10;
             });
         }
@@ -529,7 +529,7 @@ class TitleVariationsService
             'recommended_type' => $best['type'],
             'recommended_title' => $best['title'],
             'reason' => "Melhor score ({$best['score']}) e {$best['focus']}",
-            'all_scores' => array_map(fn($v) => [
+            'all_scores' => array_map(fn(array $v): array => [
                 'type' => $v['type'],
                 'score' => $v['score'],
                 'focus' => $v['focus']

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 /** @var \App\Router $router */
 
@@ -401,6 +402,7 @@ use App\Controllers\QualityController;
 $router->get('api/quality/health/{itemId}', QualityController::class, 'checkHealth');
 $router->post('api/quality/health/batch', QualityController::class, 'checkHealthBatch');
 $router->get('api/quality/health/{itemId}/recommendations', QualityController::class, 'getHealthRecommendations');
+$router->get('api/quality/purchase-experience/{itemId}', QualityController::class, 'getPurchaseExperience');
 
 // Quality Score - Pontuação de Qualidade
 $router->get('api/quality/score/{itemId}', QualityController::class, 'calculateScore');

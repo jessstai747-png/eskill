@@ -128,7 +128,7 @@ class MercadoLivreAIIntegrationService
 
             return [
                 'connected' => $isConnected || $publicApiOk,
-                'token_valid' => $diagnosis['token_valid'] ?? ($diagnosis['token_status'] === 'valid'),
+                'token_valid' => $diagnosis['token_valid'] ?? (($diagnosis['token_status'] ?? null) === 'valid'),
                 'public_api' => $diagnosis['public_api'] ?? $publicApiOk,
                 'auth_ok' => $diagnosis['auth_ok'] ?? $isConnected,
                 'items_count' => $diagnosis['items_count'] ?? 0,
@@ -490,9 +490,8 @@ class MercadoLivreAIIntegrationService
                 ['role' => 'user', 'content' => $titlePrompt],
             ]);
 
-            if (!isset($titleResult['error'])) {
-                $optimizedTitle = trim($titleResult['content'] ?? $titleResult['text'] ?? '');
-                // Enforce ML title limit (60 chars)
+            $optimizedTitle = trim($titleResult['content'] ?? $titleResult['text'] ?? '');
+            if (!isset($titleResult['error']) && $optimizedTitle !== '') {
                 if (mb_strlen($optimizedTitle) > 60) {
                     $optimizedTitle = mb_substr($optimizedTitle, 0, 60);
                 }
@@ -504,7 +503,7 @@ class MercadoLivreAIIntegrationService
             } else {
                 $this->logger->warning('AI title optimization failed, using template', [
                     'item_id' => $enriched['id'] ?? '',
-                    'error' => $titleResult['message'] ?? 'unknown',
+                    'error' => $titleResult['message'] ?? ($optimizedTitle === '' ? 'empty ai output' : 'unknown'),
                 ]);
                 $optimizations['title'] = $this->templateTitle($enriched);
             }
@@ -518,16 +517,17 @@ class MercadoLivreAIIntegrationService
                 ['role' => 'user', 'content' => $descPrompt],
             ]);
 
-            if (!isset($descResult['error'])) {
+            $optimizedDescription = trim($descResult['content'] ?? $descResult['text'] ?? '');
+            if (!isset($descResult['error']) && $optimizedDescription !== '') {
                 $optimizations['description'] = [
-                    'description' => trim($descResult['content'] ?? $descResult['text'] ?? ''),
+                    'description' => $optimizedDescription,
                     'original_description' => $enriched['description'] ?? '',
                     'provider' => $descResult['fallback_provider'] ?? $descResult['provider'] ?? 'unknown',
                 ];
             } else {
                 $this->logger->warning('AI description optimization failed, using template', [
                     'item_id' => $enriched['id'] ?? '',
-                    'error' => $descResult['message'] ?? 'unknown',
+                    'error' => $descResult['message'] ?? ($optimizedDescription === '' ? 'empty ai output' : 'unknown'),
                 ]);
                 $optimizations['description'] = $this->templateDescription($enriched);
             }
@@ -582,9 +582,8 @@ class MercadoLivreAIIntegrationService
         ];
 
         try {
-            // --- Title & Attributes via MercadoLivreClient::updateItem() ---
-            // Uses the client directly for proper error detection (returns {success, message}).
             $updateData = [];
+            $hasDescription = isset($optimizations['description']['description']) && trim((string)$optimizations['description']['description']) !== '';
 
             if (isset($optimizations['title']['optimized_title'])) {
                 $updateData['title'] = $optimizations['title']['optimized_title'];
@@ -592,6 +591,11 @@ class MercadoLivreAIIntegrationService
 
             if (!empty($optimizations['attributes']['completed_attributes'])) {
                 $updateData['attributes'] = $optimizations['attributes']['completed_attributes'];
+            }
+
+            if (empty($updateData) && !$hasDescription) {
+                $result['errors'][] = 'No valid optimizations generated for apply';
+                return $result;
             }
 
             if (!empty($updateData)) {
@@ -626,9 +630,7 @@ class MercadoLivreAIIntegrationService
                 }
             }
 
-            // --- Description via dedicated ML endpoint ---
-            // ML API requires PUT /items/{id}/description separately.
-            if (isset($optimizations['description']['description'])) {
+            if ($hasDescription) {
                 $descResult = $this->mlClient->updateDescription(
                     $itemId,
                     $optimizations['description']['description']
@@ -710,6 +712,18 @@ class MercadoLivreAIIntegrationService
         $applyResult = null;
         if ($autoApply) {
             $applyResult = $this->applyOptimizations($itemId, $optimizationResult['optimizations']);
+            if (!($applyResult['success'] ?? false)) {
+                return [
+                    'success' => false,
+                    'item_id' => $itemId,
+                    'step_failed' => 'apply',
+                    'optimization' => $optimizationResult,
+                    'applied' => $applyResult,
+                    'auto_apply' => true,
+                    'error' => $applyResult['errors'][0] ?? 'Apply failed',
+                    'duration_seconds' => round(microtime(true) - $pipelineStart, 3),
+                ];
+            }
         }
 
         $duration = round(microtime(true) - $pipelineStart, 3);

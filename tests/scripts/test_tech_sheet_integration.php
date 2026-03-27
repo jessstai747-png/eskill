@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Teste de Integração - Ficha Técnica + SEO Strategies
  * Testa a integração das estratégias SEO com a ficha técnica

@@ -377,7 +377,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // Notifications State
     let notificationsState = {
         isOpen: false,
@@ -412,9 +412,7 @@
     // Load Notifications
     async function loadNotifications() {
         try {
-            const {
-                data
-            } = await requestJson('/api/seo-killer/alerts');
+            const data = await requestJson('/api/seo-killer/alerts');
 
             if (data.success && data.alerts) {
                 notificationsState.notifications = data.alerts.map(alert => ({
@@ -492,7 +490,7 @@
         }
 
         container.innerHTML = notifications.map(n => `
-        <div class="notification-item ${n.read ? '' : 'unread'} ${n.type}" 
+        <div class="notification-item ${n.read ? '' : 'unread'} ${n.type}"
              onclick="handleNotificationClick('${n.id}')" data-id="${n.id}">
             <div class="notification-icon ${n.type}">
                 <i class="bi ${getNotificationIcon(n.type)}"></i>
@@ -602,9 +600,7 @@
     // Check for New Notifications
     async function checkForNewNotifications() {
         try {
-            const {
-                data
-            } = await requestJson('/api/seo-killer/alerts?unread=true');
+            const data = await requestJson('/api/seo-killer/alerts?unread=true');
 
             if (data.success && data.alerts) {
                 const newAlerts = data.alerts.filter(alert => {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Página de Histórico de Preços
  *
@@ -433,7 +435,7 @@ $accountId = $accountId
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
         // Configuration
         const API_BASE = '/api/pricing-intelligence/<?= $accountId ?>';
         let selectedPeriod = 30;

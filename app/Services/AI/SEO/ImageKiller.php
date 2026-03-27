@@ -14,14 +14,14 @@ use PDO;
 
 /**
  * 📸 IMAGE KILLER - Otimização de Imagens
- * 
+ *
  * Analisa e otimiza imagens dos anúncios:
  * - Verificação de qualidade (Resolução, Aspect Ratio)
  * - Detecção de fundo via IA Vision
  * - Análise de conformidade com regras ML
  * - Sugestões de melhoria
  * - Cache de análises por 7 dias
- * 
+ *
  * @author AI Development Team
  * @version 1.1.0
  */
@@ -464,7 +464,7 @@ class ImageKiller
                 case 'remove':
                     // Filter out the removed ID
                     $removeId = $change['data'];
-                    $newPictureList = array_values(array_filter($newPictureList, function ($p) use ($removeId) {
+                    $newPictureList = array_values(array_filter($newPictureList, function (array $p) use ($removeId): bool {
                         return $p['id'] !== $removeId;
                     }));
                     break;
@@ -539,7 +539,7 @@ class ImageKiller
             'pictures' => $picturesPayload
         ]);
 
-        // 5. Clean up temp files if successful? 
+        // 5. Clean up temp files if successful?
         // Better to leave them for a cron job or delete immediately if confirmed.
 
         return $response;

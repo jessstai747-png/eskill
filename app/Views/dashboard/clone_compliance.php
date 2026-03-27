@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone Compliance & Audit Dashboard View
  * 
@@ -327,7 +330,7 @@ ob_start();
 .score-poor { background-color: #f8d7da; color: #721c24; }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 let currentPage = 0;
 let currentFilters = {};

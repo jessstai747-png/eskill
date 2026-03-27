@@ -452,7 +452,7 @@
         </div>
     </div>
 
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
         // Search functionality
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && this.value.trim()) {

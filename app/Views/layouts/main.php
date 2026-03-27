@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Layout Principal
  *
@@ -124,7 +126,7 @@ $currentUser = $userService->getCurrentUser();
     <script nonce="<?= $cspNonce ?>" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Common JS -->
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
         // CSRF Token para requisições AJAX
         const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
 

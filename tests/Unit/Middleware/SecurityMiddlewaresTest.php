@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Middleware;
 
 use Tests\TestCase;
@@ -137,6 +139,39 @@ class SecurityMiddlewaresTest extends TestCase
         );
     }
 
+    public function test_security_middleware_supports_env_whitelist(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 3) . '/app/Middleware/SecurityMiddleware.php'
+        );
+
+        $this->assertStringContainsString(
+            'AUTH_IP_WHITELIST',
+            $source,
+            'SecurityMiddleware deve respeitar AUTH_IP_WHITELIST do ambiente'
+        );
+    }
+
+    public function test_security_middleware_supports_legacy_and_auth_block_tables(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 3) . '/app/Middleware/SecurityMiddleware.php'
+        );
+
+        $this->assertStringContainsString('blocked_ips', $source);
+        $this->assertStringContainsString('auth_blocked_ips', $source);
+    }
+
+    public function test_manage_ips_script_handles_both_block_tables(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 3) . '/bin/manage-ips.php'
+        );
+
+        $this->assertStringContainsString('blocked_ips', $source);
+        $this->assertStringContainsString('auth_blocked_ips', $source);
+    }
+
     // ===========================
     // SECURITY HEADERS MIDDLEWARE
     // ===========================
@@ -219,6 +254,25 @@ class SecurityMiddlewaresTest extends TestCase
             '$isAuthRoute || $isWebhookRoute',
             $source,
             'Auth routes NÃO devem ser excluídas do CSRF'
+        );
+    }
+
+    public function test_index_uses_dashboard_burst_for_session_authenticated_apis(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 3) . '/public/index.php'
+        );
+
+        $this->assertStringContainsString(
+            "\$hasSessionAuth = !empty(\$_SESSION['account_id']) || !empty(\$_SESSION['user_id']);",
+            $source,
+            'index.php deve detectar autenticação por sessão antes do rate limit'
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/\$isDashboardApi\s*=\s*\$hasSessionAuth\s*\|\|/m',
+            $source,
+            'APIs autenticadas por sessão devem receber o burst limit do dashboard'
         );
     }
 }

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * OpenSpec Change Detail View
  * Shows detailed information about a specific change
@@ -178,7 +181,7 @@ require __DIR__ . '/../../layouts/header.php';
 }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 function validateChange(changeId) {
     const resultDiv = document.getElementById('validationResult');

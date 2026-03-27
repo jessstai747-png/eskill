@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Criar Anúncio';
 $subtitle = 'Anuncie seus produtos em 3 passos simples';
 $breadcrumbs = [
@@ -308,4 +311,4 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script src="/js/ads-wizard.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ads-wizard.js') ?: '1' ?>" nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>"></script>
+<script src="/js/ads-wizard.js?v=<?= @filemtime(__DIR__ . '/../../../../public/js/ads-wizard.js') ?: '1' ?>" nonce="<?= CSP_NONCE ?>"></script>

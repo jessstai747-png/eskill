@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Análise de Concorrente';
 ob_start();
 function normalizeExternalUrl(?string $url): string
@@ -91,7 +94,7 @@ function normalizeExternalUrl(?string $url): string
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const ctx = document.getElementById('priceChart').getContext('2d');
     const historyData = <?= json_encode($history) ?>;
     

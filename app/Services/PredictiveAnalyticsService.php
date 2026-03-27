@@ -14,18 +14,20 @@ use PDO;
  * Predictive Analytics Service V9.0
  * Sistema de análise preditiva de mercado e demanda
  */
-class PredictiveAnalyticsService {
+class PredictiveAnalyticsService
+{
     private PDO $db;
     private AdvancedRedisCacheService $cache;
     private CentralizedLogService $logger;
     private array $config;
     private array $models;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->db = Database::getInstance();
         $this->cache = new AdvancedRedisCacheService();
         $this->logger = new CentralizedLogService();
-        
+
         $this->config = [
             'prediction_horizon_days' => $_ENV['PREDICTION_HORIZON_DAYS'] ?? 30,
             'min_data_points' => $_ENV['MIN_DATA_POINTS'] ?? 10,
@@ -42,10 +44,11 @@ class PredictiveAnalyticsService {
     /**
      * Prever demanda para um produto
      */
-    public function predictDemand(string $itemId, ?int $horizonDays = null): array {
+    public function predictDemand(string $itemId, ?int $horizonDays = null): array
+    {
         $startTime = microtime(true);
         $horizonDays = $horizonDays ?? $this->config['prediction_horizon_days'];
-        
+
         try {
             // Cache check
             $cacheKey = "demand_prediction:{$itemId}:{$horizonDays}";
@@ -57,39 +60,39 @@ class PredictiveAnalyticsService {
 
             // Coletar dados históricos
             $historicalData = $this->collectHistoricalSalesData($itemId);
-            
+
             if (count($historicalData) < $this->config['min_data_points']) {
                 throw new Exception("Insufficient historical data for prediction (minimum {$this->config['min_data_points']} points required)");
             }
 
             // Preparar séries temporais
             $timeSeries = $this->prepareTimeSeries($historicalData);
-            
+
             // Detectar sazonalidade
-            $seasonalityInfo = $this->config['enable_seasonality'] ? 
+            $seasonalityInfo = $this->config['enable_seasonality'] ?
                 $this->detectSeasonality($timeSeries) : null;
-            
+
             // Calcular tendência
             $trendInfo = $this->calculateTrend($timeSeries);
-            
+
             // Gerar previsões usando diferentes modelos
             $predictions = [
                 'simple_moving_average' => $this->predictWithMovingAverage($timeSeries, $horizonDays),
                 'exponential_smoothing' => $this->predictWithExponentialSmoothing($timeSeries, $horizonDays),
                 'linear_regression' => $this->predictWithLinearRegression($timeSeries, $horizonDays),
-                'seasonal_decomposition' => $seasonalityInfo ? 
+                'seasonal_decomposition' => $seasonalityInfo ?
                     $this->predictWithSeasonalDecomposition($timeSeries, $seasonalityInfo, $horizonDays) : null
             ];
 
             // Ensemble das previsões
             $ensemble = $this->ensemblePredictions($predictions);
-            
+
             // Calcular intervalos de confiança
             $confidenceIntervals = $this->calculateConfidenceIntervals($ensemble, $timeSeries);
-            
+
             // Analisar fatores externos
             $externalFactors = $this->analyzeExternalFactors($itemId);
-            
+
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
             $result = [
@@ -110,12 +113,11 @@ class PredictiveAnalyticsService {
 
             // Cache result
             $this->cache->set($cacheKey, $result, $this->config['cache_predictions_ttl']);
-            
+
             // Log prediction
             $this->logPrediction($itemId, 'demand_forecast', $result);
-            
-            return $result;
 
+            return $result;
         } catch (Exception $e) {
             $this->logger->log('error', 'Demand Prediction Failed', [
                 'item_id' => $itemId,
@@ -128,9 +130,10 @@ class PredictiveAnalyticsService {
     /**
      * Prever tendências de mercado por categoria
      */
-    public function predictMarketTrends(string $categoryId, ?int $horizonDays = null): array {
+    public function predictMarketTrends(string $categoryId, ?int $horizonDays = null): array
+    {
         $horizonDays = $horizonDays ?? $this->config['prediction_horizon_days'];
-        
+
         try {
             $cacheKey = "market_trends:{$categoryId}:{$horizonDays}";
             $cached = $this->cache->get($cacheKey);
@@ -141,19 +144,19 @@ class PredictiveAnalyticsService {
 
             // Coletar dados de mercado da categoria
             $marketData = $this->collectMarketData($categoryId);
-            
+
             // Analisar tendências de preço
             $priceTrends = $this->analyzePriceTrends($marketData);
-            
+
             // Analisar volume de vendas
             $volumeTrends = $this->analyzeVolumeTrends($marketData);
-            
+
             // Detectar padrões sazonais
             $seasonalPatterns = $this->detectSeasonalPatterns($marketData);
-            
+
             // Analisar competitividade
             $competitionAnalysis = $this->analyzeCompetitionTrends($categoryId);
-            
+
             // Prever tendências futuras
             $futureTrends = $this->predictFutureTrends($marketData, $horizonDays);
 
@@ -173,9 +176,8 @@ class PredictiveAnalyticsService {
 
             $this->cache->set($cacheKey, $result, $this->config['cache_predictions_ttl']);
             $this->logPrediction($categoryId, 'market_trends', $result);
-            
-            return $result;
 
+            return $result;
         } catch (Exception $e) {
             $this->logger->log('error', 'Market Trends Prediction Failed', [
                 'category_id' => $categoryId,
@@ -188,7 +190,8 @@ class PredictiveAnalyticsService {
     /**
      * Prever elasticidade de preços
      */
-    public function predictPriceElasticity(string $itemId): array {
+    public function predictPriceElasticity(string $itemId): array
+    {
         try {
             $cacheKey = "price_elasticity:{$itemId}";
             $cached = $this->cache->get($cacheKey);
@@ -199,7 +202,7 @@ class PredictiveAnalyticsService {
 
             // Coletar dados de preço e vendas
             $priceVolumeData = $this->collectPriceVolumeData($itemId);
-            
+
             if (count($priceVolumeData) < 5) {
                 throw new Exception("Insufficient price-volume data for elasticity analysis");
             }
@@ -214,10 +217,10 @@ class PredictiveAnalyticsService {
             // Determinar elasticidade média e confiança
             $avgElasticity = array_sum($elasticity) / count($elasticity);
             $elasticityType = $this->categorizeElasticity($avgElasticity);
-            
+
             // Simular cenários de preço
             $priceScenarios = $this->simulatePriceScenarios($itemId, $avgElasticity);
-            
+
             // Calcular preço ótimo
             $optimalPrice = $this->calculateOptimalPrice($itemId, $elasticity, $priceVolumeData);
 
@@ -236,9 +239,8 @@ class PredictiveAnalyticsService {
 
             $this->cache->set($cacheKey, $result, $this->config['cache_predictions_ttl'] * 2);
             $this->logPrediction($itemId, 'price_elasticity', $result);
-            
-            return $result;
 
+            return $result;
         } catch (Exception $e) {
             $this->logger->log('error', 'Price Elasticity Prediction Failed', [
                 'item_id' => $itemId,
@@ -251,7 +253,8 @@ class PredictiveAnalyticsService {
     /**
      * Detectar anomalias no mercado
      */
-    public function detectMarketAnomalies(?string $categoryId = null): array {
+    public function detectMarketAnomalies(?string $categoryId = null): array
+    {
         try {
             $cacheKey = "market_anomalies:" . ($categoryId ?? 'all');
             $cached = $this->cache->get($cacheKey);
@@ -262,19 +265,19 @@ class PredictiveAnalyticsService {
 
             // Coletar dados recentes
             $recentData = $this->collectRecentMarketData($categoryId);
-            
+
             // Detectar anomalias de preço
             $priceAnomalies = $this->detectPriceAnomalies($recentData);
-            
+
             // Detectar anomalias de volume
             $volumeAnomalies = $this->detectVolumeAnomalies($recentData);
-            
+
             // Detectar padrões suspeitos
             $suspiciousPatterns = $this->detectSuspiciousPatterns($recentData);
-            
+
             // Analisar impacto das anomalias
             $impactAnalysis = $this->analyzeAnomalyImpact($priceAnomalies, $volumeAnomalies);
-            
+
             // Gerar alertas
             $alerts = $this->generateAnomalyAlerts($priceAnomalies, $volumeAnomalies, $suspiciousPatterns);
 
@@ -294,9 +297,8 @@ class PredictiveAnalyticsService {
 
             $this->cache->set($cacheKey, $result, 1800); // 30 minutes cache for anomalies
             $this->logPrediction($categoryId ?? 'all', 'market_anomalies', $result);
-            
-            return $result;
 
+            return $result;
         } catch (Exception $e) {
             $this->logger->log('error', 'Market Anomaly Detection Failed', [
                 'category_id' => $categoryId,
@@ -309,11 +311,12 @@ class PredictiveAnalyticsService {
     /**
      * Obter dashboard de previsões consolidado
      */
-    public function getPredictionsDashboard(): array {
+    public function getPredictionsDashboard(): array
+    {
         try {
             // Top products para análise
             $topProducts = $this->getTopProductsForAnalysis();
-            
+
             // Previsões de demanda resumidas
             $demandSummary = [];
             foreach (array_slice($topProducts, 0, 5) as $product) {
@@ -352,7 +355,7 @@ class PredictiveAnalyticsService {
 
             // Anomalias recentes
             $anomalies = $this->detectMarketAnomalies();
-            
+
             // Estatísticas gerais
             $generalStats = $this->getPredictionStats();
 
@@ -362,7 +365,7 @@ class PredictiveAnalyticsService {
                 'market_trends' => $marketTrends,
                 'recent_anomalies' => [
                     'total' => $anomalies['total_anomalies'] ?? 0,
-                    'high_priority' => count(array_filter($anomalies['alerts'] ?? [], function($alert) {
+                    'high_priority' => count(array_filter($anomalies['alerts'] ?? [], function ($alert) {
                         return $alert['severity'] === 'high';
                     })),
                     'categories_affected' => count(array_unique(array_column($anomalies['price_anomalies'] ?? [], 'category_id')))
@@ -370,7 +373,6 @@ class PredictiveAnalyticsService {
                 'prediction_stats' => $generalStats,
                 'last_updated' => date('Y-m-d H:i:s')
             ];
-
         } catch (Exception $e) {
             $this->logger->log('error', 'Predictions Dashboard Failed', [
                 'error' => $e->getMessage()
@@ -382,33 +384,34 @@ class PredictiveAnalyticsService {
     /**
      * Métodos auxiliares para cálculos de previsão
      */
-    private function collectHistoricalSalesData(string $itemId): array {
+    private function collectHistoricalSalesData(string $itemId): array
+    {
         try {
             // Fetch raw order data from the last X days (payload API em order_data)
             $days = 90; // Default lookback
-            
+
             $sql = "SELECT date_created, order_data
-                    FROM ml_orders 
+                    FROM ml_orders
                     WHERE date_created >= DATE_SUB(NOW(), INTERVAL :days DAY)
                     ORDER BY date_created ASC";
-                    
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute(['days' => $days]);
             $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             $dailySales = [];
-            
+
             foreach ($orders as $order) {
                 $date = date('Y-m-d', strtotime($order['date_created']));
                 $payload = json_decode((string)($order['order_data'] ?? ''), true);
                 $items = $payload['order_items'] ?? $payload['items'] ?? null;
-                
+
                 if (!is_array($items)) continue;
-                
+
                 foreach ($items as $item) {
                     // Match by ID or Seller SKU. Access varies depending on JSON structure (root or 'item' key)
                     $orderItemId = $item['id'] ?? $item['item']['id'] ?? '';
-                    
+
                     if ($orderItemId === $itemId) {
                         if (!isset($dailySales[$date])) {
                             $dailySales[$date] = [
@@ -423,12 +426,12 @@ class PredictiveAnalyticsService {
                     }
                 }
             }
-            
+
             // Fill in missing dates with 0 sales for continuity
             $data = [];
             $currentDate = strtotime("-$days days");
             $now = time();
-            
+
             while ($currentDate <= $now) {
                 $dateStr = date('Y-m-d', $currentDate);
                 if (isset($dailySales[$dateStr])) {
@@ -446,15 +449,16 @@ class PredictiveAnalyticsService {
                 }
                 $currentDate = strtotime('+1 day', $currentDate);
             }
-            
+
             return $data;
         } catch (\Exception $e) {
             return [];
         }
     }
 
-    private function prepareTimeSeries(array $data): array {
-        return array_map(function($item) {
+    private function prepareTimeSeries(array $data): array
+    {
+        return array_map(function ($item) {
             return [
                 'date' => $item['date'],
                 'value' => (float)$item['quantity_sold'],
@@ -463,12 +467,13 @@ class PredictiveAnalyticsService {
         }, $data);
     }
 
-    private function detectSeasonality(array $timeSeries): ?array {
+    private function detectSeasonality(array $timeSeries): ?array
+    {
         if (count($timeSeries) < 14) return null;
-        
+
         $values = array_column($timeSeries, 'value');
         $weeklyPattern = [];
-        
+
         foreach ($timeSeries as $point) {
             $dayOfWeek = date('w', $point['timestamp']);
             if (!isset($weeklyPattern[$dayOfWeek])) {
@@ -476,12 +481,12 @@ class PredictiveAnalyticsService {
             }
             $weeklyPattern[$dayOfWeek][] = $point['value'];
         }
-        
+
         $weeklyAverages = [];
         foreach ($weeklyPattern as $day => $values) {
             $weeklyAverages[$day] = count($values) > 0 ? array_sum($values) / count($values) : 0;
         }
-        
+
         // Calculate seasonality strength only if we have non-zero overall mean
         $overallMean = array_sum(array_column($timeSeries, 'value')) / count($timeSeries);
         if ($overallMean == 0) return null;
@@ -491,7 +496,7 @@ class PredictiveAnalyticsService {
             $seasonalStrength += abs($avg - $overallMean) / $overallMean;
         }
         $seasonalStrength = count($weeklyAverages) > 0 ? $seasonalStrength / count($weeklyAverages) : 0;
-        
+
         return [
             'detected' => $seasonalStrength > 0.1,
             'strength' => round($seasonalStrength, 3),
@@ -500,35 +505,40 @@ class PredictiveAnalyticsService {
         ];
     }
 
-    private function calculateTrend(array $timeSeries): array {
+    private function calculateTrend(array $timeSeries): array
+    {
         $values = array_column($timeSeries, 'value');
         $n = count($values);
-        
+
         if ($n < 3) {
             return ['direction' => 'insufficient_data', 'slope' => 0, 'strength' => 0];
         }
-        
+
         $x = range(1, $n);
         $sumX = array_sum($x);
         $sumY = array_sum($values);
-        $sumXY = array_sum(array_map(function($xi, $yi) { return $xi * $yi; }, $x, $values));
-        $sumX2 = array_sum(array_map(function($xi) { return $xi * $xi; }, $x));
-        
+        $sumXY = array_sum(array_map(function ($xi, $yi) {
+            return $xi * $yi;
+        }, $x, $values));
+        $sumX2 = array_sum(array_map(function ($xi) {
+            return $xi * $xi;
+        }, $x));
+
         $denominator = ($n * $sumX2 - $sumX * $sumX);
         if ($denominator == 0) return ['direction' => 'stable', 'slope' => 0, 'strength' => 0];
 
         $slope = ($n * $sumXY - $sumX * $sumY) / $denominator;
         $intercept = ($sumY - $slope * $sumX) / $n;
-        
+
         $avg = array_sum($values) / $n;
 
         $direction = 'stable';
         if (abs($slope) > 0.1) {
             $direction = $slope > 0 ? 'increasing' : 'decreasing';
         }
-        
+
         $strength = $avg > 0 ? min(1.0, abs($slope) / $avg) : 0;
-        
+
         return [
             'direction' => $direction,
             'slope' => round($slope, 4),
@@ -665,7 +675,7 @@ class PredictiveAnalyticsService {
         // Normalizar fatores sazonais
         $seasonalMean = array_sum($seasonalFactors) / count($seasonalFactors);
         if ($seasonalMean > 0) {
-            $seasonalFactors = array_map(fn($f) => $f / $seasonalMean, $seasonalFactors);
+            $seasonalFactors = array_map(fn(float|int $f): float|int => $f / $seasonalMean, $seasonalFactors);
         }
 
         // Usar regressão linear para a tendência
@@ -688,7 +698,7 @@ class PredictiveAnalyticsService {
     private function ensemblePredictions(array $predictions): array
     {
         // Filtrar modelos null
-        $validModels = array_filter($predictions, fn($p) => $p !== null);
+        $validModels = array_filter($predictions, fn(mixed $p): bool => $p !== null);
 
         if (empty($validModels)) {
             return [];
@@ -732,7 +742,7 @@ class PredictiveAnalyticsService {
         $n = count($values);
 
         if ($n < 2) {
-            return array_map(fn($v) => ['lower' => $v * 0.8, 'upper' => $v * 1.2], $ensemble);
+            return array_map(fn(float|int $v): array => ['lower' => $v * 0.8, 'upper' => $v * 1.2], $ensemble);
         }
 
         // Calcular desvio padrão dos dados históricos
@@ -818,9 +828,18 @@ class PredictiveAnalyticsService {
 
         // Fator sazonal geral do mês
         $seasonalFactors = [
-            1 => 0.75, 2 => 0.80, 3 => 0.90, 4 => 0.95,
-            5 => 1.20, 6 => 1.15, 7 => 0.90, 8 => 1.10,
-            9 => 0.95, 10 => 1.05, 11 => 1.35, 12 => 1.40,
+            1 => 0.75,
+            2 => 0.80,
+            3 => 0.90,
+            4 => 0.95,
+            5 => 1.20,
+            6 => 1.15,
+            7 => 0.90,
+            8 => 1.10,
+            9 => 0.95,
+            10 => 1.05,
+            11 => 1.35,
+            12 => 1.40,
         ];
 
         return [
@@ -831,8 +850,9 @@ class PredictiveAnalyticsService {
             'source' => 'brazilian_calendar',
         ];
     }
-    
-    private function calculateModelAccuracy(array $predictions, array $timeSeries): array {
+
+    private function calculateModelAccuracy(array $predictions, array $timeSeries): array
+    {
         $actualValues = array_column($timeSeries, 'value');
         if (empty($actualValues)) {
             return ['avg_accuracy' => 0.0, 'per_model' => []];
@@ -859,17 +879,19 @@ class PredictiveAnalyticsService {
         $avg = !empty($errors) ? array_sum($errors) / count($errors) : 0.0;
         return ['avg_accuracy' => round($avg, 3), 'per_model' => $perModel];
     }
-    
-    private function assessDataQuality(array $data): array { 
+
+    private function assessDataQuality(array $data): array
+    {
         if (empty($data)) return ['quality_score' => 0.0, 'completeness' => 0.0];
-        
-        $nonZero = count(array_filter($data, fn($d) => $d['quantity_sold'] > 0));
+
+        $nonZero = count(array_filter($data, fn(array $d): bool => $d['quantity_sold'] > 0));
         $completeness = $nonZero / count($data);
-        
-        return ['quality_score' => round($completeness, 2), 'completeness' => round($completeness, 2)]; 
+
+        return ['quality_score' => round($completeness, 2), 'completeness' => round($completeness, 2)];
     }
-    
-    private function logPrediction(string $targetId, string $type, array $result): void {
+
+    private function logPrediction(string $targetId, string $type, array $result): void
+    {
         // Already implemented in ensurePredictionTables/log logic but method body was empty in previous view
         try {
             $stmt = $this->db->prepare("
@@ -877,9 +899,9 @@ class PredictiveAnalyticsService {
                 VALUES (?, ?, ?, ?)
             ");
             $stmt->execute([
-                $targetId, 
-                $type, 
-                json_encode($result), 
+                $targetId,
+                $type,
+                json_encode($result),
                 $result['model_performance']['avg_accuracy'] ?? 0
             ]);
         } catch (Exception $e) {
@@ -887,11 +909,12 @@ class PredictiveAnalyticsService {
             $this->logger->log('error', 'Failed to log prediction', ['error' => $e->getMessage()]);
         }
     }
-    
-    private function collectMarketData(string $categoryId): array {
+
+    private function collectMarketData(string $categoryId): array
+    {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     imh.date as date,
                     AVG(imh.price) as avg_price,
                     SUM(imh.sold_quantity) as total_sold,
@@ -909,12 +932,13 @@ class PredictiveAnalyticsService {
             return [];
         }
     }
-    
-    private function analyzePriceTrends(array $data): array { 
+
+    private function analyzePriceTrends(array $data): array
+    {
         if (empty($data)) {
             return ['direction' => 'unknown', 'avg_price' => 0];
         }
-        $timeSeries = array_map(function ($row) {
+        $timeSeries = array_map(function (array $row): array {
             return [
                 'date' => $row['date'],
                 'value' => (float)($row['avg_price'] ?? 0),
@@ -925,13 +949,14 @@ class PredictiveAnalyticsService {
         $avg = array_sum(array_column($timeSeries, 'value')) / count($timeSeries);
         return array_merge($trend, ['avg_price' => round($avg, 2)]);
     }
-    
+
     // ... Placeholder methods that require external data return empty/safe defaults ...
-    private function analyzeVolumeTrends(array $data): array {
+    private function analyzeVolumeTrends(array $data): array
+    {
         if (empty($data)) {
             return ['direction' => 'unknown', 'avg_volume' => 0];
         }
-        $timeSeries = array_map(function ($row) {
+        $timeSeries = array_map(function (array $row): array {
             return [
                 'date' => $row['date'],
                 'value' => (float)($row['total_sold'] ?? 0),
@@ -942,7 +967,8 @@ class PredictiveAnalyticsService {
         $avg = array_sum(array_column($timeSeries, 'value')) / count($timeSeries);
         return array_merge($trend, ['avg_volume' => round($avg, 2)]);
     }
-    private function detectSeasonalPatterns(array $data): array {
+    private function detectSeasonalPatterns(array $data): array
+    {
         if (empty($data)) {
             return [];
         }
@@ -967,10 +993,11 @@ class PredictiveAnalyticsService {
         }
         return $patterns;
     }
-    private function analyzeCompetitionTrends(string $categoryId): array {
+    private function analyzeCompetitionTrends(string $categoryId): array
+    {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     DATE(cph.recorded_at) as date,
                     AVG(cph.price) as avg_price,
                     COUNT(DISTINCT ci.id) as competitors
@@ -986,7 +1013,7 @@ class PredictiveAnalyticsService {
             if (empty($rows)) {
                 return ['competitors' => 0, 'avg_price' => 0, 'trend' => ['direction' => 'unknown']];
             }
-            $timeSeries = array_map(function ($row) {
+            $timeSeries = array_map(function (array $row): array {
                 return [
                     'date' => $row['date'],
                     'value' => (float)($row['avg_price'] ?? 0),
@@ -1008,18 +1035,19 @@ class PredictiveAnalyticsService {
             return ['competitors' => 0, 'avg_price' => 0, 'trend' => ['direction' => 'unknown']];
         }
     }
-    private function predictFutureTrends(array $data, int $days): array {
+    private function predictFutureTrends(array $data, int $days): array
+    {
         if (empty($data)) {
             return [];
         }
-        $priceSeries = array_map(function ($row) {
+        $priceSeries = array_map(function (array $row): array {
             return [
                 'date' => $row['date'],
                 'value' => (float)($row['avg_price'] ?? 0),
                 'timestamp' => strtotime($row['date'])
             ];
         }, $data);
-        $volumeSeries = array_map(function ($row) {
+        $volumeSeries = array_map(function (array $row): array {
             return [
                 'date' => $row['date'],
                 'value' => (float)($row['total_sold'] ?? 0),
@@ -1040,7 +1068,8 @@ class PredictiveAnalyticsService {
         }
         return $predictions;
     }
-    private function identifyMarketOpportunities(array $trends): array {
+    private function identifyMarketOpportunities(array $trends): array
+    {
         if (empty($trends)) {
             return [];
         }
@@ -1065,7 +1094,8 @@ class PredictiveAnalyticsService {
         }
         return $opportunities;
     }
-    private function identifyRiskFactors(array $trends): array {
+    private function identifyRiskFactors(array $trends): array
+    {
         if (empty($trends)) {
             return [];
         }
@@ -1090,36 +1120,38 @@ class PredictiveAnalyticsService {
         }
         return $risks;
     }
-    
-    private function collectPriceVolumeData(string $itemId): array {
+
+    private function collectPriceVolumeData(string $itemId): array
+    {
         // Similar to collectHistoricalSalesData
         $days = 90;
         $sql = "SELECT order_data
-                FROM ml_orders 
+                FROM ml_orders
                 WHERE date_created >= DATE_SUB(NOW(), INTERVAL :days DAY)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['days' => $days]);
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $data = [];
         foreach ($orders as $order) {
             $payload = json_decode((string)($order['order_data'] ?? ''), true);
             $items = $payload['order_items'] ?? $payload['items'] ?? null;
             if (!is_array($items)) continue;
             foreach ($items as $item) {
-                 $id = $item['id'] ?? $item['item']['id'] ?? '';
-                 if ($id === $itemId) {
-                     $data[] = [
-                         'price' => (float)($item['unit_price'] ?? $item['price'] ?? 0),
-                         'volume' => (int)($item['quantity'] ?? 1)
-                     ];
-                 }
+                $id = $item['id'] ?? $item['item']['id'] ?? '';
+                if ($id === $itemId) {
+                    $data[] = [
+                        'price' => (float)($item['unit_price'] ?? $item['price'] ?? 0),
+                        'volume' => (int)($item['quantity'] ?? 1)
+                    ];
+                }
             }
         }
         return $data;
     }
-    
-    private function calculatePointElasticity(array $data): float { 
+
+    private function calculatePointElasticity(array $data): float
+    {
         if (count($data) < 2) {
             return 0.0;
         }
@@ -1144,7 +1176,8 @@ class PredictiveAnalyticsService {
         }
         return array_sum($elasticities) / count($elasticities);
     }
-    private function calculateArcElasticity(array $data): float {
+    private function calculateArcElasticity(array $data): float
+    {
         if (count($data) < 2) {
             return 0.0;
         }
@@ -1169,8 +1202,9 @@ class PredictiveAnalyticsService {
         }
         return $pctQ / $pctP;
     }
-    private function calculateRegressionElasticity(array $data): float {
-        $pairs = array_filter($data, function ($row) {
+    private function calculateRegressionElasticity(array $data): float
+    {
+        $pairs = array_filter($data, function (array $row): bool {
             return ($row['price'] ?? 0) > 0 && ($row['volume'] ?? 0) > 0;
         });
         $n = count($pairs);
@@ -1197,12 +1231,14 @@ class PredictiveAnalyticsService {
         }
         return ($n * $sumXY - $sumX * $sumY) / $den;
     }
-    private function categorizeElasticity(float $elasticity): string { 
+    private function categorizeElasticity(float $elasticity): string
+    {
         if ($elasticity == 0) return 'unknown';
-        return abs($elasticity) > 1 ? 'elastic' : 'inelastic'; 
+        return abs($elasticity) > 1 ? 'elastic' : 'inelastic';
     }
-    
-    private function simulatePriceScenarios(string $itemId, float $elasticity): array {
+
+    private function simulatePriceScenarios(string $itemId, float $elasticity): array
+    {
         if ($elasticity == 0) {
             return [];
         }
@@ -1235,8 +1271,9 @@ class PredictiveAnalyticsService {
         }
         return $scenarios;
     }
-    
-    private function calculateOptimalPrice(string $itemId, array $elasticity, array $data): array {
+
+    private function calculateOptimalPrice(string $itemId, array $elasticity, array $data): array
+    {
         $avgElasticity = array_sum($elasticity) / max(1, count($elasticity));
         $stmt = $this->db->prepare("SELECT price FROM items WHERE ml_item_id = ? LIMIT 1");
         $stmt->execute([$itemId]);
@@ -1262,7 +1299,8 @@ class PredictiveAnalyticsService {
         }
         return $best;
     }
-    private function generateElasticityRecommendations(string $type, float $elasticity): array {
+    private function generateElasticityRecommendations(string $type, float $elasticity): array
+    {
         if ($type === 'unknown') {
             return [];
         }
@@ -1275,11 +1313,15 @@ class PredictiveAnalyticsService {
             ['action' => 'aumentar_preco', 'impact' => 'margem', 'confidence' => round(min(1, abs($elasticity)), 2)]
         ];
     }
-    private function calculateElasticityConfidence(array $data): float { return count($data) > 10 ? 0.8 : 0.2; }
-    private function collectRecentMarketData(?string $categoryId = null): array {
+    private function calculateElasticityConfidence(array $data): float
+    {
+        return count($data) > 10 ? 0.8 : 0.2;
+    }
+    private function collectRecentMarketData(?string $categoryId = null): array
+    {
         try {
             $query = "
-                SELECT 
+                SELECT
                     imh.date as date,
                     AVG(imh.price) as avg_price,
                     SUM(imh.sold_quantity) as total_sold
@@ -1300,12 +1342,13 @@ class PredictiveAnalyticsService {
             return [];
         }
     }
-    
-    private function detectPriceAnomalies(array $data): array {
+
+    private function detectPriceAnomalies(array $data): array
+    {
         if (empty($data)) {
             return [];
         }
-        $values = array_map(fn($row) => (float)($row['avg_price'] ?? 0), $data);
+        $values = array_map(fn(array $row): float => (float)($row['avg_price'] ?? 0), $data);
         $avg = array_sum($values) / count($values);
         $variance = 0;
         foreach ($values as $value) {
@@ -1329,11 +1372,12 @@ class PredictiveAnalyticsService {
         }
         return $anomalies;
     }
-    private function detectVolumeAnomalies(array $data): array {
+    private function detectVolumeAnomalies(array $data): array
+    {
         if (empty($data)) {
             return [];
         }
-        $values = array_map(fn($row) => (float)($row['total_sold'] ?? 0), $data);
+        $values = array_map(fn(array $row): float => (float)($row['total_sold'] ?? 0), $data);
         $avg = array_sum($values) / count($values);
         $variance = 0;
         foreach ($values as $value) {
@@ -1357,7 +1401,8 @@ class PredictiveAnalyticsService {
         }
         return $anomalies;
     }
-    private function detectSuspiciousPatterns(array $data): array {
+    private function detectSuspiciousPatterns(array $data): array
+    {
         $priceAnomalies = $this->detectPriceAnomalies($data);
         $volumeAnomalies = $this->detectVolumeAnomalies($data);
         $volumeIndex = [];
@@ -1377,7 +1422,8 @@ class PredictiveAnalyticsService {
         }
         return $patterns;
     }
-    private function analyzeAnomalyImpact(array $priceAnomalies, array $volumeAnomalies): array {
+    private function analyzeAnomalyImpact(array $priceAnomalies, array $volumeAnomalies): array
+    {
         return [
             'price_count' => count($priceAnomalies),
             'volume_count' => count($volumeAnomalies),
@@ -1385,7 +1431,8 @@ class PredictiveAnalyticsService {
             'max_volume_z' => !empty($volumeAnomalies) ? max(array_column($volumeAnomalies, 'z_score')) : 0
         ];
     }
-    private function generateAnomalyAlerts(array $priceAnomalies, array $volumeAnomalies, array $patterns): array {
+    private function generateAnomalyAlerts(array $priceAnomalies, array $volumeAnomalies, array $patterns): array
+    {
         $alerts = [];
         foreach ($priceAnomalies as $anomaly) {
             $severity = abs($anomaly['z_score']) >= 3 ? 'high' : 'medium';
@@ -1415,7 +1462,8 @@ class PredictiveAnalyticsService {
         }
         return $alerts;
     }
-    private function categorizeAnomaliesBySeverity(array $alerts): array {
+    private function categorizeAnomaliesBySeverity(array $alerts): array
+    {
         $counts = ['low' => 0, 'medium' => 0, 'high' => 0];
         foreach ($alerts as $alert) {
             $severity = $alert['severity'] ?? 'low';
@@ -1426,15 +1474,16 @@ class PredictiveAnalyticsService {
         }
         return $counts;
     }
-    
-    private function getTopProductsForAnalysis(): array { 
+
+    private function getTopProductsForAnalysis(): array
+    {
         // Real DB query
         try {
             $stmt = $this->db->query("
-                SELECT ml_item_id as item_id, title 
-                FROM items 
+                SELECT ml_item_id as item_id, title
+                FROM items
                 WHERE status = 'active'
-                ORDER BY sold_quantity DESC 
+                ORDER BY sold_quantity DESC
                 LIMIT 5
             ");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1442,33 +1491,35 @@ class PredictiveAnalyticsService {
             return [];
         }
     }
-    
-    private function getTopCategories(): array { 
+
+    private function getTopCategories(): array
+    {
         try {
             $stmt = $this->db->query("
-                SELECT category_id, name 
-                FROM categories 
-                ORDER BY total_items DESC 
+                SELECT category_id, name
+                FROM categories
+                ORDER BY total_items DESC
                 LIMIT 5
             ");
-             // Note: 'categories' table schema verified? assuming distinct table exists or using items agg
-             // If categories table missing, use items agg:
-             if (!$stmt) {
-                 $stmt = $this->db->query("
+            // Note: 'categories' table schema verified? assuming distinct table exists or using items agg
+            // If categories table missing, use items agg:
+            if (!$stmt) {
+                $stmt = $this->db->query("
                     SELECT category_id, 'Category ' || category_id as name
-                    FROM items 
-                    GROUP BY category_id 
-                    ORDER BY COUNT(*) DESC 
+                    FROM items
+                    GROUP BY category_id
+                    ORDER BY COUNT(*) DESC
                     LIMIT 5
                  ");
-             }
-             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (Exception $e) {
             return [];
         }
     }
-    
-    private function getPredictionStats(): array { 
+
+    private function getPredictionStats(): array
+    {
         $count = (int)($this->db->query("SELECT COUNT(*) FROM prediction_logs")->fetchColumn() ?: 0);
         $avg = 0.0;
         try {
@@ -1476,10 +1527,11 @@ class PredictiveAnalyticsService {
         } catch (\Throwable $e) {
             $avg = 0.0;
         }
-        return ['total_predictions' => $count, 'avg_accuracy' => round($avg, 3)]; 
+        return ['total_predictions' => $count, 'avg_accuracy' => round($avg, 3)];
     }
 
-    private function initializePredictionModels(): void {
+    private function initializePredictionModels(): void
+    {
         $this->models = [];
         try {
             $stmt = $this->db->query("
@@ -1503,41 +1555,43 @@ class PredictiveAnalyticsService {
         }
     }
 
-    public function clearModelCache(string $modelType): void {
+    public function clearModelCache(string $modelType): void
+    {
         try {
             // Pattern match based on model type
             // e.g. demand_forecast -> demand_prediction:*
-            $pattern = match($modelType) {
+            $pattern = match ($modelType) {
                 'demand_forecast' => 'demand_prediction:*',
                 'market_trends' => 'market_trends:*',
                 'price_elasticity' => 'price_elasticity:*',
                 'market_anomalies' => 'market_anomalies:*',
                 default => '*'
             };
-            
+
             if ($pattern === '*') {
-                 // Clear all prediction caches if wild or unknown
-                 // Note: Ideally allow wildcard clearing in CacheManager if supported, 
-                 // or just log that we cannot clear everything easily without keys
-                 $this->logger->log('info', 'Cache maintenance: No specific pattern for model', ['model' => $modelType]);
+                // Clear all prediction caches if wild or unknown
+                // Note: Ideally allow wildcard clearing in CacheManager if supported,
+                // or just log that we cannot clear everything easily without keys
+                $this->logger->log('info', 'Cache maintenance: No specific pattern for model', ['model' => $modelType]);
             } else {
-                 // Iterate and delete (if cache supports keys command or similar, otherwise generic log)
-                 // Assuming AdvancedRedisCacheService has a deletePattern or similar?
-                 // If not, we might need to just log it for now as "Simulated Cache Clear" but using real service calls
-                 // Let's assume for now we just log it if deletePattern missing, or implement if easy.
-                 // Actually, standard Redis cache usually needs keys. 
-                 // We will simply log the action as a real "Maintenance Event".
-                 $this->logger->log('info', 'Maintenance: Clearing cache for model', ['model' => $modelType, 'pattern' => $pattern]);
-                 
-                 // If the cache service has a `delete` method, we can try to delete a "global" key if it exists
-                 // For now, this is a placeholder for the real cache clearing logic
+                // Iterate and delete (if cache supports keys command or similar, otherwise generic log)
+                // Assuming AdvancedRedisCacheService has a deletePattern or similar?
+                // If not, we might need to just log it for now as "Simulated Cache Clear" but using real service calls
+                // Let's assume for now we just log it if deletePattern missing, or implement if easy.
+                // Actually, standard Redis cache usually needs keys.
+                // We will simply log the action as a real "Maintenance Event".
+                $this->logger->log('info', 'Maintenance: Clearing cache for model', ['model' => $modelType, 'pattern' => $pattern]);
+
+                // If the cache service has a `delete` method, we can try to delete a "global" key if it exists
+                // For now, this is a placeholder for the real cache clearing logic
             }
         } catch (Exception $e) {
             $this->logger->log('error', 'Failed to clear model cache', ['error' => $e->getMessage()]);
         }
     }
 
-    private function ensurePredictionTables(): void {
+    private function ensurePredictionTables(): void
+    {
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS prediction_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,

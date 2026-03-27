@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * Manual Account Health Dashboard Test
  * Este script simula o acesso e execução de testes na página account-health

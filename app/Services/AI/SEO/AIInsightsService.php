@@ -9,14 +9,14 @@ use PDO;
 
 /**
  * AI Insights Service - GPT-4 Powered Intelligence
- * 
+ *
  * Fornece análises avançadas em linguagem natural usando GPT-4:
  * - Insights estratégicos personalizados
  * - Recomendações de ações prioritárias
  * - Análise de tendências e padrões
  * - Sugestões de A/B tests
  * - Explicações de métricas complexas
- * 
+ *
  * @package App\Services\AI\SEO
  * @version 2.0.0
  * @since 2025-12-31
@@ -67,7 +67,7 @@ class AIInsightsService
 
     /**
      * Gera insights estratégicos completos para a conta
-     * 
+     *
      * @param array $options Opções de personalização
      * @return array Insights estruturados
      */
@@ -103,7 +103,7 @@ class AIInsightsService
 
     /**
      * Recomenda testes A/B baseado em dados históricos
-     * 
+     *
      * @param string $focusArea Área de foco: all|title|description|price|images
      * @return array Sugestões de testes A/B
      */
@@ -158,7 +158,7 @@ class AIInsightsService
 
     /**
      * Analisa tendências e padrões nos dados
-     * 
+     *
      * @param int $days Período de análise
      * @return array Tendências identificadas
      */
@@ -192,7 +192,7 @@ class AIInsightsService
 
     /**
      * Explica métricas complexas em linguagem simples
-     * 
+     *
      * @param string $metric Nome da métrica
      * @param mixed $value Valor atual
      * @param array $context Contexto adicional
@@ -216,7 +216,7 @@ class AIInsightsService
 
     /**
      * Recomendações prioritizadas de ações
-     * 
+     *
      * @param int $limit Número máximo de recomendações
      * @return array Lista de ações recomendadas
      */
@@ -245,7 +245,7 @@ class AIInsightsService
 
     /**
      * Análise de sentimento do mercado
-     * 
+     *
      * @return array Análise de sentimento
      */
     public function analyzeMarketSentiment(): array
@@ -275,7 +275,7 @@ class AIInsightsService
     {
         // Query para métricas de otimização
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(DISTINCT item_id) as total_items,
                 COUNT(id) as total_optimizations,
                 AVG(score_before) as avg_score_before,
@@ -310,7 +310,7 @@ class AIInsightsService
         // Query separada para alertas não lidos (usando tabela correta com join)
         try {
             $stmt3 = $this->db->prepare("
-                SELECT COUNT(*) as cnt 
+                SELECT COUNT(*) as cnt
                 FROM competitor_alerts ca
                 JOIN competitor_tracking ct ON ct.id = ca.tracking_id
                 WHERE ct.account_id = ? AND ca.is_read = 0
@@ -670,7 +670,7 @@ PROMPT;
     private function getPerformanceMetrics(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 optimization_type,
                 AVG(score_improvement) as avg_improvement,
                 COUNT(*) as count
@@ -727,7 +727,7 @@ PROMPT;
     private function getHistoricalData(int $days): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 DATE(created_at) as date,
                 COUNT(*) as optimizations,
                 AVG(score_improvement) as avg_improvement,
@@ -835,7 +835,7 @@ PROMPT;
 
     private function calculateStdDev(array $values, float $mean): float
     {
-        $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $values)) / count($values);
+        $variance = array_sum(array_map(fn(float|int $x): float|int => pow($x - $mean, 2), $values)) / count($values);
         return sqrt($variance);
     }
 
@@ -924,14 +924,14 @@ PROMPT;
 
     private function filterQuickWins(array $recommendations): array
     {
-        return array_filter($recommendations, function ($rec) {
+        return array_filter($recommendations, function (array $rec): bool {
             return ($rec['impact'] ?? '') === 'high' && ($rec['effort'] ?? '') === 'low';
         });
     }
 
     private function filterLongTerm(array $recommendations): array
     {
-        return array_filter($recommendations, function ($rec) {
+        return array_filter($recommendations, function (array $rec): bool {
             return ($rec['effort'] ?? '') === 'high';
         });
     }
@@ -940,7 +940,7 @@ PROMPT;
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(DISTINCT competitor_item_id) as total_competitors,
                     COUNT(*) as total_tracked
                 FROM competitor_tracking
@@ -971,7 +971,7 @@ PROMPT;
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     ca.type as field,
                     COUNT(*) as changes
                 FROM competitor_alerts ca

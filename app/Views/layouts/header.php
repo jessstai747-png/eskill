@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Header layout - Cabeçalho HTML padrão
  */

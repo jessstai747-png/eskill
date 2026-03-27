@@ -9,7 +9,7 @@ use App\Services\CategoryService;
 
 /**
  * Validation Service - Valida anúncios antes da publicação
- * 
+ *
  * Usa a API oficial /items/validate do Mercado Livre para:
  * - Validar dados antes de publicar
  * - Detectar erros e warnings
@@ -17,7 +17,7 @@ use App\Services\CategoryService;
  * - Identificar campos obrigatórios faltantes
  * - Validar atributos e valores
  * - Checar limites e restrições
- * 
+ *
  * Evita erros na publicação e economiza chamadas de API
  */
 class ValidationService
@@ -321,7 +321,6 @@ class ValidationService
                 'warnings' => [],
                 'response' => $response,
             ];
-
         } catch (\Exception $e) {
             // API pode não estar disponível ou ter timeout
             return [
@@ -399,7 +398,6 @@ class ValidationService
                     $passed = false;
                 }
             }
-
         } catch (\Exception $e) {
             $warnings[] = [
                 'category' => 'category',
@@ -435,7 +433,9 @@ class ValidationService
             $categoryAttributes = $this->categoryService->getCategoryAttributes($categoryId);
 
             // Verificar atributos obrigatórios
-            $requiredAttributes = array_filter($categoryAttributes, fn($attr) => 
+            $requiredAttributes = array_filter(
+                $categoryAttributes,
+                fn(array $attr): bool =>
                 isset($attr['tags']['required']) && $attr['tags']['required']
             );
 
@@ -456,7 +456,7 @@ class ValidationService
             // Validar valores dos atributos
             foreach ($itemAttributes as $itemAttr) {
                 $attrId = $itemAttr['id'] ?? null;
-                
+
                 // Buscar definição do atributo
                 $attrDef = null;
                 foreach ($categoryAttributes as $catAttr) {
@@ -486,7 +486,9 @@ class ValidationService
             }
 
             // Verificar atributos recomendados
-            $recommendedAttributes = array_filter($categoryAttributes, fn($attr) => 
+            $recommendedAttributes = array_filter(
+                $categoryAttributes,
+                fn(array $attr): bool =>
                 isset($attr['tags']['recommended']) && $attr['tags']['recommended']
             );
 
@@ -500,7 +502,6 @@ class ValidationService
                     ];
                 }
             }
-
         } catch (\Exception $e) {
             $warnings[] = [
                 'category' => 'attributes',
@@ -580,8 +581,8 @@ class ValidationService
         return [
             'success' => true,
             'total_items' => count($itemsData),
-            'valid_items' => count(array_filter($results, fn($r) => $r['can_publish'])),
-            'invalid_items' => count(array_filter($results, fn($r) => !$r['can_publish'])),
+            'valid_items' => count(array_filter($results, fn(array $r): bool => $r['can_publish'])),
+            'invalid_items' => count(array_filter($results, fn(array $r): bool => !$r['can_publish'])),
             'results' => $results,
         ];
     }

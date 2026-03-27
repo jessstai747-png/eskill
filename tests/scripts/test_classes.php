@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // Simple test to verify that the classes can be loaded and instantiated
 // Include the autoloader
 require_once __DIR__ . '/autoload.php';

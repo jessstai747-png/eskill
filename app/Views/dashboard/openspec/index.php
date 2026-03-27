@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * OpenSpec Dashboard
  * Main interface for managing OpenSpec changes and specifications

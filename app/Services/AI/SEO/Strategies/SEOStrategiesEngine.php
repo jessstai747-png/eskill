@@ -9,7 +9,7 @@ use App\Services\MercadoLivreClient;
 
 /**
  * 🎯 E12: SEO Strategies Engine (Orchestrator)
- * 
+ *
  * Motor principal que orquestra todas as 12 estratégias SEO:
  * - E1: Hierarquia de Sinônimos (SynonymExpansionService)
  * - E2: Campos Ocultos (HiddenFieldsService)
@@ -23,14 +23,14 @@ use App\Services\MercadoLivreClient;
  * - E10: Compatibilidade (CompatibilityService)
  * - E11: FAQ Otimizada (FAQOptimizerService)
  * - E12: Monitoramento (este serviço)
- * 
+ *
  * Funcionalidades:
  * - Análise completa de anúncio
  * - Otimização automática
  * - Score consolidado
  * - Recomendações priorizadas
  * - Monitoramento contínuo
- * 
+ *
  * @package App\Services\AI\SEO\Strategies
  */
 class SEOStrategiesEngine
@@ -84,7 +84,7 @@ class SEOStrategiesEngine
     {
         $this->accountId = $accountId;
         $this->client = $accountId ? new MercadoLivreClient($accountId) : null;
-        
+
         // Inicializar todos os serviços
         $this->synonymService = new SynonymExpansionService($accountId);
         $this->hiddenFieldsService = new HiddenFieldsService($accountId);
@@ -182,7 +182,7 @@ class SEOStrategiesEngine
     public function analyzeItemData(array $itemData): array
     {
         $startTime = microtime(true);
-        
+
         $itemId = $itemData['id'] ?? null;
         $title = $itemData['title'] ?? '';
         $description = $this->getDescription($itemData);
@@ -260,7 +260,7 @@ class SEOStrategiesEngine
         if (isset($itemData['analyze_competitors']) && $itemData['analyze_competitors'] === true && $itemId) {
             $analyses['E13_COMPETITOR'] = $this->competitorStrategy->analyze($itemId);
             $scores['E13_COMPETITOR'] = $analyses['E13_COMPETITOR']['score'] ?? 0;
-            
+
             // Rebalance weights logic would go here if we wanted it to affect the main score
             // For now, it stays as an add-on score
         }
@@ -327,7 +327,7 @@ class SEOStrategiesEngine
         // Aplicar cada estratégia
         foreach ($strategiesToApply as $strategy) {
             $result = $this->applyStrategy($strategy, $optimizedData, $analysis);
-            
+
             if (!empty($result['changes'])) {
                 $optimizations[$strategy] = $result;
                 $optimizedData = array_merge($optimizedData, $result['updated_data'] ?? []);
@@ -354,9 +354,9 @@ class SEOStrategiesEngine
     public function monitorKeywords(string $categoryId, array $keywords): array
     {
         $db = Database::getInstance();
-        
+
         $performance = [];
-        
+
         foreach ($keywords as $keyword) {
             $queries = [
                 "
@@ -431,15 +431,15 @@ class SEOStrategiesEngine
                     $data['updated_at'] = null;
                 }
             }
-            
+
             if ($data) {
                 $performance[$keyword] = [
                     'impressions' => (int) $data['impressions'],
                     'clicks' => (int) $data['clicks'],
                     'conversions' => (int) $data['conversions'],
                     'avg_position' => (float) $data['avg_position'],
-                    'ctr' => $data['impressions'] > 0 
-                        ? round($data['clicks'] / $data['impressions'] * 100, 2) 
+                    'ctr' => $data['impressions'] > 0
+                        ? round($data['clicks'] / $data['impressions'] * 100, 2)
                         : 0,
                     'last_updated' => $data['updated_at']
                 ];
@@ -455,7 +455,7 @@ class SEOStrategiesEngine
             'category_id' => $categoryId,
             'keywords' => $performance,
             'total_monitored' => count($keywords),
-            'with_data' => count(array_filter($performance, fn($p) => !isset($p['status'])))
+            'with_data' => count(array_filter($performance, fn(array $p): bool => !isset($p['status'])))
         ];
     }
 
@@ -468,8 +468,8 @@ class SEOStrategiesEngine
             'strategies' => $this->getStrategiesStatus(),
             'weights' => self::STRATEGY_WEIGHTS,
             'thresholds' => self::QUALITY_THRESHOLDS,
-            'category_config' => $categoryId 
-                ? $this->getCategoryConfig($categoryId) 
+            'category_config' => $categoryId
+                ? $this->getCategoryConfig($categoryId)
                 : null
         ];
     }
@@ -480,7 +480,7 @@ class SEOStrategiesEngine
     public function getOptimizationReport(string $itemId): array
     {
         $analysis = $this->analyzeItem($itemId);
-        
+
         if (isset($analysis['error'])) {
             return $analysis;
         }
@@ -519,7 +519,7 @@ class SEOStrategiesEngine
         foreach (self::STRATEGY_WEIGHTS as $strategy => $weight) {
             $score1 = $analysis1['strategy_scores'][$strategy] ?? 0;
             $score2 = $analysis2['strategy_scores'][$strategy] ?? 0;
-            
+
             $comparison[$strategy] = [
                 'item1' => $score1,
                 'item2' => $score2,
@@ -539,8 +539,8 @@ class SEOStrategiesEngine
                 'score' => $analysis2['consolidated_score'],
                 'quality' => $analysis2['quality_level']
             ],
-            'winner' => $analysis1['consolidated_score'] > $analysis2['consolidated_score'] 
-                ? 'item1' 
+            'winner' => $analysis1['consolidated_score'] > $analysis2['consolidated_score']
+                ? 'item1'
                 : 'item2',
             'strategy_comparison' => $comparison
         ];
@@ -555,7 +555,7 @@ class SEOStrategiesEngine
         $title = $productData['title'] ?? '';
         $baseKeyword = $this->extractMainKeyword($title);
         $categoryId = $productData['category_id'] ?? 'MLB1234';
-        
+
         $synonyms = $this->synonymService->expand($title, $categoryId);
         $usedSynonyms = $this->countUsedSynonyms($synonyms['synonyms'] ?? [], $title);
 
@@ -573,7 +573,7 @@ class SEOStrategiesEngine
     {
         $attributes = $productData['attributes'] ?? [];
         $hiddenFields = ['KEYWORDS', 'MPN', 'LINE', 'ALPHANUMERIC_MODEL', 'GTIN'];
-        
+
         $filled = 0;
         foreach ($attributes as $attr) {
             if (in_array($attr['id'] ?? '', $hiddenFields)) {
@@ -617,7 +617,7 @@ class SEOStrategiesEngine
     {
         $title = $productData['title'] ?? '';
         $description = $productData['description'] ?? '';
-        
+
         $baseKeyword = $this->extractMainKeyword($title);
         $missing = $this->longTailService->suggestMissing($productData);
 
@@ -636,7 +636,7 @@ class SEOStrategiesEngine
     {
         $title = $productData['title'] ?? '';
         $model = $productData['model'] ?? '';
-        
+
         $modelsInTitle = $this->compatibilityService->getAllModels();
         $detected = 0;
 
@@ -659,8 +659,8 @@ class SEOStrategiesEngine
     {
         // Verificar se tem FAQ na descrição
         $hasFAQ = stripos($description, 'perguntas frequentes') !== false ||
-                  stripos($description, 'faq') !== false ||
-                  preg_match('/\?\s*\n/', $description);
+            stripos($description, 'faq') !== false ||
+            preg_match('/\?\s*\n/', $description);
 
         $score = $hasFAQ ? 70 : 0;
 
@@ -864,11 +864,11 @@ class SEOStrategiesEngine
     private function determineStrategiesToApply(array $scores, $applyStrategies): array
     {
         if ($applyStrategies === 'all') {
-            return array_keys(array_filter($scores, fn($s) => $s < 80));
+            return array_keys(array_filter($scores, fn(float|int $s): bool => $s < 80));
         }
 
         if ($applyStrategies === 'critical') {
-            return array_keys(array_filter($scores, fn($s) => $s < 50));
+            return array_keys(array_filter($scores, fn(float|int $s): bool => $s < 50));
         }
 
         if (is_array($applyStrategies)) {
@@ -941,7 +941,7 @@ class SEOStrategiesEngine
     {
         $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na', 'e', 'ou'];
         $words = preg_split('/\s+/', mb_strtolower($title));
-        
+
         $keywords = [];
         foreach ($words as $word) {
             $word = preg_replace('/[^\p{L}\p{N}]/u', '', $word);
@@ -958,7 +958,7 @@ class SEOStrategiesEngine
     {
         $stopWords = ['para', 'com', 'sem', 'de', 'da', 'do', 'em', 'no', 'na', 'e', 'ou', 'a', 'o'];
         $words = preg_split('/\s+/', mb_strtolower($title));
-        
+
         $keywords = [];
         foreach ($words as $word) {
             $word = preg_replace('/[^\p{L}\p{N}]/u', '', $word);
@@ -1006,13 +1006,13 @@ class SEOStrategiesEngine
     private function getCategoryConfig(string $categoryId): array
     {
         $db = Database::getInstance();
-        
+
         $stmt = $db->prepare("
-            SELECT * FROM seo_category_config 
+            SELECT * FROM seo_category_config
             WHERE category_id = :category_id
         ");
         $stmt->execute(['category_id' => $categoryId]);
-        
+
         return $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
     }
 }

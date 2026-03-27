@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * AI Optimization System - Queue Monitor
  * Real-time monitoring of the optimization queue

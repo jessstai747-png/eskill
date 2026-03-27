@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Dashboard de Precificação Inteligente
  *
@@ -2568,7 +2570,7 @@ $accountId = SessionHelper::getActiveAccountId();
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     const ACCOUNT_ID = <?= json_encode($accountId) ?>;
     const HAS_ACCOUNT_ID = Number.isInteger(Number(ACCOUNT_ID)) && Number(ACCOUNT_ID) > 0;

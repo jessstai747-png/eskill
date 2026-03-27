@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * WhatsApp Integration - Modern Layout
  */
@@ -156,7 +159,7 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     function toggleFields() {
         const provider = document.getElementById('providerSelect').value;

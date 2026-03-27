@@ -71,7 +71,7 @@ class CompetitorSpy
             // Filter out my own items to ensure true competitor analysis
             $mySellerId = $this->mlClient ? $this->mlClient->getSellerId() : null;
             if ($mySellerId) {
-                $items = array_filter($items, function ($item) use ($mySellerId) {
+                $items = array_filter($items, function (array $item) use ($mySellerId): bool {
                     return isset($item['seller']['id']) && $item['seller']['id'] != $mySellerId;
                 });
             }

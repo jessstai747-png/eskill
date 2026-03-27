@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Widget de Progresso Embeddable - Gerador de Código
  * 
@@ -313,7 +316,7 @@ widget.destroy();</code></pre>
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 document.addEventListener('DOMContentLoaded', function() {
     const baseUrl = '<?= rtrim($_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'], '/') ?>';
@@ -443,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="clone-progress-${config.jobId}" style="width: ${width}px;"></div>
 
 <script src="${baseUrl}/js/clone-progress-widget.js"><\/script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 (function() {
     CloneProgressWidget.init('#clone-progress-${config.jobId}', ${JSON.stringify(config, null, 4)});
 })();

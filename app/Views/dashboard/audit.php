@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Auditoria - Versão Moderna
  * Integrado com o layout moderno
@@ -119,7 +122,7 @@
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     document.addEventListener('DOMContentLoaded', loadLogs);
     

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\SEO;
@@ -9,7 +10,7 @@ use Exception;
 
 /**
  * Hidden Attributes Detector
- * 
+ *
  * Detects non-required attributes that appear frequently in top competitors
  * and can significantly improve listing visibility
  */
@@ -20,20 +21,34 @@ class HiddenAttributesDetector
     private CompetitorAnalysisService $competitorService;
     private $synonymService;
     private ?int $accountId;
-    
+
     // Minimum frequency to consider an attribute "hidden but important"
     private const MIN_FREQUENCY_HIGH = 80;    // High impact
     private const MIN_FREQUENCY_MEDIUM = 60;  // Medium impact
     private const MIN_FREQUENCY_LOW = 40;     // Low impact
-    
+
     // Technical attribute IDs that require validation
     private const TECHNICAL_ATTRIBUTES = [
-        'BRAND', 'MODEL', 'MANUFACTURER', 'PART_NUMBER', 'MPN',
-        'GTIN', 'EAN', 'UPC', 'ISBN',
-        'VOLTAGE', 'POWER', 'CAPACITY', 'SIZE', 'WEIGHT',
-        'PROCESSOR', 'RAM', 'STORAGE', 'SCREEN_SIZE',
+        'BRAND',
+        'MODEL',
+        'MANUFACTURER',
+        'PART_NUMBER',
+        'MPN',
+        'GTIN',
+        'EAN',
+        'UPC',
+        'ISBN',
+        'VOLTAGE',
+        'POWER',
+        'CAPACITY',
+        'SIZE',
+        'WEIGHT',
+        'PROCESSOR',
+        'RAM',
+        'STORAGE',
+        'SCREEN_SIZE',
     ];
-    
+
     public function __construct(?int $accountId = null)
     {
         $this->db = Database::getInstance();
@@ -42,10 +57,10 @@ class HiddenAttributesDetector
         $this->synonymService = $this->resolveSynonymService($accountId);
         $this->accountId = $accountId;
     }
-    
+
     /**
      * Detect hidden attributes for an item
-     * 
+     *
      * @param string $itemId ML item ID
      * @param bool $forceRefresh Force new detection
      * @return array Detection results
@@ -53,58 +68,58 @@ class HiddenAttributesDetector
     public function detectHiddenAttributes(string $itemId, bool $forceRefresh = false): array
     {
         $item = $this->fetchItem($itemId);
-        
+
         if (!$item) {
             throw new Exception("Item not found: {$itemId}");
         }
-        
+
         $categoryId = $item['category_id'] ?? '';
         if (empty($categoryId)) {
             throw new Exception("Item has no category");
         }
-        
+
         // Get category attributes to identify required ones
         $categoryAttributes = $this->mlClient->getCategoryAttributes($categoryId);
         $requiredAttributeIds = $this->getRequiredAttributeIds($categoryAttributes);
-        
+
         // Get our item's current attributes
         $ourAttributeIds = $this->getItemAttributeIds($item);
-        
+
         // Analyze competitors
         $competitorAnalysis = $this->competitorService->analyzeCompetitors($itemId, 20, $forceRefresh);
         $attributePatterns = $competitorAnalysis['attribute_patterns'] ?? [];
-        
+
         // Find hidden attributes
         $hiddenAttributes = [];
-        
+
         foreach ($attributePatterns as $pattern) {
             $attrId = $pattern['id'];
             $frequency = $pattern['frequency'];
-            
+
             // Skip if it's required
             if (in_array($attrId, $requiredAttributeIds)) {
                 continue;
             }
-            
+
             // Skip if we already have it
             if (in_array($attrId, $ourAttributeIds)) {
                 continue;
             }
-            
+
             // Only consider attributes with significant frequency
             if ($frequency < self::MIN_FREQUENCY_LOW) {
                 continue;
             }
-            
+
             // Classify impact
             $impact = $this->classifyImpact($frequency, $attrId);
-            
+
             // Determine if it's technical
             $isTechnical = $this->isTechnicalAttribute($attrId);
-            
+
             // Get suggested values
             $suggestedValues = $this->getSuggestedValues($pattern['values'] ?? []);
-            
+
             $hiddenAttributes[] = [
                 'attribute_id' => $attrId,
                 'attribute_name' => $pattern['name'],
@@ -117,53 +132,53 @@ class HiddenAttributesDetector
                 'value_distribution' => $pattern['values'] ?? [],
             ];
         }
-        
+
         // Sort by impact and frequency
-        usort($hiddenAttributes, function($a, $b) {
+        usort($hiddenAttributes, function ($a, $b) {
             $impactOrder = ['high' => 0, 'medium' => 1, 'low' => 2];
             $impactCompare = ($impactOrder[$a['impact']] ?? 99) <=> ($impactOrder[$b['impact']] ?? 99);
-            
+
             if ($impactCompare !== 0) {
                 return $impactCompare;
             }
-            
+
             return $b['frequency'] <=> $a['frequency'];
         });
-        
+
         // Save to database
         $this->saveHiddenAttributes($itemId, $hiddenAttributes);
-        
+
         // Calculate completeness score
         $completenessScore = $this->calculateCompletenessScore($item, $hiddenAttributes);
-        
+
         return [
             'item_id' => $itemId,
             'category_id' => $categoryId,
             'hidden_attributes' => $hiddenAttributes,
             'completeness_score' => $completenessScore,
             'total_hidden' => count($hiddenAttributes),
-            'high_impact' => count(array_filter($hiddenAttributes, fn($a) => $a['impact'] === 'high')),
-            'medium_impact' => count(array_filter($hiddenAttributes, fn($a) => $a['impact'] === 'medium')),
-            'low_impact' => count(array_filter($hiddenAttributes, fn($a) => $a['impact'] === 'low')),
+            'high_impact' => count(array_filter($hiddenAttributes, fn(array $a): bool => $a['impact'] === 'high')),
+            'medium_impact' => count(array_filter($hiddenAttributes, fn(array $a): bool => $a['impact'] === 'medium')),
+            'low_impact' => count(array_filter($hiddenAttributes, fn(array $a): bool => $a['impact'] === 'low')),
         ];
     }
-    
+
     /**
      * Get required attribute IDs from category
      */
     private function getRequiredAttributeIds(array $categoryAttributes): array
     {
         $required = [];
-        
+
         foreach ($categoryAttributes as $attr) {
             if ($attr['tags']['required'] ?? false) {
                 $required[] = $attr['id'];
             }
         }
-        
+
         return $required;
     }
-    
+
     /**
      * Get attribute IDs from item
      */
@@ -171,16 +186,16 @@ class HiddenAttributesDetector
     {
         $ids = [];
         $attributes = $item['attributes'] ?? [];
-        
+
         foreach ($attributes as $attr) {
             if (!empty($attr['id'])) {
                 $ids[] = $attr['id'];
             }
         }
-        
+
         return $ids;
     }
-    
+
     /**
      * Classify impact level based on frequency and attribute type
      */
@@ -190,7 +205,7 @@ class HiddenAttributesDetector
         if ($this->isTechnicalAttribute($attributeId) && $frequency >= self::MIN_FREQUENCY_MEDIUM) {
             return 'high';
         }
-        
+
         // Frequency-based classification
         if ($frequency >= self::MIN_FREQUENCY_HIGH) {
             return 'high';
@@ -200,7 +215,7 @@ class HiddenAttributesDetector
             return 'low';
         }
     }
-    
+
     /**
      * Check if attribute is technical
      */
@@ -208,7 +223,7 @@ class HiddenAttributesDetector
     {
         return in_array($attributeId, self::TECHNICAL_ATTRIBUTES);
     }
-    
+
     /**
      * Get suggested values from distribution
      * Returns top 3 most common values
@@ -218,13 +233,13 @@ class HiddenAttributesDetector
         if (empty($valueDistribution)) {
             return [];
         }
-        
+
         // Sort by frequency
         arsort($valueDistribution);
-        
+
         // Get top 3
         $top = array_slice($valueDistribution, 0, 3, true);
-        
+
         $suggestions = [];
         foreach ($top as $value => $count) {
             $suggestions[] = [
@@ -232,13 +247,13 @@ class HiddenAttributesDetector
                 'count' => $count,
             ];
         }
-        
+
         return $suggestions;
     }
-    
+
     /**
      * Calculate completeness score
-     * 
+     *
      * Score based on how many high-impact hidden attributes are filled
      */
     private function calculateCompletenessScore(array $item, array $hiddenAttributes): int
@@ -246,36 +261,36 @@ class HiddenAttributesDetector
         if (empty($hiddenAttributes)) {
             return 100; // No hidden attributes to fill
         }
-        
+
         $totalWeight = 0;
         $filledWeight = 0;
-        
+
         $ourAttributeIds = $this->getItemAttributeIds($item);
-        
+
         foreach ($hiddenAttributes as $hidden) {
             // Weight by impact
-            $weight = match($hidden['impact']) {
+            $weight = match ($hidden['impact']) {
                 'high' => 3,
                 'medium' => 2,
                 'low' => 1,
                 default => 1,
             };
-            
+
             $totalWeight += $weight;
-            
+
             // Check if we have it
             if (in_array($hidden['attribute_id'], $ourAttributeIds)) {
                 $filledWeight += $weight;
             }
         }
-        
+
         if ($totalWeight === 0) {
             return 100;
         }
-        
+
         return round(($filledWeight / $totalWeight) * 100);
     }
-    
+
     /**
      * Save hidden attributes to database
      */
@@ -285,16 +300,16 @@ class HiddenAttributesDetector
 
         $item = $this->fetchItem($itemId);
         $categoryId = $item['category_id'] ?? '';
-        
+
         // Mark existing as outdated
         $stmt = $this->db->prepare(
-            "UPDATE seo_hidden_attributes 
-             SET status = 'rejected' 
-             WHERE item_id = :item_id 
+            "UPDATE seo_hidden_attributes
+             SET status = 'rejected'
+             WHERE item_id = :item_id
              AND status = 'detected'"
         );
         $stmt->execute(['item_id' => $itemId]);
-        
+
         // Insert new detections
         $stmtInsert = $this->db->prepare(
             "INSERT INTO seo_hidden_attributes (
@@ -338,10 +353,10 @@ class HiddenAttributesDetector
             ]);
         }
     }
-    
+
     /**
      * Apply a hidden attribute to an item
-     * 
+     *
      * @param string $itemId
      * @param string $attributeId
      * @param string $value
@@ -352,34 +367,34 @@ class HiddenAttributesDetector
     {
         try {
             $item = $this->fetchItem($itemId);
-            
+
             if (!$item) {
                 throw new Exception("Item not found");
             }
-            
+
             // Get current attributes
             $attributes = $item['attributes'] ?? [];
-            
+
             // Add new attribute
             $attributes[] = [
                 'id' => $attributeId,
                 'value_name' => $value,
             ];
-            
+
             // Update via ML API
             $result = $this->mlClient->updateItem($itemId, [
                 'attributes' => $attributes,
             ]);
-            
+
             if (!empty($result)) {
                 // Mark as applied in database
                 $stmt = $this->db->prepare(
-                    "UPDATE seo_hidden_attributes 
+                    "UPDATE seo_hidden_attributes
                      SET status = 'applied',
                          applied_value = :value,
                          applied_at = NOW(),
                          applied_by = :user_id
-                     WHERE item_id = :item_id 
+                     WHERE item_id = :item_id
                      AND attribute_id = :attribute_id"
                 );
                 $stmt->execute([
@@ -388,12 +403,11 @@ class HiddenAttributesDetector
                     'value' => $value,
                     'user_id' => $userId,
                 ]);
-                
+
                 return true;
             }
-            
+
             return false;
-            
         } catch (Exception $e) {
             log_error('Falha ao aplicar atributo oculto', [
                 'error' => $e->getMessage(),
@@ -401,17 +415,17 @@ class HiddenAttributesDetector
             return false;
         }
     }
-    
+
     /**
      * Get stored hidden attributes for an item
      */
     public function getStoredHiddenAttributes(string $itemId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT * FROM seo_hidden_attributes 
-             WHERE item_id = :item_id 
+            "SELECT * FROM seo_hidden_attributes
+             WHERE item_id = :item_id
              AND status IN ('detected', 'pending')
-             ORDER BY 
+             ORDER BY
                 FIELD(impact_level, 'high', 'medium', 'low'),
                 frequency DESC"
         );
@@ -420,7 +434,7 @@ class HiddenAttributesDetector
             // Use FETCH_ASSOC to get array
             \PDO::FETCH_ASSOC
         );
-        
+
         $formatted = [];
         foreach ($results as $row) {
             $formatted[] = [
@@ -438,19 +452,19 @@ class HiddenAttributesDetector
                 'detected_at' => $row['detected_at'],
             ];
         }
-        
+
         return $formatted;
     }
-    
+
     /**
      * Reject a hidden attribute suggestion
      */
     public function rejectHiddenAttribute(string $itemId, string $attributeId): bool
     {
         $stmt = $this->db->prepare(
-            "UPDATE seo_hidden_attributes 
+            "UPDATE seo_hidden_attributes
              SET status = 'rejected'
-             WHERE item_id = :item_id 
+             WHERE item_id = :item_id
              AND attribute_id = :attribute_id"
         );
         return $stmt->execute([
@@ -458,14 +472,14 @@ class HiddenAttributesDetector
             'attribute_id' => $attributeId,
         ]);
     }
-    
+
     /**
      * Get statistics about hidden attributes
      */
     public function getStatistics(int $accountId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT 
+            "SELECT
                 COUNT(*) as total_detected,
                 SUM(CASE WHEN status = 'applied' THEN 1 ELSE 0 END) as total_applied,
                 SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as total_rejected,
@@ -473,12 +487,12 @@ class HiddenAttributesDetector
                 SUM(CASE WHEN impact_level = 'medium' THEN 1 ELSE 0 END) as medium_impact,
                 SUM(CASE WHEN impact_level = 'low' THEN 1 ELSE 0 END) as low_impact,
                 AVG(frequency) as avg_frequency
-             FROM seo_hidden_attributes 
+             FROM seo_hidden_attributes
              WHERE account_id = :account_id"
         );
         $stmt->execute(['account_id' => $accountId]);
         $stats = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         return $stats ?: [];
     }
 
@@ -603,7 +617,7 @@ class HiddenAttributesDetector
     public function generateLineValue(array $item): string
     {
         $attributes = $this->mapAttributes($item['attributes'] ?? []);
-        
+
         if (!empty($attributes['LINE'])) {
             return $attributes['LINE'];
         }
@@ -612,7 +626,7 @@ class HiddenAttributesDetector
         if (!empty($attributes['BRAND']) && !empty($attributes['MODEL'])) {
             return $attributes['BRAND'] . ' ' . $attributes['MODEL'];
         }
-        
+
         if (!empty($attributes['MODEL'])) {
             return $attributes['MODEL'];
         }
@@ -634,7 +648,7 @@ class HiddenAttributesDetector
 
         foreach ($fields as $attrId => $value) {
             if (empty($value)) continue;
-            
+
             $success = $this->applyHiddenAttribute($itemId, $attrId, $value, $userId);
             $results[$attrId] = $success ? 'applied' : 'failed';
         }

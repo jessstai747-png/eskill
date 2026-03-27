@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Central de Ajuda';
 $activePage = 'help';
 ?>
@@ -313,7 +316,7 @@ $activePage = 'help';
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     (() => {
         const navItems = document.querySelectorAll('[data-help-section]');
         const sections = document.querySelectorAll('.help-section');

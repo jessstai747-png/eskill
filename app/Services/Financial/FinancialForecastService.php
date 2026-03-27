@@ -474,9 +474,9 @@ class FinancialForecastService
             'timestamp' => date('Y-m-d H:i:s'),
             'total_alerts' => count($alerts),
             'by_severity' => [
-                'critical' => count(array_filter($alerts, fn($a) => $a['severity'] === 'critical')),
-                'warning' => count(array_filter($alerts, fn($a) => $a['severity'] === 'warning')),
-                'info' => count(array_filter($alerts, fn($a) => $a['severity'] === 'info')),
+                'critical' => count(array_filter($alerts, fn(array $a): bool => $a['severity'] === 'critical')),
+                'warning' => count(array_filter($alerts, fn(array $a): bool => $a['severity'] === 'warning')),
+                'info' => count(array_filter($alerts, fn(array $a): bool => $a['severity'] === 'info')),
             ],
             'alerts' => $alerts,
         ];

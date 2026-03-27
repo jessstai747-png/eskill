@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone Event Triggers Dashboard
  * 
@@ -346,7 +349,7 @@ ob_start();
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 let triggerModal = null;
 let charts = {};

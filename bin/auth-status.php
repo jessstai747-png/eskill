@@ -31,6 +31,14 @@ try {
 // Initialize GeoIP service
 $geoip = new GeoIPService();
 
+function tableExists(PDO $db, string $table): bool
+{
+    $stmt = $db->prepare('SHOW TABLES LIKE :table');
+    $stmt->execute([':table' => $table]);
+
+    return $stmt->fetchColumn() !== false;
+}
+
 // Header
 echo "\n";
 echo "╔══════════════════════════════════════════════════════════════════╗\n";
@@ -42,10 +50,38 @@ echo "\n";
 echo "📊 STATUS GERAL\n";
 echo str_repeat("─", 70) . "\n";
 
-$stmt = $db->query("SELECT COUNT(*) as total FROM auth_blocked_ips");
+$totalQueries = [];
+if (tableExists($db, 'auth_blocked_ips')) {
+    $totalQueries[] = "SELECT ip_address FROM auth_blocked_ips";
+}
+if (tableExists($db, 'blocked_ips')) {
+    $totalQueries[] = "SELECT ip_address FROM blocked_ips";
+}
+
+$stmt = $db->query(
+    $totalQueries !== []
+        ? "SELECT COUNT(*) as total FROM (" . implode(' UNION ALL ', $totalQueries) . ") t"
+        : "SELECT 0 as total"
+);
 $totalBlocks = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-$stmt = $db->query("SELECT COUNT(*) as active FROM auth_blocked_ips WHERE expires_at > NOW()");
+$activeQueries = [];
+if (tableExists($db, 'auth_blocked_ips')) {
+    $activeQueries[] = "SELECT ip_address
+        FROM auth_blocked_ips
+        WHERE is_permanent = 1 OR expires_at IS NULL OR expires_at > NOW()";
+}
+if (tableExists($db, 'blocked_ips')) {
+    $activeQueries[] = "SELECT ip_address
+        FROM blocked_ips
+        WHERE blocked_until IS NULL OR blocked_until > NOW()";
+}
+
+$stmt = $db->query(
+    $activeQueries !== []
+        ? "SELECT COUNT(DISTINCT ip_address) as active FROM (" . implode(' UNION ALL ', $activeQueries) . ") t"
+        : "SELECT 0 as active"
+);
 $activeBlocks = $stmt->fetch(PDO::FETCH_ASSOC)['active'];
 
 $stmt = $db->query("SELECT COUNT(*) as total FROM auth_failure_log");
@@ -64,13 +100,29 @@ echo "\n";
 echo "🚫 IPs BLOQUEADOS ATIVOS\n";
 echo str_repeat("─", 70) . "\n";
 
-$stmt = $db->query("
-    SELECT ip_address, country_code, country_name, city, failure_count, blocked_at, expires_at
-    FROM auth_blocked_ips
-    WHERE expires_at > NOW()
-    ORDER BY blocked_at DESC
-    LIMIT 10
-");
+$blockedQueries = [];
+if (tableExists($db, 'auth_blocked_ips')) {
+    $blockedQueries[] = "SELECT ip_address, country_code, country_name, city, failure_count, blocked_at, expires_at, 'auth_blocked_ips' AS source
+        FROM auth_blocked_ips
+        WHERE is_permanent = 1 OR expires_at IS NULL OR expires_at > NOW()";
+}
+if (tableExists($db, 'blocked_ips')) {
+    $blockedQueries[] = "SELECT ip_address, NULL AS country_code, NULL AS country_name, NULL AS city, attempts AS failure_count,
+           created_at AS blocked_at, blocked_until AS expires_at, 'blocked_ips' AS source
+        FROM blocked_ips
+        WHERE blocked_until IS NULL OR blocked_until > NOW()";
+}
+
+$stmt = $db->query(
+    $blockedQueries !== []
+        ? "SELECT ip_address, country_code, country_name, city, failure_count, blocked_at, expires_at, source
+           FROM (" . implode(' UNION ALL ', $blockedQueries) . ") t
+           ORDER BY blocked_at DESC
+           LIMIT 10"
+        : "SELECT NULL AS ip_address, NULL AS country_code, NULL AS country_name, NULL AS city,
+                  0 AS failure_count, NULL AS blocked_at, NULL AS expires_at, NULL AS source
+           WHERE 1 = 0"
+);
 
 $blockedIPs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -78,8 +130,11 @@ if (empty($blockedIPs)) {
     echo "  ✅ Nenhum IP bloqueado no momento\n";
 } else {
     foreach ($blockedIPs as $ip) {
-        $expiresIn = strtotime($ip['expires_at']) - time();
-        $expiresMin = floor($expiresIn / 60);
+        $expiresMin = null;
+        if (!empty($ip['expires_at'])) {
+            $expiresIn = strtotime($ip['expires_at']) - time();
+            $expiresMin = floor($expiresIn / 60);
+        }
         
         $location = '';
         if ($ip['country_code']) {
@@ -92,15 +147,23 @@ if (empty($blockedIPs)) {
         }
         
         echo sprintf(
-            "  🔒 %-15s %s\n",
+            "  🔒 %-15s %s [%s]\n",
             $ip['ip_address'],
-            $location
+            $location,
+            $ip['source']
         );
-        echo sprintf(
-            "      %3d falhas | Expira em %d minutos\n",
-            $ip['failure_count'],
-            $expiresMin
-        );
+        if ($expiresMin !== null) {
+            echo sprintf(
+                "      %3d falhas | Expira em %d minutos\n",
+                $ip['failure_count'],
+                $expiresMin
+            );
+        } else {
+            echo sprintf(
+                "      %3d falhas | Expiração: permanente\n",
+                $ip['failure_count']
+            );
+        }
     }
 }
 echo "\n";

@@ -849,7 +849,7 @@ class CatalogCloneService
             'listing_type_id' => $sourceItem['listing_type_id'],
             'condition' => $sourceItem['condition'],
             // 'catalog_product_id' => $catalogProductId, // Adicionado apenas se existir
-            'pictures' => array_map(function ($pic) {
+            'pictures' => array_map(function (array $pic): array {
                 return ['source' => $pic['url']];
             }, $sourceItem['pictures'] ?? []),
         ];
@@ -923,7 +923,7 @@ class CatalogCloneService
             // Tentar capturar mensagem de erro detalhada
             $msg = $newItem['message'] ?? 'Erro desconhecido';
             if (isset($newItem['cause']) && is_array($newItem['cause'])) {
-                $causes = array_map(function ($c) {
+                $causes = array_map(function (array $c): string {
                     return $c['message'] ?? '';
                 }, $newItem['cause']);
                 $msg .= ' Causes: ' . implode('; ', $causes);
@@ -1229,7 +1229,7 @@ class CatalogCloneService
 
         // Apply price filters
         if ($filters['min_price'] || $filters['max_price']) {
-            $items = array_filter($items, function ($item) use ($filters) {
+            $items = array_filter($items, function (array $item) use ($filters): bool {
                 $price = $item['price'] ?? 0;
 
                 if ($filters['min_price'] && $price < (float) $filters['min_price']) {
@@ -1245,7 +1245,7 @@ class CatalogCloneService
         }
 
         // Filter only catalog items
-        $catalogItems = array_filter($items, function ($item) {
+        $catalogItems = array_filter($items, function (array $item): bool {
             return !empty($item['catalog_product_id']);
         });
 
@@ -1341,7 +1341,7 @@ class CatalogCloneService
         $schedules = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         // Format data for frontend
-        return array_map(function ($schedule) {
+        return array_map(function (array $schedule): array {
             return [
                 'id' => $schedule['id'],
                 'source_account' => $schedule['source_account_name'],
@@ -1959,6 +1959,13 @@ class CatalogCloneService
             return $this->listOwnAccountItems($sellerId, $filters);
         }
 
+        // Verificar snapshot cacheado para sellers externos (grandes volumes)
+        $cacheFilters = array_merge($filters, ['_limit' => $limit, '_offset' => $offset]);
+        $cached = $this->getSellerSnapshot($sellerId, $cacheFilters);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         // Para sellers externos, tentar a busca (pode falhar com 403)
         $params = [
             'seller_id' => $sellerId,
@@ -2095,7 +2102,7 @@ class CatalogCloneService
             });
         }
 
-        return [
+        $result = [
             'status' => 'success',
             'seller_id' => $sellerId,
             'items' => $processedItems,
@@ -2109,6 +2116,14 @@ class CatalogCloneService
             ],
             'facets' => $this->normalizeFacets($brandCounts, $categoryFacets),
         ];
+
+        // Persistir snapshot apenas para sellers com catálogos grandes (>200 items)
+        // para evitar overhead de cache em buscas pequenas
+        if ($total > 200) {
+            $this->saveSellerSnapshot($sellerId, $cacheFilters, $result);
+        }
+
+        return $result;
     }
 
     /**
@@ -2152,10 +2167,15 @@ class CatalogCloneService
             return $this->getOwnAccountSummary($sellerId);
         }
 
+        // Verificar snapshot cacheado para sellers externos
+        $summaryFilters = ['_type' => 'summary'];
+        $cachedSummary = $this->getSellerSnapshot($sellerId, $summaryFilters);
+        if ($cachedSummary !== null) {
+            return $cachedSummary;
+        }
+
         // Para sellers externos, tentar a busca (pode falhar com 403)
         $client = $this->getAuthenticatedClientForSearch();
-
-        // Buscar com limit=0 apenas para pegar paging.total e filtros disponíveis
         $searchResults = $client->get("/sites/{$siteId}/search", [
             'seller_id' => $sellerId,
             'limit' => 0,
@@ -2260,7 +2280,7 @@ class CatalogCloneService
         $sellerNickname = $sellerInfo['nickname'] ?? 'Seller ' . $sellerId;
         $sellerReputation = $sellerInfo['seller_reputation']['level_id'] ?? null;
 
-        return $this->normalizeSummaryResponse([
+        $summaryResult = $this->normalizeSummaryResponse([
             'status' => 'success',
             'seller_id' => $sellerId,
             'seller_nickname' => $sellerNickname,
@@ -2273,6 +2293,11 @@ class CatalogCloneService
             'brands' => array_slice($brandCounts, 0, 50, true),
             'categories' => array_slice($categoryFacets, 0, 50, true),
         ], $brandCounts, $categoryFacets);
+
+        // Persistir snapshot do summary (TTL de 2h pois envolve múltiplas chamadas à API)
+        $this->saveSellerSnapshot($sellerId, $summaryFilters, $summaryResult, 7200);
+
+        return $summaryResult;
     }
 
     /**
@@ -2587,7 +2612,7 @@ class CatalogCloneService
         if (isset($newItem['error']) || !isset($newItem['id'])) {
             $msg = $newItem['message'] ?? 'Erro desconhecido';
             if (isset($newItem['cause']) && is_array($newItem['cause'])) {
-                $causes = array_map(fn($c) => $c['message'] ?? '', $newItem['cause']);
+                $causes = array_map(fn(array $c): string => $c['message'] ?? '', $newItem['cause']);
                 $msg .= ' Causes: ' . implode('; ', $causes);
             }
 
@@ -2815,7 +2840,7 @@ class CatalogCloneService
      */
     private function preparePictures(array $pictures): array
     {
-        return array_map(function ($pic) {
+        return array_map(function (array $pic): array {
             return ['source' => $pic['url'] ?? $pic['source'] ?? ''];
         }, $pictures);
     }
@@ -2827,7 +2852,7 @@ class CatalogCloneService
     {
         $excludeIds = ['ITEM_CONDITION', 'SELLER_SKU']; // Atributos que não devem ser copiados diretamente
 
-        return array_filter($attributes, function ($attr) use ($excludeIds) {
+        return array_filter($attributes, function (array $attr) use ($excludeIds): bool {
             return !in_array($attr['id'], $excludeIds);
         });
     }
@@ -2837,7 +2862,7 @@ class CatalogCloneService
      */
     private function prepareVariations(array $variations, float $basePrice): array
     {
-        return array_map(function ($variation) use ($basePrice) {
+        return array_map(function (array $variation) use ($basePrice): array {
             $v = [
                 'attribute_combinations' => $variation['attribute_combinations'] ?? [],
                 'available_quantity' => $variation['available_quantity'] ?? 0,
@@ -3233,5 +3258,79 @@ class CatalogCloneService
             ],
             'items' => $items,
         ];
+    }
+
+    /**
+     * Recupera snapshot cacheado do catálogo de um seller, se existir e ainda não expirado.
+     *
+     * @param string $sellerId ML Seller ID
+     * @param array  $filters  Filtros utilizados na busca (usados como chave de cache)
+     * @return array|null Snapshot decodificado, ou null se não existir / expirado
+     */
+    private function getSellerSnapshot(string $sellerId, array $filters): ?array
+    {
+        try {
+            $hash = hash('sha256', json_encode($filters));
+            $stmt = $this->db->prepare(
+                'SELECT snapshot_data FROM seller_catalog_snapshots
+                  WHERE seller_id = ? AND filters_hash = ? AND expires_at > NOW()
+                  LIMIT 1'
+            );
+            $stmt->execute([$sellerId, $hash]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$row) {
+                return null;
+            }
+            $decoded = json_decode((string)$row['snapshot_data'], true);
+            return is_array($decoded) ? $decoded : null;
+        } catch (\Throwable $e) {
+            // Ignora falhas de cache — não deve bloquear o fluxo principal
+            return null;
+        }
+    }
+
+    /**
+     * Persiste snapshot do catálogo de um seller no banco, com TTL.
+     *
+     * Utiliza INSERT … ON DUPLICATE KEY UPDATE para upsert baseado no índice único
+     * (seller_id, filters_hash).
+     *
+     * @param string $sellerId   ML Seller ID
+     * @param array  $filters    Filtros usados na busca
+     * @param array  $data       Dados a persistir (deve conter chave 'items' para contagem)
+     * @param int    $ttlSeconds Tempo de vida em segundos (padrão: 3600)
+     */
+    private function saveSellerSnapshot(
+        string $sellerId,
+        array $filters,
+        array $data,
+        int $ttlSeconds = 3600
+    ): void {
+        try {
+            $hash = hash('sha256', json_encode($filters));
+            $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);
+            $itemCount = count($data['items'] ?? []);
+            $stmt = $this->db->prepare(
+                'INSERT INTO seller_catalog_snapshots
+                    (seller_id, filters_hash, filters, snapshot_data, item_count, expires_at)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                    snapshot_data = VALUES(snapshot_data),
+                    item_count    = VALUES(item_count),
+                    filters       = VALUES(filters),
+                    expires_at    = VALUES(expires_at),
+                    updated_at    = CURRENT_TIMESTAMP'
+            );
+            $stmt->execute([
+                $sellerId,
+                $hash,
+                json_encode($filters),
+                json_encode($data),
+                $itemCount,
+                $expiresAt,
+            ]);
+        } catch (\Throwable $e) {
+            // Falha ao salvar snapshot não deve interromper o fluxo principal
+        }
     }
 }

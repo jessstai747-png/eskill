@@ -12,7 +12,7 @@ use PDO;
 
 /**
  * 🧠 Decision Engine Service
- * 
+ *
  * Motor de decisão que:
  * - Toma decisões baseadas em scoring heurístico (não usa ML)
  * - Analisa múltiplas fontes de dados
@@ -324,7 +324,7 @@ class DecisionEngineService
 
         // Signal: Missing strategy scores
         $strategies = $intelligence['strategies'] ?? [];
-        $lowStrategies = array_filter($strategies, fn($s) => ($s['score'] ?? 0) < 50);
+        $lowStrategies = array_filter($strategies, fn(array $s): bool => ($s['score'] ?? 0) < 50);
         if (!empty($lowStrategies)) {
             $signals['weak_strategies'] = [
                 'count' => count($lowStrategies),
@@ -772,7 +772,7 @@ class DecisionEngineService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     decision_type,
                     status,
                     COUNT(*) as count,

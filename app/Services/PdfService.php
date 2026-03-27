@@ -1236,6 +1236,260 @@ class PdfService
     }
 
     /**
+     * Gera PDF do relatório Raio X de conta Mercado Livre.
+     *
+     * @param array $row  Row from account_xray_reports with decoded 'report' key.
+     *                    Keys: id, score_overall, account_status, items_total,
+     *                    items_analyzed, critical_issues, created_at, report (decoded JSON).
+     */
+    public function generateXRayReport(array $row): string
+    {
+        $report   = $row['report'] ?? [];
+        $meta     = $report['meta'] ?? [];
+        $nickname = htmlspecialchars($meta['nickname'] ?? 'Conta ML #' . ($row['id'] ?? ''));
+        $score    = (int) ($row['score_overall'] ?? $report['score_overall'] ?? 0);
+        $status   = $row['account_status'] ?? $report['account_status'] ?? 'UNKNOWN';
+
+        $scoreClass = $score >= 80 ? 'excellent' : ($score >= 60 ? 'good' : ($score >= 40 ? 'fair' : 'poor'));
+        $statusColors = [
+            'FORTE'         => '#28a745',
+            'BOA'           => '#5cb85c',
+            'REGULAR'       => '#ffc107',
+            'FRACA'         => '#fd7e14',
+            'TRAVADA'       => '#dc3545',
+            'PENALIZADA'    => '#dc3545',
+        ];
+        $statusColor = $statusColors[$status] ?? '#6c757d';
+
+        $html  = $this->getXRayBaseHtml('Raio X — ' . $nickname);
+
+        // ── CABEÇALHO ──────────────────────────────────────────────────
+        $html .= '<div class="header-info">';
+        $html .= '<p><strong>Conta:</strong> ' . $nickname . '</p>';
+        $html .= '<p><strong>Gerado em:</strong> ' . date('d/m/Y H:i:s') . '</p>';
+        if (!empty($meta['generated_at'])) {
+            $html .= '<p><strong>Data da análise:</strong> '
+                . date('d/m/Y H:i', strtotime($meta['generated_at'])) . '</p>';
+        }
+        $html .= '<p><strong>Relatório #</strong>' . ($row['id'] ?? 'N/A') . '</p>';
+        $html .= '</div>';
+
+        // ── KPIs PRINCIPAIS ─────────────────────────────────────────────
+        $statusLabel = '<span style="background:' . $statusColor . ';color:white;padding:2px 8px;border-radius:4px;font-size:11px;">'
+            . htmlspecialchars($status) . '</span>';
+
+        $html .= '<div class="kpi-grid">';
+        $html .= '<div class="kpi-card">';
+        $html .= '<div class="kpi-card-inner" style="border-top-color:' . $statusColor . '">';
+        $html .= '<div class="xray-score-badge ' . $scoreClass . '">' . $score . '</div>';
+        $html .= '<div class="kpi-label">Score Geral</div>';
+        $html .= '</div></div>';
+
+        $html .= '<div class="kpi-card">';
+        $html .= '<div class="kpi-card-inner">';
+        $html .= '<div class="kpi-value">' . $statusLabel . '</div>';
+        $html .= '<div class="kpi-label">Status da Conta</div>';
+        $html .= '</div></div>';
+
+        $html .= '<div class="kpi-card">';
+        $html .= '<div class="kpi-card-inner">';
+        $html .= '<div class="kpi-value">' . number_format((int) ($row['items_analyzed'] ?? $meta['items_analyzed'] ?? 0)) . '</div>';
+        $html .= '<div class="kpi-label">Anúncios Analisados</div>';
+        $html .= '</div></div>';
+
+        $html .= '<div class="kpi-card">';
+        $html .= '<div class="kpi-card-inner" style="border-top-color:#dc3545">';
+        $html .= '<div class="kpi-value" style="color:#dc3545">' . number_format((int) ($row['critical_issues'] ?? 0)) . '</div>';
+        $html .= '<div class="kpi-label">Issues Críticas</div>';
+        $html .= '</div></div>';
+        $html .= '</div>';
+
+        // ── DIAGNÓSTICO ─────────────────────────────────────────────────
+        $diagnosis = $report['diagnosis'] ?? [];
+        if (!empty($diagnosis)) {
+            $html .= '<div class="section">';
+            $html .= '<h2>Diagnóstico</h2>';
+
+            if (!empty($diagnosis['main_bottleneck'])) {
+                $html .= '<div class="alert-item critical" style="margin-bottom:12px;">';
+                $html .= '<strong>Gargalo Principal</strong>';
+                $html .= '<p>' . htmlspecialchars($diagnosis['main_bottleneck']) . '</p>';
+                $html .= '</div>';
+            }
+
+            $topCauses = $diagnosis['top_causes'] ?? [];
+            if (!empty($topCauses)) {
+                $html .= '<p><strong>Principais causas:</strong></p>';
+                $html .= '<ol style="margin:0;padding-left:18px;font-size:10px;">';
+                foreach ($topCauses as $cause) {
+                    $html .= '<li style="margin-bottom:4px;">' . htmlspecialchars((string) $cause) . '</li>';
+                }
+                $html .= '</ol>';
+            }
+
+            $html .= '</div>';
+        }
+
+        // ── PLANO DE RECUPERAÇÃO ────────────────────────────────────────
+        $recoveryPlan = $report['recovery_plan'] ?? [];
+        $allActions   = array_merge(
+            $recoveryPlan['critical'] ?? [],
+            $recoveryPlan['high'] ?? [],
+            $recoveryPlan['medium'] ?? []
+        );
+
+        if (!empty($allActions)) {
+            $html .= '<div class="section">';
+            $html .= '<h2>Plano de Recuperação (Top ações)</h2>';
+            $html .= '<table class="data-table">';
+            $html .= '<thead><tr><th>Prioridade</th><th>Ação</th><th>Impacto</th><th>Prazo</th></tr></thead>';
+            $html .= '<tbody>';
+
+            $shownActions = array_slice($allActions, 0, 20);
+            foreach ($shownActions as $action) {
+                $priority       = $action['priority'] ?? $action['level'] ?? '—';
+                $actionTitle    = $action['action'] ?? $action['title'] ?? ($action['type'] ?? '');
+                $impact         = $action['impact'] ?? $action['expected_impact'] ?? '—';
+                $window         = $action['window'] ?? $action['timeframe'] ?? '—';
+
+                $prioColors = ['CRITICA' => '#dc3545', 'ALTA' => '#fd7e14', 'MEDIA' => '#ffc107', 'BAIXA' => '#6c757d', 'crítica' => '#dc3545', 'alta' => '#fd7e14', 'média' => '#ffc107'];
+                $prioColor  = $prioColors[$priority] ?? '#6c757d';
+
+                $html .= '<tr>';
+                $html .= '<td><span style="background:' . $prioColor . ';color:white;padding:2px 6px;border-radius:3px;font-size:9px;">'
+                    . htmlspecialchars((string) $priority) . '</span></td>';
+                $html .= '<td>' . htmlspecialchars(mb_substr((string) $actionTitle, 0, 60)) . '</td>';
+                $html .= '<td>' . htmlspecialchars(mb_substr((string) $impact, 0, 40)) . '</td>';
+                $html .= '<td>' . htmlspecialchars(mb_substr((string) $window, 0, 20)) . '</td>';
+                $html .= '</tr>';
+            }
+
+            if (count($allActions) > 20) {
+                $html .= '<tr><td colspan="4" class="more-items">... e mais ' . (count($allActions) - 20) . ' ações</td></tr>';
+            }
+
+            $html .= '</tbody></table></div>';
+        }
+
+        // ── SEO AUDIT — piores anúncios ─────────────────────────────────
+        $seoItems = $report['seo_audit']['items'] ?? [];
+        if (!empty($seoItems)) {
+            // Ordenar por score SEO (menor primeiro)
+            usort($seoItems, static fn(array $a, array $b) => ($a['seo_score'] ?? 100) <=> ($b['seo_score'] ?? 100));
+            $worstItems = array_slice($seoItems, 0, 25);
+
+            $html .= '<div class="section">';
+            $html .= '<h2>SEO Audit — Piores Anúncios (Top 25)</h2>';
+            $html .= '<table class="data-table">';
+            $html .= '<thead><tr><th>Título</th><th>Score</th><th>Classificação</th><th>Keywords faltantes</th></tr></thead>';
+            $html .= '<tbody>';
+
+            foreach ($worstItems as $item) {
+                $seoScore    = (int) ($item['seo_score'] ?? $item['score_seo'] ?? 0);
+                $title       = $item['title'] ?? $item['item_id'] ?? '—';
+                $cls         = $item['classification'] ?? '—';
+                $missing     = $item['missing_keywords'] ?? $item['missing_keywords_json'] ?? [];
+                if (is_string($missing)) {
+                    $missing = json_decode($missing, true) ?? [];
+                }
+                $missingStr  = implode(', ', array_slice((array) $missing, 0, 3));
+                if (count($missing) > 3) {
+                    $missingStr .= ' +' . (count($missing) - 3);
+                }
+
+                $scoreColor = $seoScore >= 80 ? '#28a745' : ($seoScore >= 60 ? '#17a2b8' : ($seoScore >= 40 ? '#ffc107' : '#dc3545'));
+
+                $html .= '<tr>';
+                $html .= '<td>' . htmlspecialchars(mb_substr((string) $title, 0, 55)) . '</td>';
+                $html .= '<td style="text-align:center;"><strong style="color:' . $scoreColor . '">' . $seoScore . '</strong></td>';
+                $html .= '<td>' . htmlspecialchars((string) $cls) . '</td>';
+                $html .= '<td style="font-size:9px;">' . htmlspecialchars($missingStr) . '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table></div>';
+        }
+
+        // ── LACUNAS OCULTAS ─────────────────────────────────────────────
+        $hiddenGaps = $report['competitive']['hidden_gaps'] ?? [];
+        if (!empty($hiddenGaps)) {
+            $html .= '<div class="section">';
+            $html .= '<h2>Lacunas Ocultas (Keywords de Concorrentes)</h2>';
+            $html .= '<table class="data-table">';
+            $html .= '<thead><tr><th>Keyword</th><th>Concorrentes</th><th>Volume estimado</th></tr></thead>';
+            $html .= '<tbody>';
+
+            foreach (array_slice($hiddenGaps, 0, 20) as $gap) {
+                $html .= '<tr>';
+                $html .= '<td>' . htmlspecialchars($gap['keyword'] ?? '') . '</td>';
+                $html .= '<td>' . number_format((int) ($gap['competitor_count'] ?? 0)) . '</td>';
+                $html .= '<td>' . htmlspecialchars($gap['volume'] ?? '—') . '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table></div>';
+        }
+
+        // ── SAÚDE FINANCEIRA ────────────────────────────────────────────
+        $financial = $report['financial'] ?? [];
+        if (!empty($financial) && isset($financial['score'])) {
+            $finScore  = (int) ($financial['score'] ?? 0);
+            $riskLevel = $financial['risk_level'] ?? '—';
+            $grade     = $financial['grade'] ?? '—';
+
+            $html .= '<div class="section">';
+            $html .= '<h2>Saúde Financeira — Mercado Pago</h2>';
+            $html .= '<div class="kpi-grid">';
+            $html .= $this->renderKpiCard('Score Financeiro', (string) $finScore, 'financial');
+            $html .= $this->renderKpiCard('Risco', htmlspecialchars($riskLevel), 'risk');
+            $html .= $this->renderKpiCard('Grade', htmlspecialchars($grade), 'grade');
+            $saldo = $financial['balance']['available'] ?? null;
+            if ($saldo !== null) {
+                $html .= $this->renderKpiCard('Saldo Disponível', $this->formatCurrency((float) $saldo), 'balance');
+            }
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+
+        $html .= $this->getFooterHtml();
+
+        $safeNick = preg_replace('/[^a-z0-9_]/i', '_', mb_strtolower($meta['nickname'] ?? 'conta'));
+        return $this->renderPdf($html, 'raio_x_' . $safeNick . '_' . ($row['id'] ?? '0'));
+    }
+
+    /**
+     * HTML base para o relatório Raio X (inclui estilos adicionais específicos)
+     */
+    private function getXRayBaseHtml(string $title): string
+    {
+        $base = $this->getBaseHtml($title);
+
+        // Inject X-Ray specific styles before </style>
+        $extraCss = '
+        .xray-score-badge {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+        }
+        .xray-score-badge.excellent { background: linear-gradient(135deg, #28a745, #20c997); }
+        .xray-score-badge.good      { background: linear-gradient(135deg, #17a2b8, #20c997); }
+        .xray-score-badge.fair      { background: linear-gradient(135deg, #ffc107, #fd7e14); color:#333; }
+        .xray-score-badge.poor      { background: linear-gradient(135deg, #dc3545, #c82333); }
+
+        .more-items { font-size:9px; color:#999; font-style:italic; text-align:center; }
+        ';
+
+        return str_replace('</style>', $extraCss . '</style>', $base);
+    }
+
+    /**
      * Traduz tipo de gap
      */
     private function translateGapType(string $type): string

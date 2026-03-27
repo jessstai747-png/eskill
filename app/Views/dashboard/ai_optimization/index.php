@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // AI Optimization Dashboard View
 $title = 'Otimização IA';
 $subtitle = 'Otimize seus anúncios com Inteligência Artificial';
@@ -196,7 +199,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     let performanceChart = null;
 

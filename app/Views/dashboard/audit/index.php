@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Trilha de Auditoria';
 $subtitle = 'Logs de segurança e alterações no sistema';
 include __DIR__ . '/../../layouts/modern/partials/page-header.php';

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone ROI Analysis Dashboard
  * Interface para análise de ROI das clonagens
@@ -220,7 +223,7 @@ $this->layout('layouts/dashboard', ['title' => 'Análise de ROI - Clonador']);
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 function normalizeExternalUrl(url) {
     if (!url || typeof url !== 'string') return '';

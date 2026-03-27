@@ -434,7 +434,7 @@ class MarketAnalytics
 
         // Se houver dados históricos, ajustar baseado na média do mês
         if (!empty($historicalData)) {
-            $monthData = array_filter($historicalData, function ($point) use ($month) {
+            $monthData = array_filter($historicalData, function (array $point) use ($month): bool {
                 $pointDate = $point['date'] ?? null;
                 if (!$pointDate) {
                     return false;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\SEO;
 
 use PHPUnit\Framework\TestCase;

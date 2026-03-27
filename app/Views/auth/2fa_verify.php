@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Verificação em Duas Etapas - Mercado Livre Manager';
 ob_start();
 ?>

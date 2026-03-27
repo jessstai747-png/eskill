@@ -949,7 +949,7 @@ class AIPricingOptimizer
     private function calculateStdDev(array $values): float
     {
         $mean = array_sum($values) / count($values);
-        $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $values)) / count($values);
+        $variance = array_sum(array_map(fn(float|int $x): float|int => pow($x - $mean, 2), $values)) / count($values);
         return round(sqrt($variance), 2);
     }
 
@@ -966,7 +966,7 @@ class AIPricingOptimizer
     {
         sort($prices);
         $count = count($prices);
-        $belowCount = count(array_filter($prices, fn($p) => $p < $price));
+        $belowCount = count(array_filter($prices, fn(float|int $p): bool => $p < $price));
 
         return round(($belowCount / $count) * 100, 1);
     }
@@ -1001,9 +1001,9 @@ class AIPricingOptimizer
         $range = ($max - $min) / 3;
 
         return [
-            'low' => count(array_filter($prices, fn($p) => $p < $min + $range)),
-            'medium' => count(array_filter($prices, fn($p) => $p >= $min + $range && $p < $min + 2 * $range)),
-            'high' => count(array_filter($prices, fn($p) => $p >= $min + 2 * $range))
+            'low' => count(array_filter($prices, fn(float|int $p): bool => $p < $min + $range)),
+            'medium' => count(array_filter($prices, fn(float|int $p): bool => $p >= $min + $range && $p < $min + 2 * $range)),
+            'high' => count(array_filter($prices, fn(float|int $p): bool => $p >= $min + 2 * $range))
         ];
     }
 

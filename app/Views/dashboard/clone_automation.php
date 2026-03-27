@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Clone Automation View
  * 
@@ -310,7 +313,7 @@ ob_start();
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 const API_BASE = '/api/clone/automation';
 let currentFilter = 'all';

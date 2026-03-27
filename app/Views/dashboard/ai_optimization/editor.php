@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // Single Item Optimization Editor
 $title = 'Otimizar Anúncio';
 $subtitle = 'Otimize seu anúncio com Inteligência Artificial';
@@ -233,7 +236,7 @@ if (!$itemId) {
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 const itemId = document.getElementById('ai-item-editor').dataset.itemId;
 let optimizationData = {

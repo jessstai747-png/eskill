@@ -25,7 +25,8 @@ class EanBalance
     public function getByAccount(int $accountId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM ean_balances WHERE account_id = :account_id
+            SELECT id, account_id, total_purchased, total_used, available, last_purchase_at, created_at, updated_at
+            FROM ean_balances WHERE account_id = :account_id
         ");
         $stmt->execute(['account_id' => $accountId]);
         $balance = $stmt->fetch();
@@ -76,8 +77,8 @@ class EanBalance
         $this->create($accountId);
 
         $stmt = $this->db->prepare("
-            UPDATE ean_balances 
-            SET 
+            UPDATE ean_balances
+            SET
                 total_purchased = total_purchased + :qty1,
                 available = available + :qty2,
                 last_purchase_at = NOW()
@@ -97,8 +98,8 @@ class EanBalance
     public function debit(int $accountId, int $quantity = 1): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE ean_balances 
-            SET 
+            UPDATE ean_balances
+            SET
                 total_used = total_used + :qty1,
                 available = available - :qty2
             WHERE account_id = :account_id AND available >= :qty3
@@ -118,8 +119,8 @@ class EanBalance
     public function unuse(int $accountId, int $quantity = 1): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE ean_balances 
-            SET 
+            UPDATE ean_balances
+            SET
                 total_used = total_used - :qty1,
                 available = available + :qty2
             WHERE account_id = :account_id AND total_used >= :qty3
@@ -166,8 +167,8 @@ class EanBalance
 
             // Row is locked — safe to update without race condition
             $updateStmt = $this->db->prepare("
-                UPDATE ean_balances 
-                SET 
+                UPDATE ean_balances
+                SET
                     total_purchased = total_purchased - :qty1,
                     available = available - :qty2
                 WHERE account_id = :account_id
@@ -194,8 +195,8 @@ class EanBalance
     public function adjust(int $accountId, int $newAvailable, int $newUsed): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE ean_balances 
-            SET 
+            UPDATE ean_balances
+            SET
                 total_purchased = :total,
                 total_used = :used,
                 available = :available
@@ -226,7 +227,7 @@ class EanBalance
     {
         // Contar EANs atribuídos
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN ml_item_id IS NULL THEN 1 ELSE 0 END) as available,
                 SUM(CASE WHEN ml_item_id IS NOT NULL THEN 1 ELSE 0 END) as used
@@ -240,8 +241,8 @@ class EanBalance
         $this->create($accountId);
 
         $updateStmt = $this->db->prepare("
-            UPDATE ean_balances 
-            SET 
+            UPDATE ean_balances
+            SET
                 total_purchased = :total,
                 total_used = :used,
                 available = :available
@@ -262,7 +263,7 @@ class EanBalance
     public function listAll(): array
     {
         $stmt = $this->db->query("
-            SELECT 
+            SELECT
                 b.*,
                 a.nickname as account_name
             FROM ean_balances b

@@ -60,7 +60,7 @@ class ProductProfitabilityService
         $worstProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
-            'top_profitable' => array_map(fn($row) => [
+            'top_profitable' => array_map(fn(array $row): array => [
                 'item_id' => $row['item_id'],
                 'title' => $row['title'] ?? 'Sem título',
                 'revenue' => round((float)$row['revenue'], 2),
@@ -68,7 +68,7 @@ class ProductProfitabilityService
                 'sales' => (int)$row['sales'],
                 'avg_margin' => round((float)$row['avg_margin'], 2),
             ], $topProducts),
-            'least_profitable' => array_map(fn($row) => [
+            'least_profitable' => array_map(fn(array $row): array => [
                 'item_id' => $row['item_id'],
                 'title' => $row['title'] ?? 'Sem título',
                 'revenue' => round((float)$row['revenue'], 2),

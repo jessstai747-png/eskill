@@ -47,7 +47,11 @@
             <p class="text-muted">Preencha os dados abaixo para começar</p>
         </div>
         <div class="card-body">
-            <?php if (isset($_SESSION['error'])): ?>
+            <?php
+
+declare(strict_types=1);
+
+if (isset($_SESSION['error'])): ?>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <?= $_SESSION['error'] ?>
                     <?php unset($_SESSION['error']); ?>
@@ -99,7 +103,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
         // Simple client-side validation
         document.querySelector('form').addEventListener('submit', function(e) {
             const pass = document.getElementById('password').value;

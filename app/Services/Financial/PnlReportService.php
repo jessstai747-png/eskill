@@ -180,7 +180,7 @@ class PnlReportService
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return array_map(fn($row) => [
+        return array_map(fn(array $row): array => [
             'date' => $row['date'],
             'revenue' => round((float)$row['revenue'], 2),
             'profit' => round((float)$row['profit'], 2),

@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * 🗄️ SEO Analysis Cache Service
- * 
+ *
  * Provides caching layer for SEO strategy analyses to improve performance.
  * Caches are item-specific with configurable TTL.
  */
@@ -62,7 +62,7 @@ class SEOAnalysisCacheService
     public function get(string $itemId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 overall_score,
                 strategies_json,
                 suggestions_json,
@@ -74,22 +74,22 @@ class SEOAnalysisCacheService
                 updated_at,
                 expires_at
             FROM seo_analysis_cache
-            WHERE item_id = :item_id 
+            WHERE item_id = :item_id
               AND account_id = :account_id
               AND (expires_at IS NULL OR expires_at > NOW())
         ");
-        
+
         $stmt->execute([
             'item_id' => $itemId,
             'account_id' => $this->accountId,
         ]);
-        
+
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$row) {
             return null;
         }
-        
+
         return [
             'overall_score' => (float) $row['overall_score'],
             'strategies' => json_decode($row['strategies_json'] ?? '{}', true),
@@ -112,7 +112,7 @@ class SEOAnalysisCacheService
     {
         $ttl = $ttlSeconds ?? $this->defaultTtl;
         $expiresAt = date('Y-m-d H:i:s', time() + $ttl);
-        
+
         $sql = "
             INSERT INTO seo_analysis_cache (
                 item_id, account_id, category_id, overall_score,
@@ -138,9 +138,9 @@ class SEOAnalysisCacheService
                 expires_at = VALUES(expires_at),
                 updated_at = NOW()
         ";
-        
+
         $stmt = $this->db->prepare($sql);
-        
+
         return $stmt->execute([
             'item_id' => $itemId,
             'account_id' => $this->accountId,
@@ -166,7 +166,7 @@ class SEOAnalysisCacheService
             DELETE FROM seo_analysis_cache
             WHERE item_id = :item_id AND account_id = :account_id
         ");
-        
+
         return $stmt->execute([
             'item_id' => $itemId,
             'account_id' => $this->accountId,
@@ -182,9 +182,9 @@ class SEOAnalysisCacheService
             DELETE FROM seo_analysis_cache
             WHERE account_id = :account_id
         ");
-        
+
         $stmt->execute(['account_id' => $this->accountId]);
-        
+
         return $stmt->rowCount();
     }
 
@@ -194,7 +194,7 @@ class SEOAnalysisCacheService
     public function getStats(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total_cached,
                 SUM(CASE WHEN expires_at > NOW() THEN 1 ELSE 0 END) as valid_cache,
                 SUM(CASE WHEN expires_at <= NOW() THEN 1 ELSE 0 END) as expired_cache,
@@ -204,10 +204,10 @@ class SEOAnalysisCacheService
             FROM seo_analysis_cache
             WHERE account_id = :account_id
         ");
-        
+
         $stmt->execute(['account_id' => $this->accountId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return [
             'total_cached' => (int) ($row['total_cached'] ?? 0),
             'valid_cache' => (int) ($row['valid_cache'] ?? 0),
@@ -226,7 +226,7 @@ class SEOAnalysisCacheService
         $limitSql = max(1, min((int)$limit, 500));
 
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 item_id,
                 overall_score,
                 item_title,
@@ -240,12 +240,12 @@ class SEOAnalysisCacheService
             ORDER BY overall_score ASC
             LIMIT {$limitSql}
         ");
-        
+
         $stmt->bindValue('account_id', $this->accountId, PDO::PARAM_INT);
         $stmt->bindValue('max_score', $maxScore, PDO::PARAM_STR);
         $stmt->execute();
-        
-        return array_map(function ($row) {
+
+        return array_map(function (array $row): array {
             return [
                 'item_id' => $row['item_id'],
                 'score' => (float) $row['overall_score'],
@@ -272,10 +272,10 @@ class SEOAnalysisCacheService
             ORDER BY updated_at ASC
             LIMIT {$limitSql}
         ");
-        
+
         $stmt->bindValue('account_id', $this->accountId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -286,12 +286,12 @@ class SEOAnalysisCacheService
     {
         $stmt = $this->db->prepare("
             DELETE FROM seo_analysis_cache
-            WHERE expires_at IS NOT NULL 
+            WHERE expires_at IS NOT NULL
               AND expires_at < NOW()
         ");
-        
+
         $stmt->execute();
-        
+
         return $stmt->rowCount();
     }
 
@@ -302,21 +302,21 @@ class SEOAnalysisCacheService
     {
         // Try cache first
         $cached = $this->get($itemId);
-        
+
         if ($cached !== null) {
             return $cached;
         }
-        
+
         // Run analysis
         $analysis = $analyzeCallback($itemId);
-        
+
         // Cache result
         if (!empty($analysis) && isset($analysis['overall_score'])) {
             $this->set($itemId, $analysis);
         }
-        
+
         $analysis['from_cache'] = false;
-        
+
         return $analysis;
     }
 
@@ -328,11 +328,11 @@ class SEOAnalysisCacheService
         if (empty($itemIds)) {
             return [];
         }
-        
+
         $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
-        
+
         $sql = "
-            SELECT 
+            SELECT
                 item_id,
                 overall_score,
                 strategies_json,
@@ -343,10 +343,10 @@ class SEOAnalysisCacheService
               AND item_id IN ({$placeholders})
               AND (expires_at IS NULL OR expires_at > NOW())
         ";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute(array_merge([$this->accountId], $itemIds));
-        
+
         $result = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $result[$row['item_id']] = [
@@ -357,7 +357,7 @@ class SEOAnalysisCacheService
                 'from_cache' => true,
             ];
         }
-        
+
         return $result;
     }
 
@@ -367,8 +367,8 @@ class SEOAnalysisCacheService
     public function getScoreDistribution(): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
-                CASE 
+            SELECT
+                CASE
                     WHEN overall_score >= 80 THEN 'excellent'
                     WHEN overall_score >= 60 THEN 'good'
                     WHEN overall_score >= 40 THEN 'warning'
@@ -379,28 +379,28 @@ class SEOAnalysisCacheService
             FROM seo_analysis_cache
             WHERE account_id = :account_id
               AND (expires_at IS NULL OR expires_at > NOW())
-            GROUP BY 
-                CASE 
+            GROUP BY
+                CASE
                     WHEN overall_score >= 80 THEN 'excellent'
                     WHEN overall_score >= 60 THEN 'good'
                     WHEN overall_score >= 40 THEN 'warning'
                     ELSE 'critical'
                 END
         ");
-        
+
         $stmt->execute(['account_id' => $this->accountId]);
-        
+
         $distribution = [
             'excellent' => 0,
             'good' => 0,
             'warning' => 0,
             'critical' => 0,
         ];
-        
+
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $distribution[$row['category']] = (int) $row['count'];
         }
-        
+
         return $distribution;
     }
 }

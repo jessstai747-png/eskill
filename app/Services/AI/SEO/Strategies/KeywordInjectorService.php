@@ -85,7 +85,7 @@ class KeywordInjectorService
         $currentKeywords = $this->identifyKeywords($title, $categoryId);
 
         // Filtrar keywords já presentes
-        $newKeywords = array_filter($keywords, function ($kw) use ($currentWords) {
+        $newKeywords = array_filter($keywords, function (string $kw) use ($currentWords): bool {
             return !$this->wordExistsIn($kw, $currentWords);
         });
 
@@ -202,7 +202,7 @@ class KeywordInjectorService
         $currentWords = $this->tokenize($model);
 
         // Filtrar keywords já presentes
-        $newKeywords = array_filter($keywords, function ($kw) use ($currentWords) {
+        $newKeywords = array_filter($keywords, function (string $kw) use ($currentWords): bool {
             return !$this->wordExistsIn($kw, $currentWords);
         });
 

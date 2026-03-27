@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Monitoramento de Clonagem';
 $subtitle = 'Alertas, feature flags e métricas de saúde do sistema';
 include __DIR__ . '/../layouts/modern/partials/page-header.php';
@@ -188,7 +191,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 .severity-info { color: #0dcaf0; }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 const cloneMonitoring = {
     init: function() {

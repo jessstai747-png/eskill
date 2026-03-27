@@ -326,7 +326,7 @@ class CategoryLearningService
         foreach ($items as $item) {
             $title = mb_strtolower($item['title'] ?? '');
             $words = preg_split('/\s+/', $title);
-            $words = array_filter($words, fn($w) => mb_strlen($w) >= 3);
+            $words = array_filter($words, fn(string $w): bool => mb_strlen($w) >= 3);
             $words = array_values($words);
 
             // Unigrams

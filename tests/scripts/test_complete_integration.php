@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Teste Completo de Integração
  * Tech Sheet + SEO Strategies - Sistema Completo

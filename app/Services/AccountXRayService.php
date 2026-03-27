@@ -364,16 +364,18 @@ class AccountXRayService
         $batches  = array_chunk($ids, 20);
 
         foreach ($batches as $batch) {
+            // getMultiItemVisits retorna array<itemId, ['total'=>int, 'visits'=>int, 'daily'=>array]>
             $visits = $this->mlClient->getMultiItemVisits($batch, 30);
-            foreach ($visits as $v) {
-                $visitMap[$v['id'] ?? ''] = (int) ($v['total_visits'] ?? 0);
+            foreach ($visits as $itemId => $visitData) {
+                $visitMap[(string) $itemId] = (int) ($visitData['total'] ?? $visitData['visits'] ?? 0);
             }
             usleep(200_000);
         }
 
         // Buscar health score por item (top 50 por visitas)
-        usort($items, fn(array $a, array $b): int =>
-            ($visitMap[$b['id'] ?? ''] ?? 0) <=> ($visitMap[$a['id'] ?? ''] ?? 0)
+        usort(
+            $items,
+            fn(array $a, array $b): int => ($visitMap[$b['id'] ?? ''] ?? 0) <=> ($visitMap[$a['id'] ?? ''] ?? 0)
         );
 
         $healthMap = [];
@@ -456,8 +458,9 @@ class AccountXRayService
         $scoreCount    = 0;
 
         // Ordenar por visitas (analisar os mais relevantes primeiro)
-        usort($items, fn(array $a, array $b): int =>
-            ($b['_visits_30d'] ?? 0) <=> ($a['_visits_30d'] ?? 0)
+        usort(
+            $items,
+            fn(array $a, array $b): int => ($b['_visits_30d'] ?? 0) <=> ($a['_visits_30d'] ?? 0)
         );
 
         $semanticService = $deepSeo ? new SemanticAnalyzerService() : null;
@@ -488,7 +491,7 @@ class AccountXRayService
                 try {
                     $semanticResult = $semanticService->analyzeSemanticStructure([
                         'title'      => $title,
-                        'description'=> $item['descriptions'][0]['text'] ?? ($item['description'] ?? ''),
+                        'description' => $item['descriptions'][0]['text'] ?? ($item['description'] ?? ''),
                         'category'   => $catId,
                         'attributes' => $item['attributes'] ?? [],
                     ]);
@@ -503,14 +506,14 @@ class AccountXRayService
                 'category_id'       => $catId,
                 'status'            => $item['status'] ?? 'unknown',
                 'price'             => (float) ($item['price'] ?? 0),
-                'available_quantity'=> (int) ($item['available_quantity'] ?? 0),
+                'available_quantity' => (int) ($item['available_quantity'] ?? 0),
                 'visits_30d'        => $item['_visits_30d'] ?? 0,
                 'sales_30d'         => $item['_sales_30d'] ?? 0,
                 'conversion_rate'   => $item['_conversion_rate'] ?? 0.0,
                 'health_score'      => $item['_health_score'] ?? 0,
                 'seo_score'         => $seoScore,
                 'seo_breakdown'     => $this->seoBreakdown($title),
-                'long_tail_keywords'=> array_slice($longTailKws, 0, 10),
+                'long_tail_keywords' => array_slice($longTailKws, 0, 10),
                 'missing_keywords'  => array_slice($missingKws, 0, 8),
                 'keyword_gaps'      => $gapResult['gap_analysis']['missing_keywords'] ?? [],
                 'semantic_gaps'     => $gapResult['semantic_gaps'] ?? ($semanticResult['latent_semantic_analysis']['semantic_gaps'] ?? []),
@@ -535,7 +538,7 @@ class AccountXRayService
             'items_below_50'     => count($worst),
             'total_analyzed'     => $scoreCount,
             'worst_items'        => array_values(array_slice($worst, 0, 10)),
-            'top_missing_keywords'=> $this->aggregateTopMissingKeywords($auditItems),
+            'top_missing_keywords' => $this->aggregateTopMissingKeywords($auditItems),
             'category_gaps'      => $this->aggregateCategoryGaps($auditItems),
             'long_tail_summary'  => $this->aggregateLongTailOpportunities($auditItems),
         ];
@@ -580,10 +583,10 @@ class AccountXRayService
 
         return [
             'score'              => $compScore,
-            'categories_analyzed'=> count($competitiveInsights),
+            'categories_analyzed' => count($competitiveInsights),
             'insights'           => $competitiveInsights,
             'hidden_gaps'        => $this->extractHiddenGaps($competitiveInsights),
-            'opportunity_keywords'=> $this->extractOpportunityKeywords($competitiveInsights, $seoAudit),
+            'opportunity_keywords' => $this->extractOpportunityKeywords($competitiveInsights, $seoAudit),
         ];
     }
 
@@ -647,7 +650,7 @@ class AccountXRayService
             'competitors'     => count($topCompetitors),
             'avg_comp_price'  => $avgCompPrice,
             'hidden_gaps'     => array_slice($hiddenGaps, 0, 15),
-            'top_comp_keywords'=> array_slice(array_keys($competitorKeywords), 0, 20),
+            'top_comp_keywords' => array_slice(array_keys($competitorKeywords), 0, 20),
             'my_keywords'     => array_keys($myKeywords),
             'keyword_overlap' => count(array_filter(
                 array_keys($competitorKeywords),
@@ -669,7 +672,7 @@ class AccountXRayService
         // Score de saúde da conta (0-100) via governance
         $accountHealth = 100;
         $status = $govResult['classification']['account_status'] ?? '';
-        $accountHealth = match($status) {
+        $accountHealth = match ($status) {
             AccountGovernanceService::STATUS_TRAVADA     => 10,
             AccountGovernanceService::STATUS_PENALIZADA  => 25,
             AccountGovernanceService::STATUS_EM_RECUPERACAO => 45,
@@ -689,9 +692,9 @@ class AccountXRayService
 
         $overall = (int) round(
             $accountHealth  * self::W_ACCOUNT_HEALTH
-            + $seoScore     * self::W_SEO_QUALITY
-            + $finScore     * self::W_FINANCIAL
-            + $compScore    * self::W_COMPETITIVE
+                + $seoScore     * self::W_SEO_QUALITY
+                + $finScore     * self::W_FINANCIAL
+                + $compScore    * self::W_COMPETITIVE
         );
 
         return max(0, min(100, $overall));
@@ -827,11 +830,13 @@ class AccountXRayService
         $seoActions = $this->buildSEOActions($seoAudit, $competitiveAnalysis);
 
         // Separar por prioridade
-        $critical = array_filter($actions, fn(array $a): bool =>
-            ($a['priority'] ?? '') === AccountGovernanceService::PRIORITY_CRITICA
+        $critical = array_filter(
+            $actions,
+            fn(array $a): bool => ($a['priority'] ?? '') === AccountGovernanceService::PRIORITY_CRITICA
         );
-        $high = array_filter($actions, fn(array $a): bool =>
-            ($a['priority'] ?? '') === AccountGovernanceService::PRIORITY_ALTA
+        $high = array_filter(
+            $actions,
+            fn(array $a): bool => ($a['priority'] ?? '') === AccountGovernanceService::PRIORITY_ALTA
         );
 
         return [
@@ -970,14 +975,14 @@ class AccountXRayService
 
         return [
             'length'        => $len,
-            'length_status' => match(true) {
+            'length_status' => match (true) {
                 $len >= self::TITLE_OPT_MIN && $len <= self::TITLE_OPT_MAX => 'ideal',
                 $len >= self::TITLE_MIN_LENGTH                             => 'ok',
                 default                                                     => 'curto',
             },
             'has_numbers'        => preg_match('/\d/', $title) === 1,
             'has_model_compat'   => (bool) preg_match('/\b(cg|titan|fan|bros|xre|fazer|factor|honda|yamaha)\b/i', $title),
-            'has_conversion_word'=> (bool) preg_match('/\b(original|universal|compatível|kit|par|novo)\b/i', $title),
+            'has_conversion_word' => (bool) preg_match('/\b(original|universal|compatível|kit|par|novo)\b/i', $title),
         ];
     }
 
@@ -1037,8 +1042,31 @@ class AccountXRayService
         $title = mb_strtolower($title);
         $title = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $title) ?? $title;
 
-        $stopWords = ['de', 'para', 'com', 'em', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'as', 'os',
-            'um', 'uma', 'no', 'na', 'nos', 'nas', 'ao', 'aos', 'pela', 'pelo'];
+        $stopWords = [
+            'de',
+            'para',
+            'com',
+            'em',
+            'da',
+            'do',
+            'das',
+            'dos',
+            'e',
+            'a',
+            'o',
+            'as',
+            'os',
+            'um',
+            'uma',
+            'no',
+            'na',
+            'nos',
+            'nas',
+            'ao',
+            'aos',
+            'pela',
+            'pelo'
+        ];
 
         $words = array_filter(
             explode(' ', $title),
@@ -1197,7 +1225,7 @@ class AccountXRayService
 
     private function calculateReputationScore(array $rep, string $level, ?string $powerSeller): int
     {
-        $base = match($level) {
+        $base = match ($level) {
             '5_green'         => 90,
             '4_light_green'   => 70,
             '3_yellow'        => 50,
@@ -1279,7 +1307,7 @@ class AccountXRayService
 
     private function estimateRecoveryDays(int $overallScore): int
     {
-        return match(true) {
+        return match (true) {
             $overallScore < 20  => 90,
             $overallScore < 40  => 60,
             $overallScore < 60  => 30,

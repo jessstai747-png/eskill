@@ -781,4 +781,15 @@ class HealthCheckService
 
         return $recommendations;
     }
+
+    /**
+     * Obtém experiência de compra de um anúncio via ML API
+     * Endpoint: GET /reputation/items/{itemId}/purchase_experience/integrators
+     *
+     * @return array Raw purchase experience data from ML, or ['error' => ...]
+     */
+    public function getPurchaseExperience(string $itemId): array
+    {
+        return $this->client->getPurchaseExperience($itemId);
+    }
 }

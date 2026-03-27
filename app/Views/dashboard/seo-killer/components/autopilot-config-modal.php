@@ -573,7 +573,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const AutoPilotConfig = {
         config: {
             frequency: 'daily',
@@ -639,9 +639,7 @@
 
         async loadConfig() {
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/autopilot/config');
+                const data = await requestJson('/api/seo-killer/autopilot/config');
 
                 if (data.success && data.config) {
                     this.config = data.config;
@@ -689,9 +687,7 @@
 
         async loadCategories() {
             try {
-                const {
-                    data
-                } = await requestJson('/api/categories');
+                const data = await requestJson('/api/categories');
 
                 if (data.categories) {
                     const select = document.getElementById('exclude-category-select');
@@ -902,9 +898,7 @@
             const config = this.gatherConfig();
 
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/autopilot/config', {
+                const data = await requestJson('/api/seo-killer/autopilot/config', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -961,9 +955,7 @@
             if (!confirmed) return;
 
             try {
-                const {
-                    data
-                } = await requestJson('/api/seo-killer/autopilot/run', {
+                const data = await requestJson('/api/seo-killer/autopilot/run', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

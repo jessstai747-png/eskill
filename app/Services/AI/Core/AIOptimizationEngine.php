@@ -244,9 +244,9 @@ class AIOptimizationEngine
             'current_score' => $currentScore,
             'suggestions' => $suggestions,
             'priority_count' => [
-                'high' => count(array_filter($suggestions, fn($s) => $s['priority'] === 'high')),
-                'medium' => count(array_filter($suggestions, fn($s) => $s['priority'] === 'medium')),
-                'low' => count(array_filter($suggestions, fn($s) => $s['priority'] === 'low')),
+                'high' => count(array_filter($suggestions, fn(array $s): bool => $s['priority'] === 'high')),
+                'medium' => count(array_filter($suggestions, fn(array $s): bool => $s['priority'] === 'medium')),
+                'low' => count(array_filter($suggestions, fn(array $s): bool => $s['priority'] === 'low')),
             ],
         ];
     }

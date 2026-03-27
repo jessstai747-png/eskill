@@ -608,7 +608,7 @@ class SynonymExpansionService
         $titleWordsLower = array_map('mb_strtolower', $titleWords);
 
         foreach ($synonyms as $level => $levelSynonyms) {
-            $synonyms[$level] = array_filter($levelSynonyms, function ($synonym) use ($titleWordsLower) {
+            $synonyms[$level] = array_filter($levelSynonyms, function (array $synonym) use ($titleWordsLower): bool {
                 $synonymWords = explode(' ', mb_strtolower($synonym['word']));
                 foreach ($synonymWords as $word) {
                     if (in_array($word, $titleWordsLower)) {
@@ -681,7 +681,7 @@ class SynonymExpansionService
         $stopwords = ['de', 'da', 'do', 'e', 'para', 'com', 'em', 'a', 'o', 'um', 'uma'];
 
         $words = preg_split('/\s+/', mb_strtolower($title));
-        $words = array_filter($words, fn($w) => !in_array($w, $stopwords) && mb_strlen($w) > 2);
+        $words = array_filter($words, fn(string $w): bool => !in_array($w, $stopwords) && mb_strlen($w) > 2);
 
         return array_values($words);
     }

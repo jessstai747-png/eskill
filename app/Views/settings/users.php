@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Gerenciar Equipe';
 $subtitle = 'Controle de acesso e permissões';
 include __DIR__ . '/../layouts/modern/partials/page-header.php';
@@ -70,7 +73,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     const userManager = {
         init: function() {
             this.loadUsers();

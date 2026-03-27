@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -12,26 +13,26 @@ use PDO;
 class EanPurchase
 {
     private PDO $db;
-    
+
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
-    
+
     /**
      * Criar nova compra
      */
     public function create(array $data): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO ean_purchases 
-            (account_id, package_id, quantity, unit_price, total_amount, discount_applied, 
+            INSERT INTO ean_purchases
+            (account_id, package_id, quantity, unit_price, total_amount, discount_applied,
              payment_method, payment_status, notes)
-            VALUES 
+            VALUES
             (:account_id, :package_id, :quantity, :unit_price, :total_amount, :discount_applied,
              :payment_method, :payment_status, :notes)
         ");
-        
+
         $stmt->execute([
             'account_id' => $data['account_id'],
             'package_id' => $data['package_id'] ?? null,
@@ -43,10 +44,10 @@ class EanPurchase
             'payment_status' => 'pending',
             'notes' => $data['notes'] ?? null,
         ]);
-        
+
         return (int) $this->db->lastInsertId();
     }
-    
+
     /**
      * Atualizar dados de pagamento
      */
@@ -54,29 +55,35 @@ class EanPurchase
     {
         $fields = [];
         $params = ['id' => $id];
-        
+
         $allowedFields = [
-            'payment_id', 'payment_external_id', 'payment_url', 
-            'payment_qr_code', 'payment_qr_code_base64', 'payment_expires_at',
-            'payment_status', 'paid_at', 'payment_method'
+            'payment_id',
+            'payment_external_id',
+            'payment_url',
+            'payment_qr_code',
+            'payment_qr_code_base64',
+            'payment_expires_at',
+            'payment_status',
+            'paid_at',
+            'payment_method'
         ];
-        
+
         foreach ($data as $key => $value) {
             if (in_array($key, $allowedFields)) {
                 $fields[] = "{$key} = :{$key}";
                 $params[$key] = $value;
             }
         }
-        
+
         if (empty($fields)) {
             return false;
         }
-        
+
         $sql = "UPDATE ean_purchases SET " . implode(', ', $fields) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
     }
-    
+
     /**
      * Marcar como pago
      */
@@ -84,17 +91,17 @@ class EanPurchase
     {
         $params = ['id' => $id];
         $sql = "UPDATE ean_purchases SET payment_status = 'paid', paid_at = NOW()";
-        
+
         if ($paymentId) {
             $sql .= ", payment_id = :payment_id";
             $params['payment_id'] = $paymentId;
         }
-        
+
         $sql .= " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
     }
-    
+
     /**
      * Buscar por ID
      */
@@ -109,20 +116,20 @@ class EanPurchase
         $stmt->execute(['id' => $id]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Buscar por payment_id (do gateway)
      */
     public function getByPaymentId(string $paymentId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM ean_purchases 
+            SELECT * FROM ean_purchases
             WHERE payment_id = :payment_id OR payment_external_id = :payment_id
         ");
         $stmt->execute(['payment_id' => $paymentId]);
         return $stmt->fetch() ?: null;
     }
-    
+
     /**
      * Listar compras de uma conta
      */
@@ -130,7 +137,11 @@ class EanPurchase
     {
         $limitSql = max(1, min(200, (int)$limit));
         $stmt = $this->db->prepare("
-            SELECT p.*, pk.name as package_name
+            SELECT p.id, p.account_id, p.package_id, p.quantity, p.unit_price, p.total_amount,
+                   p.discount_applied, p.payment_method, p.payment_status, p.payment_id,
+                   p.payment_external_id, p.payment_expires_at, p.paid_at, p.notes,
+                   p.created_at, p.updated_at,
+                   pk.name as package_name
             FROM ean_purchases p
             LEFT JOIN ean_packages pk ON p.package_id = pk.id
             WHERE p.account_id = :account_id
@@ -141,7 +152,7 @@ class EanPurchase
         $stmt->execute();
         return $stmt->fetchAll();
     }
-    
+
     /**
      * Listar todas as compras (admin)
      */
@@ -154,21 +165,25 @@ class EanPurchase
         $offsetSql = max(0, min(1000000, (int)$offset));
         $where = '';
         $params = [];
-        
+
         if ($status) {
             $where = "WHERE p.payment_status = :status";
             $params['status'] = $status;
         }
-        
+
         // Total
         $countSql = "SELECT COUNT(*) as total FROM ean_purchases p {$where}";
         $countStmt = $this->db->prepare($countSql);
         $countStmt->execute($params);
         $total = (int) $countStmt->fetch()['total'];
-        
+
         // Dados
         $sql = "
-            SELECT p.*, pk.name as package_name, a.nickname as account_name
+            SELECT p.id, p.account_id, p.package_id, p.quantity, p.unit_price, p.total_amount,
+                   p.discount_applied, p.payment_method, p.payment_status, p.payment_id,
+                   p.payment_external_id, p.payment_expires_at, p.paid_at, p.notes,
+                   p.created_at, p.updated_at,
+                   pk.name as package_name, a.nickname as account_name
             FROM ean_purchases p
             LEFT JOIN ean_packages pk ON p.package_id = pk.id
             LEFT JOIN ml_accounts a ON p.account_id = a.id
@@ -176,13 +191,13 @@ class EanPurchase
             ORDER BY p.created_at DESC
             LIMIT {$limitSql} OFFSET {$offsetSql}
         ";
-        
+
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue(":{$key}", $value);
         }
         $stmt->execute();
-        
+
         return [
             'data' => $stmt->fetchAll(),
             'total' => $total,
@@ -191,34 +206,36 @@ class EanPurchase
             'total_pages' => ceil($total / $perPage),
         ];
     }
-    
+
     /**
      * Compras pendentes expiradas
      */
     public function getExpiredPending(): array
     {
         $stmt = $this->db->query("
-            SELECT * FROM ean_purchases 
-            WHERE payment_status = 'pending' 
-            AND payment_expires_at IS NOT NULL 
+            SELECT id, account_id, package_id, quantity, unit_price, total_amount,
+                   payment_method, payment_status, payment_id, payment_expires_at, created_at
+            FROM ean_purchases
+            WHERE payment_status = 'pending'
+            AND payment_expires_at IS NOT NULL
             AND payment_expires_at < NOW()
         ");
         return $stmt->fetchAll();
     }
-    
+
     /**
      * Cancelar compra
      */
     public function cancel(int $id): bool
     {
         $stmt = $this->db->prepare("
-            UPDATE ean_purchases 
-            SET payment_status = 'cancelled' 
+            UPDATE ean_purchases
+            SET payment_status = 'cancelled'
             WHERE id = :id AND payment_status IN ('pending', 'processing')
         ");
         return $stmt->execute(['id' => $id]);
     }
-    
+
     /**
      * Estatísticas de vendas
      */
@@ -226,19 +243,19 @@ class EanPurchase
     {
         $where = "WHERE payment_status = 'paid'";
         $params = [];
-        
+
         if ($startDate) {
             $where .= " AND DATE(paid_at) >= :start_date";
             $params['start_date'] = $startDate;
         }
-        
+
         if ($endDate) {
             $where .= " AND DATE(paid_at) <= :end_date";
             $params['end_date'] = $endDate;
         }
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as total_orders,
                 SUM(quantity) as total_eans,
                 SUM(total_amount) as total_revenue,
@@ -247,37 +264,37 @@ class EanPurchase
             {$where}
         ");
         $stmt->execute($params);
-        
+
         return $stmt->fetch();
     }
-    
+
     /**
      * Vendas por período (para gráficos)
      */
     public function getSalesByPeriod(string $period = 'day', int $days = 30): array
     {
-        $groupBy = match($period) {
+        $groupBy = match ($period) {
             'day' => 'DATE(paid_at)',
             'week' => 'YEARWEEK(paid_at)',
             'month' => 'DATE_FORMAT(paid_at, "%Y-%m")',
             default => 'DATE(paid_at)'
         };
-        
+
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 {$groupBy} as period,
                 COUNT(*) as orders,
                 SUM(quantity) as eans,
                 SUM(total_amount) as revenue
             FROM ean_purchases
-            WHERE payment_status = 'paid' 
+            WHERE payment_status = 'paid'
             AND paid_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
             GROUP BY {$groupBy}
             ORDER BY period ASC
         ");
         $stmt->bindValue(':days', $days, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll();
     }
 }

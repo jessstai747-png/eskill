@@ -186,8 +186,9 @@ class RateLimitMiddleware
         }
 
         $file = rtrim($dir, '/') . '/' . md5($ip) . '.json';
-        $fp = @fopen($file, 'c+');
+        $fp = fopen($file, 'c+');
         if ($fp === false) {
+            log_warning('RateLimitMiddleware: unable to open rate limit file', ['file' => $file]);
             return;
         }
 

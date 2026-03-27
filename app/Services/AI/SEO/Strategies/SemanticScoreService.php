@@ -306,7 +306,7 @@ class SemanticScoreService
     ): array {
         $scored = $this->scoreWords($words, $title, $categoryId);
 
-        return array_values(array_filter($scored, fn($item) => $item['score'] >= $minScore));
+        return array_values(array_filter($scored, fn(array $item): bool => $item['score'] >= $minScore));
     }
 
     /**
@@ -379,10 +379,10 @@ class SemanticScoreService
                 ? ($scores[$middle - 1] + $scores[$middle]) / 2
                 : $scores[$middle],
             'distribution' => [
-                'excellent' => count(array_filter($scores, fn($s) => $s >= 0.8)),
-                'good' => count(array_filter($scores, fn($s) => $s >= 0.6 && $s < 0.8)),
-                'average' => count(array_filter($scores, fn($s) => $s >= 0.4 && $s < 0.6)),
-                'low' => count(array_filter($scores, fn($s) => $s < 0.4))
+                'excellent' => count(array_filter($scores, fn(float|int $s): bool => $s >= 0.8)),
+                'good' => count(array_filter($scores, fn(float|int $s): bool => $s >= 0.6 && $s < 0.8)),
+                'average' => count(array_filter($scores, fn(float|int $s): bool => $s >= 0.4 && $s < 0.6)),
+                'low' => count(array_filter($scores, fn(float|int $s): bool => $s < 0.4))
             ]
         ];
     }

@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * AI Item Analysis - Generate Optimization Plan
  * Analyzes all items and creates prioritized action plan

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // Determine active page based on URL
 $currentPath = $_SERVER['REQUEST_URI'] ?? '/';
 $isActive = function($path) use ($currentPath) {
@@ -158,7 +161,7 @@ if ($currentUser) {
 </nav>
 
 <?php if ($currentUser && count($userAccounts) > 1): ?>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 async function switchAccount(accountId) {
     try {
         const data = await requestJson('/api/dashboard/switch-account', {

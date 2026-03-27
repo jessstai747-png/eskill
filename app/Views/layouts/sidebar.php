@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Sidebar layout - Mission Control Style
  * Menu de navegação profissional com todas as funcionalidades

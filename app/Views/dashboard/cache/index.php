@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 use App\Helpers\SecurityHelper;
 
 $pageTitle = 'Gerenciamento de Cache';
@@ -187,7 +190,7 @@ $pageTitle = 'Gerenciamento de Cache';
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
 
         let cacheItems = [];
         let filteredItems = [];

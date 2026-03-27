@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use App\Controllers\DashboardController;
@@ -56,6 +57,7 @@ $router->post('api/xray/apply/{reportId}', AccountXRayController::class, 'applyR
 $router->post('api/xray/queue', AccountXRayController::class, 'queueAnalysis');
 $router->get('api/xray/job-status/{jobId}', AccountXRayController::class, 'jobStatus');
 $router->get('api/xray/recovery-history/{accountId}', AccountXRayController::class, 'recoveryHistory');
+$router->get('api/xray/export/pdf/{reportId}', AccountXRayController::class, 'exportPdf');
 
 // OpenSpec Module
 $router->get('dashboard/openspec', 'App\\Controllers\\OpenSpecController', 'index');
@@ -380,6 +382,9 @@ $router->get('api/logistics/full/suggestions', 'App\Controllers\FullController',
 // Bulk Editor
 $router->get('dashboard/items/bulk', 'App\Controllers\BulkEditorController', 'index');
 $router->post('api/items/bulk-update', 'App\Controllers\BulkEditorController', 'applyUpdates');
+
+// Item Editor
+$router->get('dashboard/items/{itemId}/edit', 'App\Controllers\DashboardController', 'editItem');
 
 // Promotions
 $router->get('dashboard/marketing/promotions', 'App\Controllers\PromotionController', 'index');

@@ -192,7 +192,10 @@ class AuditLogService
                 try {
                     $this->db->exec($sql);
                 } catch (\Throwable $e) {
-                    // Ignore if column already exists or JSON not supported
+                    log_warning('AuditLogService: schema migration ignorada (coluna já existe ou JSON não suportado)', [
+                        'sql' => $sql,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }

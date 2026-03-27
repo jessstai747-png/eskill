@@ -13,13 +13,14 @@ use GuzzleHttp\Exception\RequestException;
 class ClaudeProvider extends AbstractAIProvider
 {
     private const API_URL = 'https://api.anthropic.com/';
-    private const DEFAULT_MODEL = 'claude-3-5-sonnet-20241022';
+    private const DEFAULT_MODEL = 'claude-3-7-sonnet-20250219';
 
     // Pricing per 1M tokens (USD)
     private const PRICING = [
+        'claude-3-7-sonnet-20250219' => ['input' => 3.00, 'output' => 15.00],
         'claude-3-5-sonnet-20241022' => ['input' => 3.00, 'output' => 15.00],
-        'claude-3-5-haiku-20241022' => ['input' => 0.80, 'output' => 4.00],
-        'claude-3-opus-20240229' => ['input' => 15.00, 'output' => 75.00],
+        'claude-3-5-haiku-20241022'  => ['input' => 0.80, 'output' => 4.00],
+        'claude-3-opus-20240229'     => ['input' => 15.00, 'output' => 75.00],
     ];
 
     private Client $httpClient;
@@ -161,7 +162,7 @@ class ClaudeProvider extends AbstractAIProvider
 
     /**
      * Get available models
-     * 
+     *
      * @return array
      */
     public function getAvailableModels(): array
@@ -172,7 +173,7 @@ class ClaudeProvider extends AbstractAIProvider
     /**
      * Count tokens (rough estimate)
      * Claude uses similar tokenization to GPT models
-     * 
+     *
      * @param string $text
      * @return int Estimated token count
      */

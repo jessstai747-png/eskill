@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Modern Sidebar Navigation
  * Clean, professional sidebar with organized menu structure

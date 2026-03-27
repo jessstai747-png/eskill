@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Métricas Detalhadas';
 include __DIR__ . '/../layouts/modern/partials/page-header.php';
 ?>
@@ -56,7 +59,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     document.addEventListener('DOMContentLoaded', function() {
         fetchMetrics();
     });

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Comprehensive System Verification Script
  * Tests all major components and reports issues

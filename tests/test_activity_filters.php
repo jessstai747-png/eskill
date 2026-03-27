@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Mock Database/PDO if needed, or better, use the actual service if we can connect to DB

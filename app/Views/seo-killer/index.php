@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * 🔥 SEO Killer Dashboard
  * Interface do Sistema SEO Matador para Mercado Livre

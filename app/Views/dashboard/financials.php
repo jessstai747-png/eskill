@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Relatórios Financeiros';
 $subtitle = 'Demonstrativo de Resultados e Análise de Lucratividade';
 include __DIR__ . '/../layouts/modern/partials/page-header.php';
@@ -71,7 +74,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     const financialManager = {
         chart: null,

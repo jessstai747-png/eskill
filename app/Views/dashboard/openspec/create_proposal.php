@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * OpenSpec - Criar Novo Proposal
  * Formulário para criação de uma nova proposta de mudança
@@ -64,7 +67,7 @@ require __DIR__ . '/../../layouts/header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 document.getElementById('proposalForm').addEventListener('submit', async function(e) {
     e.preventDefault();

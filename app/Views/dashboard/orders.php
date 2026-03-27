@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Dashboard de Pedidos - Versão Moderna
  * Integrado com o layout moderno (sidebar, temas, etc.)
@@ -380,7 +383,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     function normalizeExternalUrl(url) {
         if (!url || typeof url !== 'string') return '';

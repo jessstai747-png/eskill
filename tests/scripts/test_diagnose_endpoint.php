@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Teste do Endpoint /api/seo-killer/diagnose
  */

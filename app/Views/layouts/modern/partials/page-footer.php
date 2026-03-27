@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Standard Page Footer Partial
  * Closes main content divs and includes footer

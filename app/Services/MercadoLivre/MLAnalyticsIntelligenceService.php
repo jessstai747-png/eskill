@@ -10,7 +10,7 @@ use App\Services\StructuredLogService;
 
 /**
  * Enhanced ML Analytics and Intelligence Service
- * 
+ *
  * Features:
  * - Search behavior analysis
  * - Category performance insights
@@ -557,7 +557,7 @@ class MLAnalyticsIntelligenceService
         try {
             $days = intval($filters['days'] ?? 30);
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(DISTINCT i.ml_item_id) as active_items,
                     COALESCE(SUM(pm.visits), 0) as total_visits,
                     COALESCE(SUM(pm.sold_quantity), 0) as total_sales,
@@ -613,7 +613,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(DISTINCT CASE WHEN o.status = 'paid' THEN JSON_UNQUOTE(JSON_EXTRACT(o.order_data, '$.buyer.id')) END) as paying_customers,
                     COUNT(DISTINCT CASE WHEN q.status = 'ANSWERED' THEN q.from_user_id END) as engaged_customers,
                     COUNT(DISTINCT JSON_UNQUOTE(JSON_EXTRACT(o.order_data, '$.buyer.id'))) as total_customers
@@ -646,7 +646,7 @@ class MLAnalyticsIntelligenceService
         try {
             $days = intval($filters['days'] ?? 30);
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COALESCE(SUM(pm.visits), 0) as impressions,
                     COALESCE(SUM(pm.sold_quantity), 0) as purchases
                 FROM seo_performance_metrics pm
@@ -684,7 +684,7 @@ class MLAnalyticsIntelligenceService
         // Tendência de vendas (simples: comparar últimos 15d vs 15d anteriores)
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     SUM(CASE WHEN pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 15 DAY) THEN pm.sold_quantity ELSE 0 END) as recent_sales,
                     SUM(CASE WHEN pm.metric_date < DATE_SUB(CURDATE(), INTERVAL 15 DAY) AND pm.metric_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN pm.sold_quantity ELSE 0 END) as previous_sales
                 FROM seo_performance_metrics pm
@@ -734,7 +734,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(CASE WHEN status = 'active' THEN 1 END) as active_items,
                     COUNT(CASE WHEN status = 'paused' THEN 1 END) as paused_items,
                     COUNT(*) as total_items
@@ -803,7 +803,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT DISTINCT category_id FROM items 
+                SELECT DISTINCT category_id FROM items
                 WHERE account_id = :account_id AND status = 'active' AND category_id IS NOT NULL
                 LIMIT 10
             ");
@@ -829,11 +829,11 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_items,
                     SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
                     AVG(price) as avg_price
-                FROM items 
+                FROM items
                 WHERE account_id = :account_id AND category_id = :category_id
             ");
             $stmt->execute(['account_id' => $this->accountId, 'category_id' => $category]);
@@ -876,7 +876,7 @@ class MLAnalyticsIntelligenceService
                 $bestCategory = $insight['category_id'] ?? '';
             }
         }
-        $avgAcross = array_sum(array_map(fn($i) => floatval($i['avg_price'] ?? 0), $insights)) / max(1, count($insights));
+        $avgAcross = array_sum(array_map(fn(array $i): float => floatval($i['avg_price'] ?? 0), $insights)) / max(1, count($insights));
         return [
             'highest_avg_price_category' => $bestCategory,
             'avg_price' => round($bestAvgPrice, 2),
@@ -888,7 +888,7 @@ class MLAnalyticsIntelligenceService
     private function generateCategoryRankings(array $insights): array
     {
         usort($insights, fn($a, $b) => intval($b['active'] ?? 0) <=> intval($a['active'] ?? 0));
-        return array_map(fn($i) => [
+        return array_map(fn(array $i): array => [
             'category_id' => $i['category_id'] ?? '',
             'active_items' => intval($i['active'] ?? 0),
         ], array_slice($insights, 0, 5));
@@ -896,7 +896,7 @@ class MLAnalyticsIntelligenceService
 
     private function generateCategoryOpportunityMatrix(array $insights): array
     {
-        return array_map(fn($i) => [
+        return array_map(fn(array $i): array => [
             'category_id' => $i['category_id'] ?? '',
             'items' => intval($i['total_items'] ?? 0),
             'market_size' => intval($i['market']['total_listings'] ?? 0),
@@ -929,7 +929,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) as total_questions, 
+                SELECT COUNT(*) as total_questions,
                        COUNT(CASE WHEN status = 'ANSWERED' THEN 1 END) as answered
                 FROM ml_questions WHERE account_id = :account_id
                 AND date_created >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -1030,7 +1030,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     JSON_UNQUOTE(JSON_EXTRACT(o.order_data, '$.buyer.id')) as buyer_id,
                     COUNT(*) as order_count,
                     SUM(o.total_amount) as total_spent,
@@ -1096,7 +1096,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     JSON_UNQUOTE(JSON_EXTRACT(o.order_data, '$.buyer.id')) as buyer_id,
                     COUNT(*) as total_orders,
                     SUM(o.total_amount) as total_spent
@@ -1299,8 +1299,8 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
-                    CASE 
+                SELECT
+                    CASE
                         WHEN buyer_orders.order_count = 1 THEN 'new'
                         WHEN buyer_orders.order_count >= 5 THEN 'vip'
                         ELSE 'repeat'
@@ -1367,7 +1367,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     pm.item_id,
                     i.title,
                     COALESCE(SUM(pm.visits), 0) as visits,
@@ -1714,7 +1714,7 @@ class MLAnalyticsIntelligenceService
             $adData = ['impressions' => 0, 'clicks' => 0, 'cost' => 0, 'revenue' => 0, 'conversions' => 0];
             try {
                 $stmtAds = $this->db->prepare("
-                    SELECT 
+                    SELECT
                         COALESCE(SUM(impressions), 0) as impressions,
                         COALESCE(SUM(clicks), 0) as clicks,
                         COALESCE(SUM(cost), 0) as cost,
@@ -1789,7 +1789,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT pm.item_id, 
+                SELECT pm.item_id,
                     SUM(pm.revenue) as revenue,
                     SUM(pm.sold_quantity) as sales
                 FROM seo_performance_metrics pm
@@ -1893,7 +1893,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     SUM(o.total_amount * 0.13) as estimated_fees,
                     SUM(o.total_amount) as gross_revenue
                 FROM ml_orders o
@@ -2555,7 +2555,7 @@ class MLAnalyticsIntelligenceService
             $categoryTrends[$catId] = [
                 'terms_count' => count($terms),
                 'top_terms' => array_slice(
-                    array_map(fn($t) => is_string($t) ? $t : ($t['keyword'] ?? ''), $terms),
+                    array_map(fn(mixed $t): string => is_string($t) ? $t : ($t['keyword'] ?? ''), $terms),
                     0,
                     5
                 ),
@@ -2570,7 +2570,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(DISTINCT JSON_UNQUOTE(JSON_EXTRACT(o.order_data, '$.buyer.id'))) as buyers,
                     COUNT(DISTINCT CASE WHEN q.from_user_id IS NOT NULL THEN q.from_user_id END) as askers
                 FROM ml_orders o
@@ -2651,7 +2651,7 @@ class MLAnalyticsIntelligenceService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COALESCE(SUM(pm.visits), 0) as total_views,
                     COALESCE(SUM(pm.sold_quantity), 0) as total_sales,
                     COALESCE(SUM(pm.revenue), 0) as total_revenue
@@ -2872,7 +2872,7 @@ class MLAnalyticsIntelligenceService
             $monthly[$month][] = floatval($row['sales'] ?? 0);
         }
 
-        $overall = array_map(fn($r) => floatval($r['sales'] ?? 0), $historicalData);
+        $overall = array_map(fn(array $r): float => floatval($r['sales'] ?? 0), $historicalData);
         $overallAvg = count($overall) > 0 ? array_sum($overall) / count($overall) : 0;
         $monthFactors = [];
         foreach ($monthly as $month => $sales) {
@@ -2925,7 +2925,7 @@ class MLAnalyticsIntelligenceService
         $sales = array_column($historicalData, 'sales');
         $mean = count($sales) > 0 ? array_sum($sales) / count($sales) : 0;
         $variance = count($sales) > 1
-            ? array_sum(array_map(fn($v) => ($v - $mean) ** 2, $sales)) / (count($sales) - 1)
+            ? array_sum(array_map(fn(float $v): float => ($v - $mean) ** 2, $sales)) / (count($sales) - 1)
             : 0;
         $std = sqrt($variance);
         return [
@@ -3137,10 +3137,10 @@ class MLAnalyticsIntelligenceService
             ? array_sum(array_column($recent, 'sales')) / count($recent)
             : 0;
 
-        $dailyValues = array_map(fn($r) => floatval($r['sales'] ?? 0), $recent);
+        $dailyValues = array_map(fn(array $r): float => floatval($r['sales'] ?? 0), $recent);
         $mean = count($dailyValues) > 0 ? array_sum($dailyValues) / count($dailyValues) : 0;
         $variance = count($dailyValues) > 1
-            ? array_sum(array_map(fn($v) => ($v - $mean) ** 2, $dailyValues)) / (count($dailyValues) - 1)
+            ? array_sum(array_map(fn(float $v): float => ($v - $mean) ** 2, $dailyValues)) / (count($dailyValues) - 1)
             : 0;
         $stdDev = sqrt($variance);
 

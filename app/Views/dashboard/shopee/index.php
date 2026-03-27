@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $title = 'Shopee Integration';
 $subtitle = 'Gerencie sua loja Shopee';
 include __DIR__ . '/../../layouts/modern/partials/page-header.php';
@@ -68,7 +71,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
 async function syncShopee() {
     const toastId = Toast.info('Sincronizando com Shopee...', 0);

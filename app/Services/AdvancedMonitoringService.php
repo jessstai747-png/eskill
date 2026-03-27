@@ -124,10 +124,16 @@ class AdvancedMonitoringService
         // Disk Usage
         $diskTotal = disk_total_space('.');
         $diskFree = disk_free_space('.');
-        $diskUsed = $diskTotal - $diskFree;
-        $metrics['disk_usage'] = round(($diskUsed / $diskTotal) * 100, 2);
-        $metrics['disk_used_gb'] = round($diskUsed / 1024 / 1024 / 1024, 2);
-        $metrics['disk_total_gb'] = round($diskTotal / 1024 / 1024 / 1024, 2);
+        if ($diskTotal === false || $diskFree === false || $diskTotal == 0) {
+            $metrics['disk_usage'] = 0.0;
+            $metrics['disk_used_gb'] = 0.0;
+            $metrics['disk_total_gb'] = 0.0;
+        } else {
+            $diskUsed = $diskTotal - $diskFree;
+            $metrics['disk_usage'] = round(($diskUsed / $diskTotal) * 100, 2);
+            $metrics['disk_used_gb'] = round($diskUsed / 1024 / 1024 / 1024, 2);
+            $metrics['disk_total_gb'] = round($diskTotal / 1024 / 1024 / 1024, 2);
+        }
 
         // Database Metrics
         $metrics = array_merge($metrics, $this->getDatabaseMetrics());
@@ -172,8 +178,8 @@ class AdvancedMonitoringService
 
             // Database size
             $stmt = $this->db->query("
-                SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS db_size_mb 
-                FROM information_schema.tables 
+                SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS db_size_mb
+                FROM information_schema.tables
                 WHERE table_schema = DATABASE()
             ");
             $result = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -200,9 +206,9 @@ class AdvancedMonitoringService
         try {
             // AI Operations count (last hour)
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) as ai_operations_hour 
-                FROM system_metrics 
-                WHERE metric_type = 'ai_operation' 
+                SELECT COUNT(*) as ai_operations_hour
+                FROM system_metrics
+                WHERE metric_type = 'ai_operation'
                 AND timestamp >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
             ");
             $stmt->execute();
@@ -242,13 +248,13 @@ class AdvancedMonitoringService
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_requests,
                     AVG(response_time) as avg_response_time,
                     MAX(response_time) as max_response_time,
                     SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as error_count,
                     AVG(memory_usage) as avg_memory_usage
-                FROM performance_logs 
+                FROM performance_logs
                 WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
             ");
             $stmt->execute();
@@ -281,7 +287,7 @@ class AdvancedMonitoringService
     private function storeMetrics(array $metrics): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO system_metrics (metric_type, metric_name, value, unit, server_id) 
+            INSERT INTO system_metrics (metric_type, metric_name, value, unit, server_id)
             VALUES (?, ?, ?, ?, ?)
         ");
 
@@ -329,7 +335,7 @@ class AdvancedMonitoringService
     {
         // Check if similar alert exists in last 10 minutes
         $stmt = $this->db->prepare("
-            SELECT id FROM system_alerts 
+            SELECT id FROM system_alerts
             WHERE metric_name = ? AND alert_type = ? AND status = 'active'
             AND created_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
             LIMIT 1
@@ -344,7 +350,7 @@ class AdvancedMonitoringService
         $message = $this->getAlertMessage($metricName, $currentValue, $threshold);
 
         $stmt = $this->db->prepare("
-            INSERT INTO system_alerts (alert_type, title, message, metric_name, threshold_value, current_value) 
+            INSERT INTO system_alerts (alert_type, title, message, metric_name, threshold_value, current_value)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([$type, $title, $message, $metricName, $threshold, $currentValue]);
@@ -408,9 +414,9 @@ class AdvancedMonitoringService
     public function getActiveAlerts(): array
     {
         $stmt = $this->db->prepare("
-            SELECT * FROM system_alerts 
-            WHERE status = 'active' 
-            ORDER BY created_at DESC 
+            SELECT * FROM system_alerts
+            WHERE status = 'active'
+            ORDER BY created_at DESC
             LIMIT 50
         ");
         $stmt->execute();
@@ -424,7 +430,7 @@ class AdvancedMonitoringService
     public function logRequestPerformance(array $data): void
     {
         $stmt = $this->db->prepare("
-            INSERT INTO performance_logs (endpoint, method, response_time, memory_usage, status_code, user_id, ip_address, user_agent) 
+            INSERT INTO performance_logs (endpoint, method, response_time, memory_usage, status_code, user_id, ip_address, user_agent)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
@@ -458,14 +464,14 @@ class AdvancedMonitoringService
 
         $interval = $intervalMap[$timeframe] ?? '1 HOUR';
 
-        $sql = "SELECT 
+        $sql = "SELECT
                 endpoint,
                 COUNT(*) as request_count,
                 AVG(response_time) as avg_response_time,
                 MIN(response_time) as min_response_time,
                 MAX(response_time) as max_response_time,
                 SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as error_count
-            FROM performance_logs 
+            FROM performance_logs
             WHERE timestamp >= DATE_SUB(NOW(), INTERVAL $interval)
             GROUP BY endpoint
             ORDER BY request_count DESC
@@ -505,8 +511,8 @@ class AdvancedMonitoringService
 
     private function getTotalMemory(): int
     {
-        $memInfo = @file_get_contents('/proc/meminfo');
-        if ($memInfo && preg_match('/MemTotal:\s+(\d+)/', $memInfo, $matches)) {
+        $memInfo = is_readable('/proc/meminfo') ? file_get_contents('/proc/meminfo') : false;
+        if ($memInfo !== false && preg_match('/MemTotal:\s+(\d+)/', $memInfo, $matches)) {
             return (int)$matches[1] * 1024; // Convert KB to bytes
         }
         return 8 * 1024 * 1024 * 1024; // Default 8GB
@@ -524,7 +530,7 @@ class AdvancedMonitoringService
         // Check standard 'jobs' table for pending jobs
         try {
             $stmt = $this->db->query("
-                SELECT COUNT(*) FROM jobs 
+                SELECT COUNT(*) FROM jobs
                 WHERE available_at <= UNIX_TIMESTAMP(NOW())
             ");
             return (int)$stmt->fetchColumn();

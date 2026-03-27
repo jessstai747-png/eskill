@@ -1,6 +1,10 @@
 <!-- Mobile Bottom Navigation -->
 <div class="bottom-nav d-md-none fixed-bottom bg-white border-top shadow-lg d-flex justify-content-around align-items-center py-2" style="z-index: 1050; padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
-    <a href="/dashboard" class="text-decoration-none text-center flex-grow-1 <?php echo str_contains($_SERVER['REQUEST_URI'] ?? '', '/dashboard') && !str_contains($_SERVER['REQUEST_URI'] ?? '', 'questions') ? 'text-primary' : 'text-muted'; ?>">
+    <a href="/dashboard" class="text-decoration-none text-center flex-grow-1 <?php
+
+declare(strict_types=1);
+
+echo str_contains($_SERVER['REQUEST_URI'] ?? '', '/dashboard') && !str_contains($_SERVER['REQUEST_URI'] ?? '', 'questions') ? 'text-primary' : 'text-muted'; ?>">
         <i class="bi bi-speedometer2 fs-4"></i>
         <div style="font-size: 0.7rem;">Início</div>
     </a>

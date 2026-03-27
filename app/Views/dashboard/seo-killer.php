@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = '🔥 SEO Killer';
 $activePage = 'seo-killer';
 
@@ -372,13 +375,13 @@ $seoKillerJsVersion = @filemtime($seoKillerAssetBase . '/js/seo-killer.js') ?: t
 <!-- Load AI Chatbot Widget (Global) -->
 <?php include __DIR__ . '/seo-killer/components/ai-chatbot-widget.php'; ?>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="https://cdn.jsdelivr.net/npm/toastify-js" defer></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/assets/js/seo-killer-utils.js" defer></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/assets/js/seo-killer.js?v=<?= $seoKillerJsVersion ?>" defer></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/assets/js/seo-killer-ai-insights.js?v=<?= $seoKillerJsVersion ?>" defer></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/assets/js/seo-killer-chatbot.js?v=<?= $seoKillerJsVersion ?>" defer></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>" src="/assets/js/ai-optimization.js?v=<?= $seoKillerJsVersion ?>" defer></script>
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>" src="https://cdn.jsdelivr.net/npm/toastify-js" defer></script>
+<script nonce="<?= CSP_NONCE ?>" src="/assets/js/seo-killer-utils.js" defer></script>
+<script nonce="<?= CSP_NONCE ?>" src="/assets/js/seo-killer.js?v=<?= $seoKillerJsVersion ?>" defer></script>
+<script nonce="<?= CSP_NONCE ?>" src="/assets/js/seo-killer-ai-insights.js?v=<?= $seoKillerJsVersion ?>" defer></script>
+<script nonce="<?= CSP_NONCE ?>" src="/assets/js/seo-killer-chatbot.js?v=<?= $seoKillerJsVersion ?>" defer></script>
+<script nonce="<?= CSP_NONCE ?>" src="/assets/js/ai-optimization.js?v=<?= $seoKillerJsVersion ?>" defer></script>
+<script nonce="<?= CSP_NONCE ?>">
     // Deep-link support: activate tab from URL hash (e.g. #technical-sheet)
     document.addEventListener('DOMContentLoaded', function() {
         var hash = window.location.hash.replace('#', '');

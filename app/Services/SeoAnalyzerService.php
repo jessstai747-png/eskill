@@ -12,14 +12,14 @@ use App\Services\Quality\HealthCheckService;
 
 /**
  * Serviço de Análise SEO para Anúncios do Mercado Livre
- * 
+ *
  * Analisa e pontua anúncios baseado nas melhores práticas de SEO do ML:
  * - Título otimizado (60 caracteres, keywords relevantes)
  * - Descrição completa e estruturada
  * - Atributos obrigatórios e recomendados preenchidos
  * - Imagens de qualidade
  * - Ficha técnica completa
- * 
+ *
  * INTEGRADO COM:
  * - QualityScoreService (pontuação oficial de qualidade)
  * - HealthCheckService (verificação de saúde do anúncio)
@@ -89,7 +89,7 @@ class SeoAnalyzerService
         $this->client = new MercadoLivreClient($accountId);
         $this->categoryService = new CategoryService($accountId);
         $this->cache = new CacheService();
-        
+
         // Integração com Quality Services (opcional)
         try {
             $this->qualityScore = new QualityScoreService($accountId);
@@ -140,7 +140,7 @@ class SeoAnalyzerService
                         'critical_issues' => $healthResult['summary']['critical_issues'] ?? 0,
                         'total_issues' => $healthResult['summary']['total_issues'] ?? 0,
                     ];
-                    
+
                     // Adicionar link para relatório completo
                     $analysis['quality_check']['full_report_url'] = "/api/quality/report/{$itemId}";
                 }
@@ -310,7 +310,7 @@ class SeoAnalyzerService
         // Verificar repetição de palavras (0-15 pontos)
         $words = preg_split('/\s+/', $titleLower);
         $wordCount = array_count_values($words);
-        $repetitions = array_filter($wordCount, fn($count) => $count > 1);
+        $repetitions = array_filter($wordCount, fn(int $count): bool => $count > 1);
 
         if (empty($repetitions)) {
             $result['score'] += 15;
@@ -814,7 +814,7 @@ class SeoAnalyzerService
         }
 
         // Sugestões de alto impacto
-        $highImpactSuggestions = array_filter($analysis['suggestions'], function ($s) {
+        $highImpactSuggestions = array_filter($analysis['suggestions'], function (string $s): bool {
             return stripos($s, 'frete') !== false ||
                 stripos($s, 'imag') !== false ||
                 stripos($s, 'atributo') !== false;
@@ -895,7 +895,7 @@ class SeoAnalyzerService
         }
 
         // Calcular estatísticas gerais
-        $validResults = array_filter($results, fn($r) => !isset($r['error']));
+        $validResults = array_filter($results, fn(array $r): bool => !isset($r['error']));
         $scores = array_column($validResults, 'score');
 
         return [
@@ -907,9 +907,9 @@ class SeoAnalyzerService
                 'min_score' => count($scores) > 0 ? min($scores) : 0,
                 'max_score' => count($scores) > 0 ? max($scores) : 0,
                 'distribution' => [
-                    'excellent' => count(array_filter($scores, fn($s) => $s >= 80)),
-                    'good' => count(array_filter($scores, fn($s) => $s >= 60 && $s < 80)),
-                    'needs_improvement' => count(array_filter($scores, fn($s) => $s < 60)),
+                    'excellent' => count(array_filter($scores, fn(int|float $s): bool => $s >= 80)),
+                    'good' => count(array_filter($scores, fn(int|float $s): bool => $s >= 60 && $s < 80)),
+                    'needs_improvement' => count(array_filter($scores, fn(int|float $s): bool => $s < 60)),
                 ],
             ],
         ];

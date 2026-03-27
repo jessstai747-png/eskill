@@ -481,7 +481,7 @@ class SubscriptionService
 
         $cancelledInPeriod = array_filter(
             $cancelled['results'] ?? [],
-            function ($sub) use ($startDate, $endDate) {
+            function (array $sub) use ($startDate, $endDate): bool {
                 $lastModified = $sub['last_modified'] ?? null;
                 return $lastModified >= $startDate && $lastModified <= $endDate;
             }
@@ -516,7 +516,7 @@ class SubscriptionService
             'cancelled_count' => count($cancelledInPeriod),
             'churn_rate' => round($churnRate, 2),
             'lost_mrr' => round($lostMrr, 2),
-            'cancelled_subscriptions' => array_map(fn($s) => [
+            'cancelled_subscriptions' => array_map(fn(array $s): array => [
                 'id' => $s['id'],
                 'reason' => $s['reason'] ?? null,
                 'cancelled_at' => $s['last_modified'] ?? null,

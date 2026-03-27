@@ -98,13 +98,22 @@ class MonitoringService
         // Verificar espaço em disco
         $diskFree = disk_free_space(__DIR__ . '/../../');
         $diskTotal = disk_total_space(__DIR__ . '/../../');
-        $diskUsagePercent = (1 - ($diskFree / $diskTotal)) * 100;
+
+        if ($diskFree === false || $diskTotal === false || $diskTotal == 0) {
+            $diskUsagePercent = 0.0;
+            $diskFreeGb = 0.0;
+            $diskTotalGb = 0.0;
+        } else {
+            $diskUsagePercent = (1 - ($diskFree / $diskTotal)) * 100;
+            $diskFreeGb = round($diskFree / 1024 / 1024 / 1024, 2);
+            $diskTotalGb = round($diskTotal / 1024 / 1024 / 1024, 2);
+        }
 
         $health['checks']['disk'] = [
             'status' => $diskUsagePercent > 90 ? 'critical' : ($diskUsagePercent > 75 ? 'warning' : 'ok'),
             'usage_percent' => round($diskUsagePercent, 2),
-            'free_gb' => round($diskFree / 1024 / 1024 / 1024, 2),
-            'total_gb' => round($diskTotal / 1024 / 1024 / 1024, 2),
+            'free_gb' => $diskFreeGb,
+            'total_gb' => $diskTotalGb,
         ];
 
         if ($health['checks']['disk']['status'] !== 'ok') {
@@ -127,9 +136,9 @@ class MonitoringService
         // Verificar tokens expirando
         try {
             $stmt = $this->db->query("
-                SELECT COUNT(*) as total 
-                FROM ml_accounts 
-                WHERE status = 'active' 
+                SELECT COUNT(*) as total
+                FROM ml_accounts
+                WHERE status = 'active'
                 AND token_expires_at <= DATE_ADD(NOW(), INTERVAL 7 DAY)
                 AND token_expires_at > NOW()
             ");

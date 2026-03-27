@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Governança da Conta - Dashboard de Governança e Recuperação
  * Motor de diagnóstico, classificação de itens, plano semanal e ações

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Dashboard Avançado com Gráficos Interativos
  *
@@ -336,7 +338,7 @@ ob_start();
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
 
     function normalizeExternalUrl(url) {
         if (!url || typeof url !== 'string') return '';

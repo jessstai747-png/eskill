@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 $pageTitle = 'Recuperar Senha - Mercado Livre Manager';
 ob_start();
 ?>

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Layout Principal da Aplicação
  *
@@ -928,7 +930,7 @@ $activePage = $activePage ?? '';
     <!-- App JS -->
     <script nonce="<?= $cspNonce ?>" src="/js/app.js"></script>
 
-    <script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+    <script nonce="<?= CSP_NONCE ?>">
         // CSRF Token
         const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
 

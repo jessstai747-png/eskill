@@ -324,7 +324,7 @@
     }
 </style>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     // Quick Actions Panel State
     let quickActionsPanelState = {
         isOpen: false,
@@ -371,9 +371,7 @@
     // Refresh Quick Diagnostics
     async function refreshQuickDiagnostics() {
         try {
-            const {
-                data
-            } = await requestJson('/api/seo-killer/diagnose');
+            const data = await requestJson('/api/seo-killer/diagnose');
 
             if (data.success && data.stats) {
                 document.getElementById('quickAvgScore').textContent =
@@ -454,7 +452,7 @@
 
         container.innerHTML = quickActionsPanelState.recentItems.map(item => `
         <div class="recent-item" onclick="openRecentItem('${item.id}')">
-            ${item.thumbnail 
+            ${item.thumbnail
                 ? `<img src="${normalizeExternalUrl(item.thumbnail)}" alt="">`
                 : '<div class="bg-secondary rounded" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><i class="bi bi-box small"></i></div>'
             }

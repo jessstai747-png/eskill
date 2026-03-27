@@ -1040,8 +1040,8 @@ class PredictiveAnalyticsService
                 'avg_revenue' => round($avgRevenue, 2),
                 'avg_orders' => round($avgOrders, 1),
                 'std_dev' => round($stdDev, 2),
-                'peaks' => array_values(array_filter($patterns, fn($p) => $p['type'] === 'peak')),
-                'valleys' => array_values(array_filter($patterns, fn($p) => $p['type'] === 'valley')),
+                'peaks' => array_values(array_filter($patterns, fn(array $p): bool => $p['type'] === 'peak')),
+                'valleys' => array_values(array_filter($patterns, fn(array $p): bool => $p['type'] === 'valley')),
                 'seasonality_strength' => $avgRevenue > 0 ? round($stdDev / $avgRevenue, 2) : 0
             ];
         } catch (\Throwable $e) {
@@ -1082,7 +1082,7 @@ class PredictiveAnalyticsService
                 $targetMonth = (($currentMonth + $i - 1) % 12) + 1;
 
                 // Find historical performance for this month
-                $monthPatterns = array_filter($patternList, fn($p) => ($p['month_number'] ?? 0) === $targetMonth);
+                $monthPatterns = array_filter($patternList, fn(array $p): bool => ($p['month_number'] ?? 0) === $targetMonth);
 
                 if (empty($monthPatterns)) {
                     continue;
@@ -1237,7 +1237,7 @@ class PredictiveAnalyticsService
             $currentYear = (int) date('Y');
 
             // Find nearest future peak month
-            $peakMonths = array_map(fn($p) => $p['month_number'] ?? 0, $peaks);
+            $peakMonths = array_map(fn(array $p): int => $p['month_number'] ?? 0, $peaks);
             sort($peakMonths);
 
             $nextPeakMonth = null;
@@ -1386,7 +1386,7 @@ class PredictiveAnalyticsService
 
             // Factor 1: Active items ratio
             $totalItems = count($items);
-            $activeItems = count(array_filter($items, fn($i) => ($i['status'] ?? '') === 'active'));
+            $activeItems = count(array_filter($items, fn(array $i): bool => ($i['status'] ?? '') === 'active'));
             $activeRatio = $totalItems > 0 ? $activeItems / $totalItems : 0;
             $factors['active_ratio'] = [
                 'score' => round($activeRatio * 100, 1),
@@ -1685,12 +1685,12 @@ class PredictiveAnalyticsService
             $totalItems = count($items);
             if ($totalItems === 0) return [];
 
-            $activeItems = array_filter($items, fn($i) => ($i['status'] ?? '') === 'active');
-            $zeroSales = array_filter($items, fn($i) => ($i['sold_quantity'] ?? 0) === 0);
-            $lowStock = array_filter($items, fn($i) => ($i['available_quantity'] ?? 0) > 0 && ($i['available_quantity'] ?? 0) <= 3);
+            $activeItems = array_filter($items, fn(array $i): bool => ($i['status'] ?? '') === 'active');
+            $zeroSales = array_filter($items, fn(array $i): bool => ($i['sold_quantity'] ?? 0) === 0);
+            $lowStock = array_filter($items, fn(array $i): bool => ($i['available_quantity'] ?? 0) > 0 && ($i['available_quantity'] ?? 0) <= 3);
 
             // SEO recommendation
-            $shortTitles = array_filter($items, fn($i) => mb_strlen($i['title'] ?? '') < 45);
+            $shortTitles = array_filter($items, fn(array $i): bool => mb_strlen($i['title'] ?? '') < 45);
             if (count($shortTitles) > $totalItems * 0.3) {
                 $recommendations[] = [
                     'type' => 'seo',
@@ -1777,7 +1777,7 @@ class PredictiveAnalyticsService
             if ($totalItems === 0) return [];
 
             // Risk 1: Low stock across catalog
-            $noStockCount = count(array_filter($items, fn($i) => ($i['available_quantity'] ?? 0) <= 0));
+            $noStockCount = count(array_filter($items, fn(array $i): bool => ($i['available_quantity'] ?? 0) <= 0));
             $noStockRatio = $noStockCount / $totalItems;
             if ($noStockRatio > 0.1) {
                 $risks[] = [
@@ -1805,7 +1805,7 @@ class PredictiveAnalyticsService
             // Risk 3: Stale listings (active but no sales)
             $staleItems = count(array_filter(
                 $items,
-                fn($i) => ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
+                fn(array $i): bool => ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
             ));
             $staleRatio = $staleItems / max(1, $totalItems);
             if ($staleRatio > 0.2) {
@@ -1819,7 +1819,7 @@ class PredictiveAnalyticsService
             }
 
             // Risk 4: Low SEO readiness
-            $shortTitles = count(array_filter($items, fn($i) => mb_strlen($i['title'] ?? '') < 40));
+            $shortTitles = count(array_filter($items, fn(array $i): bool => mb_strlen($i['title'] ?? '') < 40));
             if ($shortTitles > $totalItems * 0.3) {
                 $risks[] = [
                     'type' => 'poor_seo',
@@ -1946,7 +1946,7 @@ class PredictiveAnalyticsService
             if ($totalItems === 0) return $plan;
 
             // Immediate: Fix critical issues
-            $noStock = array_filter($items, fn($i) => ($i['available_quantity'] ?? 0) <= 0 && ($i['status'] ?? '') === 'active');
+            $noStock = array_filter($items, fn(array $i): bool => ($i['available_quantity'] ?? 0) <= 0 && ($i['status'] ?? '') === 'active');
             if (!empty($noStock)) {
                 $plan['immediate'][] = [
                     'action' => 'Repor estoque de ' . count($noStock) . ' itens ativos sem estoque',
@@ -1956,7 +1956,7 @@ class PredictiveAnalyticsService
                 ];
             }
 
-            $lowStock = array_filter($items, fn($i) => ($i['available_quantity'] ?? 0) > 0 && ($i['available_quantity'] ?? 0) <= 3);
+            $lowStock = array_filter($items, fn(array $i): bool => ($i['available_quantity'] ?? 0) > 0 && ($i['available_quantity'] ?? 0) <= 3);
             if (!empty($lowStock)) {
                 $plan['immediate'][] = [
                     'action' => 'Repor estoque de ' . count($lowStock) . ' itens com estoque crítico (≤3)',
@@ -1967,7 +1967,7 @@ class PredictiveAnalyticsService
             }
 
             // Short-term: SEO optimization
-            $seoNeeded = array_filter($items, fn($i) => mb_strlen($i['title'] ?? '') < 45);
+            $seoNeeded = array_filter($items, fn(array $i): bool => mb_strlen($i['title'] ?? '') < 45);
             if (!empty($seoNeeded)) {
                 $plan['short_term'][] = [
                     'action' => 'Otimizar títulos de ' . count($seoNeeded) . ' itens para melhorar ranking',
@@ -1980,7 +1980,7 @@ class PredictiveAnalyticsService
             // Short-term: Activate dormant items
             $dormant = array_filter(
                 $items,
-                fn($i) => ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
+                fn(array $i): bool => ($i['status'] ?? '') === 'active' && ($i['sold_quantity'] ?? 0) === 0
             );
             if (count($dormant) > 3) {
                 $plan['short_term'][] = [
@@ -2013,7 +2013,7 @@ class PredictiveAnalyticsService
             return [
                 'plan' => $plan,
                 'total_actions' => count($plan['immediate']) + count($plan['short_term']) + count($plan['long_term']),
-                'critical_actions' => count(array_filter($plan['immediate'], fn($a) => ($a['impact'] ?? '') === 'critical')),
+                'critical_actions' => count(array_filter($plan['immediate'], fn(array $a): bool => ($a['impact'] ?? '') === 'critical')),
                 'generated_at' => date('Y-m-d H:i:s')
             ];
         } catch (\Throwable $e) {

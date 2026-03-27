@@ -1,6 +1,8 @@
 #!/usr/bin/env php
 <?php
 
+declare(strict_types=1);
+
 /**
  * Teste do Sistema de Auto Token Refresh
  * Simula execução do worker sem fazer alterações reais

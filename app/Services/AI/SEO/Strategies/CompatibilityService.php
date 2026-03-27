@@ -146,7 +146,7 @@ class CompatibilityService
 
                     $key = mb_strtolower($relatedModel);
                     // Extrair strings de currentModels para comparação
-                    $currentModelStrings = array_map(function ($m) {
+                    $currentModelStrings = array_map(function (mixed $m): string {
                         return is_array($m) ? ($m['model'] ?? $m['value'] ?? '') : $m;
                     }, $currentModels);
                     if (!in_array($key, array_map('mb_strtolower', array_filter($currentModelStrings)))) {
@@ -170,7 +170,7 @@ class CompatibilityService
                     if (empty($familyModel)) continue;
 
                     $key = mb_strtolower($familyModel);
-                    $addedModelStrings = array_filter(array_map(function ($m) {
+                    $addedModelStrings = array_filter(array_map(function (mixed $m): string {
                         return is_array($m) ? ($m['model'] ?? $m['value'] ?? '') : $m;
                     }, $addedModels));
 
@@ -219,7 +219,7 @@ class CompatibilityService
                         $compatibility[$attr['id']] = [
                             'attribute_id' => $attr['id'],
                             'name' => $attr['name'],
-                            'values' => array_map(fn($v) => $v['name'], $attr['values']),
+                            'values' => array_map(fn(array $v): string => $v['name'], $attr['values']),
                             'value_count' => count($attr['values'])
                         ];
                     }
@@ -288,7 +288,7 @@ class CompatibilityService
         }
 
         // Gerar texto para campo
-        $modelStrings = array_map(function ($m) {
+        $modelStrings = array_map(function (mixed $m): string {
             return is_array($m) ? ($m['model'] ?? $m['value'] ?? '') : $m;
         }, $models);
         $textValue = implode(', ', array_filter($modelStrings));
@@ -610,7 +610,7 @@ class CompatibilityService
     private function detectMissingAttributes(array $item): array
     {
         $missing = [];
-        $existingIds = array_map(fn($a) => $a['id'], $item['attributes'] ?? []);
+        $existingIds = array_map(fn(array $a): string => $a['id'], $item['attributes'] ?? []);
 
         foreach (self::COMPATIBILITY_ATTRIBUTES as $attrId) {
             if (!in_array($attrId, $existingIds)) {

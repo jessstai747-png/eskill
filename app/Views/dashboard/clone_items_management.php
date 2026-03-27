@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Clone Items Management View
  *
@@ -258,7 +260,7 @@ $pageTitle = 'Gerenciar Clones';
     </div>
 </div>
 
-<script nonce="<?= $cspNonce ?? $_SESSION['csp_nonce'] ?? '' ?>">
+<script nonce="<?= CSP_NONCE ?>">
     let currentPage = 1;
     let selectedItems = [];
     let currentItemId = null;

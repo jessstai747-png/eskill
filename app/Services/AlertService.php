@@ -170,9 +170,9 @@ class AlertService
         $db = Database::getInstance();
 
         $stmt = $db->prepare("
-            SELECT id, nickname, token_expires_at 
-            FROM ml_accounts 
-            WHERE status = 'active' 
+            SELECT id, nickname, token_expires_at
+            FROM ml_accounts
+            WHERE status = 'active'
             AND token_expires_at <= DATE_ADD(NOW(), INTERVAL :days DAY)
             AND token_expires_at > NOW()
         ");
@@ -313,7 +313,7 @@ class AlertService
         $minPrice = $analysis['prices']['min'];
         $maxPrice = $analysis['prices']['max'];
 
-        $variation = ($maxPrice - $minPrice) / $avgPrice;
+        $variation = $avgPrice > 0 ? ($maxPrice - $minPrice) / $avgPrice : 0.0;
 
         if ($variation > $threshold) {
             return [
@@ -342,9 +342,9 @@ class AlertService
 
         try {
             $stmt = $db->prepare("
-                INSERT INTO alerts 
+                INSERT INTO alerts
                 (ml_account_id, type, severity, message, data, read_at, created_at)
-                VALUES 
+                VALUES
                 (:account_id, :type, :severity, :message, :data, NULL, NOW())
             ");
 
@@ -499,7 +499,7 @@ class AlertService
             $db = Database::getInstance();
 
             $stmt = $db->prepare("
-                SELECT u.email 
+                SELECT u.email
                 FROM ml_accounts ma
                 JOIN users u ON ma.user_id = u.id
                 WHERE ma.id = :account_id

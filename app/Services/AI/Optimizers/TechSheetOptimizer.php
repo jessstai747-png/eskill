@@ -356,7 +356,7 @@ class TechSheetOptimizer
 
         // If total_required is explicitly set, use filled count against it
         if (isset($options['total_required'])) {
-            $filledRequired = count(array_filter($attributes, function ($attr) {
+            $filledRequired = count(array_filter($attributes, function (array $attr): bool {
                 return !empty($attr['value']);
             }));
         }
