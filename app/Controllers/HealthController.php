@@ -100,9 +100,8 @@ class HealthController extends BaseController
     public function live(): void
     {
         if ($this->canSendHeaders()) {
-            header('Content-Type: application/json');
         }
-        echo json_encode([
+        $this->json([
             'status' => 'alive',
             'timestamp' => date('c'),
         ]);
@@ -115,7 +114,6 @@ class HealthController extends BaseController
     public function ready(): void
     {
         if ($this->canSendHeaders()) {
-            header('Content-Type: application/json');
         }
 
         $checks = [
@@ -133,7 +131,7 @@ class HealthController extends BaseController
         if ($this->canSendHeaders()) {
             http_response_code($allReady ? 200 : 503);
         }
-        echo json_encode([
+        $this->json([
             'status' => $allReady ? 'ready' : 'not_ready',
             'timestamp' => date('c'),
             'checks' => $checks,
@@ -146,7 +144,6 @@ class HealthController extends BaseController
     public function check(): void
     {
         if ($this->canSendHeaders()) {
-            header('Content-Type: application/json');
         }
 
         // Prioritise getenv() so that process-level APP_ENV=testing (set by
@@ -185,8 +182,7 @@ class HealthController extends BaseController
         } elseif ($hasWarning) {
             $status = 'degraded';
         }
-
-        echo json_encode([
+        $this->json([
             'status' => $status,
             'timestamp' => date('c'),
             'checks' => $checks,
@@ -201,7 +197,6 @@ class HealthController extends BaseController
     public function mercadoLivre(): void
     {
         if ($this->canSendHeaders()) {
-            header('Content-Type: application/json');
         }
 
         $config = \App\Core\Config::getInstance()->all();
@@ -224,8 +219,7 @@ class HealthController extends BaseController
                 }
             }
         }
-
-        echo json_encode(['status' => 'ok', 'result' => $result]);
+        $this->json(['status' => 'ok', 'result' => $result]);
     }
 
     /**
@@ -382,7 +376,6 @@ class HealthController extends BaseController
     public function integrations(): void
     {
         if ($this->canSendHeaders()) {
-            header('Content-Type: application/json');
         }
 
         $checks = [];
@@ -542,8 +535,7 @@ class HealthController extends BaseController
         } elseif ($hasWarning) {
             $status = 'degraded';
         }
-
-        echo json_encode([
+        $this->json([
             'status' => $status,
             'timestamp' => date('c'),
             'checks' => $checks,

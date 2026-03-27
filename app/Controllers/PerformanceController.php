@@ -32,7 +32,6 @@ class PerformanceController extends BaseController
      */
     public function dashboard(): void
     {
-        header('Content-Type: application/json');
 
         $hours = $this->request->getInt('hours', 24);
 
@@ -43,8 +42,7 @@ class PerformanceController extends BaseController
             'system' => $this->getSystemStats(),
             'summary' => $this->getSummary($hours)
         ];
-
-        echo json_encode([
+        $this->json([
             'success' => true,
             'data' => $data
         ]);
@@ -56,9 +54,7 @@ class PerformanceController extends BaseController
      */
     public function cacheStats(): void
     {
-        header('Content-Type: application/json');
-
-        echo json_encode([
+        $this->json([
             'success' => true,
             'data' => $this->cache->getStats()
         ]);
@@ -70,20 +66,19 @@ class PerformanceController extends BaseController
      */
     public function flushCache(): void
     {
-        header('Content-Type: application/json');
 
         $tag = $this->request->post('tag');
 
         if ($tag) {
             $count = $this->cache->invalidateTag($tag);
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'message' => "Cache invalidado para tag '{$tag}'",
                 'keys_removed' => $count
             ]);
         } else {
             $this->cache->flush();
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'message' => 'Cache completamente limpo'
             ]);
@@ -96,7 +91,6 @@ class PerformanceController extends BaseController
      */
     public function slowQueries(): void
     {
-        header('Content-Type: application/json');
 
         $hours = $this->request->getInt('hours', 24);
         $limit = $this->request->getIntClamped('limit', 1, 100, 50);
@@ -124,14 +118,13 @@ class PerformanceController extends BaseController
             $stmt->execute();
 
             $queries = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'data' => $queries,
                 'count' => count($queries)
             ]);
         } catch (\Exception $e) {
-            echo json_encode([
+        $this->json([
                 'success' => false,
                 'error' => $e->getMessage()
             ]);
@@ -144,7 +137,6 @@ class PerformanceController extends BaseController
      */
     public function apiMetrics(): void
     {
-        header('Content-Type: application/json');
 
         $hours = $this->request->getInt('hours', 24);
         $accountId = $this->request->get('account_id');
@@ -202,8 +194,7 @@ class PerformanceController extends BaseController
             ");
             $stmt->execute($params);
             $timeline = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'data' => [
                     'by_endpoint' => $byEndpoint,
@@ -212,7 +203,7 @@ class PerformanceController extends BaseController
                 ]
             ]);
         } catch (\Exception $e) {
-            echo json_encode([
+        $this->json([
                 'success' => false,
                 'error' => $e->getMessage()
             ]);
@@ -225,7 +216,6 @@ class PerformanceController extends BaseController
      */
     public function jobs(): void
     {
-        header('Content-Type: application/json');
 
         $status = $this->request->getEnum('status', ['pending', 'processing', 'completed', 'failed']);
 
@@ -268,8 +258,7 @@ class PerformanceController extends BaseController
             ");
             $stmt->execute($params);
             $jobs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'data' => [
                     'counts' => $statusCounts,
@@ -277,7 +266,7 @@ class PerformanceController extends BaseController
                 ]
             ]);
         } catch (\Exception $e) {
-            echo json_encode([
+        $this->json([
                 'success' => false,
                 'error' => $e->getMessage()
             ]);
@@ -290,7 +279,6 @@ class PerformanceController extends BaseController
      */
     public function optimizeTables(): void
     {
-        header('Content-Type: application/json');
 
         $tables = $this->request->postArray('tables');
 
@@ -318,8 +306,7 @@ class PerformanceController extends BaseController
                 $results[$table] = 'Error: ' . $e->getMessage();
             }
         }
-
-        echo json_encode([
+        $this->json([
             'success' => true,
             'data' => $results
         ]);
@@ -331,7 +318,6 @@ class PerformanceController extends BaseController
      */
     public function cleanup(): void
     {
-        header('Content-Type: application/json');
 
         $days = $this->request->postInt('days', 30);
 
@@ -339,8 +325,7 @@ class PerformanceController extends BaseController
             $stmt = $this->db->prepare("CALL cleanup_performance_logs(:days)");
             $stmt->execute(['days' => $days]);
             $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'data' => $result,
                 'message' => "Logs mais antigos que {$days} dias foram removidos"
@@ -352,8 +337,7 @@ class PerformanceController extends BaseController
             $stmt = $this->db->prepare("DELETE FROM query_log WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY)");
             $stmt->execute(['days' => $days]);
             $deleted['query_log'] = $stmt->rowCount();
-
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'data' => $deleted
             ]);
@@ -366,7 +350,6 @@ class PerformanceController extends BaseController
      */
     public function config(): void
     {
-        header('Content-Type: application/json');
 
         try {
             $stmt = $this->db->query("SELECT config_key, config_value, description FROM system_config");
@@ -379,13 +362,12 @@ class PerformanceController extends BaseController
                     'description' => $config['description']
                 ];
             }
-
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'data' => $result
             ]);
         } catch (\Exception $e) {
-            echo json_encode([
+        $this->json([
                 'success' => false,
                 'error' => $e->getMessage()
             ]);
@@ -398,7 +380,6 @@ class PerformanceController extends BaseController
      */
     public function updateConfig(): void
     {
-        header('Content-Type: application/json');
 
         $key = $this->request->post('key');
         $value = $this->request->post('value');
@@ -417,14 +398,12 @@ class PerformanceController extends BaseController
                 'key' => $key,
                 'value' => json_encode($value)
             ]);
-
-            echo json_encode([
+        $this->json([
                 'success' => $stmt->rowCount() > 0,
                 'message' => $stmt->rowCount() > 0 ? 'Configuração atualizada' : 'Configuração não encontrada'
             ]);
         } catch (\Exception $e) {
-            http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
+        $this->json(['error' => $e->getMessage()], (int)(500));
         }
     }
 

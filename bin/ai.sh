@@ -107,8 +107,11 @@ function worker_logs() {
 
 function run_tests() {
     echo -e "${BLUE}🧪 Running Tests...${NC}"
-    # TODO: Implement tests
-    echo "Tests not yet implemented"
+    if [ -f "vendor/bin/phpunit" ]; then
+        php vendor/bin/phpunit
+    else
+        echo -e "${RED}❌ PHPUnit not found. Run composer install.${NC}"
+    fi
 }
 
 function run_setup() {

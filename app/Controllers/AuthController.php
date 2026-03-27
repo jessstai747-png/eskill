@@ -526,7 +526,7 @@ class AuthController extends BaseController
         $db = Database::getInstance();
         $stmt = $db->prepare("
             SELECT id, ml_user_id, nickname, email, status, token_expires_at,
-                   tokens_encrypted, site_id, created_at, updated_at
+                   site_id, created_at, updated_at
             FROM ml_accounts
             WHERE user_id = :user_id
             ORDER BY created_at DESC

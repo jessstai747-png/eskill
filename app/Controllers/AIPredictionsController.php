@@ -32,23 +32,18 @@ class AIPredictionsController extends BaseController
      */
     public function predictSales(string $itemId): void
     {
-        header('Content-Type: application/json');
 
         $days = $this->request->getInt('days', 30);
         
         if ($days < 1 || $days > 90) {
-            http_response_code(400);
-            echo json_encode([
+        $this->json([
                 'success' => false,
                 'error' => 'days must be between 1 and 90'
-            ]);
-            return;
+            ], 400);
         }
         
         $result = $this->aiService->predictSales($itemId, $days);
-        
-        http_response_code($result['success'] ? 200 : 500);
-        echo json_encode($result);
+        $this->json($result, (int)($result['success'] ? 200 : 500));
     }
 
     /**
@@ -57,14 +52,11 @@ class AIPredictionsController extends BaseController
      */
     public function identifyRisingStars(): void
     {
-        header('Content-Type: application/json');
 
         $limit = $this->request->getInt('limit', 20);
         
         $result = $this->aiService->identifyRisingStars($limit);
-        
-        http_response_code($result['success'] ? 200 : 500);
-        echo json_encode($result);
+        $this->json($result, (int)($result['success'] ? 200 : 500));
     }
 
     /**
@@ -73,12 +65,9 @@ class AIPredictionsController extends BaseController
      */
     public function predictBestPromotionTime(string $itemId): void
     {
-        header('Content-Type: application/json');
 
         $result = $this->aiService->predictBestPromotionTime($itemId);
-        
-        http_response_code($result['success'] ? 200 : 500);
-        echo json_encode($result);
+        $this->json($result, (int)($result['success'] ? 200 : 500));
     }
 
     /**
@@ -87,22 +76,17 @@ class AIPredictionsController extends BaseController
      */
     public function predictCategoryDemand(string $categoryId): void
     {
-        header('Content-Type: application/json');
 
         $days = $this->request->getInt('days', 30);
         
         if ($days < 1 || $days > 90) {
-            http_response_code(400);
-            echo json_encode([
+        $this->json([
                 'success' => false,
                 'error' => 'days must be between 1 and 90'
-            ]);
-            return;
+            ], 400);
         }
         
         $result = $this->aiService->predictCategoryDemand($categoryId, $days);
-        
-        http_response_code($result['success'] ? 200 : 500);
-        echo json_encode($result);
+        $this->json($result, (int)($result['success'] ? 200 : 500));
     }
 }

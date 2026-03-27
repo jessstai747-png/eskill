@@ -48,7 +48,6 @@ class CustomerController extends BaseController
      */
     public function listCustomers(): void
     {
-        header('Content-Type: application/json');
 
         try {
             $page = $this->request->getIntClamped('page', 1, 1000, 1);
@@ -132,8 +131,7 @@ class CustomerController extends BaseController
             $countStmt = $this->db->prepare($countQuery);
             $countStmt->execute(['account_id' => $this->accountId]);
             $total = (int)$countStmt->fetchColumn();
-
-            echo json_encode([
+        $this->json([
                 'success' => true,
                 'customers' => $customers,
                 'pagination' => [
@@ -153,7 +151,6 @@ class CustomerController extends BaseController
      */
     public function detail(): void
     {
-        header('Content-Type: application/json');
         $buyerId = $this->request->get('id');
 
         if (!$buyerId) {
@@ -276,7 +273,6 @@ class CustomerController extends BaseController
      */
     public function saveNotes(): void
     {
-        header('Content-Type: application/json');
 
         $data = $this->request->json();
         $buyerId = $data['buyer_id'] ?? null;

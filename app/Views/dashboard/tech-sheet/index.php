@@ -7173,7 +7173,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         },
 
         async showVersionHistory(itemId, versionId) {
-            // TODO: Open drawer with version history
+            // Feature in development: Open drawer with version history
             alert(`Histórico da versão ${versionId} do item ${itemId} - funcionalidade em desenvolvimento.`);
         },
 

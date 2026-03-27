@@ -122,7 +122,14 @@ class MLAIIntegrationController extends BaseController
         }
 
         $result = $this->getService()->applyOptimizations($itemId, $optimizations);
-        $status = $result['success'] ? 200 : 500;
+        
+        if (!$result['success']) {
+            $noValidOptimizations = str_contains($result['error'] ?? '', 'No valid optimizations generated for apply');
+            $status = $noValidOptimizations ? 422 : 500;
+        } else {
+            $status = 200;
+        }
+
         $this->json(array_merge(['success' => $result['success']], $result), $status);
     }
 
@@ -166,6 +173,15 @@ class MLAIIntegrationController extends BaseController
         if (empty($itemIds) || !is_array($itemIds)) {
             $this->jsonError('item_ids array is required', 400);
         }
+
+        $normalizedIds = [];
+        foreach ($itemIds as $id) {
+            if (!is_string($id) || trim($id) === '') {
+                $this->jsonError('All item_ids must be non-empty strings', 400);
+            }
+            $normalizedIds[] = trim($id);
+        }
+        $itemIds = array_values(array_unique($normalizedIds));
 
         if (count($itemIds) > 50) {
             $this->jsonError('Maximum 50 items per batch', 400);
@@ -242,7 +258,14 @@ class MLAIIntegrationController extends BaseController
         $result = $this->getService()->updateDescription($itemId, $description);
 
         if (!$result['success']) {
-            $this->jsonError($result['message'] ?? 'Failed to update description', 500);
+            $message = $result['message'] ?? 'Failed to update description';
+            
+            // Map validation errors to 400 Bad Request
+            if (str_contains($message, 'cannot be empty') || str_contains($message, 'at least 50 characters')) {
+                $this->jsonError($message, 400);
+            }
+
+            $this->jsonError($message, 500);
         }
 
         $this->jsonSuccess($result);
