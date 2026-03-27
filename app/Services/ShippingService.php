@@ -409,7 +409,7 @@ class ShippingService
                     AVG(TIMESTAMPDIFF(HOUR, created_at, shipped_at)) as avg_handling_hours,
                     COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered,
                     COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
-                    COUNT(CASE WHEN delayed = 1 THEN 1 END) as delayed
+                    COUNT(CASE WHEN is_delayed = 1 THEN 1 END) as delayed
                 FROM shipments
                 WHERE account_id = :account_id
                 AND created_at BETWEEN :start_date AND :end_date

@@ -203,6 +203,12 @@
 */15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/orders-sync-worker.php --once >> storage/logs/orders-sync-worker.log 2>&1
 
 # ============================================================================
+# SHIPMENTS SYNC WORKER: Sincroniza envios ML para banco local
+# Frequência: A cada hora
+# ============================================================================
+0 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/shipments-sync-worker.php --once >> storage/logs/shipments-sync-worker.log 2>&1
+
+# ============================================================================
 # QUESTIONS SYNC WORKER: Sincroniza perguntas ML para banco local
 # Frequência: A cada 10 minutos (resposta rápida a clientes)
 # ============================================================================

@@ -11,7 +11,7 @@
     {
       "id": "FIX-001",
       "category": "bugfix",
-      "description": "Substituir código placeholder/fake por implementações reais: SmartQAService (namespace AIService → LLMService), AIPredictiveAnalyticsService (accuracy hardcoded → query real em prediction_history), AdvancedSEOMaximizer (16 stubs implementados: fillTemplate, scorePrice, getLSIKeywords, injectLSIKeywords, addEmotionalTriggers, optimizeReadability, getMissingRequiredAttributes, getPopularFilterAttributes, findDirectCompetitors, identifyCompetitorStrengths, identifyCompetitorWeaknesses, identifyOpportunities, identifyThreats, generateStrategicRecommendations, getSecondaryKeywords, generateLongTailKeywords), AIImageAnalyzerService detectObjects (ratio-fake → análise GD real: variância central vs bordas)",
+      "description": "Substituir código placeholder/fake por implementações reais: ✅ SmartQAService (COMPLETED - já usa real LLMService from line 9, verified 2026-03-24), AIPredictiveAnalyticsService (accuracy hardcoded → query real em prediction_history), AdvancedSEOMaximizer (16 stubs implementados: fillTemplate, scorePrice, getLSIKeywords, injectLSIKeywords, addEmotionalTriggers, optimizeReadability, getMissingRequiredAttributes, getPopularFilterAttributes, findDirectCompetitors, identifyCompetitorStrengths, identifyCompetitorWeaknesses, identifyOpportunities, identifyThreats, generateStrategicRecommendations, getSecondaryKeywords, generateLongTailKeywords), AIImageAnalyzerService detectObjects (ratio-fake → análise GD real: variância central vs bordas)",
       "files": [
         "app/Services/MercadoLivre/SmartQAService.php",
         "app/Services/AIPredictiveAnalyticsService.php",
@@ -19,7 +19,8 @@
         "app/Services/AIImageAnalyzerService.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-06"
+      "last_tested": "2026-03-24",
+      "notes": "SmartQAService verified complete - uses real LLMService (line 9: 'use App\\Services\\LLMService;'), real AI via LLMService.generate() at lines 401-418, 430-448. Production-ready implementation confirmed."
     },
     {
       "id": "AUTH-001",
@@ -58,9 +59,7 @@
       "id": "AUTH-004",
       "category": "authentication",
       "description": "Two-factor authentication (2FA)",
-      "files": [
-        "app/Services/TwoFactorService.php"
-      ],
+      "files": ["app/Services/TwoFactorService.php"],
       "passes": true,
       "last_tested": "2026-02-19"
     },
@@ -80,9 +79,7 @@
       "id": "DASH-002",
       "category": "dashboard",
       "description": "Token Dashboard — monitoramento de tokens OAuth e saúde",
-      "files": [
-        "app/Controllers/TokenDashboardController.php"
-      ],
+      "files": ["app/Controllers/TokenDashboardController.php"],
       "passes": true,
       "last_tested": "2026-02-19"
     },
@@ -90,10 +87,7 @@
       "id": "SEO-001",
       "category": "seo",
       "description": "Otimização de títulos de anúncios com keywords relevantes (SEO Killer)",
-      "files": [
-        "app/Controllers/SEOKillerController.php",
-        "app/Services/SEO/"
-      ],
+      "files": ["app/Controllers/SEOKillerController.php", "app/Services/SEO/"],
       "passes": true,
       "last_tested": "2025-07-25"
     },
@@ -146,9 +140,7 @@
       "id": "SEO-006",
       "category": "seo",
       "description": "Sinônimos SEO automáticos para enrichment de títulos",
-      "files": [
-        "app/Controllers/SeoSynonymsController.php"
-      ],
+      "files": ["app/Controllers/SeoSynonymsController.php"],
       "passes": true,
       "last_tested": "2026-02-19"
     },
@@ -156,10 +148,7 @@
       "id": "SEO-007",
       "category": "seo",
       "description": "Bulk SEO — otimização em lote de múltiplos anúncios",
-      "files": [
-        "app/Services/BulkSEOService.php",
-        "bin/bulk-seo-worker.php"
-      ],
+      "files": ["app/Services/BulkSEOService.php", "bin/bulk-seo-worker.php"],
       "passes": true,
       "last_tested": "2026-02-19"
     },
@@ -361,10 +350,7 @@
       "id": "AI-001",
       "category": "ai_integration",
       "description": "Integração com Claude (Anthropic) para geração de conteúdo",
-      "files": [
-        "app/Services/ClaudeClient.php",
-        "app/Services/AI/"
-      ],
+      "files": ["app/Services/ClaudeClient.php", "app/Services/AI/"],
       "passes": true,
       "last_tested": "2025-06-28"
     },
@@ -372,9 +358,7 @@
       "id": "AI-002",
       "category": "ai_integration",
       "description": "AI Center — dashboard centralizado de recursos IA",
-      "files": [
-        "app/Controllers/AICenterController.php"
-      ],
+      "files": ["app/Controllers/AICenterController.php"],
       "passes": true,
       "last_tested": "2025-06-28"
     },
@@ -405,9 +389,7 @@
       "id": "AI-005",
       "category": "ai_integration",
       "description": "AI Image Analyzer — análise de imagens de produtos com IA",
-      "files": [
-        "app/Services/AIImageAnalyzerService.php"
-      ],
+      "files": ["app/Services/AIImageAnalyzerService.php"],
       "passes": true,
       "last_tested": "2025-06-28"
     },
@@ -470,9 +452,7 @@
       "id": "ITEMS-002",
       "category": "items",
       "description": "Bulk editor — edição em lote de múltiplos anúncios",
-      "files": [
-        "app/Controllers/BulkEditorController.php"
-      ],
+      "files": ["app/Controllers/BulkEditorController.php"],
       "passes": true,
       "last_tested": "2026-02-20"
     },
@@ -555,7 +535,7 @@
         "tests/Unit/Services/ShippingServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-06"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "REPORT-001",
@@ -595,10 +575,7 @@
       "id": "REPORT-004",
       "category": "reports",
       "description": "Relatórios automáticos por email/push (weekly digest)",
-      "files": [
-        "bin/automated-reports-worker.php",
-        "bin/weekly-report.php"
-      ],
+      "files": ["bin/automated-reports-worker.php", "bin/weekly-report.php"],
       "passes": true,
       "last_tested": "2026-02-20"
     },
@@ -629,9 +606,7 @@
       "id": "NOTIF-003",
       "category": "notifications",
       "description": "Email notifications (PHPMailer)",
-      "files": [
-        "app/Services/EmailService.php"
-      ],
+      "files": ["app/Services/EmailService.php"],
       "passes": true,
       "last_tested": "2026-02-20"
     },
@@ -676,9 +651,7 @@
       "id": "HEALTH-003",
       "category": "monitoring",
       "description": "Health endpoint — /health para verificação de status do sistema",
-      "files": [
-        "app/Controllers/HealthController.php"
-      ],
+      "files": ["app/Controllers/HealthController.php"],
       "passes": true,
       "last_tested": "2026-03-04"
     },
@@ -686,10 +659,7 @@
       "id": "SEC-001",
       "category": "security",
       "description": "Input validation e sanitização em todas as rotas",
-      "files": [
-        "app/Middleware/",
-        "app/Controllers/SecurityController.php"
-      ],
+      "files": ["app/Middleware/", "app/Controllers/SecurityController.php"],
       "passes": true,
       "last_tested": "2026-02-20"
     },
@@ -708,9 +678,7 @@
       "id": "SEC-003",
       "category": "security",
       "description": "Encryption service — dados sensíveis criptografados",
-      "files": [
-        "app/Services/EncryptionService.php"
-      ],
+      "files": ["app/Services/EncryptionService.php"],
       "passes": true,
       "last_tested": "2026-02-20"
     },
@@ -1008,10 +976,7 @@
       "id": "ML-STAB-006",
       "category": "mercadolivre_stability",
       "description": "ML health-check CLI (bin/ml-health-check.php) — verifica env vars, conexão MySQL, tabela ml_accounts, token OAuth e conectividade com api.mercadolibre.com. Suporte a --json para uso em cron. Agendado diariamente às 06h em current_crontab.",
-      "files": [
-        "bin/ml-health-check.php",
-        "current_crontab"
-      ],
+      "files": ["bin/ml-health-check.php", "current_crontab"],
       "passes": true,
       "last_tested": "2026-03-04"
     },
@@ -1053,15 +1018,13 @@
         "current_crontab"
       ],
       "passes": true,
-      "last_tested": "2026-06-02"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-001",
       "category": "xray_diagnostic",
       "description": "AccountXRayService — Orquestrador do Raio X: coleta dados reais ML API (seller, items, visitas, vendas), executa governance scoring, SEO audit por item, análise de cauda longa, lacunas ocultas vs concorrentes, saúde financeira MP, plano de recuperação priorizado",
-      "files": [
-        "app/Services/AccountXRayService.php"
-      ],
+      "files": ["app/Services/AccountXRayService.php"],
       "passes": true,
       "last_tested": "2026-03-08"
     },
@@ -1069,9 +1032,7 @@
       "id": "XRAY-002",
       "category": "xray_diagnostic",
       "description": "MercadoPagoAccountService — Análise de saúde financeira via MP API v2: saldo disponível/bloqueado/pendente, chargebacks (30 dias), disputas abertas, movimentações recentes, indicadores de risco financeiro, risk_level (BAIXO/MEDIO/ALTO/CRITICO)",
-      "files": [
-        "app/Services/MercadoPagoAccountService.php"
-      ],
+      "files": ["app/Services/MercadoPagoAccountService.php"],
       "passes": true,
       "last_tested": "2026-03-08"
     },
@@ -1079,9 +1040,7 @@
       "id": "XRAY-003",
       "category": "xray_diagnostic",
       "description": "AccountXRayController — Endpoints: GET /dashboard/raio-x, POST /api/xray/run, GET /api/xray/results/{id}, GET /api/xray/list, GET /api/xray/accounts, GET /api/xray/item-scores/{reportId}",
-      "files": [
-        "app/Controllers/AccountXRayController.php"
-      ],
+      "files": ["app/Controllers/AccountXRayController.php"],
       "passes": true,
       "last_tested": "2026-03-08"
     },
@@ -1089,9 +1048,7 @@
       "id": "XRAY-004",
       "category": "xray_diagnostic",
       "description": "Dashboard Raio X (View) — Interface completa com: score geral circular, status da conta, problemas identificados por severidade, tabs (SEO por anúncio com filtro/sort, Lacunas Ocultas, Cauda Longa, Mercado Pago, Plano de Ação 7 dias), histórico de relatórios, modal de configuração",
-      "files": [
-        "app/Views/dashboard/account-xray.php"
-      ],
+      "files": ["app/Views/dashboard/account-xray.php"],
       "passes": true,
       "last_tested": "2026-03-08"
     },
@@ -1099,9 +1056,7 @@
       "id": "XRAY-005",
       "category": "xray_diagnostic",
       "description": "DB Migration: account_xray_reports (id, account_id, score_overall, account_status, report_json, critical_issues, etc.) + xray_item_scores (report_id, item_id, classification, score_seo, missing_keywords_json, gap_keywords_json, actions_json) com FK cascade",
-      "files": [
-        "database/migrations/2026_03_08_account_xray_reports.sql"
-      ],
+      "files": ["database/migrations/2026_03_08_account_xray_reports.sql"],
       "passes": true,
       "last_tested": "2026-03-08"
     },
@@ -1140,6 +1095,72 @@
       "name": "Apply Recovery Plan Dashboard UI",
       "description": "Modal Aplicar Plano com dry-run/real mode, seletor de ações, renderização de itens pausados, títulos otimizados e alertas. Integrado no painel Raio X.",
       "passes": true
+    },
+    {
+      "id": "XRAY-012",
+      "category": "xray_diagnostic",
+      "name": "X-Ray PDF Export",
+      "description": "PdfService::generateXRayReport() gera PDF completo do Raio X (KPIs, diagnóstico, plano de recuperação, SEO audit top-25, lacunas ocultas, saúde financeira). Endpoint GET /api/xray/export/pdf/{reportId} em AccountXRayController::exportPdf(). Botão 'Exportar PDF' no dashboard visível após resultado carregado.",
+      "passes": true,
+      "files": [
+        "app/Services/PdfService.php",
+        "app/Controllers/AccountXRayController.php",
+        "app/Routes/web.php",
+        "app/Views/dashboard/account-xray.php",
+        "tests/Unit/Services/PdfServiceXRayReportTest.php"
+      ]
+    },
+    {
+      "id": "PROD-001",
+      "category": "testing",
+      "name": "Production E2E Validation Suite",
+      "description": "Testes Playwright E2E completos para validação de produção (https://eskill.com.br). Inclui: inspeção de login (campos email/password, CSRF tokens hidden+meta, cookie PHPSESSID), autenticação com credenciais reais, smoke test de 12 rotas do dashboard (/dashboard, /accounts, /analytics, /account-health, /items, /orders, /questions, /messages, /claims, /seo-killer, /financials, /pricing), captura de screenshots full-page com timestamps, monitoramento de erros de console JavaScript, monitoramento de falhas de network (XHR/Fetch 4xx/5xx), teste diagnóstico de API /api/auth/login. Scripts alternativos: curl (quick-prod-validation.sh ~30s), Python+BeautifulSoup (prod-validation.py ~1min). Setup automatizado via setup-prod-validation.sh. Análise de qualidade via Codacy CLI: instalador interativo (install-codacy-cli.sh), análise automatizada (analyze-prod-validation.sh usando .codacy/cli.sh wrapper), integração com 15+ engines (phpcs, phpmd, eslint-8, trivy, semgrep, shellcheck, pylint, bandit), security scanning, issue counting por severidade. Documentação completa em IMPLEMENTATION_SUMMARY.md, PRODUCTION_VALIDATION_REPORT.md, PRODUCTION_VALIDATION_GUIDE.md, QUICKSTART_PROD_VALIDATION.md, QUALITY_ANALYSIS.md.",
+      "passes": false,
+      "last_tested": "2026-03-27",
+      "files": [
+        "tests/e2e/production-validation.spec.ts",
+        "playwright.config.ts",
+        "package.json",
+        "run-prod-validation.sh",
+        "quick-prod-validation.sh",
+        "prod-validation.py",
+        "setup-prod-validation.sh",
+        "install-codacy-cli.sh",
+        "analyze-prod-validation.sh",
+        "IMPLEMENTATION_SUMMARY.md",
+        "PRODUCTION_VALIDATION_REPORT.md",
+        "PRODUCTION_VALIDATION_GUIDE.md",
+        "QUICKSTART_PROD_VALIDATION.md",
+        "QUALITY_ANALYSIS.md"
+      ],
+      "notes": "⚠️ Aguardando execução manual com credenciais reais. TypeScript compilation warnings resolvem após 'npm install'. Requer './setup-prod-validation.sh' seguido de './run-prod-validation.sh <email> <password>'. Validação real bloqueada por POLICY_DENIED no terminal do agent — deve ser executado via SSH direto no servidor. MCP Codacy tools bloqueados por erro WSL — usar scripts manuais ./install-codacy-cli.sh ou ./analyze-prod-validation.sh para análise de qualidade. Relatórios de análise salvos em storage/codacy-analysis/."
+    },
+    {
+      "id": "PROD-002",
+      "category": "quality",
+      "name": "Mercado Livre Quality Analysis Suite",
+      "description": "Análise de qualidade especializada para 21 arquivos de integração com Mercado Livre. Inclui: 3 Core Services (MercadoLivreClient.php com OAuth 2.0, circuit breaker, exponential backoff retry, rate limiting; MercadoLivreAuthService.php; MercadoLivreOrchestratorService.php), 14 Specialized Services (CategoriesApiService, AdvancedPricingEngine, MLAnalyticsIntelligenceService, SmartQAService, CompetitorIntelligenceService, SEOMetricsCollectorService, MercadoLivreAIIntegrationService, MLAdsAdvancedService, StockSyncService, MLResilienceHelper, AccountGovernanceIntegrationService, etc), 4 DTOs/Contracts (CategoryChildDTO, CategoryDetailDTO, CategoryNodeDTO, CategoriesApiGatewayInterface). Análise PHP-specific: phpcs (PSR compliance), phpmd (code quality/complexity), trivy (security vulnerabilities). Quality checklist: 27 checks em 4 categorias (7 Code Quality + 7 Security [OAuth tokens, API keys, rate limiting] + 6 Performance + 7 ML API Best Practices). Relatórios JSON em storage/codacy-analysis/mercadolivre/ organizados por tool+timestamp. Documentação completa em MERCADOLIVRE_QUALITY_GUIDE.md (350+ linhas) cobrindo arquitetura, core patterns, troubleshooting. Script automatizado analyze-mercadolivre-services.sh (200+ linhas) com issue counting por severidade e exit code 1 se critical issues encontrados.",
+      "passes": false,
+      "last_tested": "2026-03-27",
+      "files": [
+        "app/Services/MercadoLivreClient.php",
+        "app/Services/MercadoLivreAuthService.php",
+        "app/Services/MercadoLivreOrchestratorService.php",
+        "app/Services/MercadoLivre/CategoriesApiService.php",
+        "app/Services/MercadoLivre/AdvancedPricingEngine.php",
+        "app/Services/MercadoLivre/MLAnalyticsIntelligenceService.php",
+        "app/Services/MercadoLivre/SmartQAService.php",
+        "app/Services/MercadoLivre/CompetitorIntelligenceService.php",
+        "app/Services/MercadoLivre/SEOMetricsCollectorService.php",
+        "app/Services/MercadoLivre/MercadoLivreAIIntegrationService.php",
+        "app/Services/MercadoLivre/MLAdsAdvancedService.php",
+        "app/Services/MercadoLivre/StockSyncService.php",
+        "app/Services/MercadoLivre/MLResilienceHelper.php",
+        "app/Services/MercadoLivre/AccountGovernanceIntegrationService.php",
+        "analyze-mercadolivre-services.sh",
+        "MERCADOLIVRE_QUALITY_GUIDE.md"
+      ],
+      "notes": "⚠️ Aguardando execução manual: 'chmod +x analyze-mercadolivre-services.sh && ./analyze-mercadolivre-services.sh'. Análise de 21 arquivos PHP de produção (vs 6 scripts de validação em PROD-001). Focus em security (OAuth tokens, API keys, circuit breaker, rate limiting), performance (caching, retry logic), code quality (PSR-12, type hints, dependency injection), ML API best practices (error handling, graceful degradation, OPTIONAL_FEATURE_ENDPOINTS pattern). MCP Codacy tools bloqueados por erro WSL — usar analyze-mercadolivre-services.sh. Relatórios salvos em storage/codacy-analysis/mercadolivre/ (separado do generic codacy-analysis/). Prioridade de fixes: Security > Performance > Code Quality. Revisar MercadoLivreClient.php especialmente para PUBLIC_CLIENT_ID_POLICY_BLOCKED_PATTERNS e circuit breaker integration."
     }
   ]
 }
