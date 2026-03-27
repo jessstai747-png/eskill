@@ -8,6 +8,10 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../app/Helpers/LogHelper.php';
 require_once __DIR__ . '/../app/Helpers/CacheHelper.php';
 
+if (!defined('CSP_NONCE')) {
+    define('CSP_NONCE', 'test_nonce_value');
+}
+
 // Load environment variables for testing (prefer .env.testing when present)
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../', ['.env.testing', '.env']);
 $dotenv->safeLoad();
