@@ -20,13 +20,14 @@ $isViewer = ($_SESSION['user_role'] ?? '') === 'viewer';
 
 // Helper function to check active state (guarded to avoid redeclaration)
 if (!function_exists('isActive')) {
-    function isActive($path, $exact = false)
+    function isActive(string $path, bool $exact = false): bool
     {
-        global $currentUri;
+        $parsedUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $uri = is_string($parsedUri) && $parsedUri !== '' ? $parsedUri : '/';
         if ($exact) {
-            return $currentUri === $path;
+            return $uri === $path;
         }
-        return strpos($currentUri, $path) !== false;
+        return strpos($uri, $path) !== false;
     }
 }
 

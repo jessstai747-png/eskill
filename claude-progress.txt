@@ -1,3 +1,20 @@
+## Sessão 2026-03-27 — FIX-SIDEBAR-NULL-URI
+
+### Objetivo
+- Corrigir erro 500 no dashboard causado por `strpos()` recebendo `null` no sidebar.
+
+### Causa raiz confirmada (logs)
+- `TypeError: strpos(): Argument #1 ($haystack) must be of type string, null given` em `app/Views/layouts/modern/sidebar.php:29`
+- `parse_url(..., PHP_URL_PATH)` pode retornar `null/false` em cenários de request malformada.
+
+### Implementação
+- **`app/Views/layouts/modern/sidebar.php`**
+   - Normalização defensiva do path atual (`$uri`) para sempre usar string válida (`'/'` fallback).
+
+### Validação
+- `php -l app/Views/layouts/modern/sidebar.php` ✅
+- `php vendor/bin/phpunit` ✅ (3456 testes, 51 skipped)
+
 ## Sessão 2026-03-28 — Shipments Sync (complemento ML)
 
 ### Implementação
