@@ -20,7 +20,7 @@
         "app/Services/AIImageAnalyzerService.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-24",
+      "last_tested": "2026-03-28",
       "notes": "SmartQAService verified complete - uses real LLMService (line 9: 'use App\\Services\\LLMService;'), real AI via LLMService.generate() at lines 401-418, 430-448. Production-ready implementation confirmed."
     },
     {
@@ -43,7 +43,7 @@
         "app/Services/RefreshTokenService.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-06"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AUTH-003",
@@ -76,7 +76,7 @@
         "app/Views/dashboard/"
       ],
       "passes": true,
-      "last_tested": "2026-03-27"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "DASH-002",
@@ -186,7 +186,7 @@
         "bin/catalog-clone-worker.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-002",
@@ -268,7 +268,7 @@
         "tests/Unit/Services/CloneSyncServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-009",
@@ -455,7 +455,7 @@
         "bin/competitor-monitor-worker.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ITEMS-001",
@@ -682,7 +682,7 @@
         "app/Controllers/HealthController.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEC-001",
@@ -704,7 +704,7 @@
         "app/Middleware/RateLimitMiddleware.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEC-003",
@@ -958,7 +958,7 @@
         "database/migrations/2026_02_26_000001_stabilize_production_schema.sql"
       ],
       "passes": true,
-      "last_tested": "2026-03-01"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-002",
@@ -969,7 +969,7 @@
         "app/Services/MercadoLivreClient.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-01"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-003",
@@ -981,7 +981,7 @@
         "bin/production-check.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-01"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-004",
@@ -992,7 +992,7 @@
         "tests/Unit/CloneDuplicateDetectionServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-01"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-005",
@@ -1004,7 +1004,7 @@
         "tests/Unit/Controllers/MonitoringControllerCompatibilityTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-01"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-006",
@@ -1015,7 +1015,7 @@
         "current_crontab"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-007",
@@ -1028,7 +1028,7 @@
         "current_crontab"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-008",
@@ -1041,7 +1041,7 @@
         "tests/e2e/render.spec.ts"
       ],
       "passes": true,
-      "last_tested": "2026-03-04"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-009",
@@ -1065,7 +1065,7 @@
         "app/Services/AccountXRayService.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-08"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-002",
@@ -1075,7 +1075,7 @@
         "app/Services/MercadoPagoAccountService.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-08"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-003",
@@ -1085,7 +1085,7 @@
         "app/Controllers/AccountXRayController.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-08"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-004",
@@ -1095,7 +1095,7 @@
         "app/Views/dashboard/account-xray.php"
       ],
       "passes": true,
-      "last_tested": "2026-03-08"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-005",
@@ -1105,7 +1105,7 @@
         "database/migrations/2026_03_08_account_xray_reports.sql"
       ],
       "passes": true,
-      "last_tested": "2026-03-08"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-006",
@@ -1170,7 +1170,7 @@
       "name": "Production E2E Validation Suite",
       "description": "Testes Playwright E2E completos para validação de produção (https://eskill.com.br). Inclui: inspeção de login (campos email/password, CSRF tokens hidden+meta, cookie PHPSESSID), autenticação com credenciais reais, smoke test de 12 rotas do dashboard (/dashboard, /accounts, /analytics, /account-health, /items, /orders, /questions, /messages, /claims, /seo-killer, /financials, /pricing), captura de screenshots full-page com timestamps, monitoramento de erros de console JavaScript, monitoramento de falhas de network (XHR/Fetch 4xx/5xx), teste diagnóstico de API /api/auth/login. Scripts alternativos: curl (quick-prod-validation.sh ~30s), Python+BeautifulSoup (prod-validation.py ~1min). Setup automatizado via setup-prod-validation.sh. Análise de qualidade via Codacy CLI: instalador interativo (install-codacy-cli.sh), análise automatizada (analyze-prod-validation.sh usando .codacy/cli.sh wrapper), integração com 15+ engines (phpcs, phpmd, eslint-8, trivy, semgrep, shellcheck, pylint, bandit), security scanning, issue counting por severidade. Documentação completa em IMPLEMENTATION_SUMMARY.md, PRODUCTION_VALIDATION_REPORT.md, PRODUCTION_VALIDATION_GUIDE.md, QUICKSTART_PROD_VALIDATION.md, QUALITY_ANALYSIS.md.",
       "passes": false,
-      "last_tested": "2026-03-27",
+      "last_tested": "2026-03-28",
       "files": [
         "tests/e2e/production-validation.spec.ts",
         "playwright.config.ts",

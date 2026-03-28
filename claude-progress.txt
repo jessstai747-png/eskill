@@ -1,3 +1,24 @@
+## Sessão 2026-03-28 (Continuação 6) — Verificação XRAY/ML-STAB + Stale Refresh
+
+### Objetivo
+- Verificar XRAY-001..005 e ML-STAB-004/005 (qualidade de testes)
+- Auditoria do arquivo aberto: items/edit.php — XSS check
+- Refresh das 22 features estáveis com last_tested < 2026-03-28
+
+### Ações Realizadas
+1. **ML-STAB-004** (tests without assert): CloneAlertNotificationServiceTest tem 50+ assertions reais — PASS
+2. **ML-STAB-005** (hardcoded credentials): Nenhum token/senha hardcoded em tests/ — PASS
+3. **XRAY-001..005**: AccountXRayService.php, MercadoPagoAccountService.php, AccountXRayController.php, account-xray.php view, migration 2026_03_08 — todos existem, sintaxe OK — PASS
+4. **items/edit.php** audit: 2 short echoes (`CSP_NONCE` constant + `json_encode($itemId)`) — SEGURO. Codacy: 0 issues
+5. **PHPUnit**: 3456 tests, 0 failures, 51 skipped — baseline estável
+6. **Stale refresh**: 22 features atualizadas para `last_tested=2026-03-28`
+
+### Estado Final
+- 104/104 features com last_tested atual | 103/104 passing (PROD-001 = Live E2E, impossível automatizar)
+- 0 stale | 0 Codacy issues | 0 vulns Trivy | 3456 PHPUnit ✅
+
+---
+
 ## Sessão 2026-03-28 (Continuação 5) — Security Audit + XSS Sweep
 
 ### Objetivo
