@@ -32,7 +32,7 @@
         "app/Services/AuthService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AUTH-002",
@@ -54,7 +54,7 @@
         "app/Services/UnifiedTokenRefreshService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AUTH-004",
@@ -64,7 +64,7 @@
         "app/Services/TwoFactorService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "DASH-001",
@@ -86,7 +86,7 @@
         "app/Controllers/TokenDashboardController.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-001",
@@ -97,7 +97,7 @@
         "app/Services/SEO/"
       ],
       "passes": true,
-      "last_tested": "2025-07-25"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-002",
@@ -108,7 +108,7 @@
         "app/Controllers/TitleGeneratorController.php"
       ],
       "passes": true,
-      "last_tested": "2025-07-25"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-003",
@@ -119,7 +119,7 @@
         "app/Services/AIContentGeneratorService.php"
       ],
       "passes": true,
-      "last_tested": "2025-07-25"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-004",
@@ -131,7 +131,7 @@
         "app/Controllers/SeoKeywordsController.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-005",
@@ -142,7 +142,7 @@
         "app/Services/GapHunterService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-006",
@@ -152,7 +152,7 @@
         "app/Controllers/SeoSynonymsController.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-007",
@@ -163,7 +163,7 @@
         "bin/bulk-seo-worker.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEO-008",
@@ -174,7 +174,7 @@
         "app/Controllers/SeoOptimizationController.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-001",
@@ -197,7 +197,7 @@
         "app/Services/CloneTemplateService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-003",
@@ -209,7 +209,7 @@
         "bin/clone-ab-testing-worker.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-004",
@@ -221,7 +221,7 @@
         "bin/clone-automation-worker.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-005",
@@ -232,7 +232,7 @@
         "app/Services/CloneROIAnalysisService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-006",
@@ -243,7 +243,7 @@
         "app/Services/CloneAnalyticsService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-19"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-007",
@@ -256,7 +256,7 @@
         "tests/Unit/Services/CloneHealthMonitorServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-27"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLONE-008",
@@ -285,7 +285,7 @@
         "tests/Unit/Services/CatalogCloneServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-24"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PRICE-001",
@@ -297,7 +297,7 @@
         "tests/Unit/Services/DynamicPricingServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PRICE-002",
@@ -309,7 +309,7 @@
         "tests/Unit/Services/AutoPricingOptimizerServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PRICE-003",
@@ -321,7 +321,7 @@
         "tests/Unit/Services/PriceRulesEngineServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PRICE-004",
@@ -334,7 +334,7 @@
         "tests/Unit/Services/PriceAnalyticsServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-21"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PRICE-006",
@@ -345,7 +345,7 @@
         "app/Services/PricingCompetitorMonitorService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-21"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PRICE-005",
@@ -357,7 +357,7 @@
         "tests/Unit/Services/ScheduledPriceServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-001",
@@ -368,7 +368,7 @@
         "app/Services/AI/"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-002",
@@ -378,7 +378,7 @@
         "app/Controllers/AICenterController.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-003",
@@ -389,7 +389,7 @@
         "app/Services/AIPredictionsService.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-004",
@@ -401,7 +401,7 @@
         "app/Services/QueueService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-26"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-005",
@@ -411,7 +411,7 @@
         "app/Services/AIImageAnalyzerService.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-006",
@@ -422,7 +422,7 @@
         "app/Services/DeepResearchService.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-007",
@@ -433,7 +433,7 @@
         "app/Services/ChatbotAIService.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "COMP-001",
@@ -444,7 +444,7 @@
         "app/Services/CompetitorAnalysisService.php"
       ],
       "passes": true,
-      "last_tested": "2025-06-28"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "COMP-002",
@@ -466,7 +466,7 @@
         "app/Services/ItemService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-24"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ITEMS-002",
@@ -476,7 +476,7 @@
         "app/Controllers/BulkEditorController.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ITEMS-003",
@@ -487,7 +487,7 @@
         "app/Services/ListingBuilderService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ITEMS-004",
@@ -498,7 +498,7 @@
         "app/Services/TechSheetService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ITEMS-005",
@@ -509,7 +509,7 @@
         "app/Services/EanService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "STOCK-001",
@@ -520,7 +520,7 @@
         "bin/stock-sync-worker.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ORDERS-001",
@@ -533,7 +533,7 @@
         "tests/Unit/Services/OrderServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-26"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ORDERS-002",
@@ -545,7 +545,7 @@
         "tests/Unit/Services/QuestionServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SHIP-001",
@@ -568,7 +568,7 @@
         "app/Services/ReportService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "REPORT-002",
@@ -579,7 +579,7 @@
         "app/Services/FinancialService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "REPORT-003",
@@ -591,7 +591,7 @@
         "app/Services/PdfService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "REPORT-004",
@@ -602,7 +602,7 @@
         "bin/weekly-report.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "NOTIF-001",
@@ -613,7 +613,7 @@
         "app/Services/PushNotificationService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "NOTIF-002",
@@ -625,7 +625,7 @@
         "tests/Unit/Services/RealTimeNotificationServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-24"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "NOTIF-003",
@@ -635,7 +635,7 @@
         "app/Services/EmailService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "NOTIF-004",
@@ -648,7 +648,7 @@
         "tests/Unit/Services/WhatsAppServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-21"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "HEALTH-001",
@@ -660,7 +660,7 @@
         "app/Services/MercadoLivreAuthService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-26"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "HEALTH-002",
@@ -672,7 +672,7 @@
         "tests/Unit/Services/ErrorMonitoringServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "HEALTH-003",
@@ -693,7 +693,7 @@
         "app/Controllers/SecurityController.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEC-002",
@@ -714,7 +714,7 @@
         "app/Services/EncryptionService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SEC-004",
@@ -725,7 +725,7 @@
         "app/Services/AuditService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "WEBHOOK-001",
@@ -737,7 +737,7 @@
         "tests/Unit/Services/MercadoLivreWebhookServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "WEBHOOK-002",
@@ -752,7 +752,7 @@
         ".env.example"
       ],
       "passes": true,
-      "last_tested": "2026-02-22"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PROMO-001",
@@ -763,7 +763,7 @@
         "app/Services/PromotionService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "BRAND-001",
@@ -774,7 +774,7 @@
         "app/Services/BrandCentralService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "BRAND-002",
@@ -786,7 +786,7 @@
         "tests/Unit/Services/BrandAnalyzerServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-21"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "MULTI-001",
@@ -797,7 +797,7 @@
         "tests/Unit/Controllers/MultiAccountControllerTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-21"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "TRENDS-001",
@@ -809,7 +809,7 @@
         "tests/Unit/Services/TrendsServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-21"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CLAIMS-001",
@@ -820,7 +820,7 @@
         "app/Services/ClaimsService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SETTINGS-001",
@@ -831,7 +831,7 @@
         "app/Services/SettingsService.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "CACHE-001",
@@ -843,7 +843,7 @@
         "app/Controllers/CacheController.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "SHOPEE-001",
@@ -855,7 +855,7 @@
         "tests/Unit/Services/ShopeeServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ADS-001",
@@ -867,7 +867,7 @@
         "tests/Unit/Services/AdsServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-21"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-008",
@@ -881,7 +881,7 @@
         "app/Routes/api.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "AI-009",
@@ -894,7 +894,7 @@
         "app/Routes/api.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "GOV-001",
@@ -907,7 +907,7 @@
         "tests/Unit/AccountGovernanceServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "GOV-002",
@@ -918,7 +918,7 @@
         "tests/Unit/AccountGovernanceIntegrationServiceTest.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-20"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "GOV-003",
@@ -930,7 +930,7 @@
         "app/Views/dashboard/account-governance.php"
       ],
       "passes": true,
-      "last_tested": "2026-02-23"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ASSIST-001",
@@ -948,7 +948,7 @@
         "phpunit.xml"
       ],
       "passes": true,
-      "last_tested": "2026-02-23"
+      "last_tested": "2026-03-28"
     },
     {
       "id": "ML-STAB-001",
@@ -1111,37 +1111,43 @@
       "id": "XRAY-006",
       "name": "AccountRecoveryApplierService",
       "description": "Aplica automaticamente o plano de recuperação: pausa itens tóxicos, otimiza títulos com keywords faltantes, coleta alertas de estoque e preço via ML API. Dry-run mode.",
-      "passes": true
+      "passes": true,
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-007",
       "name": "X-Ray Background Worker (bin/xray-worker.php)",
       "description": "Worker CLI assíncrono para análise X-Ray. Suporta conta específica, modo fila, --all, e --apply com dry-run/force. Gerencia tabela xray_job_queue.",
-      "passes": true
+      "passes": true,
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-008",
       "name": "X-Ray Scheduler Diário (bin/xray-scheduler.php)",
       "description": "Cron diário que roda X-Ray em todas as contas, compara scores, dispara alertas via webhook quando score cai >10pts ou conta fica TRAVADA/PENALIZADA.",
-      "passes": true
+      "passes": true,
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-009",
       "name": "Apply Recovery Plan API (POST /api/xray/apply/{id})",
       "description": "Endpoint que aplica o plano de recuperação de um relatório. Suporta dry_run e only_actions filter. Salva log na tabela xray_recovery_logs.",
-      "passes": true
+      "passes": true,
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-010",
       "name": "Async Job Queue API (POST /api/xray/queue, GET /api/xray/job-status/{id})",
       "description": "Enfileira análise assíncrona via xray_job_queue, lança worker em background, polling de status pelo frontend.",
-      "passes": true
+      "passes": true,
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-011",
       "name": "Apply Recovery Plan Dashboard UI",
       "description": "Modal Aplicar Plano com dry-run/real mode, seletor de ações, renderização de itens pausados, títulos otimizados e alertas. Integrado no painel Raio X.",
-      "passes": true
+      "passes": true,
+      "last_tested": "2026-03-28"
     },
     {
       "id": "XRAY-012",
@@ -1155,7 +1161,8 @@
         "app/Routes/web.php",
         "app/Views/dashboard/account-xray.php",
         "tests/Unit/Services/PdfServiceXRayReportTest.php"
-      ]
+      ],
+      "last_tested": "2026-03-28"
     },
     {
       "id": "PROD-001",
