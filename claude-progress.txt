@@ -1,3 +1,36 @@
+## Sessão 2026-03-28 (Continuação) — BUG-009 + PROD-002 + Segurança
+
+### Objetivo
+- Continuar QA após session 2 que fixou BUG-001 a BUG-008
+- Auditar e commitar melhorias de segurança pendentes
+- Executar análise Codacy PROD-002
+
+### Segurança: melhorias commitadas (91a4ce1)
+- ApiTokenService: tokens armazenados como SHA-256 hash + token_prefix p/ display
+  validateToken agora compara hash; migração automática de tokens antigos no boot
+- public/index.php: mascarar detalhes de erro em produção; probe socket Redis antes
+  de configurar session handler; rotas API com session cookie agora requerem CSRF
+  (antes todas as APIs eram isentas); rate limit melhorado com hasSessionAuth flag
+- csrf-helper.js: usa native Headers API; track setRequestHeader para detectar CSRF já enviado
+
+### BUG-009: ShopeeController::index() sem layout (60a86f0)
+- Página /dashboard/shopee rendia view sem sidebar/JS (mesmo padrão do BUG-004)
+- Fix: adicionado ob_start/ob_get_clean/require app.php + auth check + pageTitle/currentPage
+
+### PROD-002: Análise de qualidade ML Services ✅ PASSOU
+- 17 arquivos analisados via Codacy MCP (MercadoLivreClient, MercadoLivreAuthService,
+  MercadoLivreOrchestratorService + 14 services em Services/MercadoLivre/)
+- Resultado: ZERO issues em todos os arquivos
+- project-status.json PROD-002 passes=true, last_tested=2026-03-28
+
+### Status features
+- Features total: 104 | Passou: 103 | Falhando: 1
+- PROD-001: Playwright E2E (requer execução manual com credenciais reais)
+
+### Commits
+- 91a4ce1 — security: hash API tokens, tighten CSRF, Redis probe, CSRF helper
+- 60a86f0 — BUG-009: ShopeeController ob_start layout fix
+
 ## Sessão 2026-03-28 — QA Full-Stack BUG-001 a BUG-008
 
 ### Objetivo
