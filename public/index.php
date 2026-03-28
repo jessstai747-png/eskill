@@ -68,7 +68,10 @@ try {
     }
 
     http_response_code(500);
-    echo "Startup validation failed: " . htmlentities($e->getMessage());
+    $isProductionEnv = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'development') === 'production';
+    echo $isProductionEnv
+        ? "Service temporarily unavailable. Please try again later."
+        : "Startup validation failed: " . htmlentities($e->getMessage());
     exit(1);
 }
 
@@ -121,8 +124,22 @@ if (session_status() === PHP_SESSION_NONE) {
     // Use Redis for sessions when available (shared across containers, survives restarts)
     $redisHost = $_ENV['REDIS_HOST'] ?? '';
     $redisPort = $_ENV['REDIS_PORT'] ?? '6379';
+    // Tratar REDIS_PASSWORD=null (string "null") como vazio — valor placeholders comuns de env
     $redisPassword = $_ENV['REDIS_PASSWORD'] ?? '';
-    if ($redisHost !== '' && extension_loaded('redis')) {
+    if ($redisPassword === 'null' || $redisPassword === 'false' || $redisPassword === '""' || $redisPassword === "''") {
+        $redisPassword = '';
+    }
+    $redisConfigured = $redisHost !== '' && extension_loaded('redis');
+    $redisAvailable = false;
+    if ($redisConfigured) {
+        // Testar conexão antes de configurar o handler para evitar sessões quebradas se Redis cair
+        $redisTestSock = @fsockopen($redisHost, (int)$redisPort, $errno, $errstr, 0.5);
+        if ($redisTestSock) {
+            fclose($redisTestSock);
+            $redisAvailable = true;
+        }
+    }
+    if ($redisAvailable) {
         ini_set('session.save_handler', 'redis');
         $redisPath = 'tcp://' . $redisHost . ':' . $redisPort;
         if ($redisPassword !== '') {
@@ -228,6 +245,7 @@ $path = '/' . ltrim($path, '/');
 // Validações e Middlewares globais
 $isApi = strpos($path, '/api/') === 0;
 $isWebhook = strpos($path, '/webhook/') === 0;
+$hasSessionAuth = !empty($_SESSION['account_id']) || !empty($_SESSION['user_id']);
 
 // CORS for external API integrations (OpenClaw, etc.)
 $isOpenClawApi = strpos($path, '/api/openclaw/') === 0 || $path === '/api/openclaw';
@@ -252,8 +270,10 @@ if ($isWebhook) {
     $rateLimit = new App\Middleware\RateLimitMiddleware(300, 60);
     $rateLimit->handle();
 } else {
-    // Higher limit for dashboard API calls to support real-time features
-    $isDashboardApi = strpos($path, '/api/items') === 0
+    // Session-authenticated API requests are typically dashboard traffic and can
+    // legitimately burst during initial page loads, widget refreshes and polling.
+    $isDashboardApi = $hasSessionAuth
+        || strpos($path, '/api/items') === 0
         || strpos($path, '/api/dashboard') === 0
         || strpos($path, '/api/orders') === 0
         || strpos($path, '/api/multi-account') === 0
@@ -280,8 +300,9 @@ if ($isApi) {
     $authHeader = $authHeaders['Authorization'] ?? $authHeaders['authorization'] ?? null;
     $hasBearerToken = $authHeader && preg_match('/Bearer\s+.+/i', $authHeader);
 }
-// API routes are stateless (Bearer token or session cookie) — not vulnerable to CSRF
-$isCsrfExempt = $isWebhookRoute || $isApi || $hasBearerToken;
+// CSRF exempt apenas se: (a) webhook ou (b) API com Bearer token stateless.
+// API routes com autenticação via session cookie continuam sujeitas a CSRF.
+$isCsrfExempt = $isWebhookRoute || ($isApi && $hasBearerToken);
 
 if (!$isCsrfExempt && in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE', 'PATCH'])) {
     $csrf = new App\Middleware\CsrfMiddleware();
@@ -327,9 +348,6 @@ if ($isApi) {
 
     if (!$isPublicApi) {
         // Check session auth first, then API token auth
-        session_status() === PHP_SESSION_NONE && session_start();
-        $hasSessionAuth = !empty($_SESSION['account_id']) || !empty($_SESSION['user_id']);
-
         if (!$hasSessionAuth) {
             // Try API token authentication
             $headers = getallheaders();

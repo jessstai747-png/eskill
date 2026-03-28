@@ -400,7 +400,7 @@ $currentPage = $currentPage ?? 'account-governance';
     </div>
 </div>
 
-<script>
+<script nonce="<?= CSP_NONCE ?>">
     function governanceApp() {
         return {
             loading: false,

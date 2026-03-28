@@ -573,7 +573,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
    </div>
 </div>
 
-<script>
+<script nonce="<?= CSP_NONCE ?>">
    (function() {
       'use strict';
 

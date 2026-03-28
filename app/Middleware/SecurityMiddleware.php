@@ -20,8 +20,8 @@ class SecurityMiddleware
     private ?\PDO $db;
     private array $tableExistsCache = [];
 
-    // IPs whitelist (não bloqueados)
-    private array $whitelist = ['127.0.0.1', '::1', '193.186.4.203'];
+    // IPs whitelist (não bloqueados) — externos via env SECURITY_WHITELIST_IPS (CSV)
+    private array $whitelist;
 
     // User agents suspeitos (bots maliciosos)
     private array $suspiciousAgents = [
@@ -64,6 +64,12 @@ class SecurityMiddleware
 
     public function __construct()
     {
+        $extra = array_filter(array_map(
+            'trim',
+            explode(',', (string)($_ENV['SECURITY_WHITELIST_IPS'] ?? getenv('SECURITY_WHITELIST_IPS') ?: ''))
+        ));
+        $this->whitelist = array_merge(['127.0.0.1', '::1'], $extra);
+
         $securityMwRateLimitEnabled = getenv('SECURITY_MW_RATE_LIMIT_ENABLED');
         if ($securityMwRateLimitEnabled === false || $securityMwRateLimitEnabled === '') {
             $securityMwRateLimitEnabled = getenv('SECURITY_MW_RATE_LIMIT');
@@ -357,7 +363,7 @@ class SecurityMiddleware
     private function hasAttackPatterns(): bool
     {
         $uri = $_SERVER['REQUEST_URI'] ?? '';
-        
+
         // Whitelist explícita para rotas OAuth que naturalmente contêm URLs como parâmetros
         // (ex: redirect_uri=https://...) que disparam falsos positivos de Remote File Inclusion (RFI)
         // ou Path Traversal.

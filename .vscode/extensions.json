@@ -9,12 +9,24 @@
     // Copilot
     "GitHub.copilot",
     "GitHub.copilot-chat",
-    // Git
+    // Git / GitKraken (provê MCP gitkraken_*)
     "eamodio.gitlens",
-    // Codacy
+    // Codacy (provê MCP codacy_*)
     "codacy.codacy",
-    // Context7 MCP
+    // ──────────────────────────────────────────────
+    // MCP SERVERS VIA EXTENSÃO (sem entrada em mcp.json)
+    // ──────────────────────────────────────────────
+    // Context7 — documentação de bibliotecas em tempo real
     "upstash.context7-mcp",
+    // Microsoft Fabric MCP — OneLake, PublicAPIs, Fabric services
+    "fabric.vscode-fabric-mcp-server",
+    // Browser Automation — Playwright MCP Relay
+    "vijaynirmal.playwright-mcp-relay",
+    // Browser DevTools — Chrome DevTools MCP Relay
+    "vijaynirmal.chrome-devtools-mcp-relay",
+    // Python / Pylance MCP — análise de código Python
+    "ms-python.vscode-pylance",
+    "ms-python.python",
     // Code quality
     "EditorConfig.EditorConfig",
     "esbenp.prettier-vscode"

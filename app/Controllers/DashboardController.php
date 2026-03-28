@@ -680,6 +680,20 @@ class DashboardController extends BaseController
     }
 
     /**
+     * Página de edição/otimização de um anúncio específico
+     */
+    public function editItem(string $itemId): void
+    {
+        $itemId = htmlspecialchars(strip_tags($itemId), ENT_QUOTES, 'UTF-8');
+        $currentUser = $this->userService->getCurrentUser();
+        $pageTitle = 'Editar Anúncio: ' . $itemId;
+        ob_start();
+        require __DIR__ . '/../Views/dashboard/items/edit.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/../Views/layouts/modern/app.php';
+    }
+
+    /**
      * Página de oportunidades
      */
     public function opportunities(): void

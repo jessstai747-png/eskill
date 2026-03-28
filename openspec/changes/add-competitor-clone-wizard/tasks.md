@@ -23,7 +23,7 @@
 - [x] 3.2 Gerar itens filhos em `catalog_clone_job_items` e vincular ao job
 - [x] 3.3 Worker: rate limit/backoff e tolerância a erros (erros por item sem matar o job)
 - [x] 3.4 Idempotência/anti-duplicidade: evitar re-clone do mesmo source→target quando já existe
-- [ ] 3.5 Snapshot/cache opcional do catálogo do seller para grandes volumes (limite/TTL)
+- [x] 3.5 Snapshot/cache opcional do catálogo do seller para grandes volumes (limite/TTL) <!-- seller_catalog_snapshots + getSellerSnapshot/saveSellerSnapshot em CatalogCloneService -->
 
 ## Fase 4 — Observabilidade e operação
 - [x] 4.1 Métricas: tempo por item, erros top, taxa de duplicados
@@ -31,5 +31,5 @@
 - [x] 4.3 UX: tela de acompanhamento do job (progresso, falhas, reprocessar)
 
 ## Fase 5 — Testes e documentação
-- [ ] 5.1 Teste de integração: seller → filtros → job → worker
+- [x] 5.1 Teste de integração: seller → filtros → job → worker <!-- tests/Unit/Services/CatalogCloneWizardFlowTest.php -->
 - [ ] 5.2 Documentação: guia de uso (limites, boas práticas, troubleshooting)

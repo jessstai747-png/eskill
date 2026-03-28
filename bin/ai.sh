@@ -55,7 +55,7 @@ function show_costs() {
 
 function worker_start() {
     echo -e "${BLUE}🚀 Starting AI Worker...${NC}"
-    
+
     # Check if already running
     if pgrep -f "ai-worker.php" > /dev/null; then
         echo -e "${YELLOW}⚠️  Worker already running${NC}"
@@ -64,13 +64,13 @@ function worker_start() {
         done
         return 1
     fi
-    
+
     # Start worker
     nohup php "$SCRIPT_DIR/ai-worker.php" > "$PROJECT_DIR/storage/logs/ai-worker.log" 2>&1 &
     WORKER_PID=$!
-    
+
     sleep 2
-    
+
     if ps -p $WORKER_PID > /dev/null; then
         echo -e "${GREEN}✅ Worker started (PID: $WORKER_PID)${NC}"
         echo "   Logs: tail -f $PROJECT_DIR/storage/logs/ai-worker.log"
@@ -82,15 +82,15 @@ function worker_start() {
 
 function worker_stop() {
     echo -e "${BLUE}🛑 Stopping AI Worker...${NC}"
-    
+
     if ! pgrep -f "ai-worker.php" > /dev/null; then
         echo -e "${YELLOW}⚠️  No worker running${NC}"
         return 1
     fi
-    
+
     pkill -f "ai-worker.php"
     sleep 1
-    
+
     if ! pgrep -f "ai-worker.php" > /dev/null; then
         echo -e "${GREEN}✅ Worker stopped${NC}"
     else
@@ -126,7 +126,7 @@ function run_migrate() {
 
 function clean_queue() {
     echo -e "${BLUE}🧹 Cleaning Failed Queue Items...${NC}"
-    
+
     read -p "Delete all failed items? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then

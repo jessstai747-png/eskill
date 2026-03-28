@@ -1,7 +1,6 @@
 <!-- GSC Dashboard Tab -->
 <?php
 
-declare(strict_types=1);
 
 // Check connection status (simulated or real call)
 // Ideally this would be passed from controller, but for include we might need an AJAX check on load

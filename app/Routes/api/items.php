@@ -104,7 +104,7 @@ $router->get('api/orders', OrderController::class, 'index');
 $router->get('api/orders/all', OrderController::class, 'all');
 $router->get('api/orders/{id}', OrderController::class, 'show');
 $router->post('api/orders/sync', OrderController::class, 'sync');
-$router->get('api/orders/sync', OrderController::class, 'sync');
+// GET /api/orders/sync removido — operação mutante deve usar POST
 
 // Rotas de alertas
 $router->get('api/alerts', AlertController::class, 'index');

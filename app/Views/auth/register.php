@@ -47,11 +47,7 @@
             <p class="text-muted">Preencha os dados abaixo para começar</p>
         </div>
         <div class="card-body">
-            <?php
-
-declare(strict_types=1);
-
-if (isset($_SESSION['error'])): ?>
+            <?php if (isset($_SESSION['error'])): ?>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <?= $_SESSION['error'] ?>
                     <?php unset($_SESSION['error']); ?>
@@ -108,7 +104,7 @@ if (isset($_SESSION['error'])): ?>
         document.querySelector('form').addEventListener('submit', function(e) {
             const pass = document.getElementById('password').value;
             const confirm = document.getElementById('password_confirm').value;
-            
+
             if (pass !== confirm) {
                 e.preventDefault();
                 alert('As senhas não coincidem!');

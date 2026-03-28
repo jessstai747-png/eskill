@@ -208,7 +208,7 @@ class CacheMiddleware
      */
     private function generateCacheKey(string $uri, string $method): string
     {
-        $userId = $_SESSION['user_id'] ?? 'anonymous';
+        $userId = $_SESSION['user_id'] ?? $_SERVER['API_USER_ID'] ?? 'anonymous';
         $queryString = $_SERVER['QUERY_STRING'] ?? '';
 
         // Public pages should share cache regardless of user (unless logged in specifics needed)
@@ -228,7 +228,7 @@ class CacheMiddleware
         $params = $_GET + $_POST;
         ksort($params);
 
-        $userId = $_SESSION['user_id'] ?? 'anonymous';
+        $userId = $_SESSION['user_id'] ?? $_SERVER['API_USER_ID'] ?? 'anonymous';
         $paramsHash = md5(json_encode($params));
 
         return "api:" . md5("{$endpoint}:{$paramsHash}:{$userId}");
@@ -241,7 +241,7 @@ class CacheMiddleware
     {
         if (str_contains($uri, '/p/')) return 3600; // 1 hour for Public Product Pages
         if (str_contains($uri, '/dashboard/static')) return 3600; // 1 hour
-        if (str_contains($uri, '/products/')) return 1800; // 30 minutes  
+        if (str_contains($uri, '/products/')) return 1800; // 30 minutes
         if (str_contains($uri, '/dashboard/')) return 300; // 5 minutes
         if (str_contains($uri, '/api/')) return 120; // 2 minutes
 

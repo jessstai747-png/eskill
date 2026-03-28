@@ -1,3 +1,38 @@
+## Sessão 2026-03-28 — QA Full-Stack BUG-001 a BUG-008
+
+### Objetivo
+- Validar BUG-003 (clone 500), testar todos os módulos, corrigir bugs encontrados
+
+### Bugs corrigidos nesta sessão (e sessão anterior)
+- BUG-001: declare(strict_types=1) em views HTML (7 arquivos) ✅
+- BUG-002: DashboardController::editItem() faltando ✅
+- BUG-003: TypeError htmlspecialchars(int) em clone.php:899 + double ob_start ✅ VALIDADO
+- BUG-004: NotificationSettingsController sem layout → requestJson undefined ✅
+- BUG-005: promotions.forEach not a function (PromotionController desembrulhava objeto errado) ✅
+- BUG-006: SitemapController passava string para CacheManagerService::set(array) ✅
+- BUG-007: ai-center.php incluía sidebar.php/topbar.php/ai-setup-wizard.php inexistentes ✅
+- BUG-008: GET /api/analytics/dashboard retornava HTML em vez de JSON ✅
+
+### Commits
+- 4e788da — BUG-003/004/005
+- 014bf44 — BUG-006/007
+- b238fa3 — BUG-008 (getDashboard API method + rota corrigida)
+
+### Módulos testados (200 OK)
+dashboard, items, items/edit, SEO Killer, account-health, orders, financials,
+shipping, pricing, raio-x, quality, settings, catalog/clone, clone-batch,
+clone-wizard, clone-monitoring, account-governance, whatsapp, ads, health,
+logs, cache, audit, marketing/promotions, competitors, analytics, claims,
+customers, reports, ai-center, brand-analysis, settings/users,
+advanced-analytics, competitor-monitor
+
+### 404s confirmados (sem rota)
+catalog/metrics, catalog/clone-advanced
+
+### Infraestrutura (não bugs de código)
+- Redis offline (cache API retorna erro — esperado)  
+- ML Token expirado (401/403 em calls ML API — esperado)
+
 ## Sessão 2026-03-27 — FIX-SIDEBAR-NULL-URI
 
 ### Objetivo
@@ -7627,3 +7662,44 @@ Integrar o circuit breaker de provedores AI com a API do Mercado Livre, criando 
 2. Implementar features de Pricing avançado (PRICE-002 a PRICE-005)
 3. Finalizar AI Center e Deep Research (AI-002, AI-006)
 4. Implementar Stock Sync end-to-end (STOCK-001)
+
+=== SESSÃO QA FULL-STACK — 2026-03-28 ===
+
+Sessão de QA completa em eskill.com.br (continuação).
+
+BUGS FIXADOS NESTA SESSÃO:
+- BUG-003: TypeError em clone.php (htmlspecialchars(int) com strict_types=1). Root cause: PDO retorna source_account_id como int; PHP 8 web SAPI com declare(strict_types=1) rejeita int em htmlspecialchars(). Fix: cast (string) em clone.php:899-900 e competitors/index.php:95. Também removido ob_start()/ob_get_clean()/require app.php duplicados da própria view.
+- BUG-004: NotificationSettingsController::index() renderizava view sem ob_start/layout. Fix: adicionado padrão ob_start/ob_get_clean/require app.php com pageTitle.
+- BUG-005: PromotionController::listPromotions() retornava objeto aninhado {total, promotions:[]} como data.promotions, causando promotions.forEach is not a function no JS. Fix: retornar $promotions['promotions'] ?? [] diretamente.
+
+MÓDULOS TESTADOS E STATUS (HTTP 200):
+- /dashboard/catalog/clone — FIXED ✅ (era 500, agora 200)
+- /dashboard/catalog/clone-batch — ✅
+- /dashboard/catalog/clone-wizard — ✅
+- /dashboard/catalog/clone-monitoring — ✅
+- /dashboard/catalog/metrics — 404 (rota não existe, normal)
+- /dashboard/catalog/clone-advanced — 404 (rota não existe, normal)
+- /dashboard/account-governance — ✅
+- /dashboard/whatsapp — ✅
+- /dashboard/ads — ✅
+- /dashboard/notifications/settings — FIXED ✅ (era sem layout/JS, agora 200 com layout)
+- /dashboard/health — ✅ (Redis down = cache API 500, infra issue)
+- /dashboard/logs — ✅
+- /dashboard/cache — ✅ render (API 500 por Redis down - infra)
+- /dashboard/audit — ✅
+- /dashboard/marketing/promotions — FIXED ✅ (JS TypeError corrigido)
+- /dashboard/competitors — ✅
+- /dashboard/analytics — ✅
+- /dashboard/claims — ✅
+- /dashboard/customers — ✅
+- /dashboard/reports — ✅
+- /dashboard/ai-center — ✅
+- /dashboard/brand-analysis — ✅
+- /dashboard/settings/users — ✅
+
+ISSUES NÃO-CÓDIGO:
+- Redis down: /api/cache/* retornam 500 (redis-cli ping: Connection refused)
+- ML Token expirado: todas as rotas que chamam ML API falham (decrypt_failed)
+
+COMMIT: 4e788da
+

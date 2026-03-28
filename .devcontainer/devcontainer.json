@@ -24,12 +24,31 @@
         "github.copilot.chat.codeGeneration.useInstructionFiles": true
       },
       "extensions": [
+        // Copilot
         "GitHub.copilot",
         "GitHub.copilot-chat",
+        // PHP
         "bmewburn.vscode-intelephense-client",
+        "xdebug.php-debug",
+        "neilbrayfield.php-docblocker",
+        // Git / GitKraken MCP (mcp_gitkraken_*)
         "eamodio.gitlens",
+        // Codacy MCP (mcp_codacy_*)
         "codacy.codacy",
-        "upstash.context7-mcp"
+        // Context7 MCP (mcp_context7_*)
+        "upstash.context7-mcp",
+        // Microsoft Fabric MCP (mcp_fabric_*)
+        "fabric.vscode-fabric-mcp-server",
+        // Browser Automation — Playwright MCP Relay
+        "vijaynirmal.playwright-mcp-relay",
+        // Chrome DevTools MCP Relay
+        "vijaynirmal.chrome-devtools-mcp-relay",
+        // Python / Pylance MCP (mcp_pylance_*)
+        "ms-python.vscode-pylance",
+        "ms-python.python",
+        // Code quality
+        "EditorConfig.EditorConfig",
+        "esbenp.prettier-vscode"
       ]
     }
   }

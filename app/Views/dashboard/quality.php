@@ -76,7 +76,6 @@
 <body>
     <?php
 
-declare(strict_types=1);
 
 include __DIR__ . '/../layouts/header.php'; ?>
 
@@ -210,7 +209,7 @@ include __DIR__ . '/../layouts/header.php'; ?>
     <script src="/js/ml-integration-preflight.js"></script>
     <script src="/js/quality-dashboard.js"></script>
 
-    <script>
+    <script nonce="<?= CSP_NONCE ?>">
         // Initialize dashboard on page load
         document.addEventListener('DOMContentLoaded', () => {
             QualityDashboard.init(<?= $accountId ?? 'null' ?>);

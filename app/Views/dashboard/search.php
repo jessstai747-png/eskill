@@ -31,7 +31,6 @@
 <div id="searchResults">
     <?php
 
-declare(strict_types=1);
 
 if (empty($query)): ?>
         <div class="text-center py-5 text-muted">

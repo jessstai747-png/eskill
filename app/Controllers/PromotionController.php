@@ -16,7 +16,7 @@ class PromotionController extends BaseController
     {
         // parent::__construct();
         $this->userService = new UserService();
-        
+
         if (!$this->userService->isAuthenticated()) {
             header('Location: /login');
             exit;
@@ -57,7 +57,7 @@ class PromotionController extends BaseController
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
-    
+
     /**
      * API: Get details (items) for a promotion
      */
@@ -70,7 +70,7 @@ class PromotionController extends BaseController
              echo json_encode(['error' => 'ID required']);
              return;
         }
-        
+
         try {
             $items = $this->promotionService->getPromotionItems($id);
             echo json_encode(['success' => true, 'items' => $items]);
@@ -87,16 +87,16 @@ class PromotionController extends BaseController
     {
         header('Content-Type: application/json');
         $data = $this->request->json();
-        
+
         $promotionId = $data['promotion_id'] ?? null;
         $items = $data['items'] ?? []; // [{item_id, price}]
-        
+
         if (!$promotionId || empty($items)) {
              http_response_code(400);
              echo json_encode(['error' => 'Invalid parameters']);
              return;
         }
-        
+
         try {
             $result = $this->promotionService->joinPromotion($promotionId, $items);
             echo json_encode($result);

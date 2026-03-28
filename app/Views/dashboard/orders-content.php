@@ -49,7 +49,6 @@
 <!-- Page Header -->
 <?php
 
-declare(strict_types=1);
 
 include __DIR__ . '/../layouts/modern/partials/page-header.php'; ?>
 

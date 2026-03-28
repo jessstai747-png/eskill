@@ -14,12 +14,12 @@ if (!isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Center | Eskill</title>
-    
+
     <!-- Core CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Dashboard CSS -->
     <link href="/public/css/dashboard-modern.css" rel="stylesheet">
     <link href="/public/css/ai-center.css" rel="stylesheet">
@@ -36,7 +36,7 @@ if (!isset($_SESSION['user_id'])) {
 
             <!-- Main Content -->
             <div class="container-fluid p-4">
-                
+
                 <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
@@ -64,10 +64,10 @@ if (!isset($_SESSION['user_id'])) {
 
                 <!-- Main Grid -->
                 <div class="row g-4">
-                    
+
                     <!-- Left Column: Insights & Stats -->
                     <div class="col-lg-8">
-                        
+
                         <!-- Decision Engine Stats -->
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-header bg-transparent border-0 py-3">
@@ -100,7 +100,7 @@ if (!isset($_SESSION['user_id'])) {
 
                     <!-- Right Column: Controls & Configuration -->
                     <div class="col-lg-4">
-                        
+
                         <!-- AutoPilot Control -->
                         <div class="card border-0 shadow-sm mb-4 bg-gradient-primary text-white">
                             <div class="card-body p-4">

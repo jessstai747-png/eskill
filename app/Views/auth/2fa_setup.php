@@ -36,7 +36,6 @@
 
                     <?php
 
-declare(strict_types=1);
 
 if (isset($_SESSION['error'])): ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">

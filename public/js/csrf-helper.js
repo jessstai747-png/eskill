@@ -22,21 +22,18 @@ function getCsrfToken() {
         const needsCsrf = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
 
         if (needsCsrf) {
-            options.headers = options.headers || {};
-
-            // Se headers for um objeto Headers, converter para objeto simples
+            let headers;
             if (options.headers instanceof Headers) {
-                const headersObj = {};
-                options.headers.forEach((value, key) => {
-                    headersObj[key] = value;
-                });
-                options.headers = headersObj;
+                headers = options.headers;
+            } else {
+                headers = new Headers(options.headers || {});
             }
 
-            // Adicionar CSRF token se não existir
-            if (!options.headers['X-CSRF-TOKEN'] && !options.headers['x-csrf-token']) {
-                options.headers['X-CSRF-TOKEN'] = getCsrfToken();
+            if (!headers.has('X-CSRF-TOKEN') && !headers.has('x-csrf-token')) {
+                headers.set('X-CSRF-TOKEN', getCsrfToken());
             }
+
+            options.headers = headers;
         }
 
         return originalFetch(url, options);
@@ -46,17 +43,26 @@ function getCsrfToken() {
 // Interceptar XMLHttpRequest também
 (function () {
     const originalOpen = XMLHttpRequest.prototype.open;
+    const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
     const originalSend = XMLHttpRequest.prototype.send;
 
     XMLHttpRequest.prototype.open = function (method, url, ...args) {
         this._method = method.toUpperCase();
+        this._csrfHeaderSet = false;
         return originalOpen.call(this, method, url, ...args);
+    };
+
+    XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+        if (typeof name === 'string' && name.toLowerCase() === 'x-csrf-token') {
+            this._csrfHeaderSet = true;
+        }
+        return originalSetRequestHeader.call(this, name, value);
     };
 
     XMLHttpRequest.prototype.send = function (...args) {
         const needsCsrf = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(this._method);
 
-        if (needsCsrf && !this.getRequestHeader('X-CSRF-TOKEN')) {
+        if (needsCsrf && this._csrfHeaderSet !== true) {
             this.setRequestHeader('X-CSRF-TOKEN', getCsrfToken());
         }
 

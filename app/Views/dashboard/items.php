@@ -1,7 +1,6 @@
 <!-- Dashboard Items View -->
 <?php
 
-declare(strict_types=1);
 
 $title = 'Meus Anúncios';
 $subtitle = 'Gerencie todos os seus anúncios no Mercado Livre';

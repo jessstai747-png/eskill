@@ -122,7 +122,7 @@ class MLAIIntegrationController extends BaseController
         }
 
         $result = $this->getService()->applyOptimizations($itemId, $optimizations);
-        
+
         if (!$result['success']) {
             $noValidOptimizations = str_contains($result['error'] ?? '', 'No valid optimizations generated for apply');
             $status = $noValidOptimizations ? 422 : 500;
@@ -259,7 +259,7 @@ class MLAIIntegrationController extends BaseController
 
         if (!$result['success']) {
             $message = $result['message'] ?? 'Failed to update description';
-            
+
             // Map validation errors to 400 Bad Request
             if (str_contains($message, 'cannot be empty') || str_contains($message, 'at least 50 characters')) {
                 $this->jsonError($message, 400);

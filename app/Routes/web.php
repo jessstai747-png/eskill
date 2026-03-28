@@ -454,7 +454,7 @@ $router->get('api/mobile/dashboard', 'App\Controllers\Mobile\DashboardController
 
 // Phase 22: Shopee
 $router->get('dashboard/shopee', 'App\Controllers\ShopeeController', 'index');
-$router->get('api/shopee/sync', 'App\Controllers\ShopeeController', 'sync');
+$router->post('api/shopee/sync', 'App\Controllers\ShopeeController', 'sync');
 
 // Phase 24: Advanced Analytics
 $router->get('dashboard/analytics', 'App\Controllers\AnalyticsController', 'index');

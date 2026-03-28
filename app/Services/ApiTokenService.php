@@ -32,7 +32,8 @@ class ApiTokenService
             CREATE TABLE IF NOT EXISTS api_tokens (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
-                token VARCHAR(255) NOT NULL,
+                token VARCHAR(64) NOT NULL COMMENT 'SHA-256 hash of the raw token',
+                token_prefix VARCHAR(8) NOT NULL DEFAULT '' COMMENT 'First 8 chars of raw token for UI display',
                 name VARCHAR(255) NOT NULL,
                 scopes JSON NULL,
                 is_active TINYINT(1) DEFAULT 1,
@@ -40,10 +41,42 @@ class ApiTokenService
                 expires_at TIMESTAMP NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_token (token),
+                UNIQUE INDEX idx_token (token),
                 INDEX idx_user (user_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+
+        $this->migrateTokensToHash();
+    }
+
+    /**
+     * Migrar tokens em texto plano para SHA-256 hash.
+     * Detecta tokens plain-text (64 hex chars sem hashing, comprimento != 64)
+     * ou tokens que ainda não possuem token_prefix.
+     * Executa uma única vez via coluna token_prefix vazia.
+     */
+    private function migrateTokensToHash(): void
+    {
+        // Adicionar token_prefix se a coluna ainda não existir (upgrade de schema)
+        try {
+            $this->db->exec("ALTER TABLE api_tokens ADD COLUMN token_prefix VARCHAR(8) NOT NULL DEFAULT '' COMMENT 'First 8 chars of raw token for UI display' AFTER token");
+        } catch (\PDOException) {
+            // Coluna já existe — ignorar
+        }
+
+        // Tokens plain-text têm token_prefix vazio e token com comprimento != 64
+        // (SHA-256 hex é sempre 64 chars; tokens antigos gerados por bin2hex(32) também têm 64 chars)
+        // Usamos a ausência de token_prefix como sinal de migração pendente
+        $stmt = $this->db->query("SELECT id, token FROM api_tokens WHERE token_prefix = '' AND LENGTH(token) = 64 LIMIT 500");
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        foreach ($rows as $row) {
+            // O token armazenado é o valor raw — hashear e gravar prefix
+            $hash = hash('sha256', $row['token']);
+            $prefix = substr($row['token'], 0, 8);
+            $upd = $this->db->prepare("UPDATE api_tokens SET token = ?, token_prefix = ? WHERE id = ?");
+            $upd->execute([$hash, $prefix, $row['id']]);
+        }
     }
 
     /**
@@ -59,16 +92,18 @@ class ApiTokenService
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO api_tokens (user_id, token, name, scopes, expires_at, is_active)
-            VALUES (?, ?, ?, ?, ?, TRUE)
+            INSERT INTO api_tokens (user_id, token, token_prefix, name, scopes, expires_at, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, TRUE)
         ");
 
+        $tokenHash = hash('sha256', $token);
+        $tokenPrefix = substr($token, 0, 8);
         $scopesJson = json_encode($scopes);
-        $stmt->execute([$userId, $token, $name, $scopesJson, $expiresAt]);
+        $stmt->execute([$userId, $tokenHash, $tokenPrefix, $name, $scopesJson, $expiresAt]);
 
         return [
             'id' => $this->db->lastInsertId(),
-            'token' => $token,
+            'token' => $token, // retornado apenas na criação; não é re-exibível
             'name' => $name,
             'scopes' => $scopes,
             'expires_at' => $expiresAt
@@ -80,6 +115,8 @@ class ApiTokenService
      */
     public function validateToken(string $token): ?array
     {
+        $tokenHash = hash('sha256', $token);
+
         $stmt = $this->db->prepare("
             SELECT t.*, u.id as user_id, u.email, u.name
             FROM api_tokens t
@@ -89,7 +126,7 @@ class ApiTokenService
             AND (t.expires_at IS NULL OR t.expires_at > NOW())
         ");
 
-        $stmt->execute([$token]);
+        $stmt->execute([$tokenHash]);
         $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$tokenData) {
@@ -127,7 +164,7 @@ class ApiTokenService
     {
         $stmt = $this->db->prepare("
             SELECT id, name, scopes, last_used_at, expires_at, is_active, created_at,
-                   SUBSTRING(token, 1, 8) as token_preview
+                   token_prefix as token_preview
             FROM api_tokens
             WHERE user_id = ?
             ORDER BY created_at DESC
