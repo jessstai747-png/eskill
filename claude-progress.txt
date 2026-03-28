@@ -1,3 +1,24 @@
+## Sessão 2026-03-28 (Continuação 5) — Security Audit + XSS Sweep
+
+### Objetivo
+- Auditoria de segurança: exec(), shell_exec(), ORDER BY injection, XSS sweep
+
+### Ações Realizadas
+1. **Trivy scan**: 0 vulnerabilidades em dependências (Codacy CLI)
+2. **Exec audit** — todos SEGUROS:
+   - `AccountXRayController.php:512` → `$accountId` cast para `(int)`
+   - `OpenSpecController.php:240` → `escapeshellarg()` aplicado
+   - `HealthController.php:390` → `shell_exec('which tesseract')` sem input externo
+3. **SQL injection ORDER BY**: `getEnum()`/`getSortDir()` — whitelist validada, SEGURO
+4. **XSS sweep**: `echo $extraHead`/`echo $extraScripts` em `layouts/app.php` — investigado
+   - Resultado: variáveis NUNCA atribuídas no codebase → código morto, sem risco
+5. **BUG-012**: Falso alarme — confirmado por grep em toda a aplicação
+
+### Estado Final
+- 103/104 features passando (99%) | 0 issues Codacy | 0 vulns Trivy | 3456 PHPUnit ✅
+
+---
+
 ## Sessão 2026-03-28 (Continuação 4) — Untracked Files + Status Refresh
 
 ### Objetivo
