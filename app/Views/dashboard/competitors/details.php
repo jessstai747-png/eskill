@@ -31,7 +31,7 @@ function normalizeExternalUrl(?string $url): string
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
                         <span class="badge bg-secondary mb-2"><?= $item['status'] ?></span>
-                        <h3 class="fw-bold mb-1"><?= htmlspecialchars($item['title']) ?></h3>
+                        <h3 class="fw-bold mb-1"><?= htmlspecialchars($item['title'] ?? '') ?></h3>
                         <p class="text-muted font-monospace mb-0"><?= $item['ml_item_id'] ?> • Vendedor ID: <?= $item['seller_id'] ?></p>
                         <a href="<?= htmlspecialchars(normalizeExternalUrl($item['permalink'] ?? '') ?: '#', ENT_QUOTES, 'UTF-8') ?>" target="_blank" class="small text-primary text-decoration-none mt-2 d-inline-block">
                             Ver anúncio original <i class="bi bi-box-arrow-up-right"></i>

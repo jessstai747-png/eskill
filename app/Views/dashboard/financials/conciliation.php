@@ -103,7 +103,7 @@ ob_start();
                 <?php foreach ($settlements as $s): ?>
                 <tr>
                     <td class="ps-4 text-muted small"><?= date('d/m/Y', strtotime($s['date_released'])) ?></td>
-                    <td><?= htmlspecialchars($s['description']) ?></td>
+                    <td><?= htmlspecialchars($s['description'] ?? '') ?></td>
                     <td class="small font-monospace"><?= htmlspecialchars($s['external_reference'] ?? '-') ?></td>
                     <td><span class="badge bg-secondary-subtle text-secondary"><?= $s['type'] ?></span></td>
                     <td>R$ <?= number_format($s['gross_amount'], 2, ',', '.') ?></td>
