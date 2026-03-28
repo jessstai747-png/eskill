@@ -17,8 +17,6 @@ $breadcrumbs = [
     ['label' => 'Catálogo', 'url' => '/catalog'],
     ['label' => 'Clonar']
 ];
-
-ob_start();
 ?>
 
 <style>
@@ -604,7 +602,7 @@ ob_start();
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
-                                    
+
                                     <!-- Source Item -->
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold">
@@ -620,7 +618,7 @@ ob_start();
                                             </button>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Item Preview -->
                                     <div class="col-12">
                                         <div class="item-preview" id="itemPreview">
@@ -723,7 +721,7 @@ ob_start();
                                             <span class="btn-text">Criar Agendamento</span>
                                         </button>
                                     </div>
-                                    
+
                                     <!-- Active Schedules -->
                                     <div class="col-12 mt-4">
                                         <h6 class="fw-bold mb-3 border-top pt-3">
@@ -896,17 +894,17 @@ ob_start();
                                         <small><?= date('d/m/Y', strtotime($item['created_at'])) ?></small><br>
                                         <small class="text-muted"><?= date('H:i', strtotime($item['created_at'])) ?></small>
                                     </td>
-                                    <td><small><?= htmlspecialchars($item['source_account_name'] ?? $item['source_account_id']) ?></small></td>
-                                    <td><small><?= htmlspecialchars($item['target_account_name'] ?? $item['target_account_id']) ?></small></td>
+                                    <td><small><?= htmlspecialchars((string)($item['source_account_name'] ?? $item['source_account_id'])) ?></small></td>
+                                    <td><small><?= htmlspecialchars((string)($item['target_account_name'] ?? $item['target_account_id'])) ?></small></td>
                                     <td>
-                                        <a href="https://produto.mercadolivre.com.br/<?= str_replace('MLB', 'MLB-', $item['source_item_id']) ?>" 
+                                        <a href="https://produto.mercadolivre.com.br/<?= str_replace('MLB', 'MLB-', $item['source_item_id']) ?>"
                                            target="_blank" class="text-decoration-none small">
                                             <?= $item['source_item_id'] ?> <i class="bi bi-box-arrow-up-right"></i>
                                         </a>
                                     </td>
                                     <td>
                                         <?php if (!empty($item['target_item_id'])): ?>
-                                            <a href="https://produto.mercadolivre.com.br/<?= str_replace('MLB', 'MLB-', $item['target_item_id']) ?>" 
+                                            <a href="https://produto.mercadolivre.com.br/<?= str_replace('MLB', 'MLB-', $item['target_item_id']) ?>"
                                                target="_blank" class="text-decoration-none text-success small">
                                                 <?= $item['target_item_id'] ?> <i class="bi bi-box-arrow-up-right"></i>
                                             </a>
@@ -1007,8 +1005,3 @@ ob_start();
 </div>
 
 <script src="/js/catalog-clone.js"></script>
-
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/../layouts/modern/app.php';
-?>

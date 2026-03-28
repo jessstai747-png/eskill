@@ -92,7 +92,7 @@ function normalizeExternalUrl(?string $url): string
                         </div>
                     </td>
                     <td>
-                        <i class="bi bi-shop me-1"></i> <small><?= htmlspecialchars($item['seller_id']) ?></small>
+                        <i class="bi bi-shop me-1"></i> <small><?= htmlspecialchars((string)$item['seller_id']) ?></small>
                     </td>
                     <td>
                         <span class="fw-bold fs-6">R$ <?= number_format($item['price'], 2, ',', '.') ?></span>
