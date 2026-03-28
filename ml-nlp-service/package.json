@@ -1,0 +1,15 @@
+{
+  "name": "eskill-ml-nlp-service",
+  "version": "1.0.0",
+  "description": "Ferramentas Node/TypeScript para suporte ao pipeline ML de NLP",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["ml", "nlp", "fastapi"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
