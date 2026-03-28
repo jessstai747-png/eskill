@@ -46,6 +46,83 @@ class AnalyticsController extends BaseController
     }
 
     /**
+     * API: Get full dashboard data for advanced-analytics view
+     */
+    public function getDashboard(): void
+    {
+        header('Content-Type: application/json');
+
+        $accountId = $this->getActiveAccountId();
+        $period = $this->request->get('period', '30days');
+
+        $days = match($period) {
+            '7days' => 7,
+            '90days' => 90,
+            default => 30,
+        };
+
+        $start = date('Y-m-d', strtotime("-{$days} days"));
+        $end = date('Y-m-d');
+
+        try {
+            $summary = $this->service->getDashboardSummary($accountId);
+            $trend = $this->service->getRevenueTrend($start, $end, 'day', $accountId);
+            $funnel = $this->service->getConversionFunnel($accountId);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Erro ao carregar dados de analytics.']);
+            return;
+        }
+
+        $labels = array_column($trend, 'period');
+        $revenueData = array_map('floatval', array_column($trend, 'revenue'));
+        $totalOrders = (int) array_sum(array_column($trend, 'orders'));
+        $totalRevenue = (float) array_sum($revenueData);
+
+        $insights = [];
+        if ($summary['growth_rate'] > 0) {
+            $rate = $summary['growth_rate'];
+            $insights[] = ['icon' => 'trending-up', 'title' => 'Crescimento de Receita', 'description' => "Receita cresceu {$rate}% hoje comparado a ontem."];
+        } elseif ($summary['growth_rate'] < 0) {
+            $rate = abs($summary['growth_rate']);
+            $insights[] = ['icon' => 'trending-down', 'title' => 'Queda de Receita', 'description' => "Receita caiu {$rate}% hoje comparado a ontem."];
+        }
+        if ($summary['pending_questions'] > 0) {
+            $q = $summary['pending_questions'];
+            $insights[] = ['icon' => 'chat-dots', 'title' => 'Perguntas Pendentes', 'description' => "{$q} perguntas aguardam resposta."];
+        }
+
+        $data = [
+            'metrics' => [
+                'revenue'           => $totalRevenue,
+                'orders'            => $totalOrders,
+                'visits'            => 0,
+                'conversion_rate'   => $funnel['conversion_rate'] ?? 0.0,
+                'revenue_change'    => $summary['growth_rate'],
+                'orders_change'     => 0,
+                'visits_change'     => 0,
+                'conversion_change' => 0,
+            ],
+            'charts' => [
+                'sales_trend'  => ['labels' => $labels, 'data' => $revenueData],
+                'distribution' => ['labels' => [], 'data' => []],
+                'categories'   => ['labels' => [], 'data' => []],
+                'funnel'       => ['data' => [
+                    $funnel['questions'] ?? 0,
+                    0,
+                    0,
+                    $funnel['orders'] ?? 0,
+                ]],
+            ],
+            'insights'     => $insights,
+            'top_products' => [],
+            'ai_stats'     => ['optimizations' => 0, 'cost' => 0, 'roi' => 0.0, 'time_saved' => 0],
+        ];
+
+        echo json_encode(['success' => true, 'data' => $data]);
+    }
+
+    /**
      * API: Get revenue trend data
      */
     public function getRevenueTrend(): void

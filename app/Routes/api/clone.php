@@ -362,7 +362,7 @@ $router->get('api/statistics/top-products', StatisticsController::class, 'topPro
 $router->get('api/statistics/by-category', StatisticsController::class, 'byCategory');
 
 // Rotas de analytics
-$router->get('api/analytics/dashboard', AnalyticsController::class, 'dashboard');
+$router->get('api/analytics/dashboard', AnalyticsController::class, 'getDashboard');
 $router->get('api/analytics/api-stats', AnalyticsController::class, 'apiStats');
 $router->get('api/analytics/requests-chart', AnalyticsController::class, 'requestsChart');
 $router->get('api/analytics/sales', AnalyticsController::class, 'salesMetrics');
