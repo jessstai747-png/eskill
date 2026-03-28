@@ -45,7 +45,7 @@ if ($currentUser) {
                         <i class="bi bi-speedometer2 me-1"></i>Dashboard
                     </a>
                 </li>
-                
+
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= $isActive('/dashboard/orders') || $isActive('/dashboard/categories') ? 'active' : '' ?>" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-grid me-1"></i>Gestão
@@ -93,7 +93,7 @@ if ($currentUser) {
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="accountDropdown" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-shop-window me-1"></i>
                         <span class="d-none d-md-inline" id="activeAccountName">
-                            <?php 
+                            <?php
                             $activeAccount = array_filter($userAccounts, fn($a) => $a['id'] == $activeAccountId);
                             $activeAccount = reset($activeAccount);
                             echo htmlspecialchars($activeAccount['nickname'] ?? 'Selecionar Conta');
@@ -104,8 +104,8 @@ if ($currentUser) {
                         <li><h6 class="dropdown-header"><i class="bi bi-people me-2"></i>Contas Mercado Livre</h6></li>
                         <?php foreach ($userAccounts as $account): ?>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center justify-content-between <?= $account['id'] == $activeAccountId ? 'active' : '' ?>" 
-                               href="#" 
+                            <a class="dropdown-item d-flex align-items-center justify-content-between <?= $account['id'] == $activeAccountId ? 'active' : '' ?>"
+                               href="#"
                                onclick="switchAccount(<?= $account['id'] ?>); return false;">
                                 <span>
                                     <i class="bi bi-person-badge me-2"></i><?= htmlspecialchars($account['nickname'] ?? '') ?>
@@ -127,9 +127,9 @@ if ($currentUser) {
                     </a>
                 </li>
                 <li class="nav-item me-2">
-                    <?php 
+                    <?php
                     if (file_exists(__DIR__ . '/notifications_bell.php')) {
-                        require __DIR__ . '/notifications_bell.php'; 
+                        require __DIR__ . '/notifications_bell.php';
                     }
                     ?>
                 </li>
@@ -172,7 +172,7 @@ async function switchAccount(accountId) {
             },
             body: JSON.stringify({ account_id: accountId })
         });
-        
+
         if (data.success) {
             // Recarregar a página para atualizar os dados
             window.location.reload();

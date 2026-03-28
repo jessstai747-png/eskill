@@ -5,12 +5,12 @@ declare(strict_types=1);
 /**
  * Componente de Seleção de Conta
  * Deve ser incluído no início de cada módulo que requer contexto de conta
- * 
+ *
  * Uso:
- * <?php 
+ * <?php
  * $requireAccountSelection = true; // Força modal se nenhuma conta selecionada
  * $showAccountBanner = true; // Mostra banner fixo com conta ativa
- * include __DIR__ . '/../components/account-selector.php'; 
+ * include __DIR__ . '/../components/account-selector.php';
  * ?>
  */
 
@@ -101,15 +101,15 @@ $moduleTitle = $moduleTitle ?? 'Este Módulo';
                     <br><small class="text-success">✓ Conta atual: <strong><?= htmlspecialchars($activeAccount['nickname'] ?? '') ?></strong></small>
                     <?php endif; ?>
                 </p>
-                
+
                 <?php if (count($userAccounts) > 0): ?>
                 <div class="list-group account-selection-list">
                     <?php foreach ($userAccounts as $account): ?>
                     <label class="list-group-item list-group-item-action account-selection-item <?= $account['id'] == $activeAccountId ? 'active' : '' ?>">
                         <div class="d-flex align-items-center">
-                            <input type="radio" 
-                                   name="account_selection" 
-                                   value="<?= $account['id'] ?>" 
+                            <input type="radio"
+                                   name="account_selection"
+                                   value="<?= $account['id'] ?>"
                                    <?= $account['id'] == $activeAccountId ? 'checked' : '' ?>
                                    onchange="AccountSelector.selectAccount(<?= $account['id'] ?>)">
                             <div class="account-avatar ms-3">
@@ -275,15 +275,15 @@ const AccountSelector = {
     selectedAccountId: <?= json_encode($activeAccountId) ?>,
     requireSelection: <?= json_encode($requireAccountSelection) ?>,
     modal: null,
-    
+
     init() {
         this.modal = new bootstrap.Modal(document.getElementById('accountSelectorModal'));
-        
+
         // Se não há conta selecionada e é obrigatório, abrir modal
         if (!this.currentAccountId && this.requireSelection && <?= count($userAccounts) ?> > 0) {
             setTimeout(() => this.openModal(), 500);
         }
-        
+
         // Salvar preferência de banner no localStorage
         const bannerHidden = localStorage.getItem('accountBannerHidden') === 'true';
         if (bannerHidden) {
@@ -316,28 +316,28 @@ const AccountSelector = {
         toast.show();
         toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
     },
-    
+
     openModal() {
         this.selectedAccountId = this.currentAccountId;
         this.modal.show();
     },
-    
+
     selectAccount(accountId) {
         this.selectedAccountId = accountId;
     },
-    
+
     async confirmSelection() {
         if (!this.selectedAccountId) {
             this.showToast('Por favor, selecione uma conta.', 'warning');
             return;
         }
-        
+
         // Se já é a conta atual, apenas fechar
         if (this.selectedAccountId === this.currentAccountId) {
             this.modal.hide();
             return;
         }
-        
+
         // Trocar conta
         try {
             const result = await requestJson('/api/dashboard/switch-account', {
@@ -345,7 +345,7 @@ const AccountSelector = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ account_id: this.selectedAccountId })
             });
-            
+
             if (result.success) {
                 // Recarregar página para aplicar novo contexto
                 window.location.reload();
@@ -357,7 +357,7 @@ const AccountSelector = {
             this.showToast('Erro ao trocar conta. Tente novamente.', 'danger');
         }
     },
-    
+
     toggleBanner() {
         const banner = document.getElementById('accountContextBanner');
         if (banner) {
@@ -366,7 +366,7 @@ const AccountSelector = {
             localStorage.setItem('accountBannerHidden', isHidden);
         }
     },
-    
+
     showBanner() {
         const banner = document.getElementById('accountContextBanner');
         if (banner) {

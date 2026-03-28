@@ -117,7 +117,7 @@ advanced-analytics, competitor-monitor
 catalog/metrics, catalog/clone-advanced
 
 ### Infraestrutura (não bugs de código)
-- Redis offline (cache API retorna erro — esperado)  
+- Redis offline (cache API retorna erro — esperado)
 - ML Token expirado (401/403 em calls ML API — esperado)
 
 ## Sessão 2026-03-27 — FIX-SIDEBAR-NULL-URI
@@ -7789,4 +7789,3 @@ ISSUES NÃO-CÓDIGO:
 - ML Token expirado: todas as rotas que chamam ML API falham (decrypt_failed)
 
 COMMIT: 4e788da
-
