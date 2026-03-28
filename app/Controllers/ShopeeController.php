@@ -18,12 +18,22 @@ class ShopeeController extends BaseController
 
     public function index(): void
     {
+        if (!$this->userService->isAuthenticated()) {
+            header('Location: /login');
+            exit;
+        }
+
         $authUrl = $this->service->getAuthUrl();
         $items = $this->service->getItems();
-        
-        // Pass to View
-        // We'll mimic the standard View loading
+
+        $pageTitle = 'Integração Shopee';
+        $currentPage = 'shopee';
+
+        ob_start();
         require __DIR__ . '/../Views/dashboard/shopee/index.php';
+        $content = ob_get_clean();
+
+        require __DIR__ . '/../Views/layouts/modern/app.php';
     }
 
     public function sync(): void
