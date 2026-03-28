@@ -1,3 +1,33 @@
+## Sessão 2026-03-28 (Continuação 3) — BUG-011 + Full Quality Sweep
+
+### Objetivo
+- Continuar QA após BUG-010
+- Auditoria profunda de nullability em views e layouts
+
+### BUG-011: htmlspecialchars em ml_accounts.nickname/email nullable (7b9dff9)
+- navbar.php: `$account['nickname']` → `?? ''`
+- account-selector.php: 4 ocorrências com nickname nullable + strtoupper(substr)
+- layouts/app.php: loop de contas corrigido
+- Schema confirmado: 2026_01_11_create_ml_accounts.sql tem `nickname VARCHAR(255) NULL`
+
+### Varredura completa de syntax
+- 129 Controllers: 0 erros de sintaxe
+- Services + Models: 0 erros de sintaxe
+- Codacy CLI: 0 issues em todos os arquivos analisados
+
+### Testes
+- 3456 testes PHPUnit, 51 skipped, 0 falhas (passes=100%)
+
+### Commits
+- 22b32a4 — style: whitespace em competitors/details.php
+- 7b9dff9 — fix(views): BUG-011 htmlspecialchars nullable nickname/email
+
+### Status atual
+- Features: 103/104 passing (PROD-001 = Playwright E2E live credentials — requer execução manual)
+- Bugs log: BUG-001 a BUG-011 todos corrigidos
+- Repositório limpo (working tree clean)
+- Qualidade: 0 issues Codacy em todos os arquivos principais
+
 ## Sessão 2026-03-28 (Continuação 2) — BUG-010 + Code Quality Sweep
 
 ### Objetivo

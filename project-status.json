@@ -4,6 +4,7 @@
     "company": "AWA Motos — Distribuidora de peças para motos",
     "stack": "PHP 8.0+ | MySQL/PDO | Guzzle 7 | Monolog 3 | Redis",
     "last_updated": "2026-03-28",
+    "bug_fixes_completed": "BUG-001 through BUG-011 (all fixed)",
     "updated_by": "copilot",
     "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps."
   },
