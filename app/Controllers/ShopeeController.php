@@ -42,7 +42,7 @@ class ShopeeController extends BaseController
         try {
             // Real sync: fetch items from Shopee API and store in database
             $items = $this->service->getItems();
-            
+
             if (empty($items)) {
                 echo json_encode([
                     'success' => true,
@@ -51,11 +51,11 @@ class ShopeeController extends BaseController
                 ]);
                 return;
             }
-            
+
             // Store items in database
             $db = Database::getInstance();
             $count = 0;
-            
+
             foreach ($items as $item) {
                 $stmt = $db->prepare("
                     INSERT INTO shopee_items (item_id, shop_id, name, status, price, stock, updated_at)
@@ -67,7 +67,7 @@ class ShopeeController extends BaseController
                         stock = VALUES(stock),
                         updated_at = NOW()
                 ");
-                
+
                 $stmt->execute([
                     'item_id' => $item['item_id'] ?? 0,
                     'shop_id' => $item['shop_id'] ?? 0,
@@ -78,7 +78,7 @@ class ShopeeController extends BaseController
                 ]);
                 $count++;
             }
-            
+
             echo json_encode([
                 'success' => true,
                 'message' => "Sincronização concluída: {$count} itens atualizados.",

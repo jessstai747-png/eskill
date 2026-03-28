@@ -215,7 +215,7 @@ class AnalyticsController extends BaseController
             $cutoff = date('Y-m-d H:i:s', time() - ($hours * 3600));
 
             $stmt = $db->prepare("
-                SELECT 
+                SELECT
                     COUNT(*) as total_requests,
                     COUNT(DISTINCT ip_address) as unique_ips,
                     MIN(created_at) as earliest,
@@ -267,7 +267,7 @@ class AnalyticsController extends BaseController
             $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
 
             $stmt = $db->prepare("
-                SELECT 
+                SELECT
                     DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') as hour_bucket,
                     COUNT(*) as request_count
                 FROM rate_limits
@@ -305,7 +305,7 @@ class AnalyticsController extends BaseController
             $accountId = $this->getActiveAccountId();
 
             $dailySql = "
-                SELECT 
+                SELECT
                     DATE(date_created) as day,
                     COUNT(*) as orders,
                     SUM(total_amount) as revenue,
@@ -328,7 +328,7 @@ class AnalyticsController extends BaseController
             $daily = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             $totalsSql = "
-                SELECT 
+                SELECT
                     COUNT(*) as total_orders,
                     SUM(total_amount) as total_revenue,
                     AVG(total_amount) as avg_ticket,
@@ -378,7 +378,7 @@ class AnalyticsController extends BaseController
             $params = [];
 
             $statusSql = "
-                SELECT 
+                SELECT
                     status,
                     COUNT(*) as count,
                     SUM(price) as total_value,
@@ -398,7 +398,7 @@ class AnalyticsController extends BaseController
             $byStatus = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             $categorySql = "
-                SELECT 
+                SELECT
                     category_id,
                     COUNT(*) as count,
                     AVG(price) as avg_price
@@ -443,7 +443,7 @@ class AnalyticsController extends BaseController
             $params = [':cutoff' => $cutoff];
 
             $byStatusSql = "
-                SELECT 
+                SELECT
                     status,
                     COUNT(*) as count
                 FROM ml_questions
@@ -460,7 +460,7 @@ class AnalyticsController extends BaseController
             $byStatus = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             $dailySql = "
-                SELECT 
+                SELECT
                     DATE(date_created) as day,
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'ANSWERED' THEN 1 ELSE 0 END) as answered,
@@ -478,7 +478,7 @@ class AnalyticsController extends BaseController
             $daily = $stmtDaily->fetchAll(\PDO::FETCH_ASSOC);
 
             $avgResponseSql = "
-                SELECT 
+                SELECT
                     AVG(TIMESTAMPDIFF(MINUTE, date_created, answer_date)) as avg_response_minutes
                 FROM ml_questions
                 WHERE answer_date IS NOT NULL
@@ -562,7 +562,7 @@ class AnalyticsController extends BaseController
     private function exportSalesData(\PDO $db, string $cutoff, ?int $accountId = null): array
     {
         $sql = "
-            SELECT 
+            SELECT
                 ml_order_id as order_id,
                 ml_account_id as account_id,
                 status,
@@ -590,8 +590,8 @@ class AnalyticsController extends BaseController
     private function exportListingsData(\PDO $db, ?int $accountId = null): array
     {
         $sql = "
-            SELECT 
-                item_id, title, status, price, 
+            SELECT
+                item_id, title, status, price,
                 available_quantity, category_id, permalink
             FROM items
             WHERE 1 = 1
@@ -615,7 +615,7 @@ class AnalyticsController extends BaseController
     private function exportQuestionsData(\PDO $db, string $cutoff, ?int $accountId = null): array
     {
         $sql = "
-            SELECT 
+            SELECT
                 question_id, item_id, status, question_text,
                 answer_text, from_user_id, DATE(date_created) as question_date,
                 DATE(answer_date) as answered_date
