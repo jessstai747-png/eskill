@@ -69,8 +69,8 @@ function normalizeExternalUrl(?string $url): string
                     <h6 class="fw-bold text-dark"><i class="bi bi-lightbulb text-warning me-2"></i> Volatilidade</h6>
                     <p class="small text-muted mb-0">Este vendedor alterou o preço <strong><?= count($history) > 1 ? count($history)-1 : 0 ?> vezes</strong> no período analisado.</p>
                 </div>
-                
-                <?php if(is_array($history) && count($history) >= 2): 
+
+                <?php if(is_array($history) && count($history) >= 2):
                     $first = $history[0]['price'];
                     $lastEntry = end($history);
                     $last = (is_array($lastEntry) && isset($lastEntry['price'])) ? (float)$lastEntry['price'] : 0.0;
@@ -97,7 +97,7 @@ function normalizeExternalUrl(?string $url): string
 <script nonce="<?= CSP_NONCE ?>">
     const ctx = document.getElementById('priceChart').getContext('2d');
     const historyData = <?= json_encode($history) ?>;
-    
+
     // Prepare Data
     const labels = historyData.map(h => {
         const d = new Date(h.recorded_at);
