@@ -1,3 +1,27 @@
+## Sessão 2026-03-28 (Continuação 2) — BUG-010 + Code Quality Sweep
+
+### Objetivo
+- Continuar QA após session anterior (BUG-009 + PROD-002 completos)
+- Varredura profunda de padrões TypeErrors em views
+
+### BUG-010: htmlspecialchars em colunas DB anuláveis (ce64e3c)
+- financials/conciliation.php: $s['description'] (TEXT NULL) → ?? ''
+- competitors/details.php: $item['title'] (nullable ML API data) → ?? ''
+
+### Varredura estática: tudo OK
+- Todos os controllers lintados sem erros de sintaxe
+- Sem controllers duplicados nem faltando
+- Routes sem duplicatas (343 rotas em web.php)
+- ShopeeController::page() é dead code (sem rota) — inofensivo
+
+### Commits
+- 66b642e — style: whitespace cleanup (formatter automático)
+- ce64e3c — BUG-010: htmlspecialchars em colunas anuláveis
+
+### Status atual
+- Features: 103/104 passing
+- Bugs log: BUG-001 a BUG-010 todos corrigidos
+- Repositório limpo (working tree clean)
 ## Sessão 2026-03-28 (Continuação) — BUG-009 + PROD-002 + Segurança
 
 ### Objetivo
