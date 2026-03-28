@@ -837,7 +837,7 @@ $activePage = $activePage ?? '';
                                 <li>
                                     <a class="dropdown-item d-flex justify-content-between align-items-center <?= $account['id'] == $activeAccountId ? 'active' : '' ?>"
                                         href="#" onclick="switchAccount(<?= $account['id'] ?>); return false;">
-                                        <?= htmlspecialchars($account['nickname']) ?>
+                                        <?= htmlspecialchars($account['nickname'] ?? '') ?>
                                         <?php if ($account['id'] == $activeAccountId): ?>
                                             <i class="bi bi-check-circle-fill text-success"></i>
                                         <?php endif; ?>

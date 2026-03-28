@@ -42,11 +42,11 @@ $moduleTitle = $moduleTitle ?? 'Este Módulo';
     <div class="container-fluid d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
             <div class="account-avatar-sm">
-                <?= strtoupper(substr($activeAccount['nickname'], 0, 2)) ?>
+                <?= strtoupper(substr($activeAccount['nickname'] ?? '', 0, 2)) ?>
             </div>
             <div class="ms-3">
                 <small class="text-muted d-block" style="font-size: 0.75rem;">Conta Ativa:</small>
-                <strong style="font-size: 0.95rem;"><?= htmlspecialchars($activeAccount['nickname']) ?></strong>
+                <strong style="font-size: 0.95rem;"><?= htmlspecialchars($activeAccount['nickname'] ?? '') ?></strong>
                 <small class="text-muted ms-2">(ID: <?= htmlspecialchars($activeAccount['ml_user_id']) ?>)</small>
             </div>
         </div>
@@ -98,7 +98,7 @@ $moduleTitle = $moduleTitle ?? 'Este Módulo';
                 <p class="text-muted mb-3">
                     <?= $moduleTitle ?> requer que você selecione uma conta do Mercado Livre.
                     <?php if ($activeAccount): ?>
-                    <br><small class="text-success">✓ Conta atual: <strong><?= htmlspecialchars($activeAccount['nickname']) ?></strong></small>
+                    <br><small class="text-success">✓ Conta atual: <strong><?= htmlspecialchars($activeAccount['nickname'] ?? '') ?></strong></small>
                     <?php endif; ?>
                 </p>
                 
@@ -113,10 +113,10 @@ $moduleTitle = $moduleTitle ?? 'Este Módulo';
                                    <?= $account['id'] == $activeAccountId ? 'checked' : '' ?>
                                    onchange="AccountSelector.selectAccount(<?= $account['id'] ?>)">
                             <div class="account-avatar ms-3">
-                                <?= strtoupper(substr($account['nickname'], 0, 2)) ?>
+                                <?= strtoupper(substr($account['nickname'] ?? '', 0, 2)) ?>
                             </div>
                             <div class="ms-3 flex-grow-1">
-                                <div class="fw-semibold"><?= htmlspecialchars($account['nickname']) ?></div>
+                                <div class="fw-semibold"><?= htmlspecialchars($account['nickname'] ?? '') ?></div>
                                 <small class="text-muted">
                                     ID: <?= htmlspecialchars($account['ml_user_id']) ?>
                                     <?php if (!empty($account['email'])): ?>

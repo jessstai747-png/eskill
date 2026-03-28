@@ -108,7 +108,7 @@ if ($currentUser) {
                                href="#" 
                                onclick="switchAccount(<?= $account['id'] ?>); return false;">
                                 <span>
-                                    <i class="bi bi-person-badge me-2"></i><?= htmlspecialchars($account['nickname']) ?>
+                                    <i class="bi bi-person-badge me-2"></i><?= htmlspecialchars($account['nickname'] ?? '') ?>
                                 </span>
                                 <?php if ($account['id'] == $activeAccountId): ?>
                                 <i class="bi bi-check-circle-fill text-success"></i>
