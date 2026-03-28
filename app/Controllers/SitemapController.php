@@ -17,10 +17,10 @@ class SitemapController extends BaseController
         $cacheKey = 'sitemap_xml_index';
 
         // Try cache first
-        $cachedXml = $cache->get($cacheKey, 'sitemap');
-        if ($cachedXml) {
+        $cachedEntry = $cache->get($cacheKey, 'sitemap');
+        if ($cachedEntry && isset($cachedEntry['content'])) {
             header('Content-Type: application/xml; charset=utf-8');
-            echo $cachedXml;
+            echo $cachedEntry['content'];
             return;
         }
 
@@ -63,7 +63,7 @@ class SitemapController extends BaseController
         $xmlContent = ob_get_clean();
 
         // Store in cache (1 hour)
-        $cache->set($cacheKey, $xmlContent, 'sitemap'); // Using default TTL or override in CacheManager config if needed
+        $cache->set($cacheKey, ['content' => $xmlContent], 'sitemap');
 
         header('Content-Type: application/xml; charset=utf-8');
         echo $xmlContent;
