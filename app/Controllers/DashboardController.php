@@ -1332,4 +1332,24 @@ class DashboardController extends BaseController
         $content = ob_get_clean();
         require __DIR__ . '/../Views/layouts/modern/app.php';
     }
+
+    /**
+     * Painel de Compatibilidades em Massa
+     * GET /dashboard/items/bulk-compatibility
+     */
+    public function bulkCompatibilidades(): void
+    {
+        if (!$this->userService->isAuthenticated()) {
+            header('Location: /login');
+            exit;
+        }
+
+        $pageTitle = 'Compatibilidades em Massa';
+        $activePage = 'bulk-compatibility';
+
+        ob_start();
+        require __DIR__ . '/../Views/dashboard/items/bulk-compatibility.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/../Views/layouts/modern/app.php';
+    }
 }

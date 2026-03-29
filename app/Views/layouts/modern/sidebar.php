@@ -127,9 +127,15 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                 <span>Ficha Técnica</span>
             </a>
 
-            <a href="/dashboard/items/bulk" class="nav-item <?= isActive('/items/bulk') ? 'active' : '' ?>">
+            <a href="/dashboard/items/bulk" class="nav-item <?= isActive('/items/bulk') && !isActive('/bulk-compatibility') ? 'active' : '' ?>">
                 <i class="bi bi-layers"></i>
                 <span>Editor em Massa</span>
+            </a>
+
+            <a href="/dashboard/items/bulk-compatibility" class="nav-item <?= isActive('/bulk-compatibility') ? 'active' : '' ?>">
+                <i class="bi bi-puzzle-fill"></i>
+                <span>Compatibilidades</span>
+                <span class="badge bg-warning text-dark ms-auto" style="font-size:0.6rem">MASSA</span>
             </a>
 
             <a href="/dashboard/categories" class="nav-item <?= isActive('/categories') ? 'active' : '' ?>">
@@ -230,9 +236,15 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                 <i class="bi bi-chevron-down"></i>
             </div>
             <div class="nav-collapse" id="toolsMenu">
-                <a href="/dashboard/catalog/clone" class="nav-item <?= isActive('/catalog/clone') && !isActive('/clone-batch') && !isActive('/clone-realtime') && !isActive('/clone-analytics') && !isActive('/clone-compliance') && !isActive('/clone-widget') ? 'active' : '' ?>">
+                <a href="/dashboard/catalog/clone" class="nav-item <?= isActive('/catalog/clone') && !isActive('/clone-batch') && !isActive('/clone-realtime') && !isActive('/clone-analytics') && !isActive('/clone-compliance') && !isActive('/clone-widget') && !isActive('/clonar-anuncios') ? 'active' : '' ?>">
                     <i class="bi bi-copy"></i>
                     <span>Clonar Catálogo</span>
+                </a>
+
+                <a href="/dashboard/catalog/clonar-anuncios" class="nav-item <?= isActive('/clonar-anuncios') ? 'active' : '' ?>">
+                    <i class="bi bi-layers"></i>
+                    <span>Clonar Anúncios</span>
+                    <span class="badge bg-primary ms-auto" style="font-size: 0.6rem;">NOVO</span>
                 </a>
 
                 <a href="/dashboard/catalog/clone-batch" class="nav-item <?= isActive('/clone-batch') ? 'active' : '' ?>">

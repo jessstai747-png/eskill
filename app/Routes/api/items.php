@@ -31,6 +31,7 @@ use App\Controllers\JobController;
 use App\Controllers\ReportController;
 use App\Controllers\PollingController;
 use App\Controllers\CompatibilityController;
+use App\Controllers\BulkCompatibilityController;
 use App\Controllers\QuestionController;
 use App\Controllers\SEOToolsController;
 use App\Controllers\DeepResearchController;
@@ -155,6 +156,11 @@ $router->get('api/compatibility/search', CompatibilityController::class, 'search
 $router->post('api/compatibility/validate/{itemId}', CompatibilityController::class, 'validate');
 $router->get('api/compatibility/suggest', CompatibilityController::class, 'suggest');
 $router->get('api/compatibility/attributes/{categoryId}', CompatibilityController::class, 'attributes');
+
+// Bulk Compatibility Manager
+$router->get('api/compatibility/bulk/missing', BulkCompatibilityController::class, 'listMissing');
+$router->post('api/compatibility/bulk/suggest-by-title', BulkCompatibilityController::class, 'suggestForItems');
+$router->post('api/compatibility/bulk/apply', BulkCompatibilityController::class, 'applyBulk');
 
 // Rotas de Perguntas e Respostas (Q&A)
 $router->get('api/questions', QuestionController::class, 'index');

@@ -87,6 +87,7 @@ $router->get('dashboard/ean', ViewController::class, 'ean');
 $router->get('dashboard/ean/admin', ViewController::class, 'eanAdmin');
 $router->get('dashboard/questions', DashboardController::class, 'questions');
 $router->get('dashboard/items', DashboardController::class, 'items');
+$router->get('dashboard/items/bulk-compatibility', DashboardController::class, 'bulkCompatibilidades');
 $router->get('dashboard/messages', DashboardController::class, 'messages');
 $router->get('dashboard/catalog/clone', DashboardController::class, 'catalogClone');
 $router->get('dashboard/catalog/clone-batch', DashboardController::class, 'catalogCloneBatch');
