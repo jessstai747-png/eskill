@@ -382,6 +382,9 @@ $router->get('dashboard/claims', 'App\Controllers\ClaimsController', 'index');
 $router->get('api/claims/list', 'App\Controllers\ClaimsController', 'list');
 $router->post('api/claims/send-message', 'App\Controllers\ClaimsController', 'sendMessage');
 
+// Returns (Devoluções & RMA)
+$router->get('dashboard/returns', 'App\Controllers\ReturnsController', 'index');
+
 // Catalog
 $router->get('dashboard/catalog/competition', 'App\Controllers\CatalogController', 'index');
 $router->get('api/catalog/losing', 'App\Controllers\CatalogController', 'listLosingItems');

@@ -181,6 +181,11 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                 <i class="bi bi-exclamation-triangle"></i>
                 <span>Reclamações</span>
             </a>
+
+            <a href="/dashboard/returns" class="nav-item <?= isActive('/returns') ? 'active' : '' ?>">
+                <i class="bi bi-arrow-return-left"></i>
+                <span>Devoluções</span>
+            </a>
         </div>
 
         <!-- Inteligência -->
