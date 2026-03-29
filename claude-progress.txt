@@ -1,3 +1,14 @@
+[2026-03-29 00:42] SESSION - SYS-001/SYS-002/SAC-001
+- Wired dashboard/jobs + dashboard/backups routes (views + controller methods existed, routes missing)
+- Added Jobs Monitor + Backups to admin sidebar section
+- Implemented Auto-Resposta IA config panel in questions.php:
+  - Toggle to enable/disable AutoAnswerJob
+  - Confidence threshold slider (50-99%)
+  - GET/POST /api/questions/auto-answer/settings in QuestionController
+  - Reads/writes system_settings table (auto_answer_enabled, auto_answer_confidence)
+- git commit: 66c486b
+- project-status.json: 108/109 passing
+
 ## Sessão 2026-03-29 — Bulk Compatibility Manager (COMPAT-001)
 
 ### Objetivo
