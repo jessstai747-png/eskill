@@ -106,6 +106,10 @@ $router->get('dashboard/catalog/clone-items', DashboardController::class, 'clone
 $router->get('dashboard/catalog/clone-operations', DashboardController::class, 'cloneOperations');
 $router->get('dashboard/catalog/clone-scheduler', DashboardController::class, 'cloneScheduler');
 $router->get('dashboard/catalog/clone-triggers', DashboardController::class, 'cloneTriggers');
+$router->get('dashboard/catalog/clonar-anuncios', DashboardController::class, 'clonarAnuncios');
+$router->get('api/catalog/clone/search', CatalogCloneController::class, 'unifiedSearch');
+$router->get('api/catalog/clone/batch-jobs', CatalogCloneController::class, 'listBatchJobs');
+$router->post('api/catalog/clone/jobs/{jobId}/retry-failed', CatalogCloneController::class, 'retryFailed');
 $router->get('dashboard/advanced', DashboardController::class, 'advanced');
 $router->get('dashboard/agents', ViewController::class, 'agents');
 $router->get('dashboard/research', ViewController::class, 'research');

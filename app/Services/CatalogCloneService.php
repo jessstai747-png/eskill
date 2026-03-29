@@ -3333,4 +3333,300 @@ class CatalogCloneService
             // Falha ao salvar snapshot não deve interromper o fluxo principal
         }
     }
+
+    // =========================================================================
+    // Métodos unificados para o módulo Clonar Anúncios (MercadoTurbo parity)
+    // =========================================================================
+
+    /**
+     * Busca unificada para o módulo "Clonar Anúncio".
+     * Roteia para a chamada de API correta baseada no tipo selecionado.
+     *
+     * @param string $type    item_id | seller_nickname | seller_id | keyword | catalog_id
+     * @param string $query   Valor digitado pelo usuário
+     * @param int    $offset  Paginação
+     * @param int    $limit   Resultados por página (máx 50)
+     * @return array{items: array, total: int, seller_id: string|null}
+     */
+    public function searchUnified(string $type, string $query, int $offset = 0, int $limit = 20): array
+    {
+        $query = trim($query);
+        if ($query === '') {
+            throw new Exception('Informe um termo para buscar.');
+        }
+
+        $limit  = min(50, max(1, $limit));
+        $offset = max(0, $offset);
+
+        $client = $this->getAuthenticatedClientForSearch();
+
+        switch ($type) {
+            case 'item_id':
+                // ID ou URL de anúncio → multiget
+                $ids = preg_split('/[\s,\n]+/', $query, -1, PREG_SPLIT_NO_EMPTY);
+                // Extrair MLB... de URLs se necessário
+                $ids = array_map(function (string $id): string {
+                    if (preg_match('/MLB-?\d+/i', $id, $m)) {
+                        return strtoupper(str_replace('-', '', $m[0]));
+                    }
+                    return strtoupper(trim($id));
+                }, $ids);
+                $ids = array_values(array_unique($ids));
+                $chunk = array_slice($ids, $offset, $limit);
+                $data  = $this->resolveItemIds($chunk);
+                return [
+                    'items'     => $data['items'] ?? [],
+                    'total'     => count($ids),
+                    'seller_id' => null,
+                ];
+
+            case 'seller_nickname':
+                // Resolve nickname → seller_id → lista items
+                $sellerId = $this->searchSeller($query)['seller_id'] ?? null;
+                if ($sellerId === null) {
+                    throw new Exception("Vendedor \"{$query}\" não encontrado.");
+                }
+                $result = $this->listSellerItems($sellerId, ['offset' => $offset, 'limit' => $limit]);
+                return [
+                    'items'     => $result['items'] ?? [],
+                    'total'     => $result['total'] ?? 0,
+                    'seller_id' => $sellerId,
+                ];
+
+            case 'seller_id':
+                // Seller ID numérico direto
+                if (!preg_match('/^\d+$/', $query)) {
+                    throw new Exception('ID do vendedor deve ser numérico.');
+                }
+                $result = $this->listSellerItems($query, ['offset' => $offset, 'limit' => $limit]);
+                return [
+                    'items'     => $result['items'] ?? [],
+                    'total'     => $result['total'] ?? 0,
+                    'seller_id' => $query,
+                ];
+
+            case 'keyword':
+                // Busca por palavra-chave na API pública
+                $response = $client->get('/sites/MLB/search', [
+                    'q'      => $query,
+                    'offset' => $offset,
+                    'limit'  => $limit,
+                ], null, false);
+
+                $items = array_map(function (array $item): array {
+                    return $this->normalizeSearchResultItem($item);
+                }, $response['results'] ?? []);
+
+                return [
+                    'items'     => $items,
+                    'total'     => (int)($response['paging']['total'] ?? count($items)),
+                    'seller_id' => null,
+                ];
+
+            case 'catalog_id':
+                // Catálogo: busca por catalog_id ou OEM number
+                $response = $client->get('/sites/MLB/search', [
+                    'catalog_product_id' => $query,
+                    'offset'             => $offset,
+                    'limit'              => $limit,
+                ], null, false);
+
+                // Fallback para busca genérica se não vier resultados
+                if (empty($response['results'])) {
+                    $response = $client->get('/sites/MLB/search', [
+                        'q'      => $query,
+                        'offset' => $offset,
+                        'limit'  => $limit,
+                    ], null, false);
+                }
+
+                $items = array_map(function (array $item): array {
+                    return $this->normalizeSearchResultItem($item);
+                }, $response['results'] ?? []);
+
+                return [
+                    'items'     => $items,
+                    'total'     => (int)($response['paging']['total'] ?? count($items)),
+                    'seller_id' => null,
+                ];
+
+            default:
+                throw new Exception("Tipo de busca inválido: {$type}");
+        }
+    }
+
+    /**
+     * Normaliza um item retornado pela API /sites/MLB/search para o formato
+     * esperado pela tabela de resultados do frontend.
+     *
+     * @param array $item Item bruto da API
+     * @return array Item normalizado
+     */
+    private function normalizeSearchResultItem(array $item): array
+    {
+        $isCatalog = !empty($item['catalog_product_id']);
+        $listingType = $item['listing_type_id'] ?? '';
+
+        return [
+            'id'                 => $item['id'] ?? '',
+            'title'              => $item['title'] ?? '',
+            'price'              => $item['price'] ?? 0,
+            'currency_id'        => $item['currency_id'] ?? 'BRL',
+            'thumbnail'          => $item['thumbnail'] ?? '',
+            'permalink'          => $item['permalink'] ?? '',
+            'condition'          => $item['condition'] ?? 'new',
+            'available_quantity' => $item['available_quantity'] ?? 0,
+            'category_id'        => $item['category_id'] ?? '',
+            'is_catalog'         => $isCatalog,
+            'catalog_product_id' => $item['catalog_product_id'] ?? null,
+            'listing_type_id'    => $listingType,
+            'seller_id'          => (string)($item['seller']['id'] ?? ''),
+            'seller_nickname'    => $item['seller']['nickname'] ?? '',
+            'status'             => $item['status'] ?? 'active',
+            'error'              => false,
+        ];
+    }
+
+    /**
+     * Retorna o status de exibição de um job para o histórico do frontend.
+     * Considera "Finalizado com pendências" quando há itens com error > 0 e sucesso > 0.
+     *
+     * @param array $job Linha da tabela catalog_clone_jobs
+     * @return string Status amigável para exibição
+     */
+    public function computeJobDisplayStatus(array $job): string
+    {
+        $status          = $job['status'] ?? '';
+        $successfulItems = (int)($job['successful_items'] ?? 0);
+        $failedItems     = (int)($job['failed_items'] ?? 0);
+
+        if ($status === 'completed_with_errors') {
+            return 'Finalizada com pendências';
+        }
+
+        if ($status === 'completed' && $failedItems > 0 && $successfulItems > 0) {
+            return 'Finalizada com pendências';
+        }
+
+        return match ($status) {
+            'pending'    => 'Aguardando',
+            'queued'     => 'Na fila',
+            'processing' => 'Processando',
+            'completed'  => 'Finalizada',
+            'failed'     => 'Falhou',
+            'cancelled'  => 'Cancelada',
+            default      => ucfirst($status),
+        };
+    }
+
+    /**
+     * Retorna jobs de clonagem em lote para o histórico da aba "Clonar Conta".
+     *
+     * @param int $limit Máximo de registros a retornar
+     * @param int $offset Paginação
+     * @return array Lista de jobs formatada para o frontend
+     */
+    public function getBatchJobHistory(int $limit = 50, int $offset = 0): array
+    {
+        $limitSql  = max(1, min(500, $limit));
+        $offsetSql = max(0, $offset);
+
+        $sql = "
+            SELECT
+                j.*,
+                sa.nickname AS source_account_nickname_resolved,
+                ta.nickname AS target_account_nickname_resolved
+            FROM catalog_clone_jobs j
+            LEFT JOIN ml_accounts sa ON j.source_account_id = sa.id
+            LEFT JOIN ml_accounts ta ON j.target_account_id = ta.id
+            ORDER BY j.created_at DESC
+            LIMIT {$limitSql} OFFSET {$offsetSql}
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        return array_map(function (array $row): array {
+            $sourceNick = $row['source_account_nickname_resolved']
+                ?? $row['source_account_nickname']
+                ?? ('Conta ' . ($row['source_account_id'] ?? '?'));
+            $targetNick = $row['target_account_nickname_resolved']
+                ?? $row['target_account_nickname']
+                ?? ('Conta ' . ($row['target_account_id'] ?? '?'));
+
+            return [
+                'id'               => $row['id'],
+                'job_id'           => $row['job_id'],
+                'source_account'   => $sourceNick,
+                'target_account'   => $targetNick,
+                'total_items'      => (int)$row['total_items'],
+                'successful_items' => (int)$row['successful_items'],
+                'failed_items'     => (int)$row['failed_items'],
+                'skipped_items'    => (int)$row['skipped_items'],
+                'status'           => $row['status'],
+                'display_status'   => $this->computeJobDisplayStatus($row),
+                'created_at'       => $row['created_at'],
+                'completed_at'     => $row['completed_at'],
+                'has_failures'     => (int)$row['failed_items'] > 0,
+            ];
+        }, $rows);
+    }
+
+    /**
+     * Reprocessa itens com falha de um job específico.
+     * Redefine o status dos itens para 'pending' e dispara nova execução.
+     *
+     * @param string $jobId ID do job (UUID/hash)
+     * @return array{requeued: int, job_id: string}
+     */
+    public function retryFailedItems(string $jobId): array
+    {
+        $jobId = trim($jobId);
+        if ($jobId === '') {
+            throw new Exception('job_id é obrigatório.');
+        }
+
+        // Verificar se o job existe
+        $stmt = $this->db->prepare(
+            'SELECT id, status, failed_items FROM catalog_clone_jobs WHERE job_id = ? LIMIT 1'
+        );
+        $stmt->execute([$jobId]);
+        $job = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if ($job === false) {
+            throw new Exception('Job não encontrado: ' . $jobId);
+        }
+
+        // Contar itens com falha
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM catalog_clone_job_items WHERE job_id = ? AND status = 'failed'"
+        );
+        $stmt->execute([$jobId]);
+        $failedCount = (int)$stmt->fetchColumn();
+
+        if ($failedCount === 0) {
+            return ['requeued' => 0, 'job_id' => $jobId];
+        }
+
+        // Resetar itens com falha para pending
+        $stmt = $this->db->prepare(
+            "UPDATE catalog_clone_job_items
+             SET status = 'pending', attempts = 0, error_message = NULL, error_code = NULL, processed_at = NULL
+             WHERE job_id = ? AND status = 'failed'"
+        );
+        $stmt->execute([$jobId]);
+
+        // Atualizar status do job pai para queued e ajustar contadores
+        $this->db->prepare(
+            "UPDATE catalog_clone_jobs
+             SET status = 'queued',
+                 failed_items = 0,
+                 processed_items = processed_items - :failed,
+                 updated_at = NOW()
+             WHERE job_id = :job_id"
+        )->execute(['failed' => $failedCount, 'job_id' => $jobId]);
+
+        return ['requeued' => $failedCount, 'job_id' => $jobId];
+    }
 }

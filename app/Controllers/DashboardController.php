@@ -1311,4 +1311,25 @@ class DashboardController extends BaseController
         $content = ob_get_clean();
         require __DIR__ . '/../Views/layouts/modern/app.php';
     }
+
+    public function clonarAnuncios(): void
+    {
+        if (!$this->userService->isAuthenticated()) {
+            header('Location: /login');
+            exit;
+        }
+
+        $currentUser = $this->userService->getCurrentUser();
+        $pageTitle = 'Clonar Anúncios';
+        $activePage = 'clonar-anuncios';
+
+        $db = Database::getInstance();
+        $stmt = $db->query("SELECT id, nickname, ml_user_id FROM ml_accounts WHERE status = 'active' ORDER BY nickname, ml_user_id");
+        $accounts = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        ob_start();
+        require __DIR__ . '/../Views/dashboard/clonar-anuncios.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/../Views/layouts/modern/app.php';
+    }
 }

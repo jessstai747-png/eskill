@@ -1870,4 +1870,113 @@ class CatalogCloneController extends BaseController
             ]);
         }
     }
+
+    // =========================================================================
+    // Módulo Clonar Anúncios — busca unificada + reprocessar (MercadoTurbo parity)
+    // =========================================================================
+
+    /**
+     * Busca unificada de anúncios para o módulo "Clonar Anúncio"
+     * GET /api/catalog/clone/search?type=keyword&q=bagageiro&offset=0&limit=20
+     *
+     * Tipos: item_id | seller_nickname | seller_id | keyword | catalog_id
+     */
+    public function unifiedSearch(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $type   = $this->request->get('type', 'keyword');
+            $query  = trim($this->request->get('q', ''));
+            $offset = $this->request->getInt('offset', 0);
+            $limit  = $this->request->getInt('limit', 20);
+
+            $allowedTypes = ['item_id', 'seller_nickname', 'seller_id', 'keyword', 'catalog_id'];
+            if (!in_array($type, $allowedTypes, true)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'tipo inválido', 'allowed' => $allowedTypes]);
+                return;
+            }
+
+            if ($query === '') {
+                http_response_code(400);
+                echo json_encode(['error' => 'Parâmetro "q" é obrigatório.']);
+                return;
+            }
+
+            $result = $this->service->searchUnified($type, $query, $offset, $limit);
+
+            http_response_code(200);
+            echo json_encode([
+                'status' => 'success',
+                'items'  => $result['items'],
+                'total'  => $result['total'],
+                'seller_id' => $result['seller_id'],
+                'offset' => $offset,
+                'limit'  => $limit,
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro na busca', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Lista histórico de jobs para o painel "Clonar Conta"
+     * GET /api/catalog/clone/batch-jobs?limit=50&offset=0
+     */
+    public function listBatchJobs(): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $limit  = $this->request->getInt('limit', 50);
+            $offset = $this->request->getInt('offset', 0);
+
+            $jobs = $this->service->getBatchJobHistory($limit, $offset);
+
+            http_response_code(200);
+            echo json_encode([
+                'status' => 'success',
+                'jobs'   => $jobs,
+                'total'  => count($jobs),
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro ao listar jobs', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Reprocessar itens com falha de um job
+     * POST /api/catalog/clone/jobs/{jobId}/retry-failed
+     */
+    public function retryFailed(string $jobId): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $jobId = trim($jobId);
+            if ($jobId === '') {
+                http_response_code(400);
+                echo json_encode(['error' => 'job_id é obrigatório']);
+                return;
+            }
+
+            $result = $this->service->retryFailedItems($jobId);
+
+            http_response_code(200);
+            echo json_encode([
+                'status'   => 'success',
+                'requeued' => $result['requeued'],
+                'job_id'   => $result['job_id'],
+                'message'  => $result['requeued'] > 0
+                    ? "{$result['requeued']} item(ns) colocado(s) novamente na fila."
+                    : 'Nenhum item com falha encontrado para reprocessar.',
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro ao reprocessar', 'message' => $e->getMessage()]);
+        }
+    }
 }
