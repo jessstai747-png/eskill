@@ -340,6 +340,16 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                     <i class="bi bi-journal-text"></i>
                     <span>Logs</span>
                 </a>
+
+                <a href="/dashboard/jobs" class="nav-item <?= isActive('/jobs') ? 'active' : '' ?>">
+                    <i class="bi bi-list-task"></i>
+                    <span>Jobs Monitor</span>
+                </a>
+
+                <a href="/dashboard/backups" class="nav-item <?= isActive('/backups') ? 'active' : '' ?>">
+                    <i class="bi bi-cloud-download"></i>
+                    <span>Backups</span>
+                </a>
             </div>
         <?php endif; ?>
     </nav>

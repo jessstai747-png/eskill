@@ -264,4 +264,85 @@ class QuestionController extends BaseController
         $result = $this->service->generateDraftAnswer($id);
         echo json_encode($result);
     }
+
+    /**
+     * GET /api/questions/auto-answer/settings
+     * Retorna configurações do job de auto-resposta
+     */
+    public function getAutoAnswerSettings(): void
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->userService->isAuthenticated()) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Autenticação necessária']);
+            return;
+        }
+
+        try {
+            $db = \App\Database::getInstance();
+            $stmt = $db->query(
+                "SELECT setting_key, setting_value FROM system_settings
+                 WHERE setting_key IN ('auto_answer_enabled','auto_answer_confidence','auto_answer_count_today')"
+            );
+            $rows = $stmt->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+            echo json_encode([
+                'success'        => true,
+                'enabled'        => filter_var($rows['auto_answer_enabled'] ?? 'false', FILTER_VALIDATE_BOOLEAN),
+                'min_confidence' => (int) ($rows['auto_answer_confidence'] ?? 90),
+                'answered_today' => (int) ($rows['auto_answer_count_today'] ?? 0),
+            ]);
+        } catch (\Exception $e) {
+            echo json_encode([
+                'success'        => true,
+                'enabled'        => false,
+                'min_confidence' => 90,
+                'answered_today' => 0,
+            ]);
+        }
+    }
+
+    /**
+     * POST /api/questions/auto-answer/settings
+     * Salva configurações do job de auto-resposta
+     */
+    public function saveAutoAnswerSettings(): void
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->userService->isAuthenticated()) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Autenticação necessária']);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'JSON inválido']);
+            return;
+        }
+
+        $enabled    = isset($input['enabled']) ? (bool) $input['enabled'] : false;
+        $confidence = isset($input['min_confidence'])
+            ? max(50, min(99, (int) $input['min_confidence']))
+            : 90;
+
+        try {
+            $db = \App\Database::getInstance();
+            $upsert = "INSERT INTO system_settings (setting_key, setting_value, updated_at)
+                       VALUES (:key, :val, NOW())
+                       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()";
+
+            $stmt = $db->prepare($upsert);
+            $stmt->execute([':key' => 'auto_answer_enabled',    ':val' => $enabled ? 'true' : 'false']);
+            $stmt->execute([':key' => 'auto_answer_confidence', ':val' => (string) $confidence]);
+
+            echo json_encode(['success' => true, 'enabled' => $enabled, 'min_confidence' => $confidence]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro ao salvar configurações', 'details' => $e->getMessage()]);
+        }
+    }
 }

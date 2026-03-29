@@ -349,6 +349,12 @@ $router->post('api/notifications/settings', 'App\Controllers\NotificationSetting
 $router->get('dashboard/health', 'App\Controllers\HealthController', 'index');
 $router->get('api/health/check', 'App\Controllers\HealthController', 'check');
 
+// Jobs Monitor
+$router->get('dashboard/jobs', 'App\Controllers\DashboardController', 'jobs');
+
+// Backups
+$router->get('dashboard/backups', 'App\Controllers\DashboardController', 'backups');
+
 // System Logs
 $router->get('dashboard/logs', 'App\Controllers\LogController', 'index');
 $router->get('api/logs/search', 'App\Controllers\LogController', 'search');

@@ -46,7 +46,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             <p>Total de Perguntas</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
         <div class="stat-icon warning">
             <i class="bi bi-clock"></i>
@@ -56,7 +56,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             <p>Aguardando Resposta</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
         <div class="stat-icon success">
             <i class="bi bi-check-circle"></i>
@@ -66,7 +66,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             <p>Respondidas</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
         <div class="stat-icon info">
             <i class="bi bi-stopwatch"></i>
@@ -74,6 +74,35 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
         <div class="stat-info">
             <h3 id="avgResponseTime">-</h3>
             <p>Tempo Médio</p>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-Resposta Settings Banner -->
+<div class="card border-0 shadow-sm mb-4" id="autoAnswerCard">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width:44px;height:44px">
+                    <i class="bi bi-robot text-primary fs-5"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-semibold">Auto-Resposta com IA</h6>
+                    <p class="text-muted mb-0 small">Responde automaticamente perguntas com alta confiança de IA (<span id="autoConfidenceLabel">90</span>%+)</p>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="small text-muted mb-0">Confiança mínima:</label>
+                    <input type="range" class="form-range" id="autoConfidenceRange" min="50" max="99" value="90" style="width:120px" oninput="document.getElementById('autoConfidenceLabel').textContent=this.value">
+                    <span class="badge bg-primary" id="autoConfidenceBadge">90%</span>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="autoAnswerToggle" onchange="saveAutoAnswerSettings()">
+                    <label class="form-check-label fw-semibold" for="autoAnswerToggle">Ativo</label>
+                </div>
+                <span class="badge bg-secondary" id="autoAnswerStatsBadge">Carregando...</span>
+            </div>
         </div>
     </div>
 </div>
@@ -163,7 +192,7 @@ document.getElementById('accountFilter').addEventListener('change', loadQuestion
 async function loadStats() {
     try {
         const { data } = await ApiClient.json('/api/questions/stats');
-        
+
         if (data.success) {
             document.getElementById('totalQuestions').textContent = data.total || 0;
             document.getElementById('pendingQuestions').textContent = data.pending || 0;
@@ -179,12 +208,12 @@ async function loadQuestions() {
     const filter = document.getElementById('questionFilter').value;
     const accountFilter = document.getElementById('accountFilter').value;
     const tbody = document.getElementById('questionsList');
-    
+
     const sort = document.getElementById('sortByUrgency')?.checked ? 'urgency_desc' : '';
 
     try {
         const { data } = await ApiClient.json(`/api/questions?status=${filter}&sort=${sort}&account_id=${accountFilter}`);
-        
+
         if (data.questions && data.questions.length > 0) {
             tbody.innerHTML = data.questions.map(q => {
                 // Sentiment Logic
@@ -192,7 +221,7 @@ async function loadQuestions() {
                 if (q.sentiment === 'negative' || q.sentiment === 'angry') sentimentIcon = '<span title="Cliente Insatisfeito">😡</span>';
                 else if (q.sentiment === 'positive') sentimentIcon = '<span title="Cliente Feliz">😍</span>';
                 else if (q.sentiment === 'neutral') sentimentIcon = '<span title="Neutro">😐</span>';
-                
+
                 // Intent Badge
                 let intentBadge = '';
                 if (q.intent) {
@@ -206,7 +235,7 @@ async function loadQuestions() {
                     const color = intentColors[q.intent] || 'text-bg-secondary';
                     intentBadge = `<span class="badge ${color} ms-1" style="font-size: 0.7em">${q.intent.toUpperCase()}</span>`;
                 }
-                
+
                 // Urgency Highlight
                 const isUrgent = (q.urgency > 70);
                 const rowClass = isUrgent ? 'table-danger' : '';
@@ -270,7 +299,7 @@ function openAnswerModal(questionId, questionText) {
     const btn = document.getElementById('btnDraft');
     btn.innerHTML = '<i class="bi bi-magic me-1"></i> Gerar Resposta com IA';
     btn.disabled = false;
-    
+
     new bootstrap.Modal(document.getElementById('answerModal')).show();
 }
 
@@ -280,15 +309,15 @@ function insertQuickAnswer(text) {
 
 async function generateDraft() {
     if (!currentQuestionId) return;
-    
+
     const btn = document.getElementById('btnDraft');
     const originalText = btn.innerHTML;
     const txtArea = document.getElementById('answerText');
-    
+
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Gerando...';
     txtArea.placeholder = "Aguarde, a IA está escrevendo...";
-    
+
     try {
         const { data } = await ApiClient.json(`/api/questions/${currentQuestionId}/draft`, {
             method: 'POST',
@@ -297,7 +326,7 @@ async function generateDraft() {
                 'X-CSRF-Token': csrfToken
             }
         });
-        
+
         if (data.success && data.draft) {
             txtArea.value = data.draft;
             // Highlight capability
@@ -317,12 +346,12 @@ async function generateDraft() {
 
 async function submitAnswer() {
     const answer = document.getElementById('answerText').value.trim();
-    
+
     if (!answer) {
         alert('Digite uma resposta');
         return;
     }
-    
+
     try {
         const { data } = await ApiClient.json(`/api/questions/${currentQuestionId}/answer`, {
             method: 'POST',
@@ -332,7 +361,7 @@ async function submitAnswer() {
             },
             body: JSON.stringify({ answer })
         });
-        
+
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('answerModal')).hide();
             loadQuestions();
@@ -350,8 +379,8 @@ async function submitAnswer() {
 
 function formatDate(dateString) {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('pt-BR', { 
-        day: '2-digit', 
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+        day: '2-digit',
         month: '2-digit',
         hour: '2-digit',
         minute: '2-digit'
@@ -364,4 +393,45 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+async function loadAutoAnswerSettings() {
+    try {
+        const data = await requestJson('/api/questions/auto-answer/settings');
+        const enabled = data.enabled ?? false;
+        const confidence = data.min_confidence ?? 90;
+        document.getElementById('autoAnswerToggle').checked = enabled;
+        document.getElementById('autoConfidenceRange').value = confidence;
+        document.getElementById('autoConfidenceLabel').textContent = confidence;
+        document.getElementById('autoConfidenceBadge').textContent = confidence + '%';
+        document.getElementById('autoAnswerStatsBadge').textContent =
+            'Hoje: ' + (data.answered_today ?? 0) + ' enviadas';
+        document.getElementById('autoAnswerStatsBadge').className =
+            'badge ' + (enabled ? 'bg-success' : 'bg-secondary');
+    } catch (e) {
+        document.getElementById('autoAnswerStatsBadge').textContent = 'Erro';
+    }
+}
+
+async function saveAutoAnswerSettings() {
+    const enabled = document.getElementById('autoAnswerToggle').checked;
+    const confidence = parseInt(document.getElementById('autoConfidenceRange').value, 10);
+    document.getElementById('autoConfidenceBadge').textContent = confidence + '%';
+    try {
+        await requestJson('/api/questions/auto-answer/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled, min_confidence: confidence })
+        });
+        document.getElementById('autoAnswerStatsBadge').className =
+            'badge ' + (enabled ? 'bg-success' : 'bg-secondary');
+        document.getElementById('autoAnswerStatsBadge').textContent =
+            enabled ? 'Ativo' : 'Inativo';
+    } catch (e) {
+        alert('Erro ao salvar configurações de auto-resposta');
+    }
+}
+
+document.getElementById('autoConfidenceRange').addEventListener('change', saveAutoAnswerSettings);
+
+loadAutoAnswerSettings();
 </script>
