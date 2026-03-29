@@ -696,3 +696,10 @@ $router->get('api/catalog/clone/metrics', CatalogCloneController::class, 'getMet
 $router->get('api/catalog/clone/schedules', CatalogCloneController::class, 'getSchedules');
 $router->post('api/catalog/clone/schedules', CatalogCloneController::class, 'createSchedule');
 $router->delete('api/catalog/clone/schedules/{id}', CatalogCloneController::class, 'cancelSchedule');
+
+// ========================================
+// ⚡ SEO Optimizer (SEOOptimizerService)
+// ========================================
+$router->get('api/seo/optimizer/health', \App\Controllers\SeoOptimizationController::class, 'healthCheck');
+$router->post('api/seo/optimizer/product', \App\Controllers\SeoOptimizationController::class, 'optimizeProduct');
+$router->post('api/seo/optimizer/title', \App\Controllers\SeoOptimizationController::class, 'optimizeTitle');
