@@ -1979,4 +1979,85 @@ class CatalogCloneController extends BaseController
             echo json_encode(['error' => 'Erro ao reprocessar', 'message' => $e->getMessage()]);
         }
     }
+
+    /**
+     * Inicia clonagem de conta (aba "Clonar Conta" do módulo clonar-anuncios).
+     * Aceita source_account_id (id interno DB) ou source_seller_nickname (apelido ML externo).
+     * POST /api/catalog/clone/seller-job
+     */
+    public function startSellerJob(): void
+    {
+        header('Content-Type: application/json');
+
+        $input = $this->request->json();
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => 'JSON inválido']);
+            return;
+        }
+
+        $targetAccountId = isset($input['target_account_id']) ? (int)$input['target_account_id'] : 0;
+        if ($targetAccountId <= 0) {
+            http_response_code(422);
+            echo json_encode(['error' => 'target_account_id é obrigatório e deve ser inteiro positivo']);
+            return;
+        }
+
+        try {
+            $sourceSellerId = null;
+
+            // Resolver source_account_id (id interno DB) → ml_user_id numérico do ML
+            if (!empty($input['source_account_id'])) {
+                $db = \App\Database::getInstance();
+                $stmt = $db->prepare(
+                    "SELECT ml_user_id FROM ml_accounts WHERE id = ? AND status = 'active' LIMIT 1"
+                );
+                $stmt->execute([(int)$input['source_account_id']]);
+                $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+                if ($row && !empty($row['ml_user_id'])) {
+                    $sourceSellerId = preg_replace('/\D/', '', (string)$row['ml_user_id']);
+                }
+
+                // Fallback: tratar o próprio valor como ML seller ID numérico
+                if (!$sourceSellerId) {
+                    $candidate = preg_replace('/\D/', '', (string)$input['source_account_id']);
+                    if (strlen($candidate) >= 5) {
+                        $sourceSellerId = $candidate;
+                    }
+                }
+            }
+
+            // Resolver source_seller_nickname via API do Mercado Livre
+            if (!$sourceSellerId && !empty($input['source_seller_nickname'])) {
+                $resolved = $this->service->searchSeller((string)$input['source_seller_nickname']);
+                $sourceSellerId = preg_replace('/\D/', '', (string)($resolved['seller_id'] ?? ''));
+            }
+
+            if (!$sourceSellerId) {
+                http_response_code(422);
+                echo json_encode(['error' => 'Informe a conta de origem (source_account_id ou source_seller_nickname)']);
+                return;
+            }
+
+            $filters = is_array($input['filters'] ?? null) ? $input['filters'] : [];
+            $userId  = $this->getUserId();
+
+            $result = $this->service->createSellerBatchJob([
+                'target_account_id' => $targetAccountId,
+                'source_seller_id'  => $sourceSellerId,
+                'filters'           => $filters,
+                'user_id'           => $userId,
+            ]);
+
+            http_response_code(202);
+            echo json_encode(array_merge(['status' => 'success'], $result));
+        } catch (\InvalidArgumentException $e) {
+            http_response_code(422);
+            echo json_encode(['error' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro ao iniciar clonagem de conta', 'message' => $e->getMessage()]);
+        }
+    }
 }

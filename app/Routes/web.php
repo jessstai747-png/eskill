@@ -10,6 +10,7 @@ use App\Controllers\AICenterController; // NEW: AI Center Controller
 use App\Controllers\AccountHealthController;
 use App\Controllers\AccountGovernanceController;
 use App\Controllers\AccountXRayController;
+use App\Controllers\CatalogCloneController;
 
 /** @var \App\Router $router */
 
@@ -111,6 +112,7 @@ $router->get('dashboard/catalog/clonar-anuncios', DashboardController::class, 'c
 $router->get('api/catalog/clone/search', CatalogCloneController::class, 'unifiedSearch');
 $router->get('api/catalog/clone/batch-jobs', CatalogCloneController::class, 'listBatchJobs');
 $router->post('api/catalog/clone/jobs/{jobId}/retry-failed', CatalogCloneController::class, 'retryFailed');
+$router->post('api/catalog/clone/seller-job', CatalogCloneController::class, 'startSellerJob');
 $router->get('dashboard/advanced', DashboardController::class, 'advanced');
 $router->get('dashboard/agents', ViewController::class, 'agents');
 $router->get('dashboard/research', ViewController::class, 'research');
@@ -118,6 +120,11 @@ $router->get('research', ViewController::class, 'research');
 $router->get('dashboard/shipping', 'App\Controllers\ShippingController', 'index');
 $router->get('dashboard/picking', 'App\Controllers\ShippingController', 'index'); // Alias for shipping
 $router->post('api/shipping/picking-list', 'App\Controllers\ShippingController', 'generatePickingList');
+$router->get('dashboard/alerts', ViewController::class, 'alerts');
+$router->get('dashboard/monitoring', ViewController::class, 'monitoring');
+$router->get('dashboard/notifications', ViewController::class, 'notifications');
+$router->get('dashboard/search', ViewController::class, 'search');
+$router->get('dashboard/statistics', ViewController::class, 'statistics');
 $router->get('dashboard/whatsapp', 'App\Controllers\WhatsAppController', 'index');
 $router->post('dashboard/whatsapp/save', 'App\Controllers\WhatsAppController', 'save');
 $router->post('api/whatsapp/test', 'App\Controllers\WhatsAppController', 'test');
