@@ -188,6 +188,26 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
             </a>
         </div>
 
+        <!-- Logística -->
+        <div class="nav-section">
+            <div class="nav-section-title">Logística</div>
+
+            <a href="/dashboard/shipping" class="nav-item <?= isActive('/shipping') ? 'active' : '' ?>">
+                <i class="bi bi-truck"></i>
+                <span>Frete</span>
+            </a>
+
+            <a href="/dashboard/logistics/flex" class="nav-item <?= isActive('/logistics/flex') ? 'active' : '' ?>">
+                <i class="bi bi-lightning-charge-fill text-warning"></i>
+                <span>Flex (Same-Day)</span>
+            </a>
+
+            <a href="/dashboard/logistics/full" class="nav-item <?= isActive('/logistics/full') ? 'active' : '' ?>">
+                <i class="bi bi-boxes"></i>
+                <span>Full (Restock)</span>
+            </a>
+        </div>
+
         <!-- Inteligência -->
         <div class="nav-section">
             <div class="nav-section-title">Inteligência</div>

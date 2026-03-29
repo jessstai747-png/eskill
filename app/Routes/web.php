@@ -393,6 +393,11 @@ $router->get('api/catalog/losing', 'App\Controllers\CatalogController', 'listLos
 $router->get('dashboard/logistics/full', 'App\Controllers\FullController', 'index');
 $router->get('api/logistics/full/suggestions', 'App\Controllers\FullController', 'getRestockSuggestions');
 
+// Mercado Envio Flex
+$router->get('dashboard/logistics/flex', 'App\Controllers\FlexController', 'index');
+$router->get('api/logistics/flex/orders', 'App\Controllers\FlexController', 'orders');
+$router->post('api/logistics/flex/assign', 'App\Controllers\FlexController', 'assign');
+
 // Bulk Editor
 $router->get('dashboard/items/bulk', 'App\Controllers\BulkEditorController', 'index');
 $router->post('api/items/bulk-update', 'App\Controllers\BulkEditorController', 'applyUpdates');
