@@ -30,7 +30,7 @@ class AuthService
 
         if (!$result['success']) {
             // propagate reason (avoid user enumeration: generic message)
-            return ['success' => false, 'message' => $result['message'] ?? 'Credenciais inválidas'];
+            return ['success' => false, 'message' => $result['message'] ?? 'E-mail ou senha incorretos'];
         }
 
         if (!empty($result['require_2fa'])) {

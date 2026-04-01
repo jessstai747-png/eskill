@@ -13,22 +13,22 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 <ul class="nav nav-tabs border-bottom mb-4" id="cloneTabNav" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active px-4 py-2" id="tab-anuncio-btn"
-                data-bs-toggle="tab" data-bs-target="#tab-anuncio"
-                type="button" role="tab">
+            data-bs-toggle="tab" data-bs-target="#tab-anuncio"
+            type="button" role="tab">
             <i class="bi bi-search me-1"></i> Clonar Anúncio
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link px-4 py-2" id="tab-conta-btn"
-                data-bs-toggle="tab" data-bs-target="#tab-conta"
-                type="button" role="tab">
+            data-bs-toggle="tab" data-bs-target="#tab-conta"
+            type="button" role="tab">
             <i class="bi bi-shop me-1"></i> Clonar Conta
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link px-4 py-2" id="tab-lista-btn"
-                data-bs-toggle="tab" data-bs-target="#tab-lista"
-                type="button" role="tab">
+            data-bs-toggle="tab" data-bs-target="#tab-lista"
+            type="button" role="tab">
             <i class="bi bi-list-ul me-1"></i> Clonar Por Lista
         </button>
     </li>
@@ -42,10 +42,10 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
     <div class="tab-pane fade show active" id="tab-anuncio" role="tabpanel">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
-                <div class="row g-2 align-items-end">
+                <form id="cloneSearchForm" class="row g-2 align-items-end" role="search" novalidate>
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold small text-muted">Pesquisar Por</label>
-                        <select class="form-select" id="searchType">
+                        <label class="form-label fw-semibold small text-muted" for="searchType">Pesquisar Por</label>
+                        <select class="form-select" id="searchType" name="type">
                             <option value="item_id">Id ou URL do Anúncio</option>
                             <option value="seller_nickname">Apelido vendedor</option>
                             <option value="seller_id">ID do vendedor</option>
@@ -54,23 +54,26 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                         </select>
                     </div>
                     <div class="col-md-7">
-                        <label class="form-label fw-semibold small text-muted">Busca</label>
-                        <input type="text" class="form-control" id="searchQuery"
-                               placeholder="Digite aqui..." autocomplete="off">
+                        <label class="form-label fw-semibold small text-muted" for="searchQuery">Busca</label>
+                        <input type="search" class="form-control" id="searchQuery" name="q"
+                            placeholder="Digite aqui..." autocomplete="off" enterkeyhint="search" spellcheck="false"
+                            aria-describedby="searchQueryHint searchQueryFeedback" required>
+                        <div class="form-text text-muted" id="searchQueryHint">Use ID, URL, apelido, seller ID ou palavra-chave.</div>
+                        <div class="invalid-feedback" id="searchQueryFeedback"></div>
                     </div>
                     <div class="col-md-2">
-                        <button class="btn btn-primary w-100" id="btnSearch">
+                        <button type="submit" class="btn btn-primary w-100" id="btnSearch">
                             <i class="bi bi-search me-1"></i> Buscar
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 
         <!-- Results -->
-        <div id="searchResultsWrapper" class="d-none">
+        <div id="searchResultsWrapper" class="d-none" aria-live="polite">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small" id="searchResultsCount"></span>
+                <span class="text-muted small" id="searchResultsCount" role="status"></span>
                 <div id="searchPagination" class="d-flex gap-1"></div>
             </div>
             <div class="table-responsive">
@@ -91,12 +94,12 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
             </div>
         </div>
 
-        <div id="searchEmpty" class="text-center py-5 text-muted d-none">
+        <div id="searchEmpty" class="text-center py-5 text-muted d-none" role="status" aria-live="polite">
             <i class="bi bi-search fs-1 opacity-25"></i>
             <p class="mt-2">Nenhum resultado encontrado.</p>
         </div>
 
-        <div id="searchLoading" class="text-center py-4 d-none">
+        <div id="searchLoading" class="text-center py-4 d-none" role="status" aria-live="polite">
             <div class="spinner-border text-primary" role="status"></div>
             <p class="mt-2 text-muted small">Buscando anúncios…</p>
         </div>
@@ -122,14 +125,14 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                         </select>
                         <div id="sourceAccountInputWrapper" class="mt-2 d-none">
                             <input type="text" class="form-control" id="sourceAccountInput"
-                                   placeholder="Apelido ou ID">
+                                placeholder="Apelido ou ID">
                         </div>
                         <div id="sourceAccountSelect" class="mt-2">
                             <select class="form-select" id="sourceAccountId">
                                 <option value="">Selecione uma conta…</option>
                                 <?php foreach ($accounts as $acc): ?>
                                     <option value="<?= htmlspecialchars((string)$acc['id'], ENT_QUOTES) ?>"
-                                            data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
+                                        data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
                                         <?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -169,7 +172,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                             <option value="">Selecione uma conta…</option>
                             <?php foreach ($accounts as $acc): ?>
                                 <option value="<?= htmlspecialchars((string)$acc['id'], ENT_QUOTES) ?>"
-                                        data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
+                                    data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
                                     <?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -181,7 +184,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
 
         <div class="text-center mb-5">
             <button class="btn btn-lg px-5 py-2" id="btnStartCloneAccount"
-                    style="background:#6f42c1;color:#fff;">
+                style="background:#6f42c1;color:#fff;">
                 <i class="bi bi-play-fill me-1"></i> Iniciar Procedimento
             </button>
         </div>
@@ -233,7 +236,7 @@ include __DIR__ . '/../layouts/modern/partials/page-header.php';
                     <div class="col-md-8">
                         <label class="form-label fw-semibold">IDs dos Anúncios</label>
                         <textarea class="form-control font-monospace" id="listItemIds" rows="8"
-                                  placeholder="Cole os IDs aqui, um por linha ou separados por vírgula.
+                            placeholder="Cole os IDs aqui, um por linha ou separados por vírgula.
 Ex:
 MLB123456789
 MLB987654321
@@ -248,7 +251,7 @@ MLB111222333"></textarea>
                             <option value="">Selecione…</option>
                             <?php foreach ($accounts as $acc): ?>
                                 <option value="<?= htmlspecialchars((string)$acc['id'], ENT_QUOTES) ?>"
-                                        data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
+                                    data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
                                     <?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -278,15 +281,16 @@ MLB111222333"></textarea>
                     <option value="">Selecione uma conta…</option>
                     <?php foreach ($accounts as $acc): ?>
                         <option value="<?= htmlspecialchars((string)$acc['id'], ENT_QUOTES) ?>"
-                                data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
+                            data-nickname="<?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>">
                             <?= htmlspecialchars($acc['nickname'] ?? $acc['ml_user_id'], ENT_QUOTES) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <div class="alert alert-secondary small d-none mt-3 mb-0" id="cloneModalValidation"></div>
             </div>
             <div class="modal-footer border-top">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary btn-sm" id="btnConfirmClone">
+                <button type="button" class="btn btn-primary btn-sm" id="btnConfirmClone" disabled>
                     <i class="bi bi-check2 me-1"></i> Confirmar Clone
                 </button>
             </div>
@@ -304,122 +308,363 @@ MLB111222333"></textarea>
     </div>
 </div>
 
-<script>
-(function () {
-    'use strict';
+<script nonce="<?= CSP_NONCE ?>">
+    (function() {
+        'use strict';
 
-    // -----------------------------------------------------------------------
-    // State
-    // -----------------------------------------------------------------------
-    let searchOffset   = 0;
-    const searchLimit  = 20;
-    let searchTotal    = 0;
-    let currentType    = 'keyword';
-    let currentQuery   = '';
-    let pendingItemId  = null;
-
-    // -----------------------------------------------------------------------
-    // Utilities
-    // -----------------------------------------------------------------------
-    function toast(msg, type = 'success') {
-        const el  = document.getElementById('cloneToast');
-        const txt = document.getElementById('cloneToastMsg');
-        el.className = 'toast align-items-center border-0 text-bg-' + type;
-        txt.textContent = msg;
-        bootstrap.Toast.getOrCreateInstance(el, { delay: 4000 }).show();
-    }
-
-    function formatBRL(price) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price || 0);
-    }
-
-    function listingTypeBadge(listingType) {
-        if (!listingType) return '';
-        if (listingType === 'gold_special' || listingType === 'gold_pro') {
-            return '<span class="badge bg-warning text-dark" title="Gold">◆</span>';
-        }
-        if (listingType === 'catalog') {
-            return '<span class="badge bg-info text-white" title="Catálogo">◈</span>';
-        }
-        return '<span class="badge bg-secondary" title="' + listingType + '">●</span>';
-    }
-
-    function statusBadge(status) {
-        const map = {
-            'Finalizada com pendências': 'warning',
-            'Finalizada':  'success',
-            'Processando': 'primary',
-            'Na fila':     'info',
-            'Aguardando':  'secondary',
-            'Falhou':      'danger',
-            'Cancelada':   'dark',
+        // -----------------------------------------------------------------------
+        // State
+        // -----------------------------------------------------------------------
+        let searchOffset = 0;
+        const searchLimit = 20;
+        let searchTotal = 0;
+        let currentType = 'keyword';
+        let currentQuery = '';
+        let pendingItemId = null;
+        let activeSearchController = null;
+        let activeSearchRequestId = 0;
+        let clonePrecheckState = {
+            valid: false,
+            targetAccountId: 0,
+            pending: false
         };
-        const variant = map[status] || 'secondary';
-        return `<span class="badge bg-${variant}">${status}</span>`;
-    }
 
-    function escHtml(s) {
-        const d = document.createElement('div');
-        d.appendChild(document.createTextNode(s || ''));
-        return d.innerHTML;
-    }
-
-    // -----------------------------------------------------------------------
-    // TAB 1 — Search
-    // -----------------------------------------------------------------------
-    function fetchResults(type, query, offset) {
-        currentType  = type;
-        currentQuery = query;
-        searchOffset = offset;
-
-        document.getElementById('searchLoading').classList.remove('d-none');
-        document.getElementById('searchResultsWrapper').classList.add('d-none');
-        document.getElementById('searchEmpty').classList.add('d-none');
-
-        const params = new URLSearchParams({ type, q: query, offset, limit: searchLimit });
-        fetch('/api/catalog/clone/search?' + params)
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('searchLoading').classList.add('d-none');
-                if (data.error) { toast(data.message || data.error, 'danger'); return; }
-                searchTotal = data.total || 0;
-                renderResultsTable(data.items || []);
-                renderPagination();
-            })
-            .catch(() => {
-                document.getElementById('searchLoading').classList.add('d-none');
-                toast('Erro ao conectar ao servidor.', 'danger');
-            });
-    }
-
-    function renderResultsTable(items) {
-        const tbody = document.getElementById('searchResultsBody');
-        const wrapper = document.getElementById('searchResultsWrapper');
-        const empty   = document.getElementById('searchEmpty');
-        const count   = document.getElementById('searchResultsCount');
-
-        if (!items.length) {
-            empty.classList.remove('d-none');
-            wrapper.classList.add('d-none');
-            return;
+        // -----------------------------------------------------------------------
+        // Utilities
+        // -----------------------------------------------------------------------
+        function toast(msg, type = 'success') {
+            const el = document.getElementById('cloneToast');
+            const txt = document.getElementById('cloneToastMsg');
+            el.className = 'toast align-items-center border-0 text-bg-' + type;
+            txt.textContent = msg;
+            bootstrap.Toast.getOrCreateInstance(el, {
+                delay: 4000
+            }).show();
         }
 
-        count.textContent = `${searchTotal.toLocaleString('pt-BR')} resultado(s) — exibindo ${searchOffset + 1}–${Math.min(searchOffset + items.length, searchTotal)}`;
+        function formatBRL(price) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(price || 0);
+        }
 
-        tbody.innerHTML = items.map(item => {
-            const thumb = item.thumbnail
-                ? `<img src="${escHtml(item.thumbnail)}" width="48" height="48" class="rounded object-fit-cover" loading="lazy" alt="">`
-                : `<div class="bg-light rounded d-flex align-items-center justify-content-center" style="width:48px;height:48px"><i class="bi bi-image text-muted"></i></div>`;
+        function listingTypeBadge(listingType) {
+            if (!listingType) return '';
+            if (listingType === 'gold_special' || listingType === 'gold_pro') {
+                return '<span class="badge bg-warning text-dark" title="Gold">◆</span>';
+            }
+            if (listingType === 'catalog') {
+                return '<span class="badge bg-info text-white" title="Catálogo">◈</span>';
+            }
+            return '<span class="badge bg-secondary" title="' + listingType + '">●</span>';
+        }
 
-            const link   = item.permalink
-                ? `<a href="${escHtml(item.permalink)}" target="_blank" class="font-monospace small text-decoration-none">${escHtml(item.id)}</a>`
-                : `<span class="font-monospace small">${escHtml(item.id)}</span>`;
+        function statusBadge(status) {
+            const map = {
+                'Finalizada com pendências': 'warning',
+                'Finalizada': 'success',
+                'Processando': 'primary',
+                'Na fila': 'info',
+                'Aguardando': 'secondary',
+                'Falhou': 'danger',
+                'Cancelada': 'dark',
+            };
+            const variant = map[status] || 'secondary';
+            return `<span class="badge bg-${variant}">${status}</span>`;
+        }
 
-            const badge  = item.is_catalog
-                ? '<span class="badge bg-info text-white">Catálogo</span>'
-                : listingTypeBadge(item.listing_type_id || '');
+        function escHtml(s) {
+            const d = document.createElement('div');
+            d.appendChild(document.createTextNode(s || ''));
+            return d.innerHTML;
+        }
 
-            return `<tr>
+        function escAttr(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[char]);
+        }
+
+        const cloneSearchForm = document.getElementById('cloneSearchForm');
+        const searchTypeField = document.getElementById('searchType');
+        const searchQueryField = document.getElementById('searchQuery');
+        const searchQueryFeedback = document.getElementById('searchQueryFeedback');
+        const btnSearch = document.getElementById('btnSearch');
+        const searchLoading = document.getElementById('searchLoading');
+        const searchResultsWrapper = document.getElementById('searchResultsWrapper');
+        const searchEmpty = document.getElementById('searchEmpty');
+        const searchResultsBody = document.getElementById('searchResultsBody');
+        const searchResultsCount = document.getElementById('searchResultsCount');
+        const searchPagination = document.getElementById('searchPagination');
+        const cloneModalTargetAccount = document.getElementById('cloneModalTargetAccount');
+        const cloneModalValidation = document.getElementById('cloneModalValidation');
+        const btnConfirmClone = document.getElementById('btnConfirmClone');
+
+        function setSearchBusy(isBusy) {
+            btnSearch.disabled = isBusy;
+            btnSearch.classList.toggle('loading', isBusy);
+            btnSearch.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+            cloneSearchForm.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+        }
+
+        function resetSearchState() {
+            searchResultsWrapper.classList.add('d-none');
+            searchEmpty.classList.add('d-none');
+            searchResultsBody.innerHTML = '';
+            searchResultsCount.textContent = '';
+            searchPagination.innerHTML = '';
+        }
+
+        function setSearchFieldError(message = '') {
+            const hasError = message !== '';
+            searchQueryField.classList.toggle('is-invalid', hasError);
+            searchQueryField.setAttribute('aria-invalid', hasError ? 'true' : 'false');
+            searchQueryFeedback.textContent = message;
+        }
+
+        function syncSearchFieldMode() {
+            const type = searchTypeField.value;
+            const placeholderByType = {
+                item_id: 'Digite o ID MLB ou cole a URL do anúncio',
+                seller_nickname: 'Digite o apelido do vendedor',
+                seller_id: 'Digite apenas números do seller ID',
+                keyword: 'Digite uma palavra-chave',
+                catalog_id: 'Digite o ID do catálogo ou número da peça'
+            };
+
+            searchQueryField.placeholder = placeholderByType[type] || 'Digite aqui...';
+            searchQueryField.inputMode = type === 'seller_id' ? 'numeric' : 'search';
+            searchQueryField.pattern = type === 'seller_id' ? '\\d*' : '';
+        }
+
+        function validateSearchQuery(type, query) {
+            if (query === '') {
+                return 'Digite um termo para buscar.';
+            }
+
+            if (type === 'seller_id' && !/^\d+$/.test(query)) {
+                return 'Para ID do vendedor, digite apenas números.';
+            }
+
+            return '';
+        }
+
+        function parseJsonResponse(response, fallbackMessage = 'Erro ao processar a resposta do servidor.') {
+            const contentType = response.headers.get('content-type') || '';
+
+            if (!contentType.includes('application/json')) {
+                return response.text().then(() => {
+                    throw new Error(fallbackMessage);
+                });
+            }
+
+            return response.json()
+                .catch(() => {
+                    throw new Error(fallbackMessage);
+                })
+                .then((payload) => {
+                    if (!response.ok) {
+                        throw payload;
+                    }
+
+                    return payload;
+                });
+        }
+
+        function renderClonePrecheck(state, messages = []) {
+            const variants = {
+                idle: 'alert-secondary',
+                loading: 'alert-secondary',
+                success: 'alert-success',
+                warning: 'alert-warning',
+                danger: 'alert-danger',
+            };
+
+            cloneModalValidation.className = `alert small mt-3 mb-0 ${variants[state] || variants.idle}`;
+            cloneModalValidation.classList.remove('d-none');
+            cloneModalValidation.innerHTML = messages.join('<br>');
+        }
+
+        function updateCloneConfirmState() {
+            btnConfirmClone.disabled = clonePrecheckState.pending || !clonePrecheckState.valid;
+        }
+
+        function resetClonePrecheck() {
+            clonePrecheckState = {
+                valid: false,
+                targetAccountId: 0,
+                pending: false
+            };
+            renderClonePrecheck('idle', ['Selecione uma conta de destino para validar token e permissões antes de clonar.']);
+            updateCloneConfirmState();
+        }
+
+        function runClonePrecheck() {
+            const targetAccountId = parseInt(cloneModalTargetAccount.value, 10);
+
+            if (!pendingItemId || !targetAccountId) {
+                resetClonePrecheck();
+                return Promise.resolve(null);
+            }
+
+            clonePrecheckState = {
+                valid: false,
+                targetAccountId,
+                pending: true
+            };
+            updateCloneConfirmState();
+            renderClonePrecheck('loading', ['Validando conta de destino e acessibilidade do anúncio...']);
+
+            return fetch('/api/catalog/clone/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        target_account_id: targetAccountId,
+                        item_ids: [pendingItemId]
+                    }),
+                })
+                .then((response) => parseJsonResponse(response, 'Não foi possível interpretar a validação da clonagem.'))
+                .then((data) => {
+                    const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+                    const errors = Array.isArray(data.errors) ? data.errors : [];
+                    const accountLabel = data.account?.nickname || data.account?.ml_user_id || `Conta ${targetAccountId}`;
+
+                    clonePrecheckState = {
+                        valid: data.valid === true,
+                        targetAccountId,
+                        pending: false
+                    };
+
+                    if (clonePrecheckState.valid) {
+                        const messages = [`Conta validada: ${escHtml(accountLabel)}.`];
+                        if (warnings.length) {
+                            messages.push(...warnings.map((warning) => escHtml(warning)));
+                            renderClonePrecheck('warning', messages);
+                        } else {
+                            renderClonePrecheck('success', messages);
+                        }
+                    } else {
+                        renderClonePrecheck('danger', errors.length ? errors.map((error) => escHtml(error)) : ['Não foi possível validar a clonagem.']);
+                    }
+
+                    updateCloneConfirmState();
+                    return data;
+                })
+                .catch((error) => {
+                    clonePrecheckState = {
+                        valid: false,
+                        targetAccountId,
+                        pending: false
+                    };
+                    updateCloneConfirmState();
+                    renderClonePrecheck('danger', [escHtml(error?.message || error?.error || 'Falha ao validar a conta de destino.')]);
+                    console.error('Erro ao validar pré-condições da clonagem.', error);
+                    return null;
+                });
+        }
+
+        // -----------------------------------------------------------------------
+        // TAB 1 — Search
+        // -----------------------------------------------------------------------
+        function fetchResults(type, query, offset) {
+            currentType = type;
+            currentQuery = query;
+            searchOffset = offset;
+            activeSearchRequestId += 1;
+            const requestId = activeSearchRequestId;
+
+            if (activeSearchController) {
+                activeSearchController.abort();
+            }
+
+            activeSearchController = new AbortController();
+            setSearchBusy(true);
+            resetSearchState();
+            searchLoading.classList.remove('d-none');
+
+            const params = new URLSearchParams({
+                type,
+                q: query,
+                offset,
+                limit: searchLimit
+            });
+            return fetch('/api/catalog/clone/search?' + params, {
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    signal: activeSearchController.signal
+                })
+                .then((response) => parseJsonResponse(response, 'Não foi possível interpretar a resposta da busca.'))
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.message || data.error);
+                    }
+
+                    if (requestId !== activeSearchRequestId) {
+                        return;
+                    }
+
+                    searchTotal = data.total || 0;
+                    renderResultsTable(data.items || []);
+                    renderPagination();
+                })
+                .catch((error) => {
+                    if (error?.name === 'AbortError') {
+                        return;
+                    }
+
+                    if (requestId !== activeSearchRequestId) {
+                        return;
+                    }
+
+                    resetSearchState();
+                    const errorMessage = error?.message || error?.error || 'Erro ao conectar ao servidor.';
+                    toast(errorMessage, 'danger');
+                    console.error('Erro ao buscar anúncios para clonagem.', error);
+                })
+                .finally(() => {
+                    if (requestId !== activeSearchRequestId) {
+                        return;
+                    }
+
+                    activeSearchController = null;
+                    searchLoading.classList.add('d-none');
+                    setSearchBusy(false);
+                });
+        }
+
+        function renderResultsTable(items) {
+            if (!items.length) {
+                searchTotal = 0;
+                searchResultsCount.textContent = '0 resultado(s)';
+                searchEmpty.classList.remove('d-none');
+                searchResultsWrapper.classList.add('d-none');
+                return;
+            }
+
+            searchResultsCount.textContent = `${searchTotal.toLocaleString('pt-BR')} resultado(s) — exibindo ${searchOffset + 1}–${Math.min(searchOffset + items.length, searchTotal)}`;
+
+            searchResultsBody.innerHTML = items.map(item => {
+                const thumb = item.thumbnail ?
+                    `<img src="${escAttr(item.thumbnail)}" width="48" height="48" class="rounded object-fit-cover" loading="lazy" alt="${escAttr(item.title || 'Anúncio do Mercado Livre')}">` :
+                    `<div class="bg-light rounded d-flex align-items-center justify-content-center" style="width:48px;height:48px"><i class="bi bi-image text-muted"></i></div>`;
+
+                const link = item.permalink ?
+                    `<a href="${escAttr(item.permalink)}" target="_blank" rel="noopener noreferrer" class="font-monospace small text-decoration-none">${escHtml(item.id)}</a>` :
+                    `<span class="font-monospace small">${escHtml(item.id)}</span>`;
+
+                const badge = item.is_catalog ?
+                    '<span class="badge bg-info text-white">Catálogo</span>' :
+                    listingTypeBadge(item.listing_type_id || '');
+
+                return `<tr>
                 <td>${thumb}</td>
                 <td>${link}</td>
                 <td class="small text-muted">${escHtml(item.seller_nickname || item.seller_id || '')}</td>
@@ -427,123 +672,188 @@ MLB111222333"></textarea>
                 <td class="text-center">${badge}</td>
                 <td class="fw-semibold small">${formatBRL(item.price)}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="openCloneModal('${escHtml(item.id)}','${escHtml(item.title)}')">
+                    <button type="button" class="btn btn-sm btn-outline-primary clone-result-btn" data-item-id="${escAttr(item.id)}" data-item-title="${escAttr(item.title)}">
                         <i class="bi bi-copy"></i> Clonar
                     </button>
                 </td>
             </tr>`;
-        }).join('');
+            }).join('');
 
-        wrapper.classList.remove('d-none');
-    }
-
-    function renderPagination() {
-        const container = document.getElementById('searchPagination');
-        const pages     = Math.ceil(searchTotal / searchLimit);
-        const current   = Math.floor(searchOffset / searchLimit);
-
-        if (pages <= 1) { container.innerHTML = ''; return; }
-
-        let html = '';
-        const prev = current > 0;
-        const next = current < pages - 1;
-
-        html += `<button class="btn btn-sm btn-outline-secondary" ${prev ? '' : 'disabled'} onclick="window.cloneGoPage(${current - 1})">‹</button>`;
-
-        const start = Math.max(0, current - 2);
-        const end   = Math.min(pages - 1, current + 2);
-        for (let p = start; p <= end; p++) {
-            html += `<button class="btn btn-sm ${p === current ? 'btn-primary' : 'btn-outline-secondary'}" onclick="window.cloneGoPage(${p})">${p + 1}</button>`;
+            searchResultsWrapper.classList.remove('d-none');
         }
-        html += `<button class="btn btn-sm btn-outline-secondary" ${next ? '' : 'disabled'} onclick="window.cloneGoPage(${current + 1})">›</button>`;
 
-        container.innerHTML = html;
-    }
+        function renderPagination() {
+            const pages = Math.ceil(searchTotal / searchLimit);
+            const current = Math.floor(searchOffset / searchLimit);
 
-    window.cloneGoPage = function (page) {
-        fetchResults(currentType, currentQuery, page * searchLimit);
-    };
-
-    document.getElementById('btnSearch').addEventListener('click', () => {
-        const type  = document.getElementById('searchType').value;
-        const query = document.getElementById('searchQuery').value.trim();
-        if (!query) { toast('Digite um termo para buscar.', 'warning'); return; }
-        fetchResults(type, query, 0);
-    });
-
-    document.getElementById('searchQuery').addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('btnSearch').click();
-    });
-
-    // -----------------------------------------------------------------------
-    // Clone modal
-    // -----------------------------------------------------------------------
-    window.openCloneModal = function (itemId, title) {
-        pendingItemId = itemId;
-        document.getElementById('cloneModalItemInfo').textContent = `ID: ${itemId} — ${title}`;
-        document.getElementById('cloneModalTargetAccount').value = '';
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('cloneModal')).show();
-    };
-
-    document.getElementById('btnConfirmClone').addEventListener('click', () => {
-        const targetId = document.getElementById('cloneModalTargetAccount').value;
-        if (!targetId) { toast('Selecione uma conta de destino.', 'warning'); return; }
-        if (!pendingItemId) return;
-
-        const btn = document.getElementById('btnConfirmClone');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
-
-        fetch('/api/catalog/clone/item', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: pendingItemId, target_account_id: parseInt(targetId) }),
-        })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Confirmar Clone';
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('cloneModal')).hide();
-            if (data.status === 'success' || data.success) {
-                toast('Anúncio enviado para clonagem com sucesso!', 'success');
-            } else {
-                toast(data.message || data.error || 'Erro ao clonar.', 'danger');
+            if (pages <= 1) {
+                searchPagination.innerHTML = '';
+                return;
             }
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Confirmar Clone';
-            toast('Erro de conexão.', 'danger');
-        });
-    });
 
-    // -----------------------------------------------------------------------
-    // TAB 2 — Clonar Conta
-    // -----------------------------------------------------------------------
-    function loadHistory() {
-        fetch('/api/catalog/clone/batch-jobs?limit=50')
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) { renderHistoryTable([]); return; }
-                renderHistoryTable(data.jobs || []);
-            })
-            .catch(() => renderHistoryTable([]));
-    }
+            let html = '';
+            const prev = current > 0;
+            const next = current < pages - 1;
 
-    function renderHistoryTable(jobs) {
-        const tbody = document.getElementById('historyBody');
-        if (!jobs.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Nenhuma clonagem de conta encontrada.</td></tr>';
-            return;
+            html += `<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Página anterior" ${prev ? '' : 'disabled'} onclick="window.cloneGoPage(${current - 1})">‹</button>`;
+
+            const start = Math.max(0, current - 2);
+            const end = Math.min(pages - 1, current + 2);
+            for (let p = start; p <= end; p++) {
+                html += `<button type="button" class="btn btn-sm ${p === current ? 'btn-primary' : 'btn-outline-secondary'}" aria-label="Ir para a página ${p + 1}" onclick="window.cloneGoPage(${p})">${p + 1}</button>`;
+            }
+            html += `<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Próxima página" ${next ? '' : 'disabled'} onclick="window.cloneGoPage(${current + 1})">›</button>`;
+
+            searchPagination.innerHTML = html;
         }
 
-        tbody.innerHTML = jobs.map(job => {
-            const created   = job.created_at ? new Date(job.created_at).toLocaleString('pt-BR') : '-';
-            const retryBtn  = job.has_failures
-                ? `<button class="btn btn-sm btn-outline-warning ms-1" onclick="retryJob('${escHtml(job.job_id)}')" title="Reprocessar pendentes"><i class="bi bi-arrow-repeat"></i></button>`
-                : '';
+        window.cloneGoPage = function(page) {
+            if (page < 0) {
+                return;
+            }
 
-            return `<tr>
+            fetchResults(currentType, currentQuery, page * searchLimit);
+        };
+
+        cloneSearchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const type = searchTypeField.value;
+            const query = searchQueryField.value.trim();
+            const validationMessage = validateSearchQuery(type, query);
+
+            if (validationMessage !== '') {
+                setSearchFieldError(validationMessage);
+                toast(validationMessage, 'warning');
+                searchQueryField.focus();
+                return;
+            }
+
+            setSearchFieldError();
+            fetchResults(type, query, 0);
+        });
+
+        searchTypeField.addEventListener('change', () => {
+            setSearchFieldError();
+            syncSearchFieldMode();
+        });
+
+        searchQueryField.addEventListener('input', () => {
+            if (searchQueryField.classList.contains('is-invalid')) {
+                setSearchFieldError();
+            }
+        });
+
+        searchResultsBody.addEventListener('click', (event) => {
+            const button = event.target.closest('.clone-result-btn');
+            if (!button) {
+                return;
+            }
+
+            window.openCloneModal(button.dataset.itemId || '', button.dataset.itemTitle || '');
+        });
+
+        syncSearchFieldMode();
+
+        // -----------------------------------------------------------------------
+        // Clone modal
+        // -----------------------------------------------------------------------
+        window.openCloneModal = function(itemId, title) {
+            pendingItemId = itemId;
+            document.getElementById('cloneModalItemInfo').textContent = `ID: ${itemId} — ${title}`;
+            cloneModalTargetAccount.value = '';
+            resetClonePrecheck();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('cloneModal')).show();
+        };
+
+        cloneModalTargetAccount.addEventListener('change', () => {
+            runClonePrecheck();
+        });
+
+        btnConfirmClone.addEventListener('click', () => {
+            const targetId = cloneModalTargetAccount.value;
+            if (!targetId) {
+                toast('Selecione uma conta de destino.', 'warning');
+                return;
+            }
+            if (!pendingItemId) return;
+            if (!clonePrecheckState.valid || clonePrecheckState.targetAccountId !== parseInt(targetId, 10)) {
+                toast('Valide a conta de destino antes de confirmar a clonagem.', 'warning');
+                runClonePrecheck();
+                return;
+            }
+
+            const btn = btnConfirmClone;
+            btn.disabled = true;
+            btn.classList.add('loading');
+            renderClonePrecheck('loading', ['Iniciando clonagem do anúncio...']);
+
+            fetch('/api/catalog/clone/item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        source_item_id: pendingItemId,
+                        target_account_id: parseInt(targetId)
+                    }),
+                })
+                .then((response) => parseJsonResponse(response, 'Não foi possível interpretar a resposta da clonagem.'))
+                .then(data => {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                    if (data.status === 'success' || data.success) {
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('cloneModal')).hide();
+                        resetClonePrecheck();
+                        toast('Anúncio enviado para clonagem com sucesso!', 'success');
+                        if (Array.isArray(data.warnings) && data.warnings.length) {
+                            toast(data.warnings[0], 'warning');
+                        }
+                    } else {
+                        const details = Array.isArray(data.details?.errors) ? data.details.errors.join(' ') : '';
+                        renderClonePrecheck('danger', [escHtml(details || data.message || data.error || 'Erro ao clonar.')]);
+                        toast(details || data.message || data.error || 'Erro ao clonar.', 'danger');
+                    }
+                })
+                .catch((error) => {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                    const details = Array.isArray(error?.details?.errors) ? error.details.errors.join(' ') : '';
+                    renderClonePrecheck('danger', [escHtml(details || error?.message || error?.error || 'Erro de conexão.')]);
+                    toast(details || error?.message || error?.error || 'Erro de conexão.', 'danger');
+                    console.error('Erro ao iniciar clonagem de anúncio.', error);
+                });
+        });
+
+        // -----------------------------------------------------------------------
+        // TAB 2 — Clonar Conta
+        // -----------------------------------------------------------------------
+        function loadHistory() {
+            fetch('/api/catalog/clone/batch-jobs?limit=50')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        renderHistoryTable([]);
+                        return;
+                    }
+                    renderHistoryTable(data.jobs || []);
+                })
+                .catch(() => renderHistoryTable([]));
+        }
+
+        function renderHistoryTable(jobs) {
+            const tbody = document.getElementById('historyBody');
+            if (!jobs.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Nenhuma clonagem de conta encontrada.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = jobs.map(job => {
+                const created = job.created_at ? new Date(job.created_at).toLocaleString('pt-BR') : '-';
+                const retryBtn = job.has_failures ?
+                    `<button class="btn btn-sm btn-outline-warning ms-1" onclick="retryJob('${escHtml(job.job_id)}')" title="Reprocessar pendentes"><i class="bi bi-arrow-repeat"></i></button>` :
+                    '';
+
+                return `<tr>
                 <td class="small text-muted">${created}</td>
                 <td class="small">${escHtml(job.source_account)}</td>
                 <td class="small">${escHtml(job.target_account)}</td>
@@ -556,160 +866,195 @@ MLB111222333"></textarea>
                     ${retryBtn}
                 </td>
             </tr>`;
-        }).join('');
-    }
-
-    window.retryJob = function (jobId) {
-        if (!confirm('Reprocessar todos os itens com falha deste job?')) return;
-
-        fetch('/api/catalog/clone/jobs/' + encodeURIComponent(jobId) + '/retry-failed', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        })
-        .then(r => r.json())
-        .then(data => {
-            toast(data.message || 'Reprocessamento iniciado.', data.status === 'success' ? 'success' : 'warning');
-            loadHistory();
-        })
-        .catch(() => toast('Erro ao reprocessar.', 'danger'));
-    };
-
-    document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
-
-    // Source account type toggle
-    document.getElementById('sourceAccountType').addEventListener('change', function () {
-        const wrapper = document.getElementById('sourceAccountInputWrapper');
-        const select  = document.getElementById('sourceAccountSelect');
-        if (this.value === 'own') {
-            wrapper.classList.add('d-none');
-            select.classList.remove('d-none');
-        } else {
-            wrapper.classList.remove('d-none');
-            select.classList.add('d-none');
-            const ph = this.value === 'nickname' ? 'Apelido do vendedor' : 'ID numérico do vendedor';
-            document.getElementById('sourceAccountInput').placeholder = ph;
-        }
-    });
-
-    document.getElementById('btnStartCloneAccount').addEventListener('click', () => {
-        const sourceType   = document.getElementById('sourceAccountType').value;
-        const targetId     = document.getElementById('targetAccountId').value;
-        const itemStatus   = document.getElementById('sourceItemStatus').value;
-
-        let sourceId   = null;
-        let sourceNick = null;
-
-        if (sourceType === 'own') {
-            sourceId = document.getElementById('sourceAccountId').value;
-            if (!sourceId) { toast('Selecione a conta de origem.', 'warning'); return; }
-        } else {
-            const val = document.getElementById('sourceAccountInput').value.trim();
-            if (!val) { toast('Informe ' + (sourceType === 'nickname' ? 'o apelido' : 'o ID') + ' da conta de origem.', 'warning'); return; }
-            if (sourceType === 'nickname') { sourceNick = val; }
-            else { sourceId = val; }
+            }).join('');
         }
 
-        if (!targetId) { toast('Selecione a conta de destino.', 'warning'); return; }
+        window.retryJob = function(jobId) {
+            if (!confirm('Reprocessar todos os itens com falha deste job?')) return;
 
-        const btn = document.getElementById('btnStartCloneAccount');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Iniciando…';
-
-        const payload = {
-            target_account_id: parseInt(targetId),
-            filters: { status: itemStatus || null },
+            fetch('/api/catalog/clone/jobs/' + encodeURIComponent(jobId) + '/retry-failed', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                })
+                .then(r => r.json())
+                .then(data => {
+                    toast(data.message || 'Reprocessamento iniciado.', data.status === 'success' ? 'success' : 'warning');
+                    loadHistory();
+                })
+                .catch(() => toast('Erro ao reprocessar.', 'danger'));
         };
-        if (sourceId)   payload.source_account_id  = parseInt(sourceId);
-        if (sourceNick) payload.source_seller_nickname = sourceNick;
 
-        fetch('/api/catalog/clone/seller-job', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Iniciar Procedimento';
-            if (data.status === 'success' || data.job_id) {
-                toast('Clonagem iniciada! Acompanhe o histórico abaixo.', 'success');
-                loadHistory();
+        document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
+
+        // Source account type toggle
+        document.getElementById('sourceAccountType').addEventListener('change', function() {
+            const wrapper = document.getElementById('sourceAccountInputWrapper');
+            const select = document.getElementById('sourceAccountSelect');
+            if (this.value === 'own') {
+                wrapper.classList.add('d-none');
+                select.classList.remove('d-none');
             } else {
-                toast(data.message || data.error || 'Erro ao iniciar clonagem.', 'danger');
+                wrapper.classList.remove('d-none');
+                select.classList.add('d-none');
+                const ph = this.value === 'nickname' ? 'Apelido do vendedor' : 'ID numérico do vendedor';
+                document.getElementById('sourceAccountInput').placeholder = ph;
             }
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Iniciar Procedimento';
-            toast('Erro de conexão.', 'danger');
         });
-    });
 
-    // Load history on tab switch
-    document.getElementById('tab-conta-btn').addEventListener('shown.bs.tab', loadHistory);
+        document.getElementById('btnStartCloneAccount').addEventListener('click', () => {
+            const sourceType = document.getElementById('sourceAccountType').value;
+            const targetId = document.getElementById('targetAccountId').value;
+            const itemStatus = document.getElementById('sourceItemStatus').value;
 
-    // -----------------------------------------------------------------------
-    // TAB 3 — Clonar Por Lista
-    // -----------------------------------------------------------------------
-    document.getElementById('btnCloneList').addEventListener('click', () => {
-        const raw      = document.getElementById('listItemIds').value.trim();
-        const targetId = document.getElementById('listTargetAccount').value;
+            let sourceId = null;
+            let sourceNick = null;
 
-        if (!raw) { toast('Cole ao menos um ID de anúncio.', 'warning'); return; }
-        if (!targetId) { toast('Selecione uma conta de destino.', 'warning'); return; }
-
-        // Parse IDs: accept comma, newline, or MLB\d+ pattern
-        const ids = [...new Set(
-            raw.split(/[\s,\n]+/)
-               .map(s => {
-                   const m = s.match(/MLB-?\d+/i);
-                   return m ? m[0].replace('-', '').toUpperCase() : s.trim().toUpperCase();
-               })
-               .filter(s => /^MLB\d+$/.test(s))
-        )];
-
-        if (!ids.length) { toast('Nenhum ID válido (formato MLB...) encontrado.', 'warning'); return; }
-
-        const btn = document.getElementById('btnCloneList');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando…';
-
-        fetch('/api/catalog/clone/batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_ids: ids, target_account_id: parseInt(targetId) }),
-        })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-copy me-1"></i> Clonar Lista';
-            if (data.status === 'success' || data.job_id) {
-                toast(`${ids.length} anúncio(s) enviados para clonagem. Job: ${data.job_id || ''}`, 'success');
-                document.getElementById('listItemIds').value = '';
+            if (sourceType === 'own') {
+                sourceId = document.getElementById('sourceAccountId').value;
+                if (!sourceId) {
+                    toast('Selecione a conta de origem.', 'warning');
+                    return;
+                }
             } else {
-                toast(data.message || data.error || 'Erro ao iniciar clonagem.', 'danger');
+                const val = document.getElementById('sourceAccountInput').value.trim();
+                if (!val) {
+                    toast('Informe ' + (sourceType === 'nickname' ? 'o apelido' : 'o ID') + ' da conta de origem.', 'warning');
+                    return;
+                }
+                if (sourceType === 'nickname') {
+                    sourceNick = val;
+                } else {
+                    sourceId = val;
+                }
             }
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-copy me-1"></i> Clonar Lista';
-            toast('Erro de conexão.', 'danger');
+
+            if (!targetId) {
+                toast('Selecione a conta de destino.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btnStartCloneAccount');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Iniciando…';
+
+            const payload = {
+                target_account_id: parseInt(targetId),
+                filters: {
+                    status: itemStatus || null
+                },
+            };
+            if (sourceId) payload.source_account_id = parseInt(sourceId);
+            if (sourceNick) payload.source_seller_nickname = sourceNick;
+
+            fetch('/api/catalog/clone/seller-job', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Iniciar Procedimento';
+                    if (data.status === 'success' || data.job_id) {
+                        toast('Clonagem iniciada! Acompanhe o histórico abaixo.', 'success');
+                        loadHistory();
+                    } else {
+                        toast(data.message || data.error || 'Erro ao iniciar clonagem.', 'danger');
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Iniciar Procedimento';
+                    toast('Erro de conexão.', 'danger');
+                });
         });
-    });
 
-    // -----------------------------------------------------------------------
-    // Auto-poll active jobs every 10s when tab 2 is active
-    // -----------------------------------------------------------------------
-    let pollInterval = null;
+        // Load history on tab switch
+        document.getElementById('tab-conta-btn').addEventListener('shown.bs.tab', loadHistory);
 
-    document.getElementById('tab-conta-btn').addEventListener('shown.bs.tab', () => {
-        loadHistory();
-        pollInterval = setInterval(loadHistory, 10000);
-    });
+        // -----------------------------------------------------------------------
+        // TAB 3 — Clonar Por Lista
+        // -----------------------------------------------------------------------
+        document.getElementById('btnCloneList').addEventListener('click', () => {
+            const raw = document.getElementById('listItemIds').value.trim();
+            const targetId = document.getElementById('listTargetAccount').value;
 
-    document.getElementById('tab-conta-btn').addEventListener('hidden.bs.tab', () => {
-        if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-    });
+            if (!raw) {
+                toast('Cole ao menos um ID de anúncio.', 'warning');
+                return;
+            }
+            if (!targetId) {
+                toast('Selecione uma conta de destino.', 'warning');
+                return;
+            }
 
-})();
+            // Parse IDs: accept comma, newline, or MLB\d+ pattern
+            const ids = [...new Set(
+                raw.split(/[\s,\n]+/)
+                .map(s => {
+                    const m = s.match(/MLB-?\d+/i);
+                    return m ? m[0].replace('-', '').toUpperCase() : s.trim().toUpperCase();
+                })
+                .filter(s => /^MLB\d+$/.test(s))
+            )];
+
+            if (!ids.length) {
+                toast('Nenhum ID válido (formato MLB...) encontrado.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btnCloneList');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando…';
+
+            fetch('/api/catalog/clone/batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        item_ids: ids,
+                        target_account_id: parseInt(targetId)
+                    }),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-copy me-1"></i> Clonar Lista';
+                    if (data.status === 'success' || data.job_id) {
+                        toast(`${ids.length} anúncio(s) enviados para clonagem. Job: ${data.job_id || ''}`, 'success');
+                        document.getElementById('listItemIds').value = '';
+                    } else {
+                        toast(data.message || data.error || 'Erro ao iniciar clonagem.', 'danger');
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-copy me-1"></i> Clonar Lista';
+                    toast('Erro de conexão.', 'danger');
+                });
+        });
+
+        // -----------------------------------------------------------------------
+        // Auto-poll active jobs every 10s when tab 2 is active
+        // -----------------------------------------------------------------------
+        let pollInterval = null;
+
+        document.getElementById('tab-conta-btn').addEventListener('shown.bs.tab', () => {
+            loadHistory();
+            pollInterval = setInterval(loadHistory, 10000);
+        });
+
+        document.getElementById('tab-conta-btn').addEventListener('hidden.bs.tab', () => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        });
+
+    })();
 </script>

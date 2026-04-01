@@ -29,11 +29,11 @@ class AuthController
     public function login(): void
     {
         header('Content-Type: application/json');
-        
+
         $data = json_decode(file_get_contents('php://input'), true);
-        $email = $data['email'] ?? '';
+        $email = trim(strtolower((string) ($data['email'] ?? '')));
         $password = $data['password'] ?? '';
-        
+
         if (!$email || !$password) {
             http_response_code(400);
             echo json_encode(['error' => 'Email e senha obrigatórios']);
@@ -46,7 +46,7 @@ class AuthController
 
         if ($user && password_verify($password, $user['password'])) {
             $token = $this->generateSignedToken($user['id']);
-            
+
             // Register Device if provided
             if (!empty($data['device_token'])) {
                 $this->registerDevice($user['id'], $data);
@@ -63,7 +63,7 @@ class AuthController
             ]);
         } else {
             http_response_code(401);
-            echo json_encode(['error' => 'Credenciais inválidas']);
+            echo json_encode(['error' => 'E-mail ou senha incorretos']);
         }
     }
 

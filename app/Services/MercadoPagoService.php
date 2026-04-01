@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Database;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use PDO;
 use Exception;
 
@@ -19,6 +21,7 @@ class MercadoPagoService
     private PDO $db;
     private ?string $accessToken;
     private ?EncryptionService $encryption = null;
+    private Client $httpClient;
 
     public function __construct()
     {
@@ -29,6 +32,11 @@ class MercadoPagoService
             $this->encryption = null;
         }
         $this->accessToken = $this->getCredential('mp_access_token');
+        $this->httpClient = new Client([
+            'base_uri' => 'https://api.mercadopago.com',
+            'timeout'  => 15.0,
+            'headers'  => ['Content-Type' => 'application/json'],
+        ]);
     }
 
     /**
@@ -88,38 +96,25 @@ class MercadoPagoService
         }
 
         try {
-            $ch = curl_init('https://api.mercadopago.com/v1/payment_methods');
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => [
-                    'Authorization: Bearer ' . $this->accessToken,
-                    'Content-Type: application/json',
-                ],
-                CURLOPT_TIMEOUT => 10,
+            $response = $this->httpClient->get('/v1/payment_methods', [
+                'headers' => ['Authorization' => 'Bearer ' . $this->accessToken],
+                'timeout' => 10,
             ]);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
-
-            if ($error) {
-                return ['success' => false, 'error' => "cURL error: {$error}"];
-            }
-
-            if ($httpCode === 200) {
-                $data = json_decode($response, true);
-                return [
-                    'success' => true,
-                    'message' => 'Conexão OK',
-                    'payment_methods_count' => is_array($data) ? count($data) : 0,
-                ];
-            }
-
+            $data = json_decode((string)$response->getBody(), true);
+            return [
+                'success' => true,
+                'message' => 'Conexão OK',
+                'payment_methods_count' => is_array($data) ? count($data) : 0,
+            ];
+        } catch (RequestException $e) {
+            $httpCode = $e->hasResponse() ? $e->getResponse()->getStatusCode() : 0;
+            $body = $e->hasResponse()
+                ? json_decode((string)$e->getResponse()->getBody(), true)
+                : null;
             return [
                 'success' => false,
-                'error' => "HTTP {$httpCode}",
-                'response' => json_decode($response, true),
+                'error'   => "HTTP {$httpCode}",
+                'response' => $body,
             ];
         } catch (Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
@@ -139,46 +134,28 @@ class MercadoPagoService
         }
 
         try {
-            $url = 'https://api.mercadopago.com/v1/payments/' . rawurlencode($paymentId);
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => [
-                    'Authorization: Bearer ' . $this->accessToken,
-                    'Content-Type: application/json',
-                ],
-                CURLOPT_TIMEOUT => 15,
+            $response = $this->httpClient->get('/v1/payments/' . rawurlencode($paymentId), [
+                'headers' => ['Authorization' => 'Bearer ' . $this->accessToken],
             ]);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
-
-            if ($error) {
-                return [
-                    'success' => false,
-                    'error' => 'cURL error: ' . $error,
-                ];
-            }
-
-            $decoded = is_string($response) ? json_decode($response, true) : null;
-            if ($httpCode >= 200 && $httpCode < 300 && is_array($decoded)) {
-                return [
-                    'success' => true,
-                    'data' => $decoded,
-                ];
-            }
-
+            $decoded = json_decode((string)$response->getBody(), true);
             return [
-                'success' => false,
-                'error' => 'HTTP ' . $httpCode,
-                'response' => $decoded,
+                'success' => true,
+                'data'    => is_array($decoded) ? $decoded : [],
+            ];
+        } catch (RequestException $e) {
+            $httpCode = $e->hasResponse() ? $e->getResponse()->getStatusCode() : 0;
+            $body = $e->hasResponse()
+                ? json_decode((string)$e->getResponse()->getBody(), true)
+                : null;
+            return [
+                'success'  => false,
+                'error'    => 'HTTP ' . $httpCode,
+                'response' => $body,
             ];
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ];
         }
     }

@@ -66,8 +66,10 @@ final class MercadoLivreAuthServiceUnitTest extends TestCase
         $service = new MercadoLivreAuthService(
             db: null,
             config: [
+                'key' => 'UnitTestFallbackKey_ThisIs32CharsLong!',
                 'mercadolivre' => [
                     'app_id' => 'CLIENT_ID',
+                    'client_secret' => 'CLIENT_SECRET',
                     'redirect_uri' => 'https://example.test/oauth/callback',
                     'auth_url' => 'https://auth.mercadolibre.com/authorization',
                 ],
@@ -105,8 +107,10 @@ final class MercadoLivreAuthServiceUnitTest extends TestCase
         $service = new MercadoLivreAuthService(
             db: null,
             config: [
+                'key' => 'UnitTestFallbackKey_ThisIs32CharsLong!',
                 'mercadolivre' => [
                     'app_id' => 'CLIENT_ID',
+                    'client_secret' => 'CLIENT_SECRET',
                     'redirect_uri' => 'https://example.test/oauth/callback',
                     'auth_url' => 'https://auth.mercadolibre.com/authorization',
                 ],
@@ -131,8 +135,10 @@ final class MercadoLivreAuthServiceUnitTest extends TestCase
         $service = new MercadoLivreAuthService(
             db: null,
             config: [
+                'key' => 'UnitTestFallbackKey_ThisIs32CharsLong!',
                 'mercadolivre' => [
                     'app_id' => 'CLIENT_ID',
+                    'client_secret' => 'CLIENT_SECRET',
                     'redirect_uri' => 'https://example.test/oauth/callback',
                     'auth_url' => 'https://auth.mercadolibre.com/authorization',
                 ],

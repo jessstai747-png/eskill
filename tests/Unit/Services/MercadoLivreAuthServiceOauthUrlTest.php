@@ -64,4 +64,48 @@ class MercadoLivreAuthServiceOauthUrlTest extends TestCase
 
         $service->getAuthUrl(100198);
     }
+
+    public function testGetAuthUrlRejectsPlaceholderConfiguration(): void
+    {
+        $service = new MercadoLivreAuthService(null, [
+            'key' => 'change_me_with_32+_chars_minimum________________',
+            'mercadolivre' => [
+                'app_id' => 'your_mercadolibre_app_id',
+                'client_secret' => 'your_mercadolibre_client_secret',
+                'redirect_uri' => 'https://your-domain.com/dashboard',
+                'auth_url' => 'https://auth.mercadolibre.com/authorization',
+                'site_id' => 'MLB',
+            ],
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('ML_APP_ID ausente ou com valor placeholder');
+
+        $service->getAuthUrl(100198);
+    }
+
+    public function testGetOAuthConfigDiagnosticsDetectsPlaceholderAndAppKeyIssues(): void
+    {
+        $service = new MercadoLivreAuthService(null, [
+            'key' => 'short-key',
+            'url' => 'https://eskill.com.br',
+            'mercadolivre' => [
+                'app_id' => 'your_mercadolibre_app_id',
+                'client_secret' => 'your_mercadolibre_client_secret',
+                'redirect_uri' => 'https://your-domain.com/dashboard',
+                'auth_url' => 'https://auth.mercadolibre.com/authorization',
+                'token_url' => 'https://api.mercadolibre.com/oauth/token',
+                'api_url' => 'https://api.mercadolibre.com',
+                'site_id' => 'MLB',
+            ],
+        ]);
+
+        $diagnostics = $service->getOAuthConfigDiagnostics();
+
+        $this->assertFalse($diagnostics['ready']);
+        $this->assertContains('ML_APP_ID ausente ou com valor placeholder', $diagnostics['issues']);
+        $this->assertContains('ML_CLIENT_SECRET ausente ou com valor placeholder', $diagnostics['issues']);
+        $this->assertContains('ML_REDIRECT_URI ausente ou com valor placeholder', $diagnostics['issues']);
+        $this->assertContains('APP_KEY ausente, placeholder ou menor que 32 caracteres', $diagnostics['issues']);
+    }
 }

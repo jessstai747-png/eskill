@@ -12,6 +12,8 @@ use App\Database;
 class MercadoLivreAccountPersistenceTest extends TestCase
 {
     private int $accountId;
+    private int $testUserId;
+    private string $testMlUserId;
 
     protected function setUp(): void
     {
@@ -37,7 +39,7 @@ class MercadoLivreAccountPersistenceTest extends TestCase
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-        $pdo->exec('DELETE FROM ml_accounts');
+        $pdo->prepare("DELETE FROM ml_accounts WHERE ml_user_id LIKE 'ML_PERSIST_TEST_%'")->execute();
 
         // Ensure tokens_encrypted column exists
         try {
@@ -50,7 +52,7 @@ class MercadoLivreAccountPersistenceTest extends TestCase
             // ignore
         }
 
-        // Ensure users table exists and insert user id=2 for FK
+        // Ensure users table exists and insert a dedicated test user for FK
         try {
             $pdo->exec("CREATE TABLE IF NOT EXISTS users (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -64,16 +66,16 @@ class MercadoLivreAccountPersistenceTest extends TestCase
             // ignore
         }
 
+        $email = 'persist-' . bin2hex(random_bytes(4)) . '@test.local';
         try {
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE id = :id');
-            $stmt->execute(['id' => 2]);
-            if (!$stmt->fetch()) {
-                $pdo->prepare('INSERT INTO users (id, name, email, password) VALUES (:id, :name, :email, :password)')
-                    ->execute(['id' => 2, 'name' => 'ML Persist User', 'email' => 'persist@example.com', 'password' => password_hash('secret', PASSWORD_BCRYPT)]);
-            }
+            $pdo->prepare('INSERT INTO users (name, email, password) VALUES (:name, :email, :password)')
+                ->execute(['name' => 'ML Persist User', 'email' => $email, 'password' => password_hash('secret', PASSWORD_BCRYPT)]);
+            $this->testUserId = (int)$pdo->lastInsertId();
         } catch (\Throwable $e) {
             // ignore
         }
+
+        $this->testMlUserId = 'ML_PERSIST_TEST_' . bin2hex(random_bytes(4));
 
         $enc = new EncryptionService();
         $accessEnc = $enc->encrypt('persist-access');
@@ -84,8 +86,8 @@ class MercadoLivreAccountPersistenceTest extends TestCase
             VALUES (:user_id, :ml_user_id, :nickname, :email, :site_id, :access_token, :refresh_token, :expires_at, :tokens_encrypted, 'active', NOW(), NOW())");
 
         $stmt->execute([
-            'user_id' => 2,
-            'ml_user_id' => 'PERSIST123',
+            'user_id' => $this->testUserId,
+            'ml_user_id' => $this->testMlUserId,
             'nickname' => 'persist-ml',
             'email' => 'persist@example.com',
             'site_id' => 'MLB',
@@ -96,6 +98,25 @@ class MercadoLivreAccountPersistenceTest extends TestCase
         ]);
 
         $this->accountId = (int)$pdo->lastInsertId();
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            $pdo = Database::getInstance();
+            if (isset($this->testMlUserId) && $this->testMlUserId !== '') {
+                $pdo->prepare('DELETE FROM ml_accounts WHERE ml_user_id = :ml_user_id')->execute([
+                    'ml_user_id' => $this->testMlUserId,
+                ]);
+            }
+            if (isset($this->testUserId) && $this->testUserId > 0) {
+                $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $this->testUserId]);
+            }
+        } catch (\Throwable $e) {
+            // ignore cleanup failures in tests
+        }
+
+        parent::tearDown();
     }
 
     public function testAccountPersistenceAndDecryption()

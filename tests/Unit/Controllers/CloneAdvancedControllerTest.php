@@ -118,4 +118,27 @@ class CloneAdvancedControllerTest extends TestCase
         $this->assertCount(1, $params);
         $this->assertSame('filename', $params[0]->getName());
     }
+
+    public function testExportMetricsBuildsOptionsArrayBeforeCallingService(): void
+    {
+        $file = $this->ref->getFileName();
+        $this->assertNotFalse($file);
+
+        $content = file_get_contents($file);
+        $this->assertNotFalse($content);
+        $this->assertStringContainsString("\$options = is_array(\$data['filters'] ?? null) ? \$data['filters'] : [];", $content);
+        $this->assertStringContainsString("if (isset(\$data['period'])) {", $content);
+        $this->assertStringContainsString("\$result = \$export->exportMetrics(\$options);", $content);
+    }
+
+    public function testDownloadExportDelegatesFileResolutionToService(): void
+    {
+        $file = $this->ref->getFileName();
+        $this->assertNotFalse($file);
+
+        $content = file_get_contents($file);
+        $this->assertNotFalse($content);
+        $this->assertStringContainsString("\$path = \$export->getExportPath(\$filename);", $content);
+        $this->assertStringNotContainsString("__DIR__ . '/../../storage/exports/' . \$filename", $content);
+    }
 }

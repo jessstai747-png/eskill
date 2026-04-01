@@ -1925,12 +1925,153 @@ class CatalogCloneService
     }
 
     /**
+     * Tenta listar itens de um seller via endpoint /users/{sellerId}/items/search.
+     *
+     * Esse endpoint costuma ser mais estável para extração de dados reais de seller
+     * do que /sites/{site}/search?seller_id=..., que pode sofrer bloqueios por policy.
+     *
+     * @param MercadoLivreClient $client Cliente autenticado
+     * @param string $sellerId Seller ID numérico
+     * @param array $filters Filtros opcionais
+     * @param int $limit Limite por página
+     * @param int $offset Offset de paginação
+     * @return array|null Retorna resposta normalizada ou null quando endpoint não disponível
+     */
+    private function tryListSellerItemsViaUsersEndpoint(
+        MercadoLivreClient $client,
+        string $sellerId,
+        array $filters,
+        int $limit,
+        int $offset
+    ): ?array {
+        $params = [
+            'limit' => $limit,
+            'offset' => $offset,
+        ];
+
+        if (!empty($filters['category'])) {
+            $params['category'] = (string)$filters['category'];
+        }
+
+        if (!empty($filters['keyword'])) {
+            $params['q'] = (string)$filters['keyword'];
+        }
+
+        $searchResults = $client->get("/users/{$sellerId}/items/search", $params, null, false);
+        if (isset($searchResults['error'])) {
+            return null;
+        }
+
+        $itemIds = $searchResults['results'] ?? [];
+        if (!is_array($itemIds)) {
+            return null;
+        }
+
+        $total = (int)($searchResults['paging']['total'] ?? count($itemIds));
+
+        $processedItems = [];
+        $brandCounts = [];
+        $categoryFacets = [];
+        $catalogCount = 0;
+        $nonCatalogCount = 0;
+
+        foreach (array_chunk($itemIds, 20) as $chunk) {
+            $idsParam = implode(',', $chunk);
+            $itemsDetails = $client->get('/items', ['ids' => $idsParam]);
+
+            if (!is_array($itemsDetails)) {
+                continue;
+            }
+
+            foreach ($itemsDetails as $itemWrapper) {
+                if (isset($itemWrapper['code']) && (int)$itemWrapper['code'] !== 200) {
+                    continue;
+                }
+
+                $item = $itemWrapper['body'] ?? $itemWrapper;
+                if (!is_array($item) || empty($item['id'])) {
+                    continue;
+                }
+
+                $isCatalog = !empty($item['catalog_product_id']);
+                $brand = $this->extractBrandFromItem($item);
+                $categoryId = (string)($item['category_id'] ?? '');
+
+                if ($isCatalog) {
+                    $catalogCount++;
+                } else {
+                    $nonCatalogCount++;
+                }
+
+                if ($brand) {
+                    $brandCounts[$brand] = ($brandCounts[$brand] ?? 0) + 1;
+                }
+
+                if ($categoryId !== '') {
+                    if (!isset($categoryFacets[$categoryId])) {
+                        $categoryFacets[$categoryId] = ['name' => $categoryId, 'count' => 0];
+                    }
+                    $categoryFacets[$categoryId]['count']++;
+                }
+
+                // Aplicar filtros locais
+                if (isset($filters['is_catalog'])) {
+                    $filterCatalog = filter_var($filters['is_catalog'], FILTER_VALIDATE_BOOLEAN);
+                    if ($filterCatalog !== $isCatalog) {
+                        continue;
+                    }
+                }
+
+                if (!empty($filters['brand']) && strcasecmp((string)$brand, (string)$filters['brand']) !== 0) {
+                    continue;
+                }
+
+                $processedItems[] = [
+                    'id' => $item['id'],
+                    'title' => $item['title'] ?? '',
+                    'price' => $item['price'] ?? 0,
+                    'currency_id' => $item['currency_id'] ?? 'BRL',
+                    'thumbnail' => $item['thumbnail'] ?? '',
+                    'permalink' => $item['permalink'] ?? '',
+                    'condition' => $item['condition'] ?? 'new',
+                    'available_quantity' => $item['available_quantity'] ?? 0,
+                    'sold_quantity' => $item['sold_quantity'] ?? 0,
+                    'category_id' => $categoryId,
+                    'is_catalog' => $isCatalog,
+                    'catalog_product_id' => $item['catalog_product_id'] ?? null,
+                    'brand' => $brand,
+                    'listing_type_id' => $item['listing_type_id'] ?? '',
+                    'shipping_free' => ($item['shipping']['free_shipping'] ?? false),
+                ];
+            }
+        }
+
+        arsort($brandCounts);
+        if (!empty($categoryFacets)) {
+            uasort($categoryFacets, static function (array $a, array $b): int {
+                return ($b['count'] ?? 0) <=> ($a['count'] ?? 0);
+            });
+        }
+
+        return [
+            'status' => 'success',
+            'seller_id' => $sellerId,
+            'items' => $processedItems,
+            'total' => $total,
+            'offset' => $offset,
+            'limit' => $limit,
+            'summary' => [
+                'catalog' => $catalogCount,
+                'non_catalog' => $nonCatalogCount,
+                'total_in_page' => count($itemIds),
+            ],
+            'facets' => $this->normalizeFacets($brandCounts, $categoryFacets),
+        ];
+    }
+
+    /**
      * Lista anúncios de um seller público (qualquer vendedor do ML)
      * Classifica como catálogo/não-catálogo e extrai facets de marca
-     *
-     * NOTA: Devido a restrições da API do Mercado Livre (desde 2025),
-     * a busca por seller_id de terceiros retorna 403 Forbidden.
-     * Esta funcionalidade só funciona para contas próprias vinculadas.
      *
      * @param string $sellerId ML Seller ID (numérico)
      * @param array $filters Filtros opcionais: category, brand, is_catalog, keyword, offset, limit
@@ -1964,6 +2105,24 @@ class CatalogCloneService
         $cached = $this->getSellerSnapshot($sellerId, $cacheFilters);
         if ($cached !== null) {
             return $cached;
+        }
+
+        // Estratégia preferencial para extração de dados reais:
+        // usar /users/{sellerId}/items/search e detalhar por /items?ids=...
+        $usersEndpointResult = $this->tryListSellerItemsViaUsersEndpoint(
+            $client,
+            $sellerId,
+            $filters,
+            $limit,
+            $offset
+        );
+
+        if ($usersEndpointResult !== null) {
+            if ((int)($usersEndpointResult['total'] ?? 0) > 200) {
+                $this->saveSellerSnapshot($sellerId, $cacheFilters, $usersEndpointResult);
+            }
+
+            return $usersEndpointResult;
         }
 
         // Para sellers externos, tentar a busca (pode falhar com 403)
@@ -2155,9 +2314,6 @@ class CatalogCloneService
         // Limpar ID
         $sellerId = preg_replace('/\D/', '', $sellerId);
 
-        // Detectar site do vendedor
-        $siteId = $this->getSellerSiteId($sellerId);
-
         // Verificar se o seller_id é de uma conta própria vinculada
         $ownSellerIds = $this->getAllOwnSellerIds();
         $isOwnAccount = in_array($sellerId, $ownSellerIds, true);
@@ -2174,108 +2330,44 @@ class CatalogCloneService
             return $cachedSummary;
         }
 
-        // Para sellers externos, tentar a busca (pode falhar com 403)
-        $client = $this->getAuthenticatedClientForSearch();
-        $searchResults = $client->get("/sites/{$siteId}/search", [
-            'seller_id' => $sellerId,
-            'limit' => 0,
-        ], null, false);
-
-        // Tratar erro 403 (bloqueio da API para sellers externos)
-        if (isset($searchResults['error'])) {
-            $errorMsg = $searchResults['message'] ?? $searchResults['error'] ?? 'Unknown';
-
-            if ($searchResults['status'] === 403 || stripos($errorMsg, 'forbidden') !== false) {
-                throw new Exception(
-                    'A API do Mercado Livre não permite mais buscar anúncios de outros vendedores. ' .
-                        'Esta funcionalidade só está disponível para suas próprias contas vinculadas. ' .
-                        'Use a opção "Minha Conta" ou informe IDs de anúncios específicos.'
-                );
-            }
-
-            throw new Exception('Erro ao buscar summary do seller: ' . $errorMsg);
-        }
-
-        $total = $searchResults['paging']['total'] ?? 0;
-
-        // Buscar facets de categoria (contagem global + nome) a partir de available_filters
-        $categoryFacets = [];
-        $facetProbe = $client->get("/sites/{$siteId}/search", [
-            'seller_id' => $sellerId,
-            'limit' => 50,
+        // Reutilizar listSellerItems para garantir o mesmo pipeline de extração real.
+        $sampleList = $this->listSellerItems($sellerId, [
             'offset' => 0,
-        ], null, false);
+            'limit' => 50,
+        ]);
 
-        if (!empty($facetProbe['available_filters']) && is_array($facetProbe['available_filters'])) {
-            foreach ($facetProbe['available_filters'] as $filter) {
-                if (($filter['id'] ?? null) !== 'category') {
-                    continue;
-                }
-                foreach (($filter['values'] ?? []) as $value) {
-                    $categoryId = (string)($value['id'] ?? '');
-                    if ($categoryId === '') {
-                        continue;
-                    }
-                    $categoryFacets[$categoryId] = [
-                        'name' => (string)($value['name'] ?? $categoryId),
-                        'count' => (int)($value['results'] ?? 0),
-                    ];
-                }
-                break;
-            }
-        }
-
-        // Buscar amostra para classificar catálogo/não-catálogo e extrair marcas
-        $sampleSize = min($total, 200);
-        $catalogCount = 0;
-        $nonCatalogCount = 0;
         $brandCounts = [];
-
-        // Paginar para coletar amostra
-        $collected = 0;
-        $offset = 0;
-        $batchSize = 50;
-
-        while ($collected < $sampleSize && $offset < $total) {
-            $batchResults = $client->get("/sites/MLB/search", [
-                'seller_id' => $sellerId,
-                'limit' => $batchSize,
-                'offset' => $offset,
-            ], null, false);
-
-            if (isset($batchResults['error']) || empty($batchResults['results'])) {
-                break;
+        foreach (($sampleList['facets']['brands'] ?? []) as $brandFacet) {
+            if (!is_array($brandFacet)) {
+                continue;
             }
-
-            foreach ($batchResults['results'] as $item) {
-                $isCatalog = !empty($item['catalog_product_id']);
-                $brand = $this->extractBrandFromItem($item);
-
-                if ($isCatalog) {
-                    $catalogCount++;
-                } else {
-                    $nonCatalogCount++;
-                }
-
-                if ($brand) {
-                    $brandCounts[$brand] = ($brandCounts[$brand] ?? 0) + 1;
-                }
-
-                $collected++;
+            $name = (string)($brandFacet['name'] ?? $brandFacet['id'] ?? '');
+            if ($name === '') {
+                continue;
             }
-
-            $offset += $batchSize;
+            $brandCounts[$name] = (int)($brandFacet['count'] ?? 0);
         }
 
-        arsort($brandCounts);
-
-        if (!empty($categoryFacets)) {
-            uasort($categoryFacets, static function (array $a, array $b): int {
-                return ($b['count'] ?? 0) <=> ($a['count'] ?? 0);
-            });
+        $categoryFacets = [];
+        foreach (($sampleList['facets']['categories'] ?? []) as $categoryFacet) {
+            if (!is_array($categoryFacet)) {
+                continue;
+            }
+            $categoryId = (string)($categoryFacet['id'] ?? '');
+            if ($categoryId === '') {
+                continue;
+            }
+            $categoryFacets[$categoryId] = [
+                'name' => (string)($categoryFacet['name'] ?? $categoryId),
+                'count' => (int)($categoryFacet['count'] ?? 0),
+            ];
         }
 
-        // Buscar informações básicas do seller (também requer autenticação agora)
+        $catalogCount = (int)($sampleList['summary']['catalog'] ?? 0);
+        $nonCatalogCount = (int)($sampleList['summary']['non_catalog'] ?? 0);
+        $collected = $catalogCount + $nonCatalogCount;
+
+        $client = $this->getAuthenticatedClientForSearch();
         $sellerInfo = $client->get("/users/{$sellerId}", [], null, false);
         $sellerNickname = $sellerInfo['nickname'] ?? 'Seller ' . $sellerId;
         $sellerReputation = $sellerInfo['seller_reputation']['level_id'] ?? null;
@@ -2285,7 +2377,7 @@ class CatalogCloneService
             'seller_id' => $sellerId,
             'seller_nickname' => $sellerNickname,
             'seller_reputation' => $sellerReputation,
-            'total_items' => $total,
+            'total_items' => (int)($sampleList['total'] ?? $collected),
             'sample_size' => $collected,
             'catalog_count' => $catalogCount,
             'non_catalog_count' => $nonCatalogCount,

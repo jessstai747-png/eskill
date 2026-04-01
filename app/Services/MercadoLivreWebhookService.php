@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Services\OrderService;
+use App\Services\ClaimsService;
 use App\Services\ItemService;
-use App\Services\QuestionService;
+use App\Services\MessagingService;
+use App\Services\MercadoLivreClient;
 use App\Services\NotificationService;
+use App\Services\OrderService;
+use App\Services\QuestionService;
+use App\Services\ShipmentSyncService;
 use App\Services\StructuredLogService;
+use App\Services\TechSheetService;
 use PDO;
 
 /**
@@ -23,6 +28,11 @@ class MercadoLivreWebhookService
     private ?ItemService $itemService = null;
     private ?QuestionService $questionService = null;
     private ?NotificationService $notificationService = null;
+    private ?ClaimsService $claimsService = null;
+    private ?MessagingService $messagingService = null;
+    private ?TechSheetService $techSheetService = null;
+    private ?MercadoLivreClient $mlClient = null;
+    private ?ShipmentSyncService $shipmentSyncService = null;
     private ?PDO $db = null;
     private bool $skipDbAutoConnect;
 
@@ -33,8 +43,13 @@ class MercadoLivreWebhookService
      * @param ItemService|null $itemService (injetável para testes)
      * @param QuestionService|null $questionService (injetável para testes)
      * @param NotificationService|null $notificationService (injetável para testes)
+     * @param ClaimsService|null $claimsService (injetável para testes)
+     * @param MessagingService|null $messagingService (injetável para testes)
+     * @param TechSheetService|null $techSheetService (injetável para testes)
+     * @param MercadoLivreClient|null $mlClient (injetável para testes)
      * @param PDO|null $db Conexão ao banco (injetável para testes)
      * @param bool $skipDbAutoConnect Se true, não conecta ao DB automaticamente
+     * @param ShipmentSyncService|null $shipmentSyncService (injetável para testes)
      */
     public function __construct(
         int $accountId,
@@ -43,8 +58,13 @@ class MercadoLivreWebhookService
         ?ItemService $itemService = null,
         ?QuestionService $questionService = null,
         ?NotificationService $notificationService = null,
+        ?ClaimsService $claimsService = null,
+        ?MessagingService $messagingService = null,
+        ?TechSheetService $techSheetService = null,
+        ?MercadoLivreClient $mlClient = null,
         ?PDO $db = null,
-        bool $skipDbAutoConnect = false
+        bool $skipDbAutoConnect = false,
+        ?ShipmentSyncService $shipmentSyncService = null
     ) {
         $this->accountId = $accountId;
         $this->logger = $logger ?? new StructuredLogService();
@@ -52,8 +72,13 @@ class MercadoLivreWebhookService
         $this->itemService = $itemService;
         $this->questionService = $questionService;
         $this->notificationService = $notificationService;
+        $this->claimsService = $claimsService;
+        $this->messagingService = $messagingService;
+        $this->techSheetService = $techSheetService;
+        $this->mlClient = $mlClient;
         $this->db = $db;
         $this->skipDbAutoConnect = $skipDbAutoConnect;
+        $this->shipmentSyncService = $shipmentSyncService;
     }
 
     /**
@@ -171,10 +196,16 @@ class MercadoLivreWebhookService
         return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true);
     }
 
+    /**
+     * Processa evento de pedido do webhook.
+     *
+     * Persiste o pedido no banco e notifica o usuário apenas para status
+     * significativos (paid → Nova Venda; cancelled → Pedido Cancelado).
+     * Aplica-se a ambos os tópicos 'orders_v2' (atual) e 'orders' (legado).
+     */
     private function handleOrderEvent(string $resource): void
     {
-        // Resource format: /orders/{checkoutId} or /orders/{orderId}
-        // Actually ML sends /orders/{id}
+        // Resource format: /orders/{id}
         $parts = explode('/', $resource);
         $orderId = end($parts);
 
@@ -182,20 +213,35 @@ class MercadoLivreWebhookService
             throw new \Exception("Invalid order resource: {$resource}");
         }
 
-        $order = $this->getOrderService()->getOrder($orderId, ['allow_local_cache' => true]); // Sync/cache com fallback explícito
+        $order = $this->getOrderService()->getOrder($orderId, ['allow_local_cache' => false]);
         if (!empty($order['error'])) {
             throw new \RuntimeException((string)($order['message'] ?? 'Falha ao carregar pedido do webhook'));
         }
 
-        // Notify UI/User
+        // Notificar apenas para status significativos; topic legado ('orders') ou
+        // canônico ('orders_v2') ambos elegíveis — a distinção ocorre pelo status.
+        $status = (string)($order['status'] ?? $order['data']['status'] ?? '');
         $userId = $this->getUserIdFromAccount();
-        if ($userId) {
+
+        if (!$userId) {
+            return;
+        }
+
+        if ($status === 'paid') {
             $total = $order['total_amount'] ?? ($order['data']['total_amount'] ?? '---');
             $this->getNotificationService()->create(
                 $userId,
                 'order_new',
                 "Nova Venda #{$orderId}",
                 "Valor: {$total}",
+                ['order_id' => $orderId]
+            );
+        } elseif ($status === 'cancelled') {
+            $this->getNotificationService()->create(
+                $userId,
+                'order_cancelled',
+                "Pedido #{$orderId} Cancelado",
+                'O pedido foi cancelado no Mercado Livre.',
                 ['order_id' => $orderId]
             );
         }
@@ -221,6 +267,7 @@ class MercadoLivreWebhookService
         } catch (\Exception $e) {
             $this->logger->warning("Failed to refresh TechSheet for {$itemId}", ['error' => $e->getMessage()]);
         }
+
     }
 
     private function handleQuestionEvent(string $resource): void
@@ -256,24 +303,24 @@ class MercadoLivreWebhookService
         $text = $question['text'] ?? '';
         $itemId = $question['item_id'] ?? '';
         $status = $question['status'] ?? '';
-        
+
         // Passar para NLP se for pergunta não respondida
         if ($status === 'UNANSWERED' && !empty($text)) {
             $nlpService = new \App\Services\AI\ML\NLPIntegrationService($this->logger);
-            
+
             // Buscar preço do item para passar ao modelo
             $itemDetails = $this->getItemService()->getItem($itemId);
             $price = isset($itemDetails['price']) ? (float)$itemDetails['price'] : 0.0;
-            
+
             $prediction = $nlpService->predictIntent($questionId, $text, $itemId, $price);
-            
+
             if ($prediction && $prediction['is_critical']) {
                 $this->logger->warning("NLP Detectou Pergunta Crítica", [
                     'question_id' => $questionId,
                     'intent' => $prediction['intent'],
                     'urgency' => $prediction['urgency_score']
                 ]);
-                
+
                 // Dispara alerta imediato se for crítico
                 $userId = $this->getUserIdFromAccount();
                 if ($userId) {
@@ -307,7 +354,7 @@ class MercadoLivreWebhookService
             return;
         }
 
-        $messagingService = new \App\Services\MessagingService($this->accountId);
+        $messagingService = $this->getMessagingService();
         $message = $messagingService->getMessage($id);
         if (!empty($message['error'])) {
             $this->logger->warning('Failed to fetch message', ['message_id' => $id, 'error' => $message['error']]);
@@ -331,27 +378,29 @@ class MercadoLivreWebhookService
             throw new \Exception("Invalid shipment resource: {$resource}");
         }
 
-        $orderService = $this->getOrderService();
-        $shipment = $orderService->getShipment($shipmentId);
+        // Fetch from ML API and persist to shipments table
+        $syncResult = $this->getShipmentSyncService()->syncShipment($shipmentId);
 
-        if (!empty($shipment['error'])) {
-            $this->logger->warning('ML_WEBHOOK_SHIPMENT_FETCH_FAILED', [
+        if (!($syncResult['success'] ?? false)) {
+            $this->logger->warning('ML_WEBHOOK_SHIPMENT_SYNC_FAILED', [
                 'shipment_id' => $shipmentId,
-                'error' => $shipment['message'] ?? $shipment['error'],
+                'error'       => $syncResult['error'] ?? 'unknown',
+                'account_id'  => $this->accountId,
             ]);
             return;
         }
 
-        $status = $shipment['status'] ?? 'unknown';
-        $substatus = $shipment['substatus'] ?? null;
-        $trackingNumber = $shipment['tracking_number'] ?? null;
+        $shipmentData    = $syncResult['data'] ?? [];
+        $status          = $shipmentData['status'] ?? 'unknown';
+        $substatus       = $shipmentData['substatus'] ?? null;
+        $trackingNumber  = $shipmentData['tracking_number'] ?? null;
 
-        $this->logger->info('ML_WEBHOOK_SHIPMENT_UPDATED', [
-            'shipment_id' => $shipmentId,
-            'status' => $status,
-            'substatus' => $substatus,
+        $this->logger->info('ML_WEBHOOK_SHIPMENT_SYNCED', [
+            'shipment_id'    => $shipmentId,
+            'status'         => $status,
+            'substatus'      => $substatus,
             'tracking_number' => $trackingNumber,
-            'account_id' => $this->accountId,
+            'account_id'     => $this->accountId,
         ]);
 
         // Notify user only on significant status transitions
@@ -361,12 +410,12 @@ class MercadoLivreWebhookService
             if ($userId) {
                 $statusLabels = [
                     'ready_to_ship' => '📦 Pronto para Envio',
-                    'shipped' => '🚚 Enviado',
-                    'delivered' => '✅ Entregue',
+                    'shipped'       => '🚚 Enviado',
+                    'delivered'     => '✅ Entregue',
                     'not_delivered' => '⚠️ Não Entregue',
-                    'cancelled' => '❌ Cancelado',
+                    'cancelled'     => '❌ Cancelado',
                 ];
-                $label = $statusLabels[$status] ?? ucfirst($status);
+                $label  = $statusLabels[$status] ?? ucfirst($status);
                 $detail = $trackingNumber ? "Rastreio: {$trackingNumber}" : "Envio #{$shipmentId}";
                 $this->getNotificationService()->create(
                     $userId,
@@ -391,11 +440,10 @@ class MercadoLivreWebhookService
         }
 
         // Fetch payment details from ML
-        $client = $this->getMlClient();
         $paymentData = [];
         try {
             // The ML payments API endpoint
-            $response = $client->get("/collections/notifications/{$paymentId}");
+            $response = $this->getMlClient()->get("/collections/notifications/{$paymentId}");
             if (!isset($response['error'])) {
                 $paymentData = $response['collection'] ?? $response;
             }
@@ -415,6 +463,11 @@ class MercadoLivreWebhookService
             'order_id' => $orderId,
             'account_id' => $this->accountId,
         ]);
+
+        // Persist payment data to ml_payments table
+        if (!empty($paymentData)) {
+            $this->persistPayment($paymentId, $paymentData);
+        }
 
         // For approved payments, trigger order sync to get latest state
         if (in_array($status, ['approved', 'in_process'], true) && $orderId) {
@@ -458,15 +511,36 @@ class MercadoLivreWebhookService
             'account_id' => $this->accountId,
         ]);
 
+        // Fetch feedback data from ML API
+        $feedbackData = [];
+        try {
+            $response = $this->getMlClient()->get("/feedback/{$feedbackId}");
+            if (!isset($response['error'])) {
+                $feedbackData = $response;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('ML_WEBHOOK_FEEDBACK_FETCH_FAILED', [
+                'feedback_id' => $feedbackId,
+                'error'       => $e->getMessage(),
+            ]);
+        }
+
+        // Persist to ml_feedback table
+        if (!empty($feedbackData)) {
+            $this->persistFeedback($feedbackId, $feedbackData);
+        }
+
         // Notify user — feedbacks affect seller reputation
         $userId = $this->getUserIdFromAccount();
         if ($userId) {
+            $rating      = $feedbackData['rating'] ?? null;
+            $ratingLabel = $rating !== null ? " | Nota: {$rating}" : '';
             $this->getNotificationService()->create(
                 $userId,
                 'feedback_new',
                 '⭐ Nova Avaliação Recebida',
-                'Verifique sua reputação no painel.',
-                ['resource' => $resource, 'feedback_id' => $feedbackId]
+                'Verifique sua reputação no painel.' . $ratingLabel,
+                ['resource' => $resource, 'feedback_id' => $feedbackId, 'rating' => $rating]
             );
         }
     }
@@ -481,8 +555,7 @@ class MercadoLivreWebhookService
             throw new \Exception("Invalid claim resource: {$resource}");
         }
 
-        $claimService = new \App\Services\ClaimsService($this->accountId);
-        $claimService->syncClaim($claimId);
+        $this->getClaimsService()->syncClaim($claimId);
 
         // Notify Urgent
         $userId = $this->getUserIdFromAccount();
@@ -535,23 +608,12 @@ class MercadoLivreWebhookService
         return $this->orderService;
     }
 
-    /** Expõe o MercadoLivreClient para uso interno dos handlers */
-    private function getMlClient(): \App\Services\MercadoLivreClient
-    {
-        return new \App\Services\MercadoLivreClient($this->accountId);
-    }
-
     private function getItemService(): ItemService
     {
         if ($this->itemService === null) {
             $this->itemService = new ItemService($this->accountId);
         }
         return $this->itemService;
-    }
-
-    private function getTechSheetService(): \App\Services\TechSheetService
-    {
-        return new \App\Services\TechSheetService($this->accountId);
     }
 
     private function getQuestionService(): QuestionService
@@ -568,5 +630,172 @@ class MercadoLivreWebhookService
             $this->notificationService = new NotificationService();
         }
         return $this->notificationService;
+    }
+
+    private function getClaimsService(): ClaimsService
+    {
+        if ($this->claimsService === null) {
+            $this->claimsService = new ClaimsService($this->accountId);
+        }
+        return $this->claimsService;
+    }
+
+    private function getMessagingService(): MessagingService
+    {
+        if ($this->messagingService === null) {
+            $this->messagingService = new MessagingService($this->accountId);
+        }
+        return $this->messagingService;
+    }
+
+    private function getTechSheetService(): TechSheetService
+    {
+        if ($this->techSheetService === null) {
+            $this->techSheetService = new TechSheetService($this->accountId);
+        }
+        return $this->techSheetService;
+    }
+
+    private function getMlClient(): MercadoLivreClient
+    {
+        if ($this->mlClient === null) {
+            $this->mlClient = new MercadoLivreClient($this->accountId);
+        }
+        return $this->mlClient;
+    }
+
+    private function getShipmentSyncService(): ShipmentSyncService
+    {
+        if ($this->shipmentSyncService === null) {
+            $this->shipmentSyncService = new ShipmentSyncService($this->accountId);
+        }
+        return $this->shipmentSyncService;
+    }
+
+    /**
+     * Resolve the PDO connection, auto-connecting if allowed.
+     * Mirrors the logic in getUserIdFromAccount() but returns the connection directly.
+     */
+    private function getDb(): ?PDO
+    {
+        if ($this->db !== null) {
+            return $this->db;
+        }
+
+        if ($this->skipDbAutoConnect) {
+            return null;
+        }
+
+        try {
+            return \App\Database::getInstance();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Persists ML payment data to ml_payments table (INSERT … ON DUPLICATE KEY UPDATE).
+     *
+     * @param string $paymentId ML payment / collection ID
+     * @param array<string, mixed> $data Raw payment payload from ML API
+     */
+    private function persistPayment(string $paymentId, array $data): void
+    {
+        $db = $this->getDb();
+        if ($db === null) {
+            $this->logger->warning('ML_WEBHOOK_PAYMENT_DB_UNAVAILABLE', ['payment_id' => $paymentId]);
+            return;
+        }
+
+        try {
+            $paidAt = isset($data['date_approved'])
+                ? date('Y-m-d H:i:s', (int)strtotime((string)$data['date_approved']))
+                : null;
+
+            $stmt = $db->prepare(
+                'INSERT INTO ml_payments
+                    (ml_account_id, payment_id, order_id, status, amount, currency_id, payment_method, data, paid_at)
+                 VALUES
+                    (:account_id, :payment_id, :order_id, :status, :amount, :currency_id, :payment_method, :data, :paid_at)
+                 ON DUPLICATE KEY UPDATE
+                    status         = VALUES(status),
+                    amount         = VALUES(amount),
+                    order_id       = VALUES(order_id),
+                    data           = VALUES(data),
+                    paid_at        = VALUES(paid_at),
+                    updated_at     = CURRENT_TIMESTAMP'
+            );
+
+            $stmt->execute([
+                'account_id'     => $this->accountId,
+                'payment_id'     => $paymentId,
+                'order_id'       => $data['order_id'] ?? null,
+                'status'         => $data['status'] ?? null,
+                'amount'         => isset($data['transaction_amount']) ? (float)$data['transaction_amount'] : null,
+                'currency_id'    => $data['currency_id'] ?? null,
+                'payment_method' => $data['payment_type_id'] ?? null,
+                'data'           => json_encode($data, JSON_UNESCAPED_UNICODE),
+                'paid_at'        => $paidAt,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ML_WEBHOOK_PAYMENT_PERSIST_FAILED', [
+                'payment_id' => $paymentId,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Persists ML feedback data to ml_feedback table (INSERT … ON DUPLICATE KEY UPDATE).
+     *
+     * @param string $feedbackId ML feedback ID
+     * @param array<string, mixed> $data Raw feedback payload from ML API
+     */
+    private function persistFeedback(string $feedbackId, array $data): void
+    {
+        $db = $this->getDb();
+        if ($db === null) {
+            $this->logger->warning('ML_WEBHOOK_FEEDBACK_DB_UNAVAILABLE', ['feedback_id' => $feedbackId]);
+            return;
+        }
+
+        try {
+            $feedbackDate = isset($data['date_created'])
+                ? date('Y-m-d H:i:s', (int)strtotime((string)$data['date_created']))
+                : null;
+
+            $fulfilled = isset($data['fulfilled']) ? ($data['fulfilled'] ? 1 : 0) : null;
+
+            $stmt = $db->prepare(
+                'INSERT INTO ml_feedback
+                    (ml_account_id, feedback_id, order_id, rating, message, status, fulfilled, data, feedback_date)
+                 VALUES
+                    (:account_id, :feedback_id, :order_id, :rating, :message, :status, :fulfilled, :data, :feedback_date)
+                 ON DUPLICATE KEY UPDATE
+                    rating        = VALUES(rating),
+                    message       = VALUES(message),
+                    status        = VALUES(status),
+                    fulfilled     = VALUES(fulfilled),
+                    data          = VALUES(data),
+                    updated_at    = CURRENT_TIMESTAMP'
+            );
+
+            $stmt->execute([
+                'account_id'    => $this->accountId,
+                'feedback_id'   => $feedbackId,
+                'order_id'      => $data['order_id'] ?? null,
+                'rating'        => isset($data['rating']) ? (int)$data['rating'] : null,
+                'message'       => isset($data['message']) ? (string)$data['message'] : null,
+                'status'        => isset($data['status']) ? (string)$data['status'] : null,
+                'fulfilled'     => $fulfilled,
+                'data'          => json_encode($data, JSON_UNESCAPED_UNICODE),
+                'feedback_date' => $feedbackDate,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ML_WEBHOOK_FEEDBACK_PERSIST_FAILED', [
+                'feedback_id' => $feedbackId,
+                'error'       => $e->getMessage(),
+            ]);
+        }
     }
 }

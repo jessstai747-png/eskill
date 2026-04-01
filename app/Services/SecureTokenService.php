@@ -248,124 +248,20 @@ class SecureTokenService
     }
 
     /**
-     * Renova access token usando refresh token
+     * Renova access token delegando para MercadoLivreAuthService (implementação canônica com lock, retry e audit log).
+     * O parâmetro $refreshToken é mantido por compatibilidade de assinatura; o token é relido do banco pelo delegate.
      */
     private function refreshAccessToken(int $accountId, string $refreshToken): ?array
     {
-        // Obter credenciais do ML
-        $ml = $this->getMercadoLivreConfig();
-        $clientId = (string)($ml['app_id'] ?? getenv('ML_CLIENT_ID') ?: '');
-        $clientSecret = (string)($ml['client_secret'] ?? getenv('ML_CLIENT_SECRET') ?: '');
-
-        if (empty($clientId) || empty($clientSecret)) {
-            log_error('Credenciais ML não configuradas', ['service' => 'SecureTokenService']);
-            return null;
-        }
-
-        $postData = [
-            'grant_type' => 'refresh_token',
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-            'refresh_token' => $refreshToken
-        ];
-
-        $response = false;
-        $curlError = '';
-        $httpCode = 0;
-        $attempt = 0;
-
-        while ($attempt < self::TOKEN_REFRESH_MAX_RETRIES) {
-            $attempt++;
-
-            $ch = curl_init($this->getMercadoLivreTokenUrl());
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => http_build_query($postData),
-                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_USERAGENT => 'SEO-Optimizer/1.0',
-            ]);
-
-            $response = curl_exec($ch);
-            $curlError = $response === false ? curl_error($ch) : '';
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($response !== false && $httpCode === 200) {
-                break;
-            }
-
-            if ($attempt < self::TOKEN_REFRESH_MAX_RETRIES && $this->shouldRetryTokenRequest($httpCode, $curlError)) {
-                $sleepSeconds = $this->calculateTokenRetryDelaySeconds($attempt);
-                log_warning('Retry de refresh token agendado', [
-                    'service' => 'SecureTokenService',
-                    'account_id' => $accountId,
-                    'attempt' => $attempt,
-                    'max_retries' => self::TOKEN_REFRESH_MAX_RETRIES,
-                    'http_code' => $httpCode,
-                    'curl_error' => $curlError !== '' ? $curlError : null,
-                    'sleep_seconds' => $sleepSeconds,
-                ]);
-                sleep($sleepSeconds);
-                continue;
-            }
-
-            break;
-        }
-
-        if ($response === false) {
-            log_error('Falha de rede ao renovar token', [
-                'service' => 'SecureTokenService',
+        $authService = new MercadoLivreAuthService();
+        if (!$authService->refreshToken($accountId)) {
+            log_error('Falha ao renovar token ML', [
+                'service'    => 'SecureTokenService',
                 'account_id' => $accountId,
-                'curl_error' => $curlError,
-                'attempts' => $attempt,
-            ]);
-
-            return null;
-        }
-
-        if ($httpCode !== 200) {
-            log_error('Falha ao renovar token', [
-                'service' => 'SecureTokenService',
-                'account_id' => $accountId,
-                'http_code' => $httpCode,
-                'response' => $response,
-                'attempts' => $attempt,
-            ]);
-
-            return null;
-        }
-
-        $data = json_decode($response, true);
-
-        if (!isset($data['access_token'])) {
-            log_error('Resposta inválida ao renovar token', [
-                'service' => 'SecureTokenService',
-                'account_id' => $accountId,
-                'response' => $response,
-                'attempts' => $attempt,
             ]);
             return null;
         }
 
-        $tokens = [
-            'access_token' => $data['access_token'],
-            'refresh_token' => $data['refresh_token'] ?? $refreshToken,
-            'expires_at' => time() + ($data['expires_in'] ?? 21600)
-        ];
-
-        // Armazenar novos tokens
-        if (!$this->storeTokens($accountId, $tokens)) {
-            log_error('Falha ao persistir tokens renovados', [
-                'service' => 'SecureTokenService',
-                'account_id' => $accountId,
-                'attempts' => $attempt,
-            ]);
-
-            return null;
-        }
-
-        return $tokens;
+        return $this->getTokens($accountId);
     }
 }

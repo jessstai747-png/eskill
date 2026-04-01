@@ -376,23 +376,34 @@ $userId = $_SESSION['user_id'] ?? 0;
     }
 
     async function checkOAuthConfigStatus() {
+        const alert = document.getElementById('oauthConfigAlert');
+        const title = document.getElementById('oauthConfigTitle');
+        const message = document.getElementById('oauthConfigMessage');
+
         try {
-            const response = await requestJson('/api/auth/oauth-config-status');
-            const data = response.data || {};
-
-            oauthConfigReady = data.ready === true;
-            oauthConfigIssues = Array.isArray(data.issues) ? data.issues : [];
-
-            const alert = document.getElementById('oauthConfigAlert');
-            const title = document.getElementById('oauthConfigTitle');
-            const message = document.getElementById('oauthConfigMessage');
-
             if (!alert || !title || !message) {
                 return;
             }
 
+            let response;
+            if (window.ApiClient && typeof window.ApiClient.json === 'function') {
+                response = await window.ApiClient.json('/api/auth/oauth-config-status');
+            } else {
+                const fallbackResponse = await fetch('/api/auth/oauth-config-status', {
+                    credentials: 'include'
+                });
+                const fallbackData = await fallbackResponse.json().catch(() => null);
+                response = { response: fallbackResponse, data: fallbackData };
+            }
+
+            const data = response.data?.data || {};
+            oauthConfigReady = data.ready === true;
+            oauthConfigIssues = Array.isArray(data.issues) ? data.issues : [];
+            const oauthWarnings = Array.isArray(data.warnings) ? data.warnings : [];
+
             if (!oauthConfigReady) {
-                const msg = data.message || 'Configuração OAuth incompleta. Ajuste ML_APP_ID e ML_REDIRECT_URI.';
+                const msg = [data.message, ...oauthConfigIssues].filter(Boolean).join(' • ')
+                    || 'Configuração OAuth incompleta. Ajuste ML_APP_ID e ML_REDIRECT_URI.';
                 alert.classList.remove('d-none');
                 alert.className = 'alert alert-danger mb-4';
                 title.textContent = 'OAuth indisponível';
@@ -403,8 +414,8 @@ $userId = $_SESSION['user_id'] ?? 0;
 
             setConnectButtonsEnabled(true);
 
-            if (oauthConfigIssues.length > 0) {
-                const msg = data.message || oauthConfigIssues.join('; ');
+            if (oauthWarnings.length > 0 || oauthConfigIssues.length > 0) {
+                const msg = [data.message, ...oauthWarnings, ...oauthConfigIssues].filter(Boolean).join(' • ');
                 alert.classList.remove('d-none');
                 alert.className = 'alert alert-warning mb-4';
                 title.textContent = 'OAuth pronto com avisos';
@@ -414,7 +425,15 @@ $userId = $_SESSION['user_id'] ?? 0;
 
             alert.classList.add('d-none');
         } catch (error) {
-            console.error('Erro ao verificar configuração OAuth:', error);
+            oauthConfigReady = false;
+            const fallbackMessage = 'Não foi possível verificar a configuração OAuth. Revise as credenciais e tente novamente.';
+            setConnectButtonsEnabled(false, fallbackMessage);
+            if (alert && title && message) {
+                alert.classList.remove('d-none');
+                alert.className = 'alert alert-danger mb-4';
+                title.textContent = 'Falha ao validar OAuth';
+                message.textContent = fallbackMessage;
+            }
         }
     }
 

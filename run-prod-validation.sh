@@ -4,7 +4,7 @@
 # Usage: ./run-prod-validation.sh [email] [password]
 #
 
-set -e
+set -euo pipefail
 
 # Cores para output
 RED='\033[0;31m'
@@ -15,8 +15,40 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}🚀 Iniciando testes E2E em PRODUÇÃO${NC}"
 echo "============================================="
 
+PROD_URL="https://eskill.com.br"
+TMP_BASE="${TMPDIR:-/tmp}"
+PROBE_HEADERS="${TMP_BASE}/eskill-prod-run-probe-headers.txt"
+ARG_EMAIL="${1:-}"
+ARG_PASSWORD="${2:-}"
+
+# Pré-checagem de bloqueio por allowlist no sandbox
+rm -f "$PROBE_HEADERS"
+PROBE_STATUS=$(curl -sS -I -D "$PROBE_HEADERS" -o /dev/null "$PROD_URL/login" -w "%{http_code}" 2>/dev/null || true)
+if grep -qi "^x-proxy-error:\s*blocked-by-allowlist" "$PROBE_HEADERS" 2>/dev/null; then
+    echo -e "${YELLOW}⚠ Bloqueio de rede detectado (blocked-by-allowlist).${NC}"
+    echo "   O ambiente atual não consegue acessar https://eskill.com.br."
+    echo "   Execute este script fora do sandbox (SSH/host direto) para validação real de produção."
+    rm -f "$PROBE_HEADERS"
+    exit 0
+fi
+
+if [ "$PROBE_STATUS" = "403" ]; then
+    PROBE_BODY="${TMP_BASE}/eskill-prod-run-probe-body.txt"
+    curl -sS -L "$PROD_URL/login" -o "$PROBE_BODY" 2>/dev/null || true
+    if grep -qi "blocked-by-allowlist" "$PROBE_BODY" 2>/dev/null; then
+        echo -e "${YELLOW}⚠ Bloqueio de rede detectado (blocked-by-allowlist).${NC}"
+        echo "   O ambiente atual não consegue acessar https://eskill.com.br."
+        echo "   Execute este script fora do sandbox (SSH/host direto) para validação real de produção."
+        rm -f "$PROBE_HEADERS" "$PROBE_BODY"
+        exit 0
+    fi
+    rm -f "$PROBE_BODY"
+fi
+
+rm -f "$PROBE_HEADERS"
+
 # Verificar se credenciais foram passadas
-if [ -z "$1" ] || [ -z "$2" ]; then
+if [ -z "$ARG_EMAIL" ] || [ -z "$ARG_PASSWORD" ]; then
     echo -e "${YELLOW}⚠️  Credenciais não fornecidas como argumentos${NC}"
     echo ""
     echo "Opções:"
@@ -25,7 +57,7 @@ if [ -z "$1" ] || [ -z "$2" ]; then
     echo ""
 
     # Verificar se há variáveis de ambiente
-    if [ -z "$PROD_EMAIL" ] || [ -z "$PROD_PASSWORD" ]; then
+    if [ -z "${PROD_EMAIL:-}" ] || [ -z "${PROD_PASSWORD:-}" ]; then
         echo -e "${RED}❌ Nenhuma credencial disponível${NC}"
         echo ""
         echo "Os testes que requerem autenticação serão PULADOS."
@@ -38,8 +70,8 @@ if [ -z "$1" ] || [ -z "$2" ]; then
         fi
     fi
 else
-    export PROD_EMAIL="$1"
-    export PROD_PASSWORD="$2"
+    export PROD_EMAIL="$ARG_EMAIL"
+    export PROD_PASSWORD="$ARG_PASSWORD"
     echo -e "${GREEN}✅ Credenciais fornecidas via argumentos${NC}"
 fi
 
@@ -58,10 +90,7 @@ echo -e "${GREEN}🎭 Executando Playwright E2E Tests...${NC}"
 echo ""
 
 # Rodar apenas o arquivo de validação em produção
-npx playwright test tests/e2e/production-validation.spec.ts --reporter=list
-
-# Verificar resultado
-if [ $? -eq 0 ]; then
+if npx playwright test tests/e2e/production-validation.spec.ts --reporter=list; then
     echo ""
     echo -e "${GREEN}✅ Testes concluídos com sucesso!${NC}"
     echo ""

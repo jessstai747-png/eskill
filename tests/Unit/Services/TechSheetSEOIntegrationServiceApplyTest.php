@@ -13,6 +13,8 @@ use Tests\TestCase;
 class TechSheetSEOIntegrationServiceApplyTest extends TestCase
 {
     private int $accountId;
+    private int $testUserId;
+    private string $testMlUserId;
 
     protected function setUp(): void
     {
@@ -39,18 +41,15 @@ class TechSheetSEOIntegrationServiceApplyTest extends TestCase
             // best effort
         }
 
+        $email = 'tsseo-' . bin2hex(random_bytes(4)) . '@test.local';
         try {
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE id = :id');
-            $stmt->execute(['id' => 1]);
-            if (!$stmt->fetch()) {
-                $pdo->prepare('INSERT INTO users (id, name, email, password) VALUES (:id, :name, :email, :password)')
-                    ->execute([
-                        'id' => 1,
-                        'name' => 'Unit Test User',
-                        'email' => 'unittest@example.com',
-                        'password' => password_hash('secret', PASSWORD_BCRYPT),
-                    ]);
-            }
+            $pdo->prepare('INSERT INTO users (name, email, password) VALUES (:name, :email, :password)')
+                ->execute([
+                    'name' => 'Unit Test User',
+                    'email' => $email,
+                    'password' => password_hash('secret', PASSWORD_BCRYPT),
+                ]);
+            $this->testUserId = (int)$pdo->lastInsertId();
         } catch (\Throwable $e) {
             // best effort
         }
@@ -80,7 +79,7 @@ class TechSheetSEOIntegrationServiceApplyTest extends TestCase
         }
 
         try {
-            $pdo->exec('DELETE FROM ml_accounts');
+            $pdo->prepare("DELETE FROM ml_accounts WHERE ml_user_id LIKE 'MLUSER_TSSEO_TEST_%'")->execute();
         } catch (\Throwable $e) {
             // ignore
         }
@@ -90,9 +89,11 @@ class TechSheetSEOIntegrationServiceApplyTest extends TestCase
         $now = date('Y-m-d H:i:s');
         $expiresAt = date('Y-m-d H:i:s', time() + 3600);
 
+        $this->testMlUserId = 'MLUSER_TSSEO_TEST_' . bin2hex(random_bytes(4));
+
         $candidates = [
-            'user_id' => 1,
-            'ml_user_id' => 'MLUSER_UNITTEST',
+            'user_id' => $this->testUserId,
+            'ml_user_id' => $this->testMlUserId,
             'nickname' => 'unittest-ml',
             'email' => 'ml-unittest@example.com',
             'site_id' => 'MLB',
@@ -181,6 +182,25 @@ class TechSheetSEOIntegrationServiceApplyTest extends TestCase
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
         $pdo->exec('DELETE FROM seo_optimization_history');
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            $pdo = Database::getInstance();
+            if (isset($this->testMlUserId) && $this->testMlUserId !== '') {
+                $pdo->prepare('DELETE FROM ml_accounts WHERE ml_user_id = :ml_user_id')->execute([
+                    'ml_user_id' => $this->testMlUserId,
+                ]);
+            }
+            if (isset($this->testUserId) && $this->testUserId > 0) {
+                $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $this->testUserId]);
+            }
+        } catch (\Throwable $e) {
+            // ignore cleanup failures in tests
+        }
+
+        parent::tearDown();
     }
 
     public function testApplyOptimizedTitleRejectsTooLongTitle(): void

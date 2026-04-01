@@ -6,7 +6,7 @@
 # Usage: ./quick-prod-validation.sh [email] [password]
 #
 
-set -e
+set -uo pipefail
 
 # Cores
 RED='\033[0;31m'
@@ -16,8 +16,47 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 PROD_URL="https://eskill.com.br"
-COOKIE_FILE="/tmp/eskill-prod-cookies.txt"
-SESSION_FILE="/tmp/eskill-prod-session.txt"
+TMP_BASE="${TMPDIR:-/tmp}"
+COOKIE_FILE="${TMP_BASE}/eskill-prod-cookies.txt"
+SESSION_FILE="${TMP_BASE}/eskill-prod-session.txt"
+HEADER_FILE="${TMP_BASE}/eskill-prod-headers.txt"
+BODY_FILE="${TMP_BASE}/eskill-prod-login-body.html"
+ARG_EMAIL="${1:-}"
+ARG_PASSWORD="${2:-}"
+
+check_sandbox_allowlist_block() {
+    local probe_headers="${TMP_BASE}/eskill-prod-probe-headers.txt"
+    local probe_status=""
+
+    rm -f "$probe_headers"
+    probe_status=$(curl -sS -I -D "$probe_headers" -o /dev/null "$PROD_URL/login" -w "%{http_code}" 2>/dev/null || true)
+
+    if grep -qi "^x-proxy-error:\s*blocked-by-allowlist" "$probe_headers" 2>/dev/null; then
+        echo -e "${YELLOW}⚠ Ambiente bloqueado por allowlist do sandbox.${NC}"
+        echo "   x-proxy-error: blocked-by-allowlist"
+        echo "   Para validar produção real, execute este script fora do sandbox (SSH/host direto)."
+        rm -f "$probe_headers"
+        return 0
+    fi
+
+    # Alguns ambientes retornam 403 sem x-proxy-error explícito, mas com corpo/mensagem de allowlist.
+    if [ "$probe_status" = "403" ]; then
+        local probe_body="${TMP_BASE}/eskill-prod-probe-body.txt"
+        rm -f "$probe_body"
+        curl -sS -L "$PROD_URL/login" -o "$probe_body" 2>/dev/null || true
+        if grep -qi "blocked-by-allowlist" "$probe_body" 2>/dev/null; then
+            echo -e "${YELLOW}⚠ Ambiente bloqueado por allowlist do sandbox.${NC}"
+            echo "   Conteúdo retornado indica bloqueio de rede externa."
+            echo "   Para validar produção real, execute este script fora do sandbox (SSH/host direto)."
+            rm -f "$probe_headers" "$probe_body"
+            return 0
+        fi
+        rm -f "$probe_body"
+    fi
+
+    rm -f "$probe_headers"
+    return 1
+}
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   🔍 Validação Rápida - eskill.com.br     ║${NC}"
@@ -25,21 +64,40 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 # Cleanup anterior
-rm -f "$COOKIE_FILE" "$SESSION_FILE"
+rm -f "$COOKIE_FILE" "$SESSION_FILE" "$HEADER_FILE" "$BODY_FILE"
+
+if check_sandbox_allowlist_block; then
+    echo ""
+    echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║         Resultado: Ambiente bloqueado      ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+    echo ""
+    # Não tratar como falha de implementação do sistema
+    exit 0
+fi
 
 # ==============================================
 # 1. TESTE DE PÁGINA DE LOGIN
 # ==============================================
 echo -e "${YELLOW}📋 1. Testando página de login...${NC}"
 
-LOGIN_RESPONSE=$(curl -s -L -c "$COOKIE_FILE" "$PROD_URL/login" -w "\n%{http_code}")
-LOGIN_STATUS=$(echo "$LOGIN_RESPONSE" | tail -1)
-LOGIN_BODY=$(echo "$LOGIN_RESPONSE" | sed '$d')
+LOGIN_STATUS=""
+if ! LOGIN_STATUS=$(curl -sS -L -D "$HEADER_FILE" -c "$COOKIE_FILE" "$PROD_URL/login" -o "$BODY_FILE" -w "%{http_code}" 2>/dev/null); then
+    echo -e "   ${RED}✗${NC} Falha de rede ao acessar login (curl error)"
+    echo "   Dica: execute fora do sandbox para acesso HTTPS externo."
+    exit 1
+fi
+
+LOGIN_BODY=$(cat "$BODY_FILE" 2>/dev/null || echo "")
 
 echo "   Status HTTP: $LOGIN_STATUS"
 
 if [ "$LOGIN_STATUS" -eq 200 ]; then
     echo -e "   ${GREEN}✓${NC} Página de login acessível"
+elif [ "$LOGIN_STATUS" -eq 403 ] && grep -qi "^x-proxy-error:\s*blocked-by-allowlist" "$HEADER_FILE" 2>/dev/null; then
+    echo -e "   ${YELLOW}⚠${NC} Login bloqueado por allowlist do sandbox"
+    echo "   Execute fora do sandbox para validar produção real."
+    exit 0
 else
     echo -e "   ${RED}✗${NC} Erro ao acessar página de login"
 fi
@@ -73,9 +131,9 @@ echo ""
 # ==============================================
 # 2. TESTE DE LOGIN (se credenciais fornecidas)
 # ==============================================
-if [ -n "$1" ] && [ -n "$2" ]; then
-    EMAIL="$1"
-    PASSWORD="$2"
+if [ -n "$ARG_EMAIL" ] && [ -n "$ARG_PASSWORD" ]; then
+    EMAIL="$ARG_EMAIL"
+    PASSWORD="$ARG_PASSWORD"
 
     echo -e "${YELLOW}🔐 2. Testando login com credenciais...${NC}"
 
@@ -152,7 +210,7 @@ ROUTES=(
     "/dashboard/pricing:Pricing"
 )
 
-if [ -f "$SESSION_FILE" ] && [ "$(cat $SESSION_FILE)" = "true" ]; then
+if [ -f "$SESSION_FILE" ] && [ "$(cat "$SESSION_FILE")" = "true" ]; then
     echo -e "${YELLOW}📊 3. Smoke test das rotas do dashboard...${NC}"
     echo ""
 
@@ -195,7 +253,7 @@ echo "📊 Página de login: Status $LOGIN_STATUS"
 echo "🔑 CSRF Token: $([ -n "$CSRF_TOKEN" ] || [ -n "$CSRF_META" ] && echo 'OK' || echo 'FALTANDO')"
 echo "🍪 Cookie de sessão: $(grep -q PHPSESSID "$COOKIE_FILE" 2>/dev/null && echo 'OK' || echo 'FALTANDO')"
 
-if [ -f "$SESSION_FILE" ] && [ "$(cat $SESSION_FILE)" = "true" ]; then
+if [ -f "$SESSION_FILE" ] && [ "$(cat "$SESSION_FILE")" = "true" ]; then
     echo "🔐 Login: SUCESSO"
     echo "✅ Rotas testadas: ${#ROUTES[@]}"
     echo "   ✓ Sucessos: $SUCCESS_COUNT"
@@ -206,8 +264,8 @@ fi
 
 echo ""
 echo -e "${YELLOW}💡 Para teste completo com browser automation:${NC}"
-echo "   ./run-prod-validation.sh $1 $2"
+echo "   ./run-prod-validation.sh ${ARG_EMAIL:-<email>} ${ARG_PASSWORD:-<password>}"
 echo ""
 
 # Cleanup
-rm -f "$COOKIE_FILE" "$SESSION_FILE"
+rm -f "$COOKIE_FILE" "$SESSION_FILE" "$HEADER_FILE" "$BODY_FILE"

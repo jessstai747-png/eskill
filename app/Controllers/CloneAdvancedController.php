@@ -14,7 +14,7 @@ use App\Services\MercadoLivreClient;
 
 /**
  * CloneAdvancedController
- * 
+ *
  * API para funcionalidades avançadas do módulo Clone:
  * - SEO Optimization
  * - Data Export
@@ -26,22 +26,22 @@ class CloneAdvancedController
 {
     private int $accountId;
     private Request $request;
-    
+
     public function __construct()
     {
         $this->request = new Request();
         $this->accountId = (int) ($_SESSION['account_id'] ?? 0);
-        
+
         if ($this->accountId === 0) {
             $this->jsonError('Não autorizado', 401);
             exit;
         }
     }
-    
+
     // ==========================================
     // SEO OPTIMIZATION
     // ==========================================
-    
+
     /**
      * POST /api/clone/seo/analyze
      * Analisa SEO de um item
@@ -51,12 +51,12 @@ class CloneAdvancedController
         $data = $this->getJsonInput();
         $itemId = $data['item_id'] ?? null;
         $level = $data['level'] ?? 'standard';
-        
+
         if (!$itemId) {
             $this->jsonError('item_id é obrigatório', 400);
             return;
         }
-        
+
         try {
             $seo = new CloneSeoOptimizationService($this->accountId);
             $result = $seo->analyzeForClone($itemId, $level);
@@ -65,7 +65,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/seo/analyze/batch
      * Analisa SEO em lote
@@ -74,12 +74,12 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $itemIds = $data['item_ids'] ?? [];
-        
+
         if (empty($itemIds)) {
             $this->jsonError('item_ids é obrigatório', 400);
             return;
         }
-        
+
         try {
             $seo = new CloneSeoOptimizationService($this->accountId);
             $result = $seo->analyzeBatch($itemIds);
@@ -88,7 +88,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/seo/optimize/title
      * Otimiza um título
@@ -98,16 +98,16 @@ class CloneAdvancedController
         $data = $this->getJsonInput();
         $title = $data['title'] ?? '';
         $level = $data['level'] ?? 'standard';
-        
+
         if (empty($title)) {
             $this->jsonError('title é obrigatório', 400);
             return;
         }
-        
+
         try {
             $seo = new CloneSeoOptimizationService($this->accountId);
             $optimized = $seo->optimizeTitle($title, $level);
-            
+
             $this->json([
                 'original' => $title,
                 'optimized' => $optimized,
@@ -118,7 +118,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/seo/optimize/description
      * Otimiza uma descrição
@@ -128,16 +128,16 @@ class CloneAdvancedController
         $data = $this->getJsonInput();
         $description = $data['description'] ?? '';
         $level = $data['level'] ?? 'standard';
-        
+
         if (empty($description)) {
             $this->jsonError('description é obrigatório', 400);
             return;
         }
-        
+
         try {
             $seo = new CloneSeoOptimizationService($this->accountId);
             $optimized = $seo->optimizeDescription($description, $level);
-            
+
             $this->json([
                 'original' => $description,
                 'optimized' => $optimized,
@@ -148,7 +148,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * GET /api/clone/seo/settings
      * Obtém configurações de SEO
@@ -163,7 +163,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * PUT /api/clone/seo/settings
      * Atualiza configurações de SEO
@@ -171,7 +171,7 @@ class CloneAdvancedController
     public function updateSeoSettings(): void
     {
         $data = $this->getJsonInput();
-        
+
         try {
             $seo = new CloneSeoOptimizationService($this->accountId);
             $result = $seo->updateSettings($data);
@@ -180,11 +180,11 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     // ==========================================
     // DATA EXPORT
     // ==========================================
-    
+
     /**
      * POST /api/clone/export/items/csv
      * Exporta itens para CSV
@@ -193,7 +193,7 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $filters = $data['filters'] ?? [];
-        
+
         try {
             $export = new CloneDataExportService($this->accountId);
             $result = $export->exportItemsToCsv($filters);
@@ -202,7 +202,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/export/items/json
      * Exporta itens para JSON
@@ -211,7 +211,7 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $filters = $data['filters'] ?? [];
-        
+
         try {
             $export = new CloneDataExportService($this->accountId);
             $result = $export->exportItemsToJson($filters);
@@ -220,7 +220,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/export/jobs
      * Exporta jobs para CSV
@@ -229,7 +229,7 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $filters = $data['filters'] ?? [];
-        
+
         try {
             $export = new CloneDataExportService($this->accountId);
             $result = $export->exportJobsToCsv($filters);
@@ -238,7 +238,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/export/metrics
      * Exporta métricas
@@ -246,32 +246,41 @@ class CloneAdvancedController
     public function exportMetrics(): void
     {
         $data = $this->getJsonInput();
-        $period = $data['period'] ?? '30d';
-        
+        $options = is_array($data['filters'] ?? null) ? $data['filters'] : [];
+        if (isset($data['period'])) {
+            $options['period'] = $data['period'];
+        }
+
         try {
             $export = new CloneDataExportService($this->accountId);
-            $result = $export->exportMetrics($period);
+            $result = $export->exportMetrics($options);
             $this->json($result);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/export/report
      * Gera relatório completo HTML
      */
     public function exportFullReport(): void
     {
+        $data = $this->getJsonInput();
+        $options = is_array($data['filters'] ?? null) ? $data['filters'] : [];
+        if (isset($data['period'])) {
+            $options['period'] = $data['period'];
+        }
+
         try {
             $export = new CloneDataExportService($this->accountId);
-            $result = $export->exportFullReport();
+            $result = $export->exportFullReport($options);
             $this->json($result);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * GET /api/clone/export/list
      * Lista exports disponíveis
@@ -281,49 +290,51 @@ class CloneAdvancedController
         try {
             $export = new CloneDataExportService($this->accountId);
             $exports = $export->listExports();
-            $this->json(['exports' => $exports]);
+            $this->json([
+                'exports' => $exports,
+                'count' => count($exports)
+            ]);
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * GET /api/clone/export/download/{filename}
      * Download de arquivo exportado
      */
     public function downloadExport(string $filename): void
     {
-        // Sanitizar nome
         $filename = basename($filename);
-        $path = __DIR__ . '/../../storage/exports/' . $filename;
-        
-        if (!file_exists($path)) {
+        $export = new CloneDataExportService($this->accountId);
+        $path = $export->getExportPath($filename);
+
+        if ($path === null || !file_exists($path)) {
             $this->jsonError('Arquivo não encontrado', 404);
             return;
         }
-        
-        // Determinar content type
+
         $ext = pathinfo($filename, PATHINFO_EXTENSION);
         $contentTypes = [
             'csv' => 'text/csv',
             'json' => 'application/json',
             'html' => 'text/html'
         ];
-        
+
         $contentType = $contentTypes[$ext] ?? 'application/octet-stream';
-        
+
         header('Content-Type: ' . $contentType);
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Content-Length: ' . filesize($path));
-        
+
         readfile($path);
         exit;
     }
-    
+
     // ==========================================
     // HEALTH MONITORING
     // ==========================================
-    
+
     /**
      * GET /api/clone/health
      * Status de saúde do sistema
@@ -339,7 +350,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * GET /api/clone/health/diagnostics
      * Diagnósticos detalhados
@@ -355,11 +366,11 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     // ==========================================
     // BATCH OPERATIONS
     // ==========================================
-    
+
     /**
      * POST /api/clone/batch/repricing
      * Repricing em lote
@@ -367,12 +378,12 @@ class CloneAdvancedController
     public function batchRepricing(): void
     {
         $rules = $this->getJsonInput();
-        
+
         if (empty($rules)) {
             $this->jsonError('Regras de repricing são obrigatórias', 400);
             return;
         }
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->batchRepricing($rules);
@@ -381,7 +392,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/batch/stock
      * Atualização de estoque em lote
@@ -390,12 +401,12 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $updates = $data['updates'] ?? [];
-        
+
         if (empty($updates)) {
             $this->jsonError('updates é obrigatório', 400);
             return;
         }
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->batchStockUpdate($updates);
@@ -404,7 +415,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/batch/status
      * Alteração de status em lote
@@ -414,12 +425,12 @@ class CloneAdvancedController
         $data = $this->getJsonInput();
         $itemIds = $data['item_ids'] ?? [];
         $status = $data['status'] ?? null;
-        
+
         if (empty($itemIds) || !$status) {
             $this->jsonError('item_ids e status são obrigatórios', 400);
             return;
         }
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->batchStatusChange($itemIds, $status);
@@ -428,7 +439,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/batch/titles
      * Atualização de títulos em lote
@@ -437,12 +448,12 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $updates = $data['updates'] ?? [];
-        
+
         if (empty($updates)) {
             $this->jsonError('updates é obrigatório', 400);
             return;
         }
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->batchTitleUpdate($updates);
@@ -451,7 +462,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/batch/prices
      * Atualização de preços em lote
@@ -460,12 +471,12 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $updates = $data['updates'] ?? [];
-        
+
         if (empty($updates)) {
             $this->jsonError('updates é obrigatório', 400);
             return;
         }
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->batchPriceUpdate($updates);
@@ -474,7 +485,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/batch/sync-metrics
      * Sincronização de métricas em lote
@@ -483,7 +494,7 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $itemIds = $data['item_ids'] ?? [];
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->batchSyncMetrics($itemIds);
@@ -492,7 +503,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/batch/seo-optimize
      * Otimização SEO em lote
@@ -502,12 +513,12 @@ class CloneAdvancedController
         $data = $this->getJsonInput();
         $itemIds = $data['item_ids'] ?? [];
         $level = $data['level'] ?? 'standard';
-        
+
         if (empty($itemIds)) {
             $this->jsonError('item_ids é obrigatório', 400);
             return;
         }
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->batchSeoOptimization($itemIds, $level);
@@ -516,7 +527,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * POST /api/clone/batch/close-stale
      * Encerrar itens antigos sem vendas
@@ -525,7 +536,7 @@ class CloneAdvancedController
     {
         $data = $this->getJsonInput();
         $days = (int) ($data['days'] ?? 60);
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $result = $batch->closeStaleItems($days);
@@ -534,7 +545,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * GET /api/clone/batch/history
      * Histórico de operações em lote
@@ -542,7 +553,7 @@ class CloneAdvancedController
     public function getBatchHistory(): void
     {
         $limit = $this->request->getInt('limit', 50);
-        
+
         try {
             $batch = new CloneBatchOperationsService($this->accountId);
             $history = $batch->getOperationsHistory($limit);
@@ -551,11 +562,11 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     // ==========================================
     // ANALYTICS
     // ==========================================
-    
+
     /**
      * GET /api/clone/analytics/summary
      * Resumo de analytics
@@ -565,11 +576,11 @@ class CloneAdvancedController
         try {
             $manager = new CloneItemManagerService($this->accountId);
             $stats = $manager->getStats();
-            
+
             $mlClient = $this->createMlClient();
             $health = new CloneHealthMonitorService($this->accountId, null, $mlClient);
             $healthStatus = $health->getSystemHealth();
-            
+
             $this->json([
                 'stats' => $stats,
                 'health' => $healthStatus,
@@ -579,7 +590,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * GET /api/clone/analytics/performance
      * Performance por período
@@ -587,12 +598,12 @@ class CloneAdvancedController
     public function getPerformance(): void
     {
         $period = $this->request->get('period', '30d') ?? '30d';
-        
+
         try {
             $manager = new CloneItemManagerService($this->accountId);
             $topSellers = $manager->getTopSellers(20);
             $stats = $manager->getStats();
-            
+
             $this->json([
                 'period' => $period,
                 'top_sellers' => $topSellers,
@@ -602,7 +613,7 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     /**
      * GET /api/clone/analytics/trends
      * Tendências
@@ -611,7 +622,7 @@ class CloneAdvancedController
     {
         try {
             $db = \App\Database::getInstance();
-            
+
             // Clones por dia (últimos 30 dias)
             $stmt = $db->prepare("
                 SELECT DATE(created_at) as date, COUNT(*) as count
@@ -623,7 +634,7 @@ class CloneAdvancedController
             ");
             $stmt->execute(['account_id' => $this->accountId]);
             $dailyClones = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            
+
             // Status distribution
             $stmt = $db->prepare("
                 SELECT status, COUNT(*) as count
@@ -633,7 +644,7 @@ class CloneAdvancedController
             ");
             $stmt->execute(['account_id' => $this->accountId]);
             $statusDist = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            
+
             // Jobs por status
             $stmt = $db->prepare("
                 SELECT status, COUNT(*) as count
@@ -644,7 +655,7 @@ class CloneAdvancedController
             ");
             $stmt->execute(['account_id' => $this->accountId]);
             $jobsStatus = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            
+
             $this->json([
                 'daily_clones' => $dailyClones,
                 'status_distribution' => $statusDist,
@@ -654,23 +665,23 @@ class CloneAdvancedController
             $this->jsonError($e->getMessage(), 500);
         }
     }
-    
+
     // ==========================================
     // HELPERS
     // ==========================================
-    
+
     private function json($data): void
     {
         header('Content-Type: application/json');
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
     }
-    
+
     private function jsonError(string $message, int $code = 400): void
     {
         http_response_code($code);
         $this->json(['error' => $message, 'code' => $code]);
     }
-    
+
     private function getJsonInput(): array
     {
         $input = file_get_contents('php://input');

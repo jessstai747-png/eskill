@@ -104,6 +104,10 @@ class MercadoLivreWebhookServiceTest extends TestCase
             $itemService,
             $questionService,
             $notificationService,
+            null, // claimsService — injected per-test when needed
+            null, // messagingService — injected per-test when needed
+            null, // techSheetService — injected per-test when needed
+            null, // mlClient — injected per-test when needed
             $db ?? $this->createMockDb(),
             true
         );
@@ -122,7 +126,9 @@ class MercadoLivreWebhookServiceTest extends TestCase
         $service = new MercadoLivreWebhookService(
             self::ACCOUNT_ID,
             $this->createMockLogger(),
-            null, null, null, null, null,
+            null, null, null, null,
+            null, null, null, null, // claimsService, messagingService, techSheetService, mlClient
+            null,
             true
         );
         $this->assertInstanceOf(MercadoLivreWebhookService::class, $service);
@@ -269,6 +275,7 @@ class MercadoLivreWebhookServiceTest extends TestCase
     {
         $orderService = $this->createMockOrderService([
             'id' => '111',
+            'status' => 'paid',
             'data' => ['total_amount' => 500.00],
         ]);
 
@@ -310,7 +317,7 @@ class MercadoLivreWebhookServiceTest extends TestCase
 
     public function testOrderEventFallbackTotal(): void
     {
-        $orderService = $this->createMockOrderService(['id' => '333']);
+        $orderService = $this->createMockOrderService(['id' => '333', 'status' => 'paid']);
         $notifService = $this->createMockNotificationService();
         $notifService->expects($this->once())
             ->method('create')
@@ -578,7 +585,7 @@ class MercadoLivreWebhookServiceTest extends TestCase
             ->with($this->stringContains('ml_accounts'))
             ->willReturn($stmt);
 
-        $orderService = $this->createMockOrderService(['id' => '100', 'total_amount' => 200.00]);
+        $orderService = $this->createMockOrderService(['id' => '100', 'total_amount' => 200.00, 'status' => 'paid']);
         $notifService = $this->createMockNotificationService();
         $notifService->expects($this->once())
             ->method('create')
@@ -695,7 +702,7 @@ class MercadoLivreWebhookServiceTest extends TestCase
         $db = $this->createMock(PDO::class);
         $db->method('prepare')->willReturn($stmt);
 
-        $orderService = $this->createMockOrderService(['id' => '1', 'total_amount' => 10.00]);
+        $orderService = $this->createMockOrderService(['id' => '1', 'total_amount' => 10.00, 'status' => 'paid']);
         $service = $this->buildService(null, $orderService, null, null, $this->createMockNotificationService(), $db);
         $service->processWebhookEvent(['topic' => 'orders', 'resource' => '/orders/1']);
     }

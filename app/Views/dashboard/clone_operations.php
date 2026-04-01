@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * Clone Operations Dashboard
- * 
+ *
  * Dashboard avançado com:
  * - Health status
  * - Batch operations
@@ -17,222 +17,266 @@ ob_start();
 ?>
 
 <style>
-.ops-dashboard {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
+    .ops-dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
 
-.ops-card {
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 1.5rem;
-    border: 1px solid var(--border-color);
-}
+    .ops-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
 
-.ops-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-}
+    .ops-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+    }
 
-.ops-card-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
+    .ops-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 
-.health-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
+    .health-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
 
-.health-indicator.healthy { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-.health-indicator.warning { background: rgba(234, 179, 8, 0.15); color: #eab308; }
-.health-indicator.critical { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .health-indicator.healthy {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
 
-.health-check-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border-color-light);
-}
+    .health-indicator.warning {
+        background: rgba(234, 179, 8, 0.15);
+        color: #eab308;
+    }
 
-.health-check-item:last-child { border-bottom: none; }
+    .health-indicator.critical {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
 
-.health-check-name {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-}
+    .health-check-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color-light);
+    }
 
-.health-check-value {
-    font-size: 0.9rem;
-    font-weight: 600;
-}
+    .health-check-item:last-child {
+        border-bottom: none;
+    }
 
-.batch-action-btn {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--card-bg);
-    color: var(--text-primary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    transition: all 0.2s;
-}
+    .health-check-name {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
 
-.batch-action-btn:hover {
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-}
+    .health-check-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
 
-.batch-action-btn i { font-size: 1.2rem; }
+    .batch-action-btn {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.2s;
+    }
 
-.export-options {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-}
+    .batch-action-btn:hover {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
 
-.export-btn {
-    padding: 1rem;
-    border: 2px dashed var(--border-color);
-    border-radius: 10px;
-    background: transparent;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-}
+    .batch-action-btn i {
+        font-size: 1.2rem;
+    }
 
-.export-btn:hover {
-    border-color: var(--primary-color);
-    background: rgba(var(--primary-rgb), 0.05);
-}
+    .export-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
 
-.export-btn i {
-    font-size: 1.5rem;
-    display: block;
-    margin-bottom: 0.5rem;
-    color: var(--primary-color);
-}
+    .export-btn {
+        padding: 1rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 10px;
+        background: transparent;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s;
+    }
 
-.seo-score-ring {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 1rem;
-    position: relative;
-}
+    .export-btn:hover {
+        border-color: var(--primary-color);
+        background: rgba(var(--primary-rgb), 0.05);
+    }
 
-.seo-score-value {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 2rem;
-    font-weight: 700;
-}
+    .export-btn i {
+        font-size: 1.5rem;
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--primary-color);
+    }
 
-.seo-breakdown {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-}
+    .export-feedback[hidden] {
+        display: none !important;
+    }
 
-.seo-breakdown-item {
-    padding: 0.5rem;
-    background: var(--bg-secondary);
-    border-radius: 6px;
-    text-align: center;
-}
+    .export-feedback-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
 
-.seo-breakdown-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
+    .export-history-empty {
+        padding: 2rem 1rem;
+    }
 
-.seo-breakdown-value {
-    font-size: 1.1rem;
-    font-weight: 600;
-}
+    .seo-score-ring {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 1rem;
+        position: relative;
+    }
 
-.history-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border-color-light);
-}
+    .seo-score-value {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2rem;
+        font-weight: 700;
+    }
 
-.history-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(var(--primary-rgb), 0.1);
-    color: var(--primary-color);
-}
+    .seo-breakdown {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
 
-.history-info { flex: 1; }
-.history-type { font-weight: 500; font-size: 0.9rem; }
-.history-meta { font-size: 0.8rem; color: var(--text-secondary); }
+    .seo-breakdown-item {
+        padding: 0.5rem;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        text-align: center;
+    }
 
-.history-result {
-    text-align: right;
-    font-size: 0.85rem;
-}
+    .seo-breakdown-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
 
-.ops-full-width {
-    grid-column: 1 / -1;
-}
+    .seo-breakdown-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
 
-.quick-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
+    .history-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color-light);
+    }
 
-.quick-stat {
-    background: var(--card-bg);
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-    border: 1px solid var(--border-color);
-}
+    .history-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary-color);
+    }
 
-.quick-stat-value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--primary-color);
-}
+    .history-info {
+        flex: 1;
+    }
 
-.quick-stat-label {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-}
+    .history-type {
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
 
-@media (max-width: 768px) {
-    .quick-stats { grid-template-columns: repeat(2, 1fr); }
-    .export-options { grid-template-columns: 1fr; }
-}
+    .history-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .history-result {
+        text-align: right;
+        font-size: 0.85rem;
+    }
+
+    .ops-full-width {
+        grid-column: 1 / -1;
+    }
+
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .quick-stat {
+        background: var(--card-bg);
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .quick-stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .quick-stat-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .quick-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .export-options {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="container-fluid py-4">
@@ -245,7 +289,7 @@ ob_start();
             <i class="bi bi-arrow-clockwise"></i> Atualizar
         </button>
     </div>
-    
+
     <!-- Quick Stats -->
     <div class="quick-stats" id="quickStats">
         <div class="quick-stat">
@@ -265,7 +309,7 @@ ob_start();
             <div class="quick-stat-label">Receita (30d)</div>
         </div>
     </div>
-    
+
     <div class="ops-dashboard">
         <!-- Health Status Card -->
         <div class="ops-card">
@@ -284,7 +328,7 @@ ob_start();
                 </div>
             </div>
         </div>
-        
+
         <!-- Batch Operations Card -->
         <div class="ops-card">
             <div class="ops-card-header">
@@ -315,7 +359,7 @@ ob_start();
                 </button>
             </div>
         </div>
-        
+
         <!-- Export Card -->
         <div class="ops-card">
             <div class="ops-card-header">
@@ -346,8 +390,9 @@ ob_start();
                     <a href="#" data-action="show-exporthistory">Ver histórico de exports</a>
                 </small>
             </div>
+            <div id="exportFeedback" class="alert export-feedback mt-3 mb-0" role="status" aria-live="polite" hidden></div>
         </div>
-        
+
         <!-- SEO Score Card -->
         <div class="ops-card">
             <div class="ops-card-header">
@@ -378,7 +423,7 @@ ob_start();
                 </div>
             </div>
         </div>
-        
+
         <!-- History Card -->
         <div class="ops-card ops-full-width">
             <div class="ops-card-header">
@@ -417,82 +462,154 @@ ob_start();
     </div>
 </div>
 
+<div class="modal fade" id="exportHistoryModal" tabindex="-1" aria-labelledby="exportHistoryTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportHistoryTitle">Histórico de exports</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Arquivo</th>
+                                <th>Escopo</th>
+                                <th>Formato</th>
+                                <th>Registros</th>
+                                <th>Tamanho</th>
+                                <th>Gerado em</th>
+                                <th class="text-end">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exportHistoryBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted export-history-empty">Carregando exports...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script nonce="<?= CSP_NONCE ?>">
+    let seoChart = null;
+    let currentBatchType = null;
 
-let seoChart = null;
-let currentBatchType = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        loadHealthStatus();
+        loadQuickStats();
+        loadOperationsHistory();
+        initSeoChart();
 
-document.addEventListener('DOMContentLoaded', function() {
-    loadHealthStatus();
-    loadQuickStats();
-    loadOperationsHistory();
-    initSeoChart();
-});
+        const exportHistoryTrigger = document.querySelector('[data-action="show-exporthistory"]');
+        if (exportHistoryTrigger) {
+            exportHistoryTrigger.addEventListener('click', function(event) {
+                event.preventDefault();
+                showExportHistory();
+            });
+        }
+    });
 
-async function loadHealthStatus() {
-    try {
-        const data = await requestJson('/api/clone/health');
-        
-        const healthEl = document.getElementById('overallHealth');
-        healthEl.className = `health-indicator ${data.status}`;
-        healthEl.innerHTML = `
+    async function loadHealthStatus() {
+        try {
+            const data = await requestJson('/api/catalog/clone/monitoring/health');
+            const status = data.status || data.health?.status || 'healthy';
+            const issues = Array.isArray(data.issues) ? data.issues : (Array.isArray(data.health?.issues) ? data.health.issues : []);
+            const queueBreakdown = data.queue_breakdown || data.health?.queue_breakdown || {};
+
+            const healthEl = document.getElementById('overallHealth');
+            healthEl.className = `health-indicator ${status === 'warning' ? 'degraded' : status}`;
+            healthEl.innerHTML = `
             <i class="bi bi-circle-fill"></i>
-            <span>${data.status === 'healthy' ? 'Saudável' : data.status === 'warning' ? 'Atenção' : 'Crítico'}</span>
+            <span>${formatHealthStatus(status, data.legacy_status || data.health?.legacy_status)}</span>
         `;
-        
-        let checksHtml = '';
-        for (const [key, check] of Object.entries(data.checks || {})) {
-            checksHtml += `
+
+            let checksHtml = '';
+            for (const [key, check] of Object.entries(data.checks || data.health?.checks || {})) {
+                checksHtml += `
                 <div class="health-check-item">
                     <span class="health-check-name">${formatCheckName(key)}</span>
                     <span class="health-check-value health-indicator ${check.status}">${check.value}</span>
                 </div>
             `;
-        }
-        document.getElementById('healthChecks').innerHTML = checksHtml || '<p class="text-muted">Sem dados</p>';
-        
-    } catch (error) {
-        console.error('Error loading health:', error);
-    }
-}
+            }
 
-async function loadQuickStats() {
-    try {
-        const data = await requestJson('/api/clone/analytics/summary');
-        
-        const stats = data.stats || {};
-        document.getElementById('statTotal').textContent = formatNumber(stats.total || 0);
-        document.getElementById('statActive').textContent = formatNumber(stats.active || 0);
-        document.getElementById('statSales').textContent = formatNumber(stats.total_sales || 0);
-        document.getElementById('statRevenue').textContent = formatCurrency(stats.total_revenue || 0);
-        
-        // Update SEO if available
-        if (stats.avg_seo_score) {
-            updateSeoChart(stats.avg_seo_score);
-        }
-        
-    } catch (error) {
-        console.error('Error loading stats:', error);
-    }
-}
+            if (!checksHtml) {
+                checksHtml = `
+                <div class="health-check-item">
+                    <span class="health-check-name">Fila pendente</span>
+                    <span class="health-check-value">${formatNumber(data.pending_jobs || data.health?.pending_jobs || 0)}</span>
+                </div>
+                <div class="health-check-item">
+                    <span class="health-check-name">Jobs em lote</span>
+                    <span class="health-check-value">${formatNumber((queueBreakdown.batch_pending || 0) + (queueBreakdown.batch_processing || 0))}</span>
+                </div>
+                <div class="health-check-item">
+                    <span class="health-check-name">Alertas abertos</span>
+                    <span class="health-check-value">${formatNumber(data.unresolved_alerts || data.health?.unresolved_alerts || 0)}</span>
+                </div>
+                <div class="health-check-item">
+                    <span class="health-check-name">Taxa de erro</span>
+                    <span class="health-check-value">${Number(data.error_rate || data.health?.error_rate || 0).toFixed(2)}%</span>
+                </div>
+            `;
+            }
 
-async function loadOperationsHistory() {
-    try {
-        const data = await requestJson('/api/clone/batch/history?limit=5');
-        
-        const operations = data.operations || [];
-        
-        if (operations.length === 0) {
-            document.getElementById('operationsHistory').innerHTML = 
-                '<p class="text-muted text-center py-3">Nenhuma operação recente</p>';
-            return;
+            if (issues.length > 0) {
+                checksHtml += `<div class="mt-3 small text-muted">${escapeHtml(issues.join(' • '))}</div>`;
+            }
+
+            document.getElementById('healthChecks').innerHTML = checksHtml;
+
+        } catch (error) {
+            document.getElementById('healthChecks').innerHTML = `<p class="text-danger mb-0">${escapeHtml(error.message)}</p>`;
         }
-        
-        let html = '';
-        for (const op of operations) {
-            const icon = getOperationIcon(op.operation_type);
-            html += `
+    }
+
+    async function loadQuickStats() {
+        try {
+            const data = await requestJson('/api/clone/analytics/summary');
+
+            const stats = data.stats || {};
+            document.getElementById('statTotal').textContent = formatNumber(stats.total || 0);
+            document.getElementById('statActive').textContent = formatNumber(stats.active || 0);
+            document.getElementById('statSales').textContent = formatNumber(stats.total_sales || 0);
+            document.getElementById('statRevenue').textContent = formatCurrency(stats.total_revenue || 0);
+
+            // Update SEO if available
+            if (stats.avg_seo_score) {
+                updateSeoChart(stats.avg_seo_score);
+            }
+
+        } catch (error) {
+            document.getElementById('statTotal').textContent = '-';
+            document.getElementById('statActive').textContent = '-';
+            document.getElementById('statSales').textContent = '-';
+            document.getElementById('statRevenue').textContent = '-';
+        }
+    }
+
+    async function loadOperationsHistory() {
+        try {
+            const data = await requestJson('/api/clone/batch/history?limit=5');
+
+            const operations = data.operations || [];
+
+            if (operations.length === 0) {
+                document.getElementById('operationsHistory').innerHTML =
+                    '<p class="text-muted text-center py-3">Nenhuma operação recente</p>';
+                return;
+            }
+
+            let html = '';
+            for (const op of operations) {
+                const icon = getOperationIcon(op.operation_type);
+                html += `
                 <div class="history-item">
                     <div class="history-icon">
                         <i class="bi bi-${icon}"></i>
@@ -507,65 +624,70 @@ async function loadOperationsHistory() {
                     </div>
                 </div>
             `;
+            }
+
+            document.getElementById('operationsHistory').innerHTML = html;
+
+        } catch (error) {
+            document.getElementById('operationsHistory').innerHTML =
+                `<p class="text-danger text-center py-3 mb-0">${escapeHtml(error.message)}</p>`;
         }
-        
-        document.getElementById('operationsHistory').innerHTML = html;
-        
-    } catch (error) {
-        console.error('Error loading history:', error);
     }
-}
 
-function initSeoChart() {
-    const ctx = document.getElementById('seoScoreChart').getContext('2d');
-    seoChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            datasets: [{
-                data: [0, 100],
-                backgroundColor: ['#3b82f6', '#e5e7eb'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            cutout: '80%',
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: false } }
+    function initSeoChart() {
+        const ctx = document.getElementById('seoScoreChart').getContext('2d');
+        seoChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: ['#3b82f6', '#e5e7eb'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '80%',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    function updateSeoChart(score) {
+        if (seoChart) {
+            seoChart.data.datasets[0].data = [score, 100 - score];
+            seoChart.update();
         }
-    });
-}
-
-function updateSeoChart(score) {
-    if (seoChart) {
-        seoChart.data.datasets[0].data = [score, 100 - score];
-        seoChart.update();
+        document.getElementById('seoScoreValue').textContent = score;
     }
-    document.getElementById('seoScoreValue').textContent = score;
-}
 
-function openBatchModal(type) {
-    currentBatchType = type;
-    const modal = new bootstrap.Modal(document.getElementById('batchModal'));
-    
-    const titles = {
-        repricing: 'Repricing em Lote',
-        stock: 'Atualização de Estoque',
-        seo: 'Otimização SEO em Lote',
-        status: 'Alteração de Status',
-        stale: 'Encerrar Itens Inativos'
-    };
-    
-    document.getElementById('batchModalTitle').textContent = titles[type] || 'Operação';
-    document.getElementById('batchModalBody').innerHTML = getBatchForm(type);
-    
-    modal.show();
-}
+    function openBatchModal(type) {
+        currentBatchType = type;
+        const modal = new bootstrap.Modal(document.getElementById('batchModal'));
 
-function getBatchForm(type) {
-    switch(type) {
-        case 'repricing':
-            return `
+        const titles = {
+            repricing: 'Repricing em Lote',
+            stock: 'Atualização de Estoque',
+            seo: 'Otimização SEO em Lote',
+            status: 'Alteração de Status',
+            stale: 'Encerrar Itens Inativos'
+        };
+
+        document.getElementById('batchModalTitle').textContent = titles[type] || 'Operação';
+        document.getElementById('batchModalBody').innerHTML = getBatchForm(type);
+
+        modal.show();
+    }
+
+    function getBatchForm(type) {
+        switch (type) {
+            case 'repricing':
+                return `
                 <div class="mb-3">
                     <label class="form-label">Tipo de Ajuste</label>
                     <select class="form-select" id="repricingType">
@@ -583,9 +705,9 @@ function getBatchForm(type) {
                     <input type="text" class="form-control" id="repricingCategory" placeholder="MLB1234">
                 </div>
             `;
-            
-        case 'stock':
-            return `
+
+            case 'stock':
+                return `
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i>
                     Informe os item IDs e quantidades (um por linha): MLB123456789:10
@@ -594,9 +716,9 @@ function getBatchForm(type) {
                     <textarea class="form-control" id="stockUpdates" rows="6" placeholder="MLB123456789:10&#10;MLB987654321:5"></textarea>
                 </div>
             `;
-            
-        case 'seo':
-            return `
+
+            case 'seo':
+                return `
                 <div class="mb-3">
                     <label class="form-label">Nível de Otimização</label>
                     <select class="form-select" id="seoLevel">
@@ -611,9 +733,9 @@ function getBatchForm(type) {
                     <textarea class="form-control" id="seoItems" rows="4" placeholder="MLB123456789&#10;MLB987654321"></textarea>
                 </div>
             `;
-            
-        case 'status':
-            return `
+
+            case 'status':
+                return `
                 <div class="mb-3">
                     <label class="form-label">Novo Status</label>
                     <select class="form-select" id="newStatus">
@@ -626,9 +748,9 @@ function getBatchForm(type) {
                     <textarea class="form-control" id="statusItems" rows="4" placeholder="MLB123456789&#10;MLB987654321"></textarea>
                 </div>
             `;
-            
-        case 'stale':
-            return `
+
+            case 'stale':
+                return `
                 <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle"></i>
                     Esta ação irá pausar itens que não venderam no período especificado.
@@ -638,176 +760,306 @@ function getBatchForm(type) {
                     <input type="number" class="form-control" id="staleDays" value="60" min="30">
                 </div>
             `;
-            
-        default:
-            return '<p>Formulário não disponível</p>';
-    }
-}
 
-async function executeBatch() {
-    const btn = document.getElementById('batchExecuteBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Executando...';
-    
-    try {
-        let endpoint, body;
-        
-        switch(currentBatchType) {
-            case 'repricing':
-                endpoint = '/api/clone/batch/repricing';
-                body = {
-                    type: document.getElementById('repricingType').value,
-                    value: parseFloat(document.getElementById('repricingValue').value),
-                    category_id: document.getElementById('repricingCategory').value || null
-                };
-                break;
-                
-            case 'stock':
-                endpoint = '/api/clone/batch/stock';
-                const stockLines = document.getElementById('stockUpdates').value.split('\n');
-                body = { updates: stockLines.map(line => {
-                    const [item_id, quantity] = line.split(':');
-                    return { item_id: item_id.trim(), quantity: parseInt(quantity) };
-                }).filter(u => u.item_id && !isNaN(u.quantity)) };
-                break;
-                
-            case 'seo':
-                endpoint = '/api/clone/batch/seo-optimize';
-                body = {
-                    item_ids: document.getElementById('seoItems').value.split('\n').map(s => s.trim()).filter(Boolean),
-                    level: document.getElementById('seoLevel').value
-                };
-                break;
-                
-            case 'status':
-                endpoint = '/api/clone/batch/status';
-                body = {
-                    item_ids: document.getElementById('statusItems').value.split('\n').map(s => s.trim()).filter(Boolean),
-                    status: document.getElementById('newStatus').value
-                };
-                break;
-                
-            case 'stale':
-                endpoint = '/api/clone/batch/close-stale';
-                body = { days: parseInt(document.getElementById('staleDays').value) };
-                break;
+            default:
+                return '<p>Formulário não disponível</p>';
         }
-        
-        const result = await requestJson(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        
-        if (result.error) {
-            throw new Error(result.error);
+    }
+
+    async function executeBatch() {
+        const btn = document.getElementById('batchExecuteBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Executando...';
+
+        try {
+            let endpoint, body;
+
+            switch (currentBatchType) {
+                case 'repricing':
+                    endpoint = '/api/clone/batch/repricing';
+                    body = {
+                        type: document.getElementById('repricingType').value,
+                        value: parseFloat(document.getElementById('repricingValue').value),
+                        category_id: document.getElementById('repricingCategory').value || null
+                    };
+                    break;
+
+                case 'stock':
+                    endpoint = '/api/clone/batch/stock';
+                    const stockLines = document.getElementById('stockUpdates').value.split('\n');
+                    body = {
+                        updates: stockLines.map(line => {
+                            const [item_id, quantity] = line.split(':');
+                            return {
+                                item_id: item_id.trim(),
+                                quantity: parseInt(quantity)
+                            };
+                        }).filter(u => u.item_id && !isNaN(u.quantity))
+                    };
+                    break;
+
+                case 'seo':
+                    endpoint = '/api/clone/batch/seo-optimize';
+                    body = {
+                        item_ids: document.getElementById('seoItems').value.split('\n').map(s => s.trim()).filter(Boolean),
+                        level: document.getElementById('seoLevel').value
+                    };
+                    break;
+
+                case 'status':
+                    endpoint = '/api/clone/batch/status';
+                    body = {
+                        item_ids: document.getElementById('statusItems').value.split('\n').map(s => s.trim()).filter(Boolean),
+                        status: document.getElementById('newStatus').value
+                    };
+                    break;
+
+                case 'stale':
+                    endpoint = '/api/clone/batch/close-stale';
+                    body = {
+                        days: parseInt(document.getElementById('staleDays').value)
+                    };
+                    break;
+            }
+
+            const result = await requestJson(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            alert(`Operação concluída!\n${result.updated || result.optimized || 0} itens processados\n${result.errors || 0} erros`);
+            bootstrap.Modal.getInstance(document.getElementById('batchModal')).hide();
+            loadOperationsHistory();
+
+        } catch (error) {
+            alert('Erro: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-fill"></i> Executar';
         }
-        
-        alert(`Operação concluída!\n${result.updated || result.optimized || 0} itens processados\n${result.errors || 0} erros`);
-        bootstrap.Modal.getInstance(document.getElementById('batchModal')).hide();
+    }
+
+    async function exportData(type) {
+        try {
+            let endpoint;
+            switch (type) {
+                case 'csv':
+                    endpoint = '/api/clone/export/items/csv';
+                    break;
+                case 'json':
+                    endpoint = '/api/clone/export/items/json';
+                    break;
+                case 'metrics':
+                    endpoint = '/api/clone/export/metrics';
+                    break;
+                case 'report':
+                    endpoint = '/api/clone/export/report';
+                    break;
+            }
+
+            const result = await requestJson(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filters: {}
+                })
+            });
+
+            if (result.success && result.file) {
+                renderExportFeedback('success', `Export criado: ${result.filename || result.file}`, [{
+                        href: result.download_url || `/api/clone/export/download/${result.file}`,
+                        label: 'Baixar agora',
+                        variant: 'primary'
+                    },
+                    {
+                        href: '#',
+                        label: 'Ver histórico',
+                        variant: 'outline-secondary',
+                        action: 'history'
+                    }
+                ]);
+                window.location.href = result.download_url || `/api/clone/export/download/${result.file}`;
+            } else {
+                renderExportFeedback('warning', 'Export criado, mas o link de download não foi retornado.');
+            }
+
+        } catch (error) {
+            renderExportFeedback('danger', 'Erro ao exportar: ' + error.message);
+        }
+    }
+
+    async function showExportHistory() {
+        const tableBody = document.getElementById('exportHistoryBody');
+
+        try {
+            const data = await requestJson('/api/clone/export/list');
+            const exports = Array.isArray(data.exports) ? data.exports : [];
+
+            if (exports.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted export-history-empty">Nenhum export disponível.</td></tr>';
+            } else {
+                tableBody.innerHTML = exports.map((item) => `
+                <tr>
+                    <td class="fw-semibold">${escapeHtml(item.filename || item.file || '-')}</td>
+                    <td>${escapeHtml(formatExportScope(item.scope || 'items'))}</td>
+                    <td>${escapeHtml(String((item.format || item.type || '-').toUpperCase()))}</td>
+                    <td>${formatNumber(item.item_count || 0)}</td>
+                    <td>${escapeHtml(formatFileSize(item.size_bytes || item.size || 0))}</td>
+                    <td>${escapeHtml(formatDate(item.created_at))}</td>
+                    <td class="text-end">
+                        <a href="${escapeHtml(item.download_url || `/api/clone/export/download/${item.filename}`)}" class="btn btn-sm btn-outline-primary">Baixar</a>
+                    </td>
+                </tr>
+            `).join('');
+            }
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('exportHistoryModal')).show();
+        } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger export-history-empty">${escapeHtml(error.message)}</td></tr>`;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('exportHistoryModal')).show();
+        }
+    }
+
+    function refreshDashboard() {
+        loadHealthStatus();
+        loadQuickStats();
         loadOperationsHistory();
-        
-    } catch (error) {
-        alert('Erro: ' + error.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-play-fill"></i> Executar';
     }
-}
 
-async function exportData(type) {
-    try {
-        let endpoint;
-        switch(type) {
-            case 'csv': endpoint = '/api/clone/export/items/csv'; break;
-            case 'json': endpoint = '/api/clone/export/items/json'; break;
-            case 'metrics': endpoint = '/api/clone/export/metrics'; break;
-            case 'report': endpoint = '/api/clone/export/report'; break;
+    // Helpers
+    function formatNumber(n) {
+        return new Intl.NumberFormat('pt-BR').format(n);
+    }
+
+    function formatCurrency(n) {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(n);
+    }
+
+    function formatDate(dateStr) {
+        return new Date(dateStr).toLocaleString('pt-BR');
+    }
+
+    function formatHealthStatus(status, legacyStatus = '') {
+        const normalized = status === 'warning' ? 'degraded' : status;
+        if (normalized === 'healthy') return 'Saudável';
+        if (normalized === 'degraded') return legacyStatus === 'warning' ? 'Degradado (warning)' : 'Degradado';
+        if (normalized === 'critical') return 'Crítico';
+        return 'Indefinido';
+    }
+
+    function formatFileSize(bytes) {
+        const value = Number(bytes) || 0;
+        if (value < 1024) return `${value} B`;
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+        return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function formatExportScope(scope) {
+        const labels = {
+            items: 'Itens',
+            jobs: 'Jobs',
+            metrics: 'Métricas',
+            report: 'Relatório'
+        };
+        return labels[scope] || scope;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function renderExportFeedback(type, message, actions = []) {
+        const feedback = document.getElementById('exportFeedback');
+        if (!feedback) {
+            return;
         }
-        
-        const result = await requestJson(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filters: {} })
+
+        const classes = {
+            success: 'alert-success',
+            warning: 'alert-warning',
+            danger: 'alert-danger'
+        };
+
+        feedback.hidden = false;
+        feedback.className = `alert export-feedback mt-3 mb-0 ${classes[type] || classes.warning}`;
+
+        const actionsHtml = actions.map((action) => {
+            const href = escapeHtml(action.href || '#');
+            const label = escapeHtml(action.label || 'Abrir');
+            const variant = escapeHtml(action.variant || 'primary');
+            const actionName = escapeHtml(action.action || '');
+            return `<a href="${href}" class="btn btn-sm btn-${variant}" data-export-action="${actionName}">${label}</a>`;
+        }).join('');
+
+        feedback.innerHTML = `
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>${escapeHtml(message)}</div>
+            <div class="export-feedback-actions">${actionsHtml}</div>
+        </div>
+    `;
+
+        feedback.querySelectorAll('[data-export-action="history"]').forEach((button) => {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                showExportHistory();
+            });
         });
-        
-        if (result.success && result.file) {
-            window.location.href = `/api/clone/export/download/${result.file}`;
-        } else {
-            alert('Export criado: ' + (result.file || 'Verifique a lista de exports'));
-        }
-        
-    } catch (error) {
-        alert('Erro ao exportar: ' + error.message);
     }
-}
 
-async function showExportHistory() {
-    try {
-        const data = await requestJson('/api/clone/export/list');
-        console.log('Exports:', data.exports);
-        alert('Ver console para lista de exports');
-    } catch (error) {
-        console.error(error);
+    function formatCheckName(name) {
+        const names = {
+            active_jobs: 'Jobs Ativos',
+            stuck_jobs: 'Jobs Travados',
+            error_rate: 'Taxa de Erro',
+            queue_size: 'Fila',
+            workers_active: 'Workers',
+            api_connectivity: 'Conectividade API'
+        };
+        return names[name] || name;
     }
-}
 
-function refreshDashboard() {
-    loadHealthStatus();
-    loadQuickStats();
-    loadOperationsHistory();
-}
+    function formatOperationType(type) {
+        const types = {
+            repricing: 'Repricing',
+            stock_update: 'Atualização de Estoque',
+            status_change: 'Alteração de Status',
+            title_update: 'Atualização de Títulos',
+            price_update: 'Atualização de Preços',
+            sync_metrics: 'Sincronização de Métricas',
+            seo_optimization: 'Otimização SEO'
+        };
+        return types[type] || type;
+    }
 
-// Helpers
-function formatNumber(n) {
-    return new Intl.NumberFormat('pt-BR').format(n);
-}
-
-function formatCurrency(n) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
-}
-
-function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleString('pt-BR');
-}
-
-function formatCheckName(name) {
-    const names = {
-        active_jobs: 'Jobs Ativos',
-        stuck_jobs: 'Jobs Travados',
-        error_rate: 'Taxa de Erro',
-        queue_size: 'Fila',
-        workers_active: 'Workers',
-        api_connectivity: 'Conectividade API'
-    };
-    return names[name] || name;
-}
-
-function formatOperationType(type) {
-    const types = {
-        repricing: 'Repricing',
-        stock_update: 'Atualização de Estoque',
-        status_change: 'Alteração de Status',
-        title_update: 'Atualização de Títulos',
-        price_update: 'Atualização de Preços',
-        sync_metrics: 'Sincronização de Métricas',
-        seo_optimization: 'Otimização SEO'
-    };
-    return types[type] || type;
-}
-
-function getOperationIcon(type) {
-    const icons = {
-        repricing: 'currency-dollar',
-        stock_update: 'box-seam',
-        status_change: 'toggle-on',
-        title_update: 'fonts',
-        price_update: 'tag',
-        sync_metrics: 'arrow-repeat',
-        seo_optimization: 'search-heart'
-    };
-    return icons[type] || 'gear';
-}
+    function getOperationIcon(type) {
+        const icons = {
+            repricing: 'currency-dollar',
+            stock_update: 'box-seam',
+            status_change: 'toggle-on',
+            title_update: 'fonts',
+            price_update: 'tag',
+            sync_metrics: 'arrow-repeat',
+            seo_optimization: 'search-heart'
+        };
+        return icons[type] || 'gear';
+    }
 </script>
 
 <?php

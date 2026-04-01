@@ -13,6 +13,8 @@ use Tests\TestCase;
 class CompetitorAnalysisServiceTest extends TestCase
 {
     private int $accountId;
+    private int $testUserId;
+    private string $testMlUserId;
 
     protected function setUp(): void
     {
@@ -39,18 +41,15 @@ class CompetitorAnalysisServiceTest extends TestCase
             // best effort
         }
 
+        $email = 'competitor-' . bin2hex(random_bytes(4)) . '@test.local';
         try {
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE id = :id');
-            $stmt->execute(['id' => 1]);
-            if (!$stmt->fetch()) {
-                $pdo->prepare('INSERT INTO users (id, name, email, password) VALUES (:id, :name, :email, :password)')
-                    ->execute([
-                        'id' => 1,
-                        'name' => 'Unit Test User',
-                        'email' => 'unittest@example.com',
-                        'password' => password_hash('secret', PASSWORD_BCRYPT),
-                    ]);
-            }
+            $pdo->prepare('INSERT INTO users (name, email, password) VALUES (:name, :email, :password)')
+                ->execute([
+                    'name' => 'Unit Test User',
+                    'email' => $email,
+                    'password' => password_hash('secret', PASSWORD_BCRYPT),
+                ]);
+            $this->testUserId = (int)$pdo->lastInsertId();
         } catch (\Throwable $e) {
             // best effort
         }
@@ -79,7 +78,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         }
 
         try {
-            $pdo->exec('DELETE FROM ml_accounts');
+            $pdo->prepare("DELETE FROM ml_accounts WHERE ml_user_id LIKE 'MLUSER_COMPETITOR_TEST_%'")->execute();
         } catch (\Throwable $e) {
             // ignore
         }
@@ -87,10 +86,12 @@ class CompetitorAnalysisServiceTest extends TestCase
         $now = date('Y-m-d H:i:s');
         $expiresAt = date('Y-m-d H:i:s', time() + 3600);
 
+        $this->testMlUserId = 'MLUSER_COMPETITOR_TEST_' . bin2hex(random_bytes(4));
+
         $pdo->prepare("INSERT INTO ml_accounts (user_id, ml_user_id, nickname, email, access_token, refresh_token, token_expires_at, created_at, updated_at) VALUES (:user_id, :ml_user_id, :nickname, :email, :access_token, :refresh_token, :expires, :created, :updated)")
             ->execute([
-                'user_id' => 1,
-                'ml_user_id' => 'MLUSER_COMPETITOR_TEST',
+                'user_id' => $this->testUserId,
+                'ml_user_id' => $this->testMlUserId,
                 'nickname' => 'competitor-test',
                 'email' => 'competitor@example.com',
                 'access_token' => 'dummy-access-token',
@@ -124,6 +125,20 @@ class CompetitorAnalysisServiceTest extends TestCase
 
     protected function tearDown(): void
     {
+        try {
+            $pdo = Database::getInstance();
+            if (isset($this->testMlUserId) && $this->testMlUserId !== '') {
+                $pdo->prepare('DELETE FROM ml_accounts WHERE ml_user_id = :ml_user_id')->execute([
+                    'ml_user_id' => $this->testMlUserId,
+                ]);
+            }
+            if (isset($this->testUserId) && $this->testUserId > 0) {
+                $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $this->testUserId]);
+            }
+        } catch (\Throwable $e) {
+            // ignore cleanup failures in tests
+        }
+
         parent::tearDown();
     }
 
@@ -136,7 +151,7 @@ class CompetitorAnalysisServiceTest extends TestCase
     public function testAnalyzeCompetitorsThrowsOnInvalidItem(): void
     {
         $service = new CompetitorAnalysisService($this->accountId);
-        
+
         // Mock ML client to return null for item
         $client = new class($this->accountId) extends MercadoLivreClient {
             private int $aid;
@@ -150,17 +165,17 @@ class CompetitorAnalysisServiceTest extends TestCase
             }
         };
         $this->setMlClientStub($service, $client);
-        
+
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Item not found');
-        
+
         $service->analyzeCompetitors('MLB_INVALID_ITEM');
     }
 
     public function testAnalyzeCompetitorsReturnsCorrectStructure(): void
     {
         $service = new CompetitorAnalysisService($this->accountId);
-        
+
         // Mock ML client
         $client = new class($this->accountId) extends MercadoLivreClient {
             private int $aid;
@@ -169,7 +184,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                 $this->aid = $accountId;
             }
             public function getAccountId(): ?int { return $this->aid; }
-            
+
             public function getItem(string $itemId): ?array {
                 return [
                     'id' => $itemId,
@@ -181,7 +196,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                     'available_quantity' => 10,
                 ];
             }
-            
+
             public function get(string $endpoint, array $params = [], int|bool|null $cacheTtlOrPublic = null, ?bool $public = null): array {
                 if (str_contains($endpoint, '/search')) {
                     return [
@@ -212,9 +227,9 @@ class CompetitorAnalysisServiceTest extends TestCase
             }
         };
         $this->setMlClientStub($service, $client);
-        
+
         $result = $service->analyzeCompetitors('MLB_TEST_ITEM', 5, true);
-        
+
         $this->assertIsArray($result);
         // Real structure from analyzePatterns method
         $this->assertArrayHasKey('competitor_count', $result);
@@ -227,7 +242,7 @@ class CompetitorAnalysisServiceTest extends TestCase
     public function testPriceRangeFiltering(): void
     {
         $service = new CompetitorAnalysisService($this->accountId);
-        
+
         // Mock ML client with competitors outside price range
         $client = new class($this->accountId) extends MercadoLivreClient {
             private int $aid;
@@ -236,7 +251,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                 $this->aid = $accountId;
             }
             public function getAccountId(): ?int { return $this->aid; }
-            
+
             public function getItem(string $itemId): ?array {
                 return [
                     'id' => $itemId,
@@ -246,7 +261,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                     'condition' => 'new',
                 ];
             }
-            
+
             public function get(string $endpoint, array $params = [], int|bool|null $cacheTtlOrPublic = null, ?bool $public = null): array {
                 if (str_contains($endpoint, '/search')) {
                     return [
@@ -264,12 +279,12 @@ class CompetitorAnalysisServiceTest extends TestCase
             }
         };
         $this->setMlClientStub($service, $client);
-        
+
         $result = $service->analyzeCompetitors('MLB_PRICE_TEST', 10, true);
-        
+
         // Should only include competitors within price range
         $competitorIds = array_column($result['competitors'] ?? [], 'id');
-        
+
         // Verify within-range competitors are included
         // Note: exact IDs depend on implementation, so we check structure
         $this->assertIsArray($result['competitors']);
@@ -278,7 +293,7 @@ class CompetitorAnalysisServiceTest extends TestCase
     public function testGetPricingInsightsReturnsCorrectData(): void
     {
         $service = new CompetitorAnalysisService($this->accountId);
-        
+
         // Mock client with various prices
         $client = new class($this->accountId) extends MercadoLivreClient {
             private int $aid;
@@ -287,7 +302,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                 $this->aid = $accountId;
             }
             public function getAccountId(): ?int { return $this->aid; }
-            
+
             public function getItem(string $itemId): ?array {
                 return [
                     'id' => $itemId,
@@ -297,7 +312,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                     'condition' => 'new',
                 ];
             }
-            
+
             public function get(string $endpoint, array $params = [], int|bool|null $cacheTtlOrPublic = null, ?bool $public = null): array {
                 if (str_contains($endpoint, '/search')) {
                     return [
@@ -312,13 +327,13 @@ class CompetitorAnalysisServiceTest extends TestCase
             }
         };
         $this->setMlClientStub($service, $client);
-        
+
         $result = $service->analyzeCompetitors('MLB_PRICING_TEST', 5, true);
-        
+
         // Check pricing_analysis structure (real method name)
         $this->assertArrayHasKey('pricing_analysis', $result);
         $pricing = $result['pricing_analysis'];
-        
+
         if (!empty($pricing)) {
             $this->assertIsArray($pricing);
         }
@@ -327,7 +342,7 @@ class CompetitorAnalysisServiceTest extends TestCase
     public function testPatternExtractionFromCompetitors(): void
     {
         $service = new CompetitorAnalysisService($this->accountId);
-        
+
         $client = new class($this->accountId) extends MercadoLivreClient {
             private int $aid;
             public function __construct(int $accountId) {
@@ -335,7 +350,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                 $this->aid = $accountId;
             }
             public function getAccountId(): ?int { return $this->aid; }
-            
+
             public function getItem(string $itemId): ?array {
                 if ($itemId === 'MLB_PATTERN_TEST') {
                     return [
@@ -364,7 +379,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                     ],
                 ];
             }
-            
+
             public function get(string $endpoint, array $params = [], int|bool|null $cacheTtlOrPublic = null, ?bool $public = null): array {
                 if (str_contains($endpoint, '/search')) {
                     return [
@@ -378,13 +393,13 @@ class CompetitorAnalysisServiceTest extends TestCase
             }
         };
         $this->setMlClientStub($service, $client);
-        
+
         $result = $service->analyzeCompetitors('MLB_PATTERN_TEST', 5, true);
-        
+
         // Check attribute_patterns and title_patterns structure (real method names)
         $this->assertArrayHasKey('attribute_patterns', $result);
         $this->assertArrayHasKey('title_patterns', $result);
-        
+
         $patterns = $result['attribute_patterns'];
         if (!empty($patterns)) {
             $this->assertIsArray($patterns);

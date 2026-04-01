@@ -243,10 +243,7 @@ class MercadoLivreClient
             'headers' => $headers,
         ];
 
-        $proxy = $this->buildProxyOption();
-        if ($proxy !== null) {
-            $options['proxy'] = $proxy;
-        }
+        $options['proxy'] = $this->buildProxyOption() ?? false;
 
         return new \GuzzleHttp\Client($options);
     }

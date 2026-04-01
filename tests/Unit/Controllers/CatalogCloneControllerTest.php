@@ -86,6 +86,8 @@ class CatalogCloneControllerTest extends TestCase
             ['cloneItemNew'],
             ['createJob'],
             ['createSellerJob'],
+            ['unifiedSearch'],
+            ['listBatchJobs'],
             ['getJobStatus'],
             ['listJobs'],
             ['listActiveJobs'],
@@ -167,5 +169,59 @@ class CatalogCloneControllerTest extends TestCase
         $source = file_get_contents($file);
         $catchCount = substr_count($source, 'catch (');
         $this->assertGreaterThanOrEqual(10, $catchCount);
+    }
+
+    public function testUnifiedSearchValidatesSellerIdAndLogsFailures(): void
+    {
+        $file = $this->reflection->getFileName();
+        $source = file_get_contents($file);
+
+        $this->assertStringContainsString("if (\$type === 'seller_id' && !ctype_digit(\$query))", $source);
+        $this->assertStringContainsString("\$this->logError(\$e, __METHOD__);", $source);
+        $this->assertStringContainsString("'message' => 'Não foi possível concluir a busca no momento.'", $source);
+    }
+
+    public function testCloneItemNewAcceptsLegacyItemIdAndLogsFailures(): void
+    {
+        $file = $this->reflection->getFileName();
+        $source = file_get_contents($file);
+
+        $this->assertStringContainsString("if (!isset(\$input['source_item_id']) && isset(\$input['item_id']))", $source);
+        $this->assertStringContainsString("\$input['source_item_id'] = \$input['item_id'];", $source);
+        $this->assertStringContainsString("\$input['source_item_id'] = strtoupper(trim((string) \$input['source_item_id']));", $source);
+        $this->assertStringContainsString("\$preValidation = \$this->service->validatePreExecution([", $source);
+        $this->assertStringContainsString("'error' => 'Conta de destino inválida.'", $source);
+        $this->assertStringContainsString("'error' => 'ID do anúncio inválido.'", $source);
+        $this->assertStringContainsString("'message' => 'Não foi possível iniciar a clonagem do anúncio.'", $source);
+    }
+
+    public function testValidatePreExecutionNormalizesInputAndReturns422WhenInvalid(): void
+    {
+        $file = $this->reflection->getFileName();
+        $source = file_get_contents($file);
+
+        $this->assertStringContainsString("\$input['target_account_id'] = (int) (\$input['target_account_id'] ?? 0);", $source);
+        $this->assertStringContainsString("\$input['item_ids'] = array_values(array_filter(array_map(", $source);
+        $this->assertStringContainsString("http_response_code((\$result['valid'] ?? false) ? 200 : 422);", $source);
+        $this->assertStringContainsString("'message' => 'Não foi possível validar as pré-condições da clonagem.'", $source);
+    }
+
+    public function testMonitoringHealthResponseKeepsFlattenedAndNestedCompatibilityPayloads(): void
+    {
+        $file = $this->reflection->getFileName();
+        $source = file_get_contents($file);
+
+        $this->assertStringContainsString("'success' => true", $source);
+        $this->assertStringContainsString("'status' => \$health['status']", $source);
+        $this->assertStringContainsString("'health' => \$health", $source);
+    }
+
+    public function testListAlertsAcceptsAcknowledgedCompatibilityQueryParameter(): void
+    {
+        $file = $this->reflection->getFileName();
+        $source = file_get_contents($file);
+
+        $this->assertStringContainsString("\$acknowledged = \$this->request->get('acknowledged');", $source);
+        $this->assertStringContainsString("\$onlyUnacknowledged = \$acknowledged !== 'all' && \$acknowledged !== 'true';", $source);
     }
 }

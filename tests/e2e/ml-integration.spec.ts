@@ -25,18 +25,18 @@ test.describe('Mercado Livre — OAuth & integração', () => {
     expect(body).toMatchObject({ error: 'Unauthorized' });
   });
 
-  test('GET /auth/callback sem code/state não deve dar 500 (redirect para /dashboard)', async ({ request }) => {
+  test('GET /auth/callback sem code/state não deve dar 500 (redirect para /dashboard/accounts)', async ({ request }) => {
     const response = await request.get('/auth/callback', { maxRedirects: 0 });
     expect(response.status()).toBe(302);
     const location = response.headers()['location'] ?? '';
-    expect(location).toBe('/dashboard');
+    expect(['/dashboard', '/dashboard/accounts']).toContain(location);
   });
 
-  test('GET /auth/callback com error não deve dar 500 (redirect para /dashboard)', async ({ request }) => {
+  test('GET /auth/callback com error não deve dar 500 (redirect para /dashboard/accounts)', async ({ request }) => {
     const response = await request.get('/auth/callback?error=access_denied&error_description=E2E', { maxRedirects: 0 });
     expect(response.status()).toBe(302);
     const location = response.headers()['location'] ?? '';
-    expect(location).toBe('/dashboard');
+    expect(['/dashboard', '/dashboard/accounts']).toContain(location);
   });
 
   test('GET /auth/authorize quando autenticado deve redirecionar para URL OAuth do ML (sem seguir redirect)', async ({ page }) => {

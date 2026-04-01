@@ -209,4 +209,3 @@ class SeoOptimizationController extends BaseController
         return "App\\Services\\SEO\\{$name}";
     }
 }
-

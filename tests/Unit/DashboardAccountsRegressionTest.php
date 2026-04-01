@@ -36,4 +36,25 @@ class DashboardAccountsRegressionTest extends TestCase
         $this->assertStringNotContainsString("console.log('loadAccounts() iniciando...');", $contents);
         $this->assertStringNotContainsString("console.log('=== connectNewAccount() chamada ===');", $contents);
     }
+
+    public function testOAuthConfigStatusCanRead503PayloadWithoutRequestJsonFailure(): void
+    {
+        $path = dirname(__DIR__, 2) . '/app/Views/dashboard/accounts.php';
+        $contents = (string) file_get_contents($path);
+
+        $this->assertStringContainsString("window.ApiClient && typeof window.ApiClient.json === 'function'", $contents);
+        $this->assertStringContainsString("response = await window.ApiClient.json('/api/auth/oauth-config-status');", $contents);
+        $this->assertStringContainsString("const data = response.data?.data || {};", $contents);
+        $this->assertStringNotContainsString("const response = await requestJson('/api/auth/oauth-config-status');", $contents);
+    }
+
+    public function testOAuthDashboardShowsInlineFailureAndDisablesButtonsOnDiagnosticError(): void
+    {
+        $path = dirname(__DIR__, 2) . '/app/Views/dashboard/accounts.php';
+        $contents = (string) file_get_contents($path);
+
+        $this->assertStringContainsString("oauthConfigReady = false;", $contents);
+        $this->assertStringContainsString("setConnectButtonsEnabled(false, fallbackMessage);", $contents);
+        $this->assertStringContainsString("title.textContent = 'Falha ao validar OAuth';", $contents);
+    }
 }

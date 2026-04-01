@@ -17,6 +17,8 @@ use GuzzleHttp\Psr7\Response;
 class MercadoLivreClientTest extends TestCase
 {
     private int $accountId;
+    private int $testUserId;
+    private string $testMlUserId;
     /** @var array<int, array<string, mixed>> */
     private array $requestHistory = [];
 
@@ -103,8 +105,8 @@ class MercadoLivreClientTest extends TestCase
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-        // Clean up
-        $pdo->exec('DELETE FROM ml_accounts');
+        // Clean up only fixtures owned by this test suite
+        $pdo->prepare("DELETE FROM ml_accounts WHERE ml_user_id LIKE 'MLUSER_CLIENT_TEST_%'")->execute();
 
         // Ensure users table and a test user exist (ml_accounts.user_id FK)
         try {
@@ -120,14 +122,11 @@ class MercadoLivreClientTest extends TestCase
             // ignore
         }
 
-        // Insert user id=1 if missing
+        $email = 'mlclient-' . bin2hex(random_bytes(4)) . '@test.local';
         try {
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE id = :id');
-            $stmt->execute(['id' => 1]);
-            if (!$stmt->fetch()) {
-                $pdo->prepare('INSERT INTO users (id, name, email, password) VALUES (:id, :name, :email, :password)')
-                    ->execute(['id' => 1, 'name' => 'ML Test User', 'email' => 'mltest1@example.com', 'password' => password_hash('secret', PASSWORD_BCRYPT)]);
-            }
+            $pdo->prepare('INSERT INTO users (name, email, password) VALUES (:name, :email, :password)')
+                ->execute(['name' => 'ML Test User', 'email' => $email, 'password' => password_hash('secret', PASSWORD_BCRYPT)]);
+            $this->testUserId = (int)$pdo->lastInsertId();
         } catch (\Throwable $e) {
             // ignore
         }
@@ -143,6 +142,8 @@ class MercadoLivreClientTest extends TestCase
             // ignore - best effort
         }
 
+        $this->testMlUserId = 'MLUSER_CLIENT_TEST_' . bin2hex(random_bytes(4));
+
         // Insert an account with encrypted tokens
         $enc = new EncryptionService();
         $accessEnc = $enc->encrypt('initial-access-token');
@@ -154,8 +155,8 @@ class MercadoLivreClientTest extends TestCase
             VALUES (:user_id, :ml_user_id, :nickname, :email, :site_id, :access_token, :refresh_token, :expires_at, :tokens_encrypted, 'active', NOW(), NOW())");
 
         $stmt->execute([
-            'user_id' => 1,
-            'ml_user_id' => 'MLUSER123',
+            'user_id' => $this->testUserId,
+            'ml_user_id' => $this->testMlUserId,
             'nickname' => 'unittest-ml',
             'email' => 'ml@example.com',
             'site_id' => 'MLB',
@@ -166,6 +167,27 @@ class MercadoLivreClientTest extends TestCase
         ]);
 
         $this->accountId = (int)$pdo->lastInsertId();
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->currentTestRequiresDatabase()) {
+            try {
+                $pdo = Database::getInstance();
+                if (isset($this->testMlUserId) && $this->testMlUserId !== '') {
+                    $pdo->prepare('DELETE FROM ml_accounts WHERE ml_user_id = :ml_user_id')->execute([
+                        'ml_user_id' => $this->testMlUserId,
+                    ]);
+                }
+                if (isset($this->testUserId) && $this->testUserId > 0) {
+                    $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $this->testUserId]);
+                }
+            } catch (\Throwable $e) {
+                // ignore cleanup failures in tests
+            }
+        }
+
+        parent::tearDown();
     }
 
     public function testLoadAccountDecryptsToken()
@@ -301,6 +323,41 @@ class MercadoLivreClientTest extends TestCase
             } else {
                 putenv('ML_PUBLIC_CLIENT_ID_MODE');
                 unset($_ENV['ML_PUBLIC_CLIENT_ID_MODE']);
+            }
+        }
+    }
+
+    public function testDisablesInheritedProxyWhenMlProxyIsDisabled(): void
+    {
+        $previousEnabled = $_ENV['ML_PROXY_ENABLED'] ?? null;
+        $previousHttpProxy = getenv('HTTP_PROXY') ?: null;
+
+        putenv('ML_PROXY_ENABLED=false');
+        $_ENV['ML_PROXY_ENABLED'] = 'false';
+        putenv('HTTP_PROXY=http://proxy.mercadolivre.com:8080');
+
+        try {
+            $client = new MercadoLivreClient(null);
+            $method = new \ReflectionMethod(MercadoLivreClient::class, 'createHttpClient');
+            $method->setAccessible(true);
+
+            /** @var GuzzleClient $guzzle */
+            $guzzle = $method->invoke($client, false);
+
+            $this->assertFalse($guzzle->getConfig('proxy'));
+        } finally {
+            if ($previousEnabled !== null) {
+                putenv("ML_PROXY_ENABLED={$previousEnabled}");
+                $_ENV['ML_PROXY_ENABLED'] = $previousEnabled;
+            } else {
+                putenv('ML_PROXY_ENABLED');
+                unset($_ENV['ML_PROXY_ENABLED']);
+            }
+
+            if ($previousHttpProxy !== null) {
+                putenv("HTTP_PROXY={$previousHttpProxy}");
+            } else {
+                putenv('HTTP_PROXY');
             }
         }
     }

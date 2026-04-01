@@ -467,12 +467,19 @@ class CatalogCloneController extends BaseController
         }
 
         try {
+            $input['target_account_id'] = (int) ($input['target_account_id'] ?? 0);
+            $input['item_ids'] = array_values(array_filter(array_map(
+                static fn($itemId): string => strtoupper(trim((string) $itemId)),
+                is_array($input['item_ids'] ?? null) ? $input['item_ids'] : []
+            )));
+
             $result = $this->service->validatePreExecution($input);
-            http_response_code(200);
+            http_response_code(($result['valid'] ?? false) ? 200 : 422);
             echo json_encode($result);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logError($e, __METHOD__);
             http_response_code(500);
-            echo json_encode(['error' => 'Erro na validação', 'message' => $e->getMessage()]);
+            echo json_encode(['error' => 'Erro na validação', 'message' => 'Não foi possível validar as pré-condições da clonagem.']);
         }
     }
 
@@ -652,6 +659,10 @@ class CatalogCloneController extends BaseController
             return;
         }
 
+        if (!isset($input['source_item_id']) && isset($input['item_id'])) {
+            $input['source_item_id'] = $input['item_id'];
+        }
+
         if (empty($input['source_item_id']) || empty($input['target_account_id'])) {
             http_response_code(400);
             echo json_encode(['error' => "Campos 'source_item_id' e 'target_account_id' são obrigatórios"]);
@@ -659,15 +670,51 @@ class CatalogCloneController extends BaseController
         }
 
         try {
+            $input['source_item_id'] = strtoupper(trim((string) $input['source_item_id']));
+            $input['target_account_id'] = (int) $input['target_account_id'];
+
+            if ($input['target_account_id'] <= 0) {
+                http_response_code(422);
+                echo json_encode(['error' => 'Conta de destino inválida.']);
+                return;
+            }
+
+            if (!preg_match('/^ML[A-Z]\d+$/', $input['source_item_id'])) {
+                http_response_code(422);
+                echo json_encode(['error' => 'ID do anúncio inválido.']);
+                return;
+            }
+
+            $preValidation = $this->service->validatePreExecution([
+                'target_account_id' => $input['target_account_id'],
+                'item_ids' => [$input['source_item_id']],
+            ]);
+
+            if (($preValidation['valid'] ?? false) !== true) {
+                http_response_code(422);
+                echo json_encode([
+                    'error' => $preValidation['errors'][0] ?? 'Não foi possível validar a clonagem.',
+                    'details' => $preValidation,
+                ]);
+                return;
+            }
+
             $result = $this->service->cloneItem($input);
+            if (!empty($preValidation['warnings'])) {
+                $result['warnings'] = $preValidation['warnings'];
+            }
+            if (!empty($preValidation['account'])) {
+                $result['account'] = $preValidation['account'];
+            }
 
             $statusCode = $result['status'] === 'success' ? 201 : ($result['status'] === 'skipped_duplicate' ? 409 : 400);
 
             http_response_code($statusCode);
             echo json_encode($result);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logError($e, __METHOD__);
             http_response_code(500);
-            echo json_encode(['error' => 'Erro ao clonar item', 'message' => $e->getMessage()]);
+            echo json_encode(['error' => 'Erro ao clonar item', 'message' => 'Não foi possível iniciar a clonagem do anúncio.']);
         }
     }
 
@@ -1362,7 +1409,15 @@ class CatalogCloneController extends BaseController
 
             http_response_code(200);
             echo json_encode([
-                'status' => 'success',
+                'success' => true,
+                'status' => $health['status'],
+                'legacy_status' => $health['legacy_status'] ?? ($health['status'] === 'degraded' ? 'warning' : $health['status']),
+                'issues' => $health['issues'] ?? [],
+                'error_rate' => $health['error_rate'] ?? 0,
+                'pending_jobs' => $health['pending_jobs'] ?? 0,
+                'unresolved_alerts' => $health['unresolved_alerts'] ?? 0,
+                'operations_1h' => $health['operations_1h'] ?? 0,
+                'queue_breakdown' => $health['queue_breakdown'] ?? [],
                 'health' => $health
             ]);
         } catch (\Exception $e) {
@@ -1380,7 +1435,11 @@ class CatalogCloneController extends BaseController
         header('Content-Type: application/json');
 
         try {
-            $onlyUnacknowledged = ($this->request->get('unacknowledged', '1')) === '1';
+            $acknowledged = $this->request->get('acknowledged');
+            $onlyUnacknowledged = $acknowledged !== 'all' && $acknowledged !== 'true';
+            if ($acknowledged === null) {
+                $onlyUnacknowledged = ($this->request->get('unacknowledged', '1')) === '1';
+            }
             $limit = $this->request->getInt('limit', 50);
 
             $monitoring = new \App\Services\CloneMonitoringService();
@@ -1886,10 +1945,10 @@ class CatalogCloneController extends BaseController
         header('Content-Type: application/json');
 
         try {
-            $type   = $this->request->get('type', 'keyword');
-            $query  = trim($this->request->get('q', ''));
-            $offset = $this->request->getInt('offset', 0);
-            $limit  = $this->request->getInt('limit', 20);
+            $type = trim((string) $this->request->get('type', 'keyword'));
+            $query = trim((string) $this->request->get('q', ''));
+            $offset = max(0, $this->request->getInt('offset', 0));
+            $limit = min(max(1, $this->request->getInt('limit', 20)), 50);
 
             $allowedTypes = ['item_id', 'seller_nickname', 'seller_id', 'keyword', 'catalog_id'];
             if (!in_array($type, $allowedTypes, true)) {
@@ -1904,6 +1963,12 @@ class CatalogCloneController extends BaseController
                 return;
             }
 
+            if ($type === 'seller_id' && !ctype_digit($query)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Para seller_id, informe apenas números.']);
+                return;
+            }
+
             $result = $this->service->searchUnified($type, $query, $offset, $limit);
 
             http_response_code(200);
@@ -1915,9 +1980,10 @@ class CatalogCloneController extends BaseController
                 'offset' => $offset,
                 'limit'  => $limit,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->logError($e, __METHOD__);
             http_response_code(500);
-            echo json_encode(['error' => 'Erro na busca', 'message' => $e->getMessage()]);
+            echo json_encode(['error' => 'Erro na busca', 'message' => 'Não foi possível concluir a busca no momento.']);
         }
     }
 

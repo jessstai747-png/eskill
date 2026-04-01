@@ -70,6 +70,41 @@ if (!isset($_SESSION)) {
     $_SESSION = [];
 }
 
+/**
+ * Protege contra execução de testes em um banco potencialmente não isolado.
+ */
+function isPhpUnitSafeDatabaseName(?string $dbName): bool
+{
+    if (!is_string($dbName)) {
+        return false;
+    }
+
+    $normalized = strtolower(trim($dbName));
+    if ($normalized === '') {
+        return false;
+    }
+
+    return (bool)preg_match('/(^|[_-])(test|tests|testing|phpunit|ci)([_-]|$)/', $normalized)
+        || str_starts_with($normalized, 'test_')
+        || str_ends_with($normalized, '_test');
+}
+
+function shouldAllowNonTestPhpUnitDatabase(): bool
+{
+    $raw = $_ENV['PHPUNIT_ALLOW_NON_TEST_DB'] ?? getenv('PHPUNIT_ALLOW_NON_TEST_DB') ?? '';
+    return in_array(strtolower(trim((string)$raw)), ['1', 'true', 'yes', 'on'], true);
+}
+
+function markPhpUnitDatabaseUnavailable(string $message): void
+{
+    if (!defined('PHPUNIT_DB_AVAILABLE')) {
+        define('PHPUNIT_DB_AVAILABLE', false);
+    }
+
+    $GLOBALS['phpunit_db_error'] = $message;
+    error_log('[phpunit-bootstrap] ' . $message);
+}
+
 // Detect PHPUnit testsuite from CLI args. Unit tests should not require DB connectivity.
 $argv = $_SERVER['argv'] ?? [];
 $requestedSuite = null;
@@ -93,6 +128,17 @@ $isIntegrationSuite = $suiteNormalized === 'integration';
 
 $_ENV['PHPUNIT_REQUESTED_SUITE'] = $requestedSuite !== null ? $requestedSuite : 'All';
 putenv('PHPUNIT_REQUESTED_SUITE=' . $_ENV['PHPUNIT_REQUESTED_SUITE']);
+
+$resolvedDbName = trim((string)($_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? getenv('DB_DATABASE') ?? getenv('DB_NAME') ?? ''));
+if ($resolvedDbName !== '' && !isPhpUnitSafeDatabaseName($resolvedDbName) && !shouldAllowNonTestPhpUnitDatabase()) {
+    markPhpUnitDatabaseUnavailable(
+        sprintf(
+            'Unsafe PHPUnit database detected (%s). Configure DB_DATABASE/DB_NAME with a test-specific name or set PHPUNIT_ALLOW_NON_TEST_DB=1 explicitly.',
+            $resolvedDbName
+        )
+    );
+    return;
+}
 
 if ($isUnitSuite) {
     // Keep Unit suite DB-free. Any DB usage should be mocked inside unit tests.
@@ -157,7 +203,5 @@ try {
     define('PHPUNIT_DB_AVAILABLE', true);
 } catch (\Throwable $e) {
     // DB unavailable — mark integration tests as skipped rather than aborting PHPUnit entirely.
-    define('PHPUNIT_DB_AVAILABLE', false);
-    $GLOBALS['phpunit_db_error'] = $e->getMessage();
-    error_log('[phpunit-bootstrap] DB unavailable — Integration tests will be skipped: ' . $e->getMessage());
+    markPhpUnitDatabaseUnavailable('DB unavailable — Integration tests will be skipped: ' . $e->getMessage());
 }

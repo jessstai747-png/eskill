@@ -457,24 +457,15 @@ class MercadoLivreAuthService
             session_start();
         }
 
+        $diagnostics = $this->getOAuthConfigDiagnostics();
+        if (!$diagnostics['ready']) {
+            throw new \RuntimeException((string) ($diagnostics['message'] ?? 'Configuração OAuth inválida'));
+        }
+
         $ml = $this->config['mercadolivre'] ?? [];
         $clientId = trim((string)($ml['app_id'] ?? ''));
-        $redirect = trim((string)($ml['redirect_uri'] ?? ''));
+        $redirect = $this->normalizeOAuthRedirectUri((string)($ml['redirect_uri'] ?? ''));
         $authBase = $this->getMercadoLivreAuthUrl();
-
-        if ($clientId === '') {
-            throw new \RuntimeException('ML_APP_ID não configurado para o fluxo OAuth');
-        }
-
-        if ($redirect === '') {
-            throw new \RuntimeException('ML_REDIRECT_URI não configurado para o fluxo OAuth');
-        }
-
-        if (str_starts_with($redirect, '//')) {
-            $redirect = 'https:' . $redirect;
-        } elseif (!preg_match('#^https?://#i', $redirect)) {
-            $redirect = 'https://' . $redirect;
-        }
 
         if (!filter_var($redirect, FILTER_VALIDATE_URL)) {
             throw new \RuntimeException('ML_REDIRECT_URI inválido para o fluxo OAuth');
@@ -523,6 +514,11 @@ class MercadoLivreAuthService
             session_start();
         }
 
+        $diagnostics = $this->getOAuthConfigDiagnostics();
+        if (!$diagnostics['ready']) {
+            throw new \RuntimeException((string) ($diagnostics['message'] ?? 'Configuração OAuth inválida'));
+        }
+
         $stored = $_SESSION['ml_oauth_state'] ?? null;
         $stateContexts = $_SESSION['ml_oauth_states'] ?? [];
         $stateContext = is_array($stateContexts) ? ($stateContexts[$state] ?? null) : null;
@@ -547,7 +543,7 @@ class MercadoLivreAuthService
         $tokenUrl = $this->getMercadoLivreTokenUrl();
         $clientId = $ml['app_id'] ?? '';
         $clientSecret = $ml['client_secret'] ?? '';
-        $redirect = $ml['redirect_uri'] ?? '';
+        $redirect = $this->normalizeOAuthRedirectUri((string)($ml['redirect_uri'] ?? ''));
 
         $post = [
             'grant_type' => 'authorization_code',
@@ -712,6 +708,86 @@ class MercadoLivreAuthService
         SessionHelper::setActiveAccountId($accountId);
 
         return ['success' => true, 'account_id' => $accountId, 'user_info' => $userInfo];
+    }
+
+    public function getOAuthConfigDiagnostics(): array
+    {
+        $ml = $this->getMercadoLivreConfig();
+        $clientId = trim((string)($ml['app_id'] ?? ''));
+        $clientSecret = trim((string)($ml['client_secret'] ?? ''));
+        $redirectUri = trim((string)($ml['redirect_uri'] ?? ''));
+        $normalizedRedirectUri = $this->normalizeOAuthRedirectUri($redirectUri);
+        $appKey = trim((string)($this->config['key'] ?? ($_ENV['APP_KEY'] ?? getenv('APP_KEY') ?? '')));
+        $appUrl = trim((string)($this->config['url'] ?? ''));
+        $proxyEnabledRaw = $_ENV['ML_PROXY_ENABLED'] ?? getenv('ML_PROXY_ENABLED') ?? null;
+        $proxyEnabled = filter_var($proxyEnabledRaw, FILTER_VALIDATE_BOOLEAN);
+        $httpProxy = (string)(getenv('HTTP_PROXY') ?: getenv('http_proxy') ?: '');
+        $httpsProxy = (string)(getenv('HTTPS_PROXY') ?: getenv('https_proxy') ?: '');
+        $issues = [];
+        $warnings = [];
+
+        if ($clientId === '' || $this->isPlaceholderValue($clientId)) {
+            $issues[] = 'ML_APP_ID ausente ou com valor placeholder';
+        }
+
+        if ($clientSecret === '' || $this->isPlaceholderValue($clientSecret)) {
+            $issues[] = 'ML_CLIENT_SECRET ausente ou com valor placeholder';
+        }
+
+        if ($redirectUri === '' || $this->isPlaceholderValue($redirectUri)) {
+            $issues[] = 'ML_REDIRECT_URI ausente ou com valor placeholder';
+        } elseif (!filter_var($normalizedRedirectUri, FILTER_VALIDATE_URL)) {
+            $issues[] = 'ML_REDIRECT_URI inválido para o fluxo OAuth';
+        } else {
+            $redirectPath = (string)(parse_url($normalizedRedirectUri, PHP_URL_PATH) ?? '');
+            if ($redirectPath !== '/auth/callback') {
+                $warnings[] = 'ML_REDIRECT_URI deve apontar para /auth/callback';
+            }
+        }
+
+        if ($appKey === '' || $this->isPlaceholderValue($appKey) || strlen($appKey) < 32) {
+            $issues[] = 'APP_KEY ausente, placeholder ou menor que 32 caracteres';
+        }
+
+        if (!$proxyEnabled && ($httpProxy !== '' || $httpsProxy !== '')) {
+            $warnings[] = 'Proxy do ambiente detectado com ML_PROXY_ENABLED=false; conexões ML podem herdar proxy indevido em workers externos';
+        }
+
+        if ($proxyEnabled) {
+            $proxyHost = trim((string)($_ENV['ML_PROXY_HOST'] ?? getenv('ML_PROXY_HOST') ?? ''));
+            $proxyPort = trim((string)($_ENV['ML_PROXY_PORT'] ?? getenv('ML_PROXY_PORT') ?? ''));
+            if ($proxyHost === '' || $proxyPort === '') {
+                $issues[] = 'ML_PROXY_ENABLED=true exige ML_PROXY_HOST e ML_PROXY_PORT válidos';
+            }
+        }
+
+        if ($appUrl !== '' && filter_var($normalizedRedirectUri, FILTER_VALIDATE_URL)) {
+            $appHost = (string)(parse_url($appUrl, PHP_URL_HOST) ?? '');
+            $redirectHost = (string)(parse_url($normalizedRedirectUri, PHP_URL_HOST) ?? '');
+            if ($appHost !== '' && $redirectHost !== '' && strcasecmp($appHost, $redirectHost) !== 0) {
+                $warnings[] = 'Host de ML_REDIRECT_URI difere do host configurado em APP_URL';
+            }
+        }
+
+        return [
+            'ready' => $issues === [],
+            'message' => $issues[0] ?? ($warnings[0] ?? 'Configuração OAuth validada com sucesso'),
+            'issues' => $issues,
+            'warnings' => $warnings,
+            'error_type' => $issues === [] ? null : 'configuration',
+            'details' => [
+                'redirect_uri' => $normalizedRedirectUri,
+                'redirect_host' => (string)(parse_url($normalizedRedirectUri, PHP_URL_HOST) ?? ''),
+                'redirect_path' => (string)(parse_url($normalizedRedirectUri, PHP_URL_PATH) ?? ''),
+                'auth_url' => $this->getMercadoLivreAuthUrl(),
+                'token_url' => $this->getMercadoLivreTokenUrl(),
+                'api_url' => $this->getMercadoLivreApiUrl(),
+                'proxy_enabled' => $proxyEnabled,
+                'inherited_proxy_detected' => $httpProxy !== '' || $httpsProxy !== '',
+                'http_proxy_host' => (string)(parse_url($httpProxy, PHP_URL_HOST) ?? $httpProxy),
+                'https_proxy_host' => (string)(parse_url($httpsProxy, PHP_URL_HOST) ?? $httpsProxy),
+            ],
+        ];
     }
 
     /**
@@ -1244,6 +1320,8 @@ class MercadoLivreAuthService
         $enabledRaw = $_ENV['ML_PROXY_ENABLED'] ?? getenv('ML_PROXY_ENABLED') ?? null;
         $enabled = filter_var($enabledRaw, FILTER_VALIDATE_BOOLEAN);
         if (!$enabled) {
+            $curlOptions[CURLOPT_PROXY] = '';
+            $curlOptions[CURLOPT_NOPROXY] = '*';
             return;
         }
 
@@ -1254,6 +1332,8 @@ class MercadoLivreAuthService
         $pass = (string)($_ENV['ML_PROXY_PASS'] ?? getenv('ML_PROXY_PASS') ?? '');
 
         if ($host === '' || $port === '') {
+            $curlOptions[CURLOPT_PROXY] = '';
+            $curlOptions[CURLOPT_NOPROXY] = '*';
             return;
         }
 
@@ -1269,5 +1349,49 @@ class MercadoLivreAuthService
         if ($user !== '') {
             $curlOptions[CURLOPT_PROXYUSERPWD] = $user . ':' . $pass;
         }
+    }
+
+    private function normalizeOAuthRedirectUri(string $redirect): string
+    {
+        $normalized = trim($redirect);
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        if (str_starts_with($normalized, '//')) {
+            return 'https:' . $normalized;
+        }
+
+        if (!preg_match('#^https?://#i', $normalized)) {
+            return 'https://' . $normalized;
+        }
+
+        return $normalized;
+    }
+
+    private function isPlaceholderValue(string $value): bool
+    {
+        $normalized = strtolower(trim($value));
+        if ($normalized === '' || $normalized === 'null') {
+            return true;
+        }
+
+        foreach (
+            [
+                'your_mercadolibre_',
+                'your-domain.com',
+                'change_me_with_',
+                'change_me',
+                'example.com',
+                'placeholder',
+            ] as $token
+        ) {
+            if (str_contains($normalized, $token)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -180,13 +180,15 @@ class UserService
      */
     public function login(string $email, string $password): array
     {
+        $email = trim(strtolower($email));
+
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => 'E-mail e senha são obrigatórios'];
         }
 
         try {
             // Buscar usuário
-            $stmt = $this->db()->prepare("SELECT id, name, email, password, role, email_verified_at, two_factor_enabled FROM users WHERE email = :email");
+            $stmt = $this->db()->prepare("SELECT id, name, email, password, role, email_verified_at, two_factor_enabled FROM users WHERE LOWER(email) = :email");
             $stmt->execute(['email' => $email]);
             $user = $stmt->fetch();
         } catch (\Throwable $e) {

@@ -216,4 +216,29 @@ class ViewController
     {
         $this->render('dashboard/tokens');
     }
+
+    public function alerts(): void
+    {
+        $this->render('dashboard/alerts');
+    }
+
+    public function monitoring(): void
+    {
+        $this->render('dashboard/monitoring');
+    }
+
+    public function notifications(): void
+    {
+        $this->render('dashboard/notifications');
+    }
+
+    public function search(): void
+    {
+        $this->render('dashboard/search');
+    }
+
+    public function statistics(): void
+    {
+        $this->render('dashboard/statistics');
+    }
 }

@@ -33,15 +33,18 @@
 # ============================================================================
 
 0 3 * * * sudo clp-update
-*/15 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/poll_orders.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_orders.log 2>&1 # eskill.com.br - Polling Pedidos
+# DEPRECATED (ML-BLG-002): Replaced by bin/orders-sync-worker.php --once (line 203)
+# */15 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/poll_orders.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_orders.log 2>&1 # eskill.com.br - Polling Pedidos
 */5 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/scheduler.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_scheduler.log 2>&1 # eskill.com.br - Scheduler
 0 3 * * * /home/eskill/htdocs/eskill.com.br/scripts/backup_daily.sh >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_backup.log 2>&1 # eskill.com.br - Backup Diário
 0 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/monitor_system.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_monitor.log 2>&1 # eskill.com.br - Monitoramento
-0 */6 * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/poll_items.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_items.log 2>&1 # eskill.com.br - Sync Anúncios
+# DEPRECATED (ML-BLG-030): Replaced by bin/items-sync-worker.php --once (compensation polling)
+# 0 */6 * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/poll_items.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_items.log 2>&1 # eskill.com.br - Sync Anúncios
 # DEPRECATED: renew_tokens.php substituído por refresh_ml_tokens.php + auto-token-refresh-worker.php
 # 0 */2 * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/renew_tokens.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_tokens.log 2>&1 # eskill.com.br - Renovar Tokens
 0 4 * * 0 /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/clean_old_logs.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_cleanup.log 2>&1 # eskill.com.br - Limpeza Semanal
-0 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/poll_questions.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_questions.log 2>&1 # eskill.com.br - Sync Perguntas
+# DEPRECATED (ML-BLG-002): Replaced by bin/questions-sync-worker.php --once (line 215)
+# 0 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/poll_questions.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_questions.log 2>&1 # eskill.com.br - Sync Perguntas
 */5 * * * * /home/eskill/htdocs/eskill.com.br/scripts/monitor_uptime.sh check >> /home/eskill/htdocs/eskill.com.br/storage/logs/uptime.log 2>&1
 */10 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/run_repricer.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/repricer.log 2>&1
 * * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/run_queue.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/queue.log 2>&1
@@ -49,7 +52,8 @@
 */15 * * * * cd /home/eskill/htdocs/eskill.com.br && php bin/monitor-auth-failures.php >> storage/logs/auth_monitor_cron.log 2>&1
 # Auth Monitor - Weekly Report (every Monday at 9:00 AM)
 0 9 * * 1 cd /home/eskill/htdocs/eskill.com.br && php bin/weekly-report.php >> storage/logs/weekly_report.log 2>&1
-0 * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/refresh_ml_tokens.php >> storage/logs/token_refresh.log 2>&1
+# DEPRECATED (ML-BLG-002): Replaced by bin/auto-token-refresh-worker.php (line 128)
+# 0 * * * * cd /home/eskill/htdocs/eskill.com.br && php scripts/refresh_ml_tokens.php >> storage/logs/token_refresh.log 2>&1
 
 # Cron Health Check - valida frescor dos logs críticos do agendador
 */10 * * * * /usr/bin/php /home/eskill/htdocs/eskill.com.br/scripts/cron_health_check.php >> /home/eskill/htdocs/eskill.com.br/storage/logs/cron_health_check.log 2>&1
@@ -197,10 +201,10 @@
 */30 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/stock-sync-worker.php --once >> storage/logs/stock-sync-worker.log 2>&1
 
 # ============================================================================
-# ORDERS SYNC WORKER: Sincroniza pedidos ML para banco local
-# Frequência: A cada 15 minutos
+# ORDERS SYNC WORKER: Trilha de compensação — caminho principal são webhooks (ML-BLG-040)
+# Frequência: A cada hora (reduzido de */15 para evitar polling redundante)
 # ============================================================================
-*/15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/orders-sync-worker.php --once >> storage/logs/orders-sync-worker.log 2>&1
+0 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/orders-sync-worker.php --once >> storage/logs/orders-sync-worker.log 2>&1
 
 # ============================================================================
 # SHIPMENTS SYNC WORKER: Sincroniza envios ML para banco local
@@ -209,7 +213,21 @@
 0 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/shipments-sync-worker.php --once >> storage/logs/shipments-sync-worker.log 2>&1
 
 # ============================================================================
-# QUESTIONS SYNC WORKER: Sincroniza perguntas ML para banco local
-# Frequência: A cada 10 minutos (resposta rápida a clientes)
+# QUESTIONS SYNC WORKER: Trilha de compensação — caminho principal são webhooks (ML-BLG-040)
+# Frequência: A cada 30 minutos (reduzido de */10 para evitar polling redundante)
 # ============================================================================
-*/10 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/questions-sync-worker.php --once >> storage/logs/questions-sync-worker.log 2>&1
+*/30 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/questions-sync-worker.php --once >> storage/logs/questions-sync-worker.log 2>&1
+
+# ============================================================================
+# ITEMS SYNC WORKER: Trilha de compensação para anúncios (ML-BLG-030)
+# Frequência: A cada 6 horas (caminho principal são webhooks — ML-BLG-040)
+# ============================================================================
+0 */6 * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/items-sync-worker.php --once >> storage/logs/items-sync-worker.log 2>&1
+
+# ============================================================================
+# WEBHOOK PROCESSOR WORKER: TRILHA PRINCIPAL de ingestão ML (ML-BLG-040)
+# Frequência: A cada minuto (--once processa até --limit eventos por execução)
+# Replay de falhas: A cada 15 minutos (reprocessa eventos com < 3 tentativas)
+# ============================================================================
+* * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/webhook-processor-worker.php --once >> storage/logs/webhook-processor.log 2>&1
+*/15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/webhook-processor-worker.php --once --replay-failed >> storage/logs/webhook-processor-replay.log 2>&1

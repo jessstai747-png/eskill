@@ -238,6 +238,17 @@ class ShipmentSyncService
         return $detail;
     }
 
+    /**
+     * Sincroniza e persiste um único envio pelo ID (uso via webhook).
+     *
+     * @param string $shipmentId ID do envio ML
+     * @return array{success: bool, data?: array<string, mixed>, error?: string, message?: string}
+     */
+    public function syncShipment(string $shipmentId): array
+    {
+        return $this->syncSingleShipment($shipmentId, []);
+    }
+
     private function sleepBetween(int $sleepUs): void
     {
         if ($sleepUs > 0) {
@@ -261,7 +272,7 @@ class ShipmentSyncService
             $payload = $this->buildShipmentPayload($shipmentId, $response, $context);
 
             if ($this->upsertShipment($payload)) {
-                return ['success' => true];
+                return ['success' => true, 'data' => $response];
             }
 
             return ['success' => false, 'error' => 'db_insert_failed'];

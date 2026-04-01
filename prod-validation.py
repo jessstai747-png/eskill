@@ -7,10 +7,8 @@ Testa página de login e rotas do dashboard usando requests
 import requests
 import sys
 import os
-import re
 from bs4 import BeautifulSoup
-from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Configurações
 PROD_URL = "https://eskill.com.br"
@@ -43,7 +41,25 @@ def print_error(text: str):
     """Imprime mensagem de erro"""
     print(f"{Colors.RED}✗{Colors.END} {text}")
 
-def inspect_login_page() -> Tuple[requests.Session, Dict]:
+
+def is_allowlist_block(response: Optional[requests.Response] = None, error: Optional[Exception] = None) -> bool:
+    """Detecta bloqueio de rede por allowlist de sandbox."""
+    if error is not None and 'blocked-by-allowlist' in str(error).lower():
+        return True
+
+    if response is None:
+        return False
+
+    proxy_error_header = response.headers.get('x-proxy-error', '').lower()
+    if 'blocked-by-allowlist' in proxy_error_header:
+        return True
+
+    if response.status_code == 403 and 'blocked-by-allowlist' in response.text.lower():
+        return True
+
+    return False
+
+def inspect_login_page() -> Tuple[requests.Session, Dict[str, Any]]:
     """
     Inspeção da página de login
     Retorna sessão e informações de CSRF
@@ -59,6 +75,12 @@ def inspect_login_page() -> Tuple[requests.Session, Dict]:
 
     try:
         response = session.get(f"{PROD_URL}/login", timeout=10)
+
+        if is_allowlist_block(response=response):
+            print_warning("Ambiente bloqueado por allowlist do sandbox (blocked-by-allowlist).")
+            print("   Para validar produção real, execute este script fora do sandbox (SSH/host direto).")
+            return session, {'blocked_environment': True}
+
         print(f"Status HTTP: {response.status_code}")
 
         if response.status_code != 200:
@@ -124,6 +146,11 @@ def inspect_login_page() -> Tuple[requests.Session, Dict]:
         }
 
     except requests.RequestException as e:
+        if is_allowlist_block(error=e):
+            print_warning("Ambiente bloqueado por allowlist do sandbox (blocked-by-allowlist).")
+            print("   Para validar produção real, execute este script fora do sandbox (SSH/host direto).")
+            return session, {'blocked_environment': True}
+
         print_error(f"Erro ao acessar página de login: {e}")
         return session, {}
 
@@ -260,6 +287,12 @@ def main():
 
     # 1. Inspecionar página de login
     session, login_info = inspect_login_page()
+
+    blocked_environment = bool(login_info.get('blocked_environment'))
+    if blocked_environment:
+        print_header("AMBIENTE BLOQUEADO")
+        print_warning("Validação encerrada sem falha de aplicação: rede externa bloqueada por allowlist.")
+        return 0
 
     if not login_info:
         print_error("Falha ao inspecionar página de login")

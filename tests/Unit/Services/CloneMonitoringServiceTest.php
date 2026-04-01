@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Unit Tests for CloneMonitoringService
- * 
+ *
  * Tests feature flags, alerting, health metrics, and rate limiting logic.
  */
 class CloneMonitoringServiceTest extends TestCase
@@ -144,7 +144,7 @@ class CloneMonitoringServiceTest extends TestCase
     {
         // Ensure module is enabled
         $this->service->setFeatureFlag(CloneMonitoringService::FLAG_CLONE_ENABLED, true);
-        
+
         $result = $this->service->canClone();
 
         if ($result['allowed']) {
@@ -159,7 +159,7 @@ class CloneMonitoringServiceTest extends TestCase
     {
         // Disable the module
         $this->service->setFeatureFlag(CloneMonitoringService::FLAG_CLONE_ENABLED, false);
-        
+
         $result = $this->service->canClone();
 
         $this->assertFalse($result['allowed']);
@@ -220,7 +220,7 @@ class CloneMonitoringServiceTest extends TestCase
     {
         // Use unique message to avoid duplicate detection
         $uniqueMessage = 'Test alert from PHPUnit - ' . uniqid();
-        
+
         $alertId = $this->service->createAlert(
             'test_alert',
             'info',
@@ -263,6 +263,16 @@ class CloneMonitoringServiceTest extends TestCase
     /**
      * @test
      */
+    public function acknowledge_alert_returns_false_for_missing_alert(): void
+    {
+        $result = $this->service->acknowledgeAlert(999999999, 1);
+
+        $this->assertFalse($result);
+    }
+
+    /**
+     * @test
+     */
     public function alert_severities_are_valid(): void
     {
         $validSeverities = ['info', 'warning', 'critical'];
@@ -270,7 +280,7 @@ class CloneMonitoringServiceTest extends TestCase
         foreach ($validSeverities as $severity) {
             // Use unique message for each to avoid duplicate detection
             $uniqueMessage = "Test alert with severity: {$severity} - " . uniqid();
-            
+
             $alertId = $this->service->createAlert(
                 'severity_test',
                 $severity,

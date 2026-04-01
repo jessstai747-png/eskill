@@ -7,8 +7,9 @@ declare(strict_types=1);
  * Mercado Livre Integration Health Check — CLI
  *
  * Verifica rapidamente se a integração com ML está pronta para produção:
- * - Valida variáveis de ambiente críticas
+ * - Valida variáveis de ambiente críticas (incl. ML_WEBHOOK_SECRET)
  * - Lista contas vinculadas em ml_accounts (se MySQL disponível)
+ * - Checa infraestrutura de webhooks (tabela webhook_event_inbox, HMAC secret)
  * - Prova /users/me e /users/{id}/items/search (quando rede e token estão disponíveis)
  * - (Opcional) testa endpoint interno /api/items via APP_URL
  *
@@ -59,6 +60,7 @@ final class MercadoLivreHealthCheck
         $isTesting = $appEnv === 'testing';
 
         $this->checkEnv($appEnv);
+        $this->checkOAuthEndpoints($appEnv);
 
         $db = $this->tryGetDb($appEnv);
         $accounts = [];
@@ -66,6 +68,7 @@ final class MercadoLivreHealthCheck
             $accounts = $this->loadAccounts($db);
         }
 
+        $this->checkWebhookInfrastructure($appEnv, $db instanceof \PDO ? $db : null);
         $this->checkMlApiConnectivity($accounts, $isTesting);
         $this->checkInternalApiItemsEndpoint();
 
@@ -165,20 +168,21 @@ final class MercadoLivreHealthCheck
 
         $missing = [];
         foreach ($required as $key) {
-            if ($this->envString($key, '') === '') {
+            $value = $this->envString($key, '');
+            if ($value === '' || $this->isPlaceholderValue($value)) {
                 $missing[] = $key;
             }
         }
 
         if (!empty($missing)) {
-            $msg = 'Faltam variáveis obrigatórias: ' . implode(', ', $missing);
+            $msg = 'Variáveis obrigatórias ausentes ou com placeholder: ' . implode(', ', $missing);
             if (in_array($appEnv, ['production', 'staging'], true)) {
                 $this->fail($msg);
             } else {
                 $this->warn($msg);
             }
         } else {
-            $this->ok('Variáveis obrigatórias configuradas (ML_APP_ID/ML_CLIENT_SECRET/ML_REDIRECT_URI/APP_KEY)');
+            $this->ok('Variáveis obrigatórias configuradas com valores não-placeholder');
         }
 
         $redirect = $this->envString('ML_REDIRECT_URI', '');
@@ -197,6 +201,79 @@ final class MercadoLivreHealthCheck
         $allowNetwork = filter_var($allowNetworkRaw, FILTER_VALIDATE_BOOLEAN);
         if ($appEnv === 'testing' && !$allowNetwork) {
             $this->info('Rede externa desabilitada em APP_ENV=testing (ML_ALLOW_NETWORK=false) — chamadas reais à API ML serão puladas');
+        }
+
+        try {
+            $diagnostics = (new MercadoLivreAuthService())->getOAuthConfigDiagnostics();
+            if ($diagnostics['ready'] ?? false) {
+                $this->ok('Diagnóstico OAuth validado pelo serviço', [
+                    'redirect_uri' => $diagnostics['details']['redirect_uri'] ?? null,
+                ]);
+            } else {
+                $this->fail('Diagnóstico OAuth reprovado pelo serviço', [
+                    'message' => $diagnostics['message'] ?? null,
+                    'issues' => $diagnostics['issues'] ?? [],
+                ]);
+            }
+
+            foreach (($diagnostics['warnings'] ?? []) as $warning) {
+                $this->warn((string)$warning);
+            }
+        } catch (\Throwable $e) {
+            $this->fail('Falha ao executar diagnóstico OAuth interno', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        if (!$this->jsonOnly) {
+            echo "\n";
+        }
+    }
+
+    private function checkOAuthEndpoints(string $appEnv): void
+    {
+        if (!$this->jsonOnly) {
+            echo "── OAuth / SSL / Endpoints ──\n";
+        }
+
+        if (!$this->isNetworkAllowed()) {
+            $this->info('Rede externa desabilitada — pulando probes HTTP de OAuth/SSL');
+            if (!$this->jsonOnly) {
+                echo "\n";
+            }
+            return;
+        }
+
+        try {
+            $diagnostics = (new MercadoLivreAuthService())->getOAuthConfigDiagnostics();
+        } catch (\Throwable $e) {
+            $this->fail('Falha ao carregar endpoints OAuth para probe', ['error' => $e->getMessage()]);
+            if (!$this->jsonOnly) {
+                echo "\n";
+            }
+            return;
+        }
+
+        $details = is_array($diagnostics['details'] ?? null) ? $diagnostics['details'] : [];
+        $authUrl = (string)($details['auth_url'] ?? '');
+        $apiUrl = rtrim((string)($details['api_url'] ?? ''), '/');
+        $callbackUrl = (string)($details['redirect_uri'] ?? '');
+
+        if ($authUrl !== '') {
+            $this->probeReachability($authUrl, 'OAuth authorization endpoint');
+        }
+
+        if ($apiUrl !== '') {
+            $this->probeReachability($apiUrl . '/sites/MLB', 'Mercado Livre API endpoint');
+        }
+
+        $issues = is_array($diagnostics['issues'] ?? null) ? $diagnostics['issues'] : [];
+        $hasRedirectIssue = array_filter($issues, static fn($issue): bool => is_string($issue) && str_contains($issue, 'ML_REDIRECT_URI'));
+
+        if ($callbackUrl !== '' && $hasRedirectIssue === []) {
+            $this->probeReachability($callbackUrl, 'Aplicação callback endpoint');
+        } elseif (in_array($appEnv, ['production', 'staging'], true)) {
+            $this->fail('ML_REDIRECT_URI inválido — callback não pode ser validado com segurança');
         }
 
         if (!$this->jsonOnly) {
@@ -510,6 +587,46 @@ final class MercadoLivreHealthCheck
         }
     }
 
+    private function checkWebhookInfrastructure(string $appEnv, ?\PDO $db): void
+    {
+        if (!$this->jsonOnly) {
+            echo "── Webhook infrastructure ──\n";
+        }
+
+        $secret = $this->envString('ML_WEBHOOK_SECRET', '');
+        if ($secret === '' || $this->isPlaceholderValue($secret)) {
+            $msg = 'ML_WEBHOOK_SECRET ausente ou com placeholder — validação HMAC de webhooks desabilitada';
+            if (in_array($appEnv, ['production', 'staging'], true)) {
+                $this->fail($msg);
+            } else {
+                $this->warn($msg);
+            }
+        } else {
+            $this->ok('ML_WEBHOOK_SECRET configurado — HMAC habilitado');
+        }
+
+        if ($db === null) {
+            $this->info('DB indisponível — pulando check da tabela webhook_event_inbox');
+        } else {
+            try {
+                $db->query('SELECT 1 FROM webhook_event_inbox LIMIT 1');
+                $this->ok('Tabela webhook_event_inbox acessível');
+            } catch (\Throwable $e) {
+                $msg = 'Tabela webhook_event_inbox inacessível (migrations pendentes?)';
+                $details = ['error' => $e->getMessage()];
+                if (in_array($appEnv, ['production', 'staging'], true)) {
+                    $this->fail($msg, $details);
+                } else {
+                    $this->warn($msg, $details);
+                }
+            }
+        }
+
+        if (!$this->jsonOnly) {
+            echo "\n";
+        }
+    }
+
     private function checkInternalApiItemsEndpoint(): void
     {
         if (!$this->jsonOnly) {
@@ -581,6 +698,36 @@ final class MercadoLivreHealthCheck
         }
     }
 
+    private function probeReachability(string $url, string $label): void
+    {
+        try {
+            $client = new \GuzzleHttp\Client([
+                'timeout' => 15,
+                'http_errors' => false,
+                'allow_redirects' => false,
+                'verify' => true,
+                'proxy' => false,
+                'headers' => [
+                    'User-Agent' => 'SEO-Optimizer-ML-HealthCheck/1.0',
+                    'Accept' => 'application/json,text/html;q=0.9,*/*;q=0.8',
+                ],
+            ]);
+
+            $resp = $client->request('GET', $url);
+            $status = $resp->getStatusCode();
+
+            $this->ok($label . ' alcançável', [
+                'url' => $url,
+                'status' => $status,
+            ]);
+        } catch (\Throwable $e) {
+            $this->fail($label . ' indisponível', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function envString(string $key, string $default = ''): string
     {
         $val = $_ENV[$key] ?? getenv($key) ?? '';
@@ -599,6 +746,31 @@ final class MercadoLivreHealthCheck
         }
         $allow = $_ENV['ML_ALLOW_NETWORK'] ?? getenv('ML_ALLOW_NETWORK') ?? null;
         return filter_var($allow, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function isPlaceholderValue(string $value): bool
+    {
+        $normalized = strtolower(trim($value));
+        if ($normalized === '' || $normalized === 'null') {
+            return true;
+        }
+
+        foreach (
+            [
+                'your_mercadolibre_',
+                'your-domain.com',
+                'change_me_with_',
+                'change_me',
+                'example.com',
+                'placeholder',
+            ] as $token
+        ) {
+            if (str_contains($normalized, $token)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -654,6 +826,8 @@ function parseMlHealthArgs(array $argv): array
     return $opts;
 }
 
-$options = parseMlHealthArgs($argv);
-$check = new MercadoLivreHealthCheck($options);
-exit($check->run());
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    $options = parseMlHealthArgs($argv);
+    $check = new MercadoLivreHealthCheck($options);
+    exit($check->run());
+}

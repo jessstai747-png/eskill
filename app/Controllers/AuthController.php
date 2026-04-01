@@ -397,7 +397,6 @@ class AuthController extends BaseController
      */
     public function authorize(): void
     {
-        // Verificar se usuário está autenticado
         if (!$this->userService->isAuthenticated()) {
             $_SESSION['error'] = 'Você precisa estar logado para vincular uma conta';
             $_SESSION['redirect_after_login'] = '/auth/authorize';
@@ -418,10 +417,22 @@ class AuthController extends BaseController
             }
         }
 
-        $authUrl = $this->authService->getAuthUrl($userId);
-
-        header('Location: ' . $authUrl);
-        exit;
+        try {
+            $authUrl = $this->authService->getAuthUrl($userId);
+            header('Location: ' . $authUrl);
+            exit;
+        } catch (\Throwable $e) {
+            $errorType = $this->classifyOAuthErrorType($e->getMessage());
+            $userMessage = $this->buildOAuthUserMessage($errorType, $e->getMessage());
+            $this->logOAuthCallbackEvent('error', 'OAuth authorize failed', [
+                'error_type' => $errorType,
+                'error' => $e->getMessage(),
+                'user_id' => $userId,
+            ]);
+            $_SESSION['error'] = $userMessage;
+            header('Location: /dashboard/accounts');
+            exit;
+        }
     }
 
     /**
@@ -435,14 +446,19 @@ class AuthController extends BaseController
 
         if ($error) {
             $errorDescription = $this->request->get('error_description', 'Erro desconhecido');
+            $this->logOAuthCallbackEvent('warning', 'OAuth callback provider error', [
+                'error_type' => $this->classifyOAuthErrorType($errorDescription),
+                'error' => $error,
+                'description' => $errorDescription,
+            ]);
             $_SESSION['error'] = "Erro na autorização: {$errorDescription}";
-            header('Location: /dashboard');
+            header('Location: /dashboard/accounts');
             exit;
         }
 
         if (!$code || !$state) {
             $_SESSION['error'] = "Código de autorização não recebido";
-            header('Location: /dashboard');
+            header('Location: /dashboard/accounts');
             exit;
         }
 
@@ -472,39 +488,23 @@ class AuthController extends BaseController
             }
 
             // Log de auditoria rápida para rastrear callbacks OAuth
-            $logPath = defined('ROOT_PATH')
-                ? ROOT_PATH . '/storage/logs/tokens.log'
-                : dirname(__DIR__, 2) . '/storage/logs/tokens.log';
-            @file_put_contents(
-                $logPath,
-                sprintf(
-                    "[%s] OAUTH SUCCESS nickname=%s ml_user_id=%s\n",
-                    date('c'),
-                    $result['user_info']['nickname'] ?? 'N/A',
-                    $result['user_info']['id'] ?? 'N/A'
-                ),
-                FILE_APPEND
-            );
+            $this->logOAuthCallbackEvent('info', 'OAuth callback success', [
+                'error_type' => null,
+                'nickname' => $result['user_info']['nickname'] ?? 'N/A',
+                'ml_user_id' => $result['user_info']['id'] ?? 'N/A',
+            ]);
 
             $_SESSION['success'] = "Conta vinculada com sucesso! Usuário: " . ($result['user_info']['nickname'] ?? 'N/A');
             header('Location: /dashboard/accounts');
             exit;
         } catch (\Exception $e) {
-            $logPath = defined('ROOT_PATH')
-                ? ROOT_PATH . '/storage/logs/tokens.log'
-                : dirname(__DIR__, 2) . '/storage/logs/tokens.log';
-            @file_put_contents(
-                $logPath,
-                sprintf(
-                    "[%s] OAUTH ERROR message=%s\n",
-                    date('c'),
-                    $e->getMessage()
-                ),
-                FILE_APPEND
-            );
-
-            $_SESSION['error'] = $e->getMessage();
-            header('Location: /dashboard');
+            $errorType = $this->classifyOAuthErrorType($e->getMessage());
+            $this->logOAuthCallbackEvent('error', 'OAuth callback failure', [
+                'error_type' => $errorType,
+                'error' => $e->getMessage(),
+            ]);
+            $_SESSION['error'] = $this->buildOAuthUserMessage($errorType, $e->getMessage());
+            header('Location: /dashboard/accounts');
             exit;
         }
     }
@@ -546,6 +546,34 @@ class AuthController extends BaseController
             'accounts' => $accounts,
             'total' => count($accounts)
         ]);
+    }
+
+    public function oauthConfigStatus(): void
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->userService->isAuthenticated()) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'Não autenticado']);
+            return;
+        }
+
+        try {
+            $diagnostics = $this->authService->getOAuthConfigDiagnostics();
+            $statusCode = $diagnostics['ready'] ? 200 : 503;
+            http_response_code($statusCode);
+            echo json_encode([
+                'success' => true,
+                'data' => $diagnostics,
+            ]);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Não foi possível verificar a configuração OAuth',
+                'details' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -1109,7 +1137,7 @@ class AuthController extends BaseController
         } else {
             $this->json([
                 'success' => false,
-                'error' => 'Credenciais inválidas'
+                'error' => $result['message'] ?? 'E-mail ou senha incorretos'
             ], 401);
         }
     }
@@ -1228,5 +1256,113 @@ class AuthController extends BaseController
             ]);
         }
         exit;
+    }
+
+    private function classifyOAuthErrorType(string $message): string
+    {
+        $normalized = strtolower($message);
+
+        if (str_contains($normalized, 'proxy')) {
+            return 'proxy';
+        }
+
+        if (str_contains($normalized, 'ssl') || str_contains($normalized, 'certificate')) {
+            return 'ssl';
+        }
+
+        if (str_contains($normalized, 'timed out') || str_contains($normalized, 'timeout')) {
+            return 'timeout';
+        }
+
+        if (
+            str_contains($normalized, 'ml_app_id')
+            || str_contains($normalized, 'ml_redirect_uri')
+            || str_contains($normalized, 'ml_client_secret')
+            || str_contains($normalized, 'app_key')
+            || str_contains($normalized, 'placeholder')
+        ) {
+            return 'configuration';
+        }
+
+        if (
+            str_contains($normalized, 'invalid_grant')
+            || str_contains($normalized, 'unauthorized')
+            || str_contains($normalized, 'token')
+            || str_contains($normalized, 'estado oauth')
+            || str_contains($normalized, 'code_verifier')
+        ) {
+            return 'authentication';
+        }
+
+        if (preg_match('/http\s+(4\d\d|5\d\d)/i', $message) === 1 || str_contains($normalized, 'api')) {
+            return 'api';
+        }
+
+        return 'unknown';
+    }
+
+    private function buildOAuthUserMessage(string $errorType, string $message): string
+    {
+        if ($errorType === 'configuration') {
+            return 'Falha de configuração OAuth da loja virtual. Revise ML_APP_ID, ML_CLIENT_SECRET, ML_REDIRECT_URI e APP_KEY antes de tentar novamente.';
+        }
+
+        if ($errorType === 'proxy') {
+            return 'Falha de rede ao conectar com a API da loja virtual. Foi detectado um proxy inválido ou não resolvido.';
+        }
+
+        if ($errorType === 'ssl') {
+            return 'Falha SSL ao conectar com a loja virtual. Verifique certificados e cadeia HTTPS.';
+        }
+
+        if ($errorType === 'timeout') {
+            return 'Tempo limite excedido ao conectar com a loja virtual. Verifique firewall, DNS e disponibilidade do endpoint.';
+        }
+
+        if ($errorType === 'authentication') {
+            return 'Falha de autenticação com a loja virtual. Reconecte a conta e valide o fluxo OAuth.';
+        }
+
+        if ($errorType === 'api') {
+            return 'A API da loja virtual rejeitou a conexão. Revise credenciais, redirect URI e disponibilidade do endpoint.';
+        }
+
+        return $message;
+    }
+
+    private function logOAuthCallbackEvent(string $level, string $message, array $context = []): void
+    {
+        $logContext = array_merge([
+            'user_id' => $_SESSION['user_id'] ?? null,
+            'route' => $_SERVER['REQUEST_URI'] ?? null,
+        ], $context);
+
+        if ($level === 'info') {
+            log_info($message, $logContext);
+        } elseif ($level === 'warning') {
+            log_warning($message, $logContext);
+        } else {
+            log_error($message, $logContext);
+        }
+
+        $logPath = defined('ROOT_PATH')
+            ? ROOT_PATH . '/storage/logs/tokens.log'
+            : dirname(__DIR__, 2) . '/storage/logs/tokens.log';
+        $logDir = dirname($logPath);
+
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0775, true);
+        }
+
+        $encoded = json_encode($logContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($encoded === false) {
+            $encoded = '{}';
+        }
+
+        file_put_contents(
+            $logPath,
+            sprintf("[%s] %s %s %s\n", date('c'), strtoupper($level), $message, $encoded),
+            FILE_APPEND
+        );
     }
 }

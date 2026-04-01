@@ -145,6 +145,7 @@ class AuthControllerTest extends TestCase
             'authorize' => ['authorize'],
             'callback' => ['callback'],
             'accounts' => ['accounts'],
+            'oauthConfigStatus' => ['oauthConfigStatus'],
             'status' => ['status'],
         ];
     }
@@ -199,6 +200,14 @@ class AuthControllerTest extends TestCase
         $this->assertTrue(
             method_exists(AuthController::class, 'verifyEmail'),
             'AuthController deve ter método verifyEmail()'
+        );
+    }
+
+    public function testHasOAuthConfigStatusMethod(): void
+    {
+        $this->assertTrue(
+            method_exists(AuthController::class, 'oauthConfigStatus'),
+            'AuthController deve ter método oauthConfigStatus()'
         );
     }
 
@@ -265,6 +274,27 @@ class AuthControllerTest extends TestCase
             'register' => ['register'],
             'doRegister' => ['doRegister'],
         ];
+    }
+
+    public function testOAuthConfigStatusUsesAuthServiceDiagnostics(): void
+    {
+        $this->assertStringContainsString("public function oauthConfigStatus(): void", self::$sourceCode);
+        $this->assertStringContainsString("\$diagnostics = \$this->authService->getOAuthConfigDiagnostics();", self::$sourceCode);
+        $this->assertStringContainsString("'data' => \$diagnostics", self::$sourceCode);
+    }
+
+    public function testAuthorizeHandlesConnectionFailuresGracefully(): void
+    {
+        $this->assertStringContainsString("\$errorType = \$this->classifyOAuthErrorType(\$e->getMessage());", self::$sourceCode);
+        $this->assertStringContainsString("\$_SESSION['error'] = \$userMessage;", self::$sourceCode);
+        $this->assertStringContainsString("header('Location: /dashboard/accounts');", self::$sourceCode);
+    }
+
+    public function testCallbackFailuresRedirectBackToAccountsWorkspace(): void
+    {
+        $this->assertStringContainsString('Erro na autorização:', self::$sourceCode);
+        $this->assertStringContainsString('Código de autorização não recebido', self::$sourceCode);
+        $this->assertStringContainsString("header('Location: /dashboard/accounts');", self::$sourceCode);
     }
 
     // =============================
@@ -577,7 +607,10 @@ class AuthControllerTest extends TestCase
             $methods,
             fn(\ReflectionMethod $m): bool => $m->getDeclaringClass()->getName() === AuthController::class
         );
-        $this->assertGreaterThanOrEqual(20, count($ownMethods),
-            'AuthController deve ter pelo menos 20 métodos públicos próprios');
+        $this->assertGreaterThanOrEqual(
+            20,
+            count($ownMethods),
+            'AuthController deve ter pelo menos 20 métodos públicos próprios'
+        );
     }
 }
