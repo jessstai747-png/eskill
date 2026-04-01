@@ -2,6 +2,8 @@
 declare(strict_types=1);
 /** @var \App\Router $router */
 
+use App\Controllers\MlObservabilityController;
+use App\Controllers\MlOrderAuditController;
 use App\Controllers\CatalogCloneController;
 use App\Controllers\CloneNotificationController;
 use App\Controllers\CloneABTestingController;
@@ -135,5 +137,13 @@ $router->post('api/openclaw/webhooks', OpenClawConnectorController::class, 'crea
 $router->delete('api/openclaw/webhooks/{id}', OpenClawConnectorController::class, 'deleteWebhook');
 $router->post('api/openclaw/webhooks/{id}/test', OpenClawConnectorController::class, 'testWebhook');
 $router->get('api/openclaw/webhook-events', OpenClawConnectorController::class, 'webhookEvents');
+// ========================================
+// 📊 Mercado Livre — Observabilidade
+// ========================================
+$router->get('api/ml/observability/summary', MlObservabilityController::class, 'summary');
 
+// ========================================
+// 🧾 Mercado Livre — Trilha de Auditoria (ML-BLG-060)
+// ========================================
+$router->get('api/ml/orders/{orderId}/trail', MlOrderAuditController::class, 'trail');
 

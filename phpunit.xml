@@ -175,6 +175,10 @@
             <file>tests/Unit/Services/AI/Core/CacheStrategyTest.php</file>
             <file>tests/Unit/Traits/NormalizesMLItemsTest.php</file>
             <file>tests/Unit/Helpers/MLStatisticsHelperTest.php</file>
+            <!-- ML-BLG-051: Observabilidade ML -->
+            <file>tests/Unit/Services/MercadoLivre/MlObservabilityServiceTest.php</file>
+            <!-- ML-BLG-060: Trilha de Auditoria ML -->
+            <file>tests/Unit/Services/MercadoLivre/MlOrderAuditServiceTest.php</file>
         </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
