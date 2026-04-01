@@ -1,3 +1,23 @@
+## Sessão 2026-04-01 (5) — ML-BLG-061 Analytics e Pricing Avançado
+
+### Objetivo
+Implementar ML-BLG-061: módulos avançados de analytics e pricing desacoplados por feature flag,
+garantindo que falhas não impactem o core commerce.
+
+### Entregáveis
+- `app/Services/MercadoLivre/MlAdvancedFeaturesService.php` — proxy com feature flags para
+  AdvancedPricingEngine e MLAnalyticsIntelligenceService. Intercepta \Throwable e retorna
+  `['skipped'=>true, 'reason'=>'execution_error']` sem propagar ao core.
+- `tests/Unit/Services/MercadoLivre/MlAdvancedFeaturesServiceTest.php` — 18 testes, todos passando
+- Suite: 3537 → 3555 (+18). Codacy: zero issues (Lizard/Trivy/Opengrep).
+- project-status.json: 134/134
+
+### Commit
+ML-BLG-060 committado: 8bbe6d7
+ML-BLG-061 a commitar
+
+---
+
 ## Sessão 2026-04-01 (4) — ML-BLG-051 CCN fix + ML-BLG-060 Trilha de Auditoria ML
 
 ### Objetivo

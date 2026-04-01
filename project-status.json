@@ -1535,7 +1535,15 @@
       "type": "core",
       "passes": true,
       "tests": 15
+    },
+    {
+      "id": "ML-BLG-061",
+      "title": "Analytics e pricing avançado — feature-flag decoupled modules",
+      "priority": "P2",
+      "type": "core",
+      "passes": true,
+      "tests": 18
     }
   ],
-  "summary": "133/133"
+  "summary": "134/134"
 }
