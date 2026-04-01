@@ -76,3 +76,11 @@ try {
     echo "Migration failed: " . $e->getMessage() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS governance_diagnostic_history;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

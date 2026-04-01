@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Clone Sync and Management Tables
@@ -128,3 +129,14 @@ echo "=== Resultado ===\n";
 echo "Tabelas criadas: $success\n";
 echo "Erros: $errors\n";
 echo "\nMigration concluída!\n";
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS clone_sync_settings;');
+//   $db->exec('DROP TABLE IF EXISTS clone_sync_logs;');
+//   $db->exec('DROP TABLE IF EXISTS clone_sync_alerts;');
+//   $db->exec('DROP TABLE IF EXISTS clone_item_metrics;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

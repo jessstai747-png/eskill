@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Fase 3 - Brand Central, Trends, Inventory Advanced, Messaging
@@ -214,3 +215,17 @@ try {
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS inventory_origins;');
+//   $db->exec('DROP TABLE IF EXISTS inventory_reservations;');
+//   $db->exec('DROP TABLE IF EXISTS inventory_movements;');
+//   $db->exec('DROP TABLE IF EXISTS message_templates;');
+//   $db->exec('DROP TABLE IF EXISTS auto_responses;');
+//   $db->exec('DROP TABLE IF EXISTS messages;');
+//   $db->exec('DROP TABLE IF EXISTS market_keywords;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

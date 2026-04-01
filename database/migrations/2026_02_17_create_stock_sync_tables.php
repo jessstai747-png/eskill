@@ -133,3 +133,14 @@ echo "- stock_sync_rules: sync rules between accounts\n";
 echo "- stock_sync_queue: pending sync items with priority\n";
 echo "- stock_sync_history: full audit trail of changes\n";
 echo "- stock_sync_settings: per-user configuration\n";
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS stock_sync_queue;');
+//   $db->exec('DROP TABLE IF EXISTS stock_sync_history;');
+//   $db->exec('DROP TABLE IF EXISTS stock_sync_rules;');
+//   $db->exec('DROP TABLE IF EXISTS stock_sync_settings;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

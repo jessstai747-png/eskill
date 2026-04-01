@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Fase 4 - Dynamic Pricing, AI Predictions, Chatbot AI
@@ -209,3 +210,16 @@ try {
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS price_adjustments;');
+//   $db->exec('DROP TABLE IF EXISTS support_tickets;');
+//   $db->exec('DROP TABLE IF EXISTS chatbot_interactions;');
+//   $db->exec('DROP TABLE IF EXISTS ml_predictions;');
+//   $db->exec('DROP TABLE IF EXISTS competitor_prices;');
+//   $db->exec('DROP TABLE IF EXISTS ai_training_data;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

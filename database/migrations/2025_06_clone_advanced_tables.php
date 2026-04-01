@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Clone Advanced Features Tables
@@ -186,3 +187,16 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['SCRIP
         $migration->up();
     }
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS clone_price_history;');
+//   $db->exec('DROP TABLE IF EXISTS clone_batch_operations;');
+//   $db->exec('DROP TABLE IF EXISTS clone_exports;');
+//   $db->exec('DROP TABLE IF EXISTS clone_health_checks;');
+//   $db->exec('DROP TABLE IF EXISTS clone_seo_analysis;');
+//   $db->exec('DROP TABLE IF EXISTS clone_repricing_rules;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

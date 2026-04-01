@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Criar tabelas para ReputationService, ItemMetricsService e FulfillmentService
@@ -149,3 +150,13 @@ try {
     echo "Stacktrace: " . $e->getTraceAsString() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS reputation_history;');
+//   $db->exec('DROP TABLE IF EXISTS item_metrics_history;');
+//   $db->exec('DROP TABLE IF EXISTS fulfillment_inbound_shipments;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

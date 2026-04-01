@@ -131,7 +131,9 @@ storage/             # Logs, cache, uploads
 - **Test Filter:** `php vendor/bin/phpunit --filter NomeDoTest`
 - **System Status:** `./bin/ai.sh status`
 - **Worker:** `./bin/ai.sh worker start`
-- **Migrations:** `php bin/apply-migrations.php`
+- **Nova migration:** `php bin/make-migration.php <nome>` (ou `--php <nome>` para .php)
+- **Aplicar migrations:** `php bin/migrate.php`
+- **Status migrations:** `php bin/migrate.php --status`
 
 ## Contexto de Negócio (Mercado Livre)
 - Produtos: bagageiros, baús, retrovisores, acessórios para motos

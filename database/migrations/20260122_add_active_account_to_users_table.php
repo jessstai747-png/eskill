@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migração: Adiciona campo de conta ativa na tabela de usuários

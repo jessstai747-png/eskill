@@ -304,3 +304,15 @@ echo "  - clone_analytics_events\n";
 echo "  - clone_compliance_reports\n";
 echo "  - clone_analytics_aggregates\n";
 echo "\n";
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS clone_audit_logs;');
+//   $db->exec('DROP TABLE IF EXISTS clone_policy_violations;');
+//   $db->exec('DROP TABLE IF EXISTS clone_analytics_events;');
+//   $db->exec('DROP TABLE IF EXISTS clone_compliance_reports;');
+//   $db->exec('DROP TABLE IF EXISTS clone_analytics_aggregates;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

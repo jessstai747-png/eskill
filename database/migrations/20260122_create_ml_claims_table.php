@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migração: Tabela para módulo de Reclamações (Claims)
@@ -49,3 +50,11 @@ try {
     echo "❌ Erro: " . $e->getMessage() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS ml_claims;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

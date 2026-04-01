@@ -1,64 +1,37 @@
 <?php
 
+declare(strict_types=1);
+
 /**
- * Migration: Create ml_accounts table
+ * Migration: Consolidar ml_accounts — garantir colunas e índices canônicos
  *
- * This table stores Mercado Livre account information including encrypted tokens
- * for API authentication and refresh token functionality.
+ * O CREATE TABLE base está em 002_create_ml_accounts_table.sql.
+ * Este script garante que todas as colunas e índices necessários existam,
+ * independentemente da ordem em que a tabela foi criada.
  */
 
 use App\Database;
 
-// Get the database instance
 $db = Database::getInstance();
 
-// Create ml_accounts table
-$db->exec("
-CREATE TABLE IF NOT EXISTS ml_accounts (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    ml_user_id VARCHAR(50) UNIQUE,
-    nickname VARCHAR(100),
-    email VARCHAR(255),
-    site_id VARCHAR(10) DEFAULT 'MLB',
-    access_token TEXT,
-    refresh_token TEXT,
-    token_expires_at DATETIME,
-    tokens_encrypted TINYINT(1) DEFAULT 0,
-    status ENUM('active', 'inactive', 'expired', 'disconnected') DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_ml_user_id (ml_user_id),
-    INDEX idx_user_id (user_id),
-    INDEX idx_status (status),
-    INDEX idx_token_expires_at (token_expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-");
-
-echo "✅ Table 'ml_accounts' created successfully!\n";
-
-// Verify the table was created
+// Garantir tokens_encrypted (adicionado em 2026_01_11)
 try {
-    $result = $db->query("DESCRIBE ml_accounts");
-    if (!empty($result)) {
-        echo "✅ Table structure verified successfully!\n";
-        
-        // Show the table structure
-        echo "\n📋 ml_accounts table structure:\n";
-        foreach ($result as $column) {
-            echo "   - {$column['Field']} ({$column['Type']}, {$column['Null']}, {$column['Key']})\n";
-        }
-    }
-} catch (Exception $e) {
-    echo "⚠️ Could not verify table structure: " . $e->getMessage() . "\n";
-}
+    $db->exec("ALTER TABLE ml_accounts ADD COLUMN tokens_encrypted TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Se 1, tokens estão criptografados' AFTER refresh_token");
+} catch (Throwable $e) { /* já existe */ }
 
-echo "\n🎉 ml_accounts table migration completed successfully!\n";
-echo "\nThis table supports:\n";
-echo "- Storing Mercado Livre account information\n";
-echo "- Encrypted access and refresh tokens\n";
-echo "- Automatic token refresh functionality\n";
-echo "- Account status tracking\n";
-echo "- Foreign key relationship with users table\n";
+// Garantir scopes (adicionado em 2026_01_11)
+try {
+    $db->exec("ALTER TABLE ml_accounts ADD COLUMN scopes VARCHAR(255) NULL COMMENT 'Escopos OAuth autorizados' AFTER last_synced_at");
+} catch (Throwable $e) { /* já existe */ }
+
+// Garantir status ENUM inclui 'disconnected'
+try {
+    $db->exec("ALTER TABLE ml_accounts MODIFY COLUMN status ENUM('active', 'inactive', 'expired', 'disconnected') DEFAULT 'active'");
+} catch (Throwable $e) { /* já atualizado */ }
+
+// Garantir índice em token_expires_at (para queries de expiração)
+try {
+    $db->exec("CREATE INDEX idx_token_expires_at ON ml_accounts(token_expires_at)");
+} catch (Throwable $e) { /* já existe */ }
+
+echo "✅ ml_accounts consolidada com sucesso!\n";

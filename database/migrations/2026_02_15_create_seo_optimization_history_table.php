@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Create seo_optimization_history table
@@ -71,3 +72,11 @@ try {
 } catch (Throwable $e) {
     echo "⚠️ Could not verify seo_optimization_history: " . $e->getMessage() . "\n";
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS seo_optimization_history;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

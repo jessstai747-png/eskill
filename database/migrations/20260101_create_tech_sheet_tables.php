@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migração: Tabelas para módulo de Ficha Técnica
@@ -103,3 +104,13 @@ try {
     echo "❌ Erro: " . $e->getMessage() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS tech_sheet_execution_log;');
+//   $db->exec('DROP TABLE IF EXISTS tech_sheet_suggestions;');
+//   $db->exec('DROP TABLE IF EXISTS tech_sheet_item_summary;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

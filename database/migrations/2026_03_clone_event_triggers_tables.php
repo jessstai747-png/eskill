@@ -207,3 +207,15 @@ try {
     // Reabilitar FK checks
     $db->exec("SET FOREIGN_KEY_CHECKS = 1");
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS clone_trend_cache;');
+//   $db->exec('DROP TABLE IF EXISTS clone_event_trigger_logs;');
+//   $db->exec('DROP TABLE IF EXISTS clone_event_trigger_competitors;');
+//   $db->exec('DROP TABLE IF EXISTS clone_event_trigger_items;');
+//   $db->exec('DROP TABLE IF EXISTS clone_event_triggers;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

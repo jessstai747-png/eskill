@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Criar tabelas de notificações
@@ -80,3 +81,12 @@ try {
     echo "❌ Erro: " . $e->getMessage() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS notification_logs;');
+//   $db->exec('DROP TABLE IF EXISTS notification_preferences;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

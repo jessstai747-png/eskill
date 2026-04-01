@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Criar tabela de watchlist de concorrentes
@@ -120,3 +121,13 @@ try {
         throw $e;
     }
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS competitor_history;');
+//   $db->exec('DROP TABLE IF EXISTS competitor_alerts;');
+//   $db->exec('DROP TABLE IF EXISTS competitor_watchlist;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

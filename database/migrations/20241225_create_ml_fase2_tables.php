@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Fase 2 - User Products, Shipping Advanced, Promotions
@@ -145,3 +146,14 @@ try {
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS user_products;');
+//   $db->exec('DROP TABLE IF EXISTS shipments;');
+//   $db->exec('DROP TABLE IF EXISTS promotion_performance;');
+//   $db->exec('DROP TABLE IF EXISTS item_metrics;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

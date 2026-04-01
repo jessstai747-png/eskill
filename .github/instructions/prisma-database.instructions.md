@@ -57,10 +57,14 @@ class ExemploModel
 - NUNCA usar `findAll()` sem filtro ou paginação em tabelas grandes
 
 ## Migrations (app/Database/migrations/)
-- Nomes descritivos: `2024_01_15_create_tech_sheet_suggestions.sql`
+- **SEMPRE criar via gerador:** `php bin/make-migration.php <nome>` ou `php bin/make-migration.php --php <nome>`
+- O gerador cria arquivo com timestamp `YYYY_MM_DD_HHmmss_nome.sql` (ou `.php`) — **nunca criar arquivo manualmente**
+- Nomes em snake_case com prefixo descritivo: `create_`, `add_`, `alter_`, `drop_`, `rename_`
 - Verificar migration antes de aplicar
 - NUNCA editar migrations já aplicadas em produção
-- Rodar: `php bin/apply-migrations.php`
+- NUNCA criar tabela que já existe em outra migration — verificar duplicatas antes
+- Rodar: `php bin/migrate.php`
+- Ver status: `php bin/migrate.php --status`
 
 ## NUNCA
 - SQL sem prepared statements (SQL injection!)

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Clone Auto-Scheduler Tables
@@ -170,3 +171,14 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['SCRIP
         $migration->up();
     }
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS clone_recommendations_cache;');
+//   $db->exec('DROP TABLE IF EXISTS clone_schedule_logs;');
+//   $db->exec('DROP TABLE IF EXISTS clone_schedule_runs;');
+//   $db->exec('DROP TABLE IF EXISTS clone_schedules;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

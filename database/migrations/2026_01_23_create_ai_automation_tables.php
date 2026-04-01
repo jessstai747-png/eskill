@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Create AI Automation Tables
@@ -171,3 +172,16 @@ echo "- optimization_schedules: Cron-based scheduling\n";
 echo "- monitored_keywords: Keywords being tracked for trends\n";
 echo "- realtime_alerts: SSE alerts queue\n";
 echo "- seo_scores: SEO score tracking per item\n";
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS ai_optimization_jobs;');
+//   $db->exec('DROP TABLE IF EXISTS ai_optimization_history;');
+//   $db->exec('DROP TABLE IF EXISTS optimization_schedules;');
+//   $db->exec('DROP TABLE IF EXISTS monitored_keywords;');
+//   $db->exec('DROP TABLE IF EXISTS realtime_alerts;');
+//   $db->exec('DROP TABLE IF EXISTS seo_scores;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

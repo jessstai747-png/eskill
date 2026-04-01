@@ -2,53 +2,12 @@
 -- Migration: Criação das tabelas para Sistema SEO Strategies
 -- Data: 2026-01-23
 -- Fase: 1 - Fundação (Sinônimos + Score Semântico)
+-- NOTA: seo_synonym_hierarchy e seo_use_contexts já criadas em 2026_01_22
 -- ============================================================================
 
--- ============================================================================
--- TABELA 1: Hierarquia de Sinônimos
--- Armazena sinônimos organizados por nível e categoria
--- ============================================================================
-CREATE TABLE IF NOT EXISTS seo_synonym_hierarchy (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    category_id VARCHAR(20) NOT NULL COMMENT 'ID da categoria ML (ex: MLB3530)',
-    level ENUM('nivel_1', 'nivel_2', 'nivel_3', 'nivel_4') NOT NULL COMMENT 'Nível hierárquico',
-    word VARCHAR(100) NOT NULL COMMENT 'Sinônimo ou termo',
-    weight DECIMAL(3,2) DEFAULT 1.00 COMMENT 'Peso do sinônimo (0.00-1.00)',
-    destination ENUM('title', 'model', 'description', 'keywords') NOT NULL COMMENT 'Campo de destino',
-    is_active BOOLEAN DEFAULT TRUE COMMENT 'Se o sinônimo está ativo',
-    source ENUM('manual', 'ai', 'ml_api', 'imported') DEFAULT 'manual' COMMENT 'Origem do dado',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    -- Índices
-    UNIQUE KEY uk_category_level_word (category_id, level, word),
-    INDEX idx_category (category_id),
-    INDEX idx_level (level),
-    INDEX idx_destination (destination),
-    INDEX idx_active (is_active),
-    INDEX idx_word (word(50))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT='Hierarquia de sinônimos para SEO por categoria';
-
--- ============================================================================
--- TABELA 2: Contextos de Uso
--- Armazena contextos de uso (profissional, lazer, urbano, carga) por categoria
--- ============================================================================
-CREATE TABLE IF NOT EXISTS seo_use_contexts (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    category_id VARCHAR(20) NOT NULL COMMENT 'ID da categoria ML',
-    context_type VARCHAR(50) NOT NULL COMMENT 'Tipo: profissional, lazer, urbano, carga',
-    keyword VARCHAR(100) NOT NULL COMMENT 'Palavra-chave do contexto',
-    weight DECIMAL(3,2) DEFAULT 1.00 COMMENT 'Peso do contexto (0.00-2.00)',
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Índices
-    UNIQUE KEY uk_category_context_keyword (category_id, context_type, keyword),
-    INDEX idx_category_context (category_id, context_type),
-    INDEX idx_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT='Contextos de uso para SEO por categoria';
+-- Garantir coluna source em seo_synonym_hierarchy (adicionada no schema canônico 2026_01_22)
+-- Se a tabela foi criada antes da consolidação, essa coluna pode faltar
+ALTER TABLE seo_synonym_hierarchy ADD COLUMN IF NOT EXISTS source ENUM('manual', 'ai', 'ml_api', 'imported') DEFAULT 'manual' COMMENT 'Origem do dado' AFTER is_active;
 
 -- ============================================================================
 -- TABELA 3: Cache de Keywords
@@ -65,7 +24,7 @@ CREATE TABLE IF NOT EXISTS seo_keyword_cache (
     is_valid BOOLEAN DEFAULT TRUE,
     expires_at TIMESTAMP NULL COMMENT 'Quando o cache expira',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Índices
     UNIQUE KEY uk_category_base_keyword (category_id, base_keyword(100), keyword(100)),
     INDEX idx_category (category_id),
@@ -90,7 +49,7 @@ CREATE TABLE IF NOT EXISTS seo_keyword_performance (
     conversion_rate DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Taxa de conversão em %',
     recorded_at DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Índices
     UNIQUE KEY uk_category_keyword_date (category_id, keyword(100), recorded_at),
     INDEX idx_category (category_id),
@@ -110,7 +69,7 @@ CREATE TABLE IF NOT EXISTS seo_category_config (
     config_value JSON NOT NULL COMMENT 'Valor em JSON',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
     -- Índices
     UNIQUE KEY uk_category_key (category_id, config_key),
     INDEX idx_category (category_id)
@@ -189,7 +148,7 @@ ON DUPLICATE KEY UPDATE weight = VALUES(weight);
 
 -- View: Resumo de sinônimos por categoria
 CREATE OR REPLACE VIEW v_seo_synonym_summary AS
-SELECT 
+SELECT
     category_id,
     level,
     COUNT(*) as total_synonyms,
@@ -201,7 +160,7 @@ GROUP BY category_id, level, destination;
 
 -- View: Keywords ativas do cache
 CREATE OR REPLACE VIEW v_seo_active_keywords AS
-SELECT 
+SELECT
     category_id,
     keyword,
     type,
@@ -209,7 +168,7 @@ SELECT
     source,
     expires_at
 FROM seo_keyword_cache
-WHERE is_valid = 1 
+WHERE is_valid = 1
 AND (expires_at IS NULL OR expires_at > NOW());
 
 -- ============================================================================

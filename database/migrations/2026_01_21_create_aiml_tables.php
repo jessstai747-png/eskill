@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Create AI/ML Tables
@@ -112,3 +113,14 @@ echo "- category_learning: Learned patterns by Mercado Livre category\n";
 echo "- keyword_classifications: Keyword type classifications (CORE/SUPPORT/etc)\n";
 echo "- keyword_trends: Historical trend data for keywords\n";
 echo "- seo_analysis_cache: SEO analysis cache with TTL\n";
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS category_learning;');
+//   $db->exec('DROP TABLE IF EXISTS keyword_classifications;');
+//   $db->exec('DROP TABLE IF EXISTS keyword_trends;');
+//   $db->exec('DROP TABLE IF EXISTS seo_analysis_cache;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

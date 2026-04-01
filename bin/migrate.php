@@ -90,8 +90,18 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS migrations (
     id INT PRIMARY KEY AUTO_INCREMENT,
     migration VARCHAR(255) NOT NULL UNIQUE,
     batch INT NOT NULL DEFAULT 1,
+    duration_ms INT UNSIGNED NULL COMMENT 'Tempo de execução em ms',
+    error_message TEXT NULL COMMENT 'Mensagem de erro se houve warning/tolerável',
     applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// Adicionar colunas novas se tabela já existia sem elas
+try {
+    $pdo->exec("ALTER TABLE migrations ADD COLUMN duration_ms INT UNSIGNED NULL COMMENT 'Tempo de execução em ms' AFTER batch");
+} catch (Throwable $ignore) {}
+try {
+    $pdo->exec("ALTER TABLE migrations ADD COLUMN error_message TEXT NULL COMMENT 'Mensagem de erro se houve warning/tolerável' AFTER duration_ms");
+} catch (Throwable $ignore) {}
 
 // ===========================
 // PARSE ARGS
@@ -296,6 +306,7 @@ foreach ($pending as $file) {
     }
 
     echo "  Applying: {$name}...";
+    $startTime = hrtime(true);
 
     try {
         if ($ext === 'php') {
@@ -438,8 +449,21 @@ foreach ($pending as $file) {
                     }
                 } catch (PDOException $stmtEx) {
                     $stmtCode = (int)($stmtEx->errorInfo[1] ?? 0);
-                    if (in_array($stmtCode, [1054, 1060, 1061, 1050, 1064, 1068, 1091, 1824, 1215, 1005, 1022, 1062, 1072, 1146, 1176, 1265, 1327, 1347, 1359, 1235], true)) {
-                        continue; // Tolerável - já existe, FK, duplicado, syntax, view not table, etc
+                    // Erros toleráveis: estrutura já existe (idempotência)
+                    // NÃO incluir 1054 (unknown column) nem 1064 (syntax error) — esses mascaram bugs reais
+                    $stmtTolerable = [
+                        1050, // Table already exists
+                        1060, // Duplicate column name
+                        1061, // Duplicate key name
+                        1068, // Multiple primary key defined
+                        1091, // Can't DROP — column/key doesn't exist
+                        1022, // Duplicate key (with write)
+                        1062, // Duplicate entry for unique key
+                        1824, // FK column already covered
+                        1347, // Table/view already exists as view/table
+                    ];
+                    if (in_array($stmtCode, $stmtTolerable, true)) {
+                        continue;
                     }
                     $stmtErrors[] = $stmtEx->getMessage();
                 }
@@ -453,11 +477,12 @@ foreach ($pending as $file) {
             }
         }
 
-        // Registrar no tracking (idempotente)
-        $stmt = $pdo->prepare("INSERT IGNORE INTO migrations (migration, batch) VALUES (:name, :batch)");
-        $stmt->execute(['name' => $name, 'batch' => $batch]);
+        // Registrar no tracking (idempotente) com duração
+        $durationMs = (int)((hrtime(true) - $startTime) / 1_000_000);
+        $stmt = $pdo->prepare("INSERT IGNORE INTO migrations (migration, batch, duration_ms) VALUES (:name, :batch, :dur)");
+        $stmt->execute(['name' => $name, 'batch' => $batch, 'dur' => $durationMs]);
 
-        echo " \033[32m✓\033[0m\n";
+        echo " \033[32m✓\033[0m ({$durationMs}ms)\n";
         $successCount++;
     } catch (Throwable $e) {
         // Limpar buffer de output se ficou aberto
@@ -480,10 +505,11 @@ foreach ($pending as $file) {
 
         if (in_array((int)$errCode, $tolerableErrors, true)) {
             // Marcar como aplicada mesmo com erro tolerável (estrutura já existe)
-            $stmt = $pdo->prepare("INSERT IGNORE INTO migrations (migration, batch) VALUES (:name, :batch)");
-            $stmt->execute(['name' => $name, 'batch' => $batch]);
+            $durationMs = (int)((hrtime(true) - $startTime) / 1_000_000);
+            $stmt = $pdo->prepare("INSERT IGNORE INTO migrations (migration, batch, duration_ms, error_message) VALUES (:name, :batch, :dur, :err)");
+            $stmt->execute(['name' => $name, 'batch' => $batch, 'dur' => $durationMs, 'err' => $errMsg]);
 
-            echo " \033[33m⚠ (já existe)\033[0m\n";
+            echo " \033[33m⚠ (já existe)\033[0m ({$durationMs}ms)\n";
             $successCount++;
         } else {
             echo " \033[31m✗\033[0m\n";

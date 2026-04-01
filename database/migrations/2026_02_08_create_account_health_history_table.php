@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Create account_health_history table
@@ -57,3 +58,11 @@ echo "- Storing historical account health scores\n";
 echo "- Trend analysis for account performance\n";
 echo "- Delta calculation between snapshots\n";
 echo "- Data for the AccountHealthService\n";
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS account_health_history;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

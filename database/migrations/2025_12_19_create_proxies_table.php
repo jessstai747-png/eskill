@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Criar tabela de proxies
@@ -63,3 +64,12 @@ return new class {
         $db->exec("DROP TABLE IF EXISTS ml_proxies");
     }
 };
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS ml_proxies;');
+//   $db->exec('DROP TABLE IF EXISTS ml_proxy_logs;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

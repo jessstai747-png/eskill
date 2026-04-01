@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Migration: Create Advanced Clone Module Tables
@@ -529,3 +530,21 @@ echo "  - clone_seo_optimizations\n";
 echo "  - clone_progress_tracking\n";
 echo "  - clone_progress_history\n";
 echo "\n";
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS clone_progress_history;');
+//   $db->exec('DROP TABLE IF EXISTS clone_progress_tracking;');
+//   $db->exec('DROP TABLE IF EXISTS clone_seo_optimizations;');
+//   $db->exec('DROP TABLE IF EXISTS clone_roi_analysis;');
+//   $db->exec('DROP TABLE IF EXISTS clone_seller_recommendations;');
+//   $db->exec('DROP TABLE IF EXISTS clone_automation_runs;');
+//   $db->exec('DROP TABLE IF EXISTS clone_automation_rules;');
+//   $db->exec('DROP TABLE IF EXISTS clone_notification_logs;');
+//   $db->exec('DROP TABLE IF EXISTS clone_ab_test_entries;');
+//   $db->exec('DROP TABLE IF EXISTS clone_ab_test_variations;');
+//   $db->exec('DROP TABLE IF EXISTS clone_ab_tests;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */

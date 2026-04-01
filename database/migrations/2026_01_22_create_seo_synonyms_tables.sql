@@ -1,32 +1,39 @@
--- Tabela de hierarquia de sinônimos
+-- Tabela de hierarquia de sinônimos (schema canônico)
 CREATE TABLE IF NOT EXISTS seo_synonym_hierarchy (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    category_id VARCHAR(20) NOT NULL,
-    level ENUM('nivel_1', 'nivel_2', 'nivel_3', 'nivel_4') NOT NULL,
-    word VARCHAR(100) NOT NULL,
-    weight DECIMAL(3,2) DEFAULT 1.00,
-    destination ENUM('title', 'model', 'description', 'keywords') NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
+    category_id VARCHAR(20) NOT NULL COMMENT 'ID da categoria ML (ex: MLB3530)',
+    level ENUM('nivel_1', 'nivel_2', 'nivel_3', 'nivel_4') NOT NULL COMMENT 'Nível hierárquico',
+    word VARCHAR(100) NOT NULL COMMENT 'Sinônimo ou termo',
+    weight DECIMAL(3,2) DEFAULT 1.00 COMMENT 'Peso do sinônimo (0.00-1.00)',
+    destination ENUM('title', 'model', 'description', 'keywords') NOT NULL COMMENT 'Campo de destino',
+    is_active BOOLEAN DEFAULT TRUE COMMENT 'Se o sinônimo está ativo',
+    source ENUM('manual', 'ai', 'ml_api', 'imported') DEFAULT 'manual' COMMENT 'Origem do dado',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_category_level_word (category_id, level, word),
     INDEX idx_category (category_id),
     INDEX idx_level (level),
-    INDEX idx_word (word)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INDEX idx_destination (destination),
+    INDEX idx_active (is_active),
+    INDEX idx_word (word(50))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Hierarquia de sinônimos para SEO por categoria';
 
--- Tabela de contextos de uso
+-- Tabela de contextos de uso (schema canônico)
 CREATE TABLE IF NOT EXISTS seo_use_contexts (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    category_id VARCHAR(20) NOT NULL,
-    context_type VARCHAR(50) NOT NULL,
-    keyword VARCHAR(100) NOT NULL,
-    weight DECIMAL(3,2) DEFAULT 1.00,
+    category_id VARCHAR(20) NOT NULL COMMENT 'ID da categoria ML',
+    context_type VARCHAR(50) NOT NULL COMMENT 'Tipo: profissional, lazer, urbano, carga',
+    keyword VARCHAR(100) NOT NULL COMMENT 'Palavra-chave do contexto',
+    weight DECIMAL(3,2) DEFAULT 1.00 COMMENT 'Peso do contexto (0.00-2.00)',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_category_context_keyword (category_id, context_type, keyword),
-    INDEX idx_category_context (category_id, context_type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INDEX idx_category_context (category_id, context_type),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Contextos de uso para SEO por categoria';
 
 -- ============================================================================
 -- DADOS PILOTO: Categoria Baús/Bagageiros (MLB3530)

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * 🗄️ V9 AI Core Migration
@@ -207,3 +208,18 @@ try {
     echo "❌ Migration failed: " . $e->getMessage() . "\n";
     throw $e;
 }
+
+/*
+ * DOWN — Para reverter esta migration manualmente:
+ *
+//   $db->exec('DROP TABLE IF EXISTS ai_decisions;');
+//   $db->exec('DROP TABLE IF EXISTS learning_outcomes;');
+//   $db->exec('DROP TABLE IF EXISTS learning_models;');
+//   $db->exec('DROP TABLE IF EXISTS automation_workflows;');
+//   $db->exec('DROP TABLE IF EXISTS workflow_tasks;');
+//   $db->exec('DROP TABLE IF EXISTS task_states;');
+//   $db->exec('DROP TABLE IF EXISTS sse_connections;');
+//   $db->exec('DROP TABLE IF EXISTS ai_metrics;');
+ *
+ * ATENÇÃO: Isso apaga dados permanentemente. Faça backup antes.
+ */
