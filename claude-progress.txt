@@ -1,3 +1,14 @@
+## Sessão 2026-04-02 — Fix CSP nonce + commit AWA Sellers Fases 1-5
+
+### Concluído
+- **CSP fix**: `app/Views/dashboard/awa-sellers/index.php` — `<script>` tag agora usa `CSP_NONCE` constant como fonte primária (fallback para `$cspNonce`); elimina erro "Executing inline script violates CSP" em `awa-sellers:2078`
+- **SecurityMiddleware**: adicionado hash `sha256-tKHjf1xUagEIR72xTejjjtwoRzQcpjGVQvGoyF7m1nU=` (IIFE awa-sellers) ao `script-src-elem` como fallback de cache para CDN/proxy
+- **Commit `3f9a874`**: AWA Sellers fases 1-5 + CSP fix — 21 arquivos, +2940/-163 linhas
+- **Commit `4978744`**: docs/guides + docs/reports + remove bin/apply-migrations.php obsoleto
+- PHPUnit: 3558 tests, 8384 assertions, 28 skipped (OK)
+
+---
+
 ## Sessão 2026-04-02 — AWA Sellers: auditoria de identificação/CNPJ
 
 ### Concluído
