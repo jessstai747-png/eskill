@@ -169,8 +169,10 @@ $router->get('api/questions/stats', QuestionController::class, 'stats');
 $router->get('api/questions/unanswered/count', QuestionController::class, 'countUnanswered');
 $router->get('api/questions/auto-answer/settings', QuestionController::class, 'getAutoAnswerSettings');
 $router->post('api/questions/auto-answer/settings', QuestionController::class, 'saveAutoAnswerSettings');
+$router->post('api/questions/sync', QuestionController::class, 'sync');
 $router->get('api/questions/{id}', QuestionController::class, 'show');
 $router->post('api/questions/{id}/answer', QuestionController::class, 'answer');
+$router->post('api/questions/{id}/analyze', QuestionController::class, 'analyze');
 $router->post('api/questions/{id}/draft', QuestionController::class, 'draft');
 $router->delete('api/questions/{id}', QuestionController::class, 'delete');
 

@@ -230,6 +230,38 @@ class QuestionController extends BaseController
     }
 
     /**
+     * POST /api/questions/sync
+     * Sincroniza perguntas da API do ML para o banco local.
+     * Body: { limit?: int }
+     */
+    public function sync(): void
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->accountId) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Conta ML não selecionada']);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? [];
+        $limit = isset($input['limit']) ? max(1, min(200, (int) $input['limit'])) : 50;
+
+        try {
+            $result = $this->service->syncQuestions($limit);
+            echo json_encode([
+                'success' => true,
+                'synced'  => $result['synced'] ?? 0,
+                'errors'  => $result['errors'] ?? 0,
+                'message' => "Sincronização concluída: {$result['synced']} perguntas importadas.",
+            ] + $result);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * POST /api/questions/{id}/analyze
      * Analisa sentimento e intenção com IA
      */

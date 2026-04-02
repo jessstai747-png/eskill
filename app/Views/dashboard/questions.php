@@ -5,7 +5,7 @@ declare(strict_types=1);
 $title = 'Perguntas';
 $subtitle = 'Gerencie as perguntas dos seus anúncios';
 $actions = '
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <select class="form-select form-select-sm" id="accountFilter" style="width: auto;">
             <option value="all">Todas as Contas</option>
             <option value="">Conta Atual</option>
@@ -19,6 +19,9 @@ $actions = '
             <input class="form-check-input" type="checkbox" id="sortByUrgency" onchange="loadQuestions()">
             <label class="form-check-label small fw-semibold" for="sortByUrgency">Priorizar Urgentes</label>
         </div>
+        <button class="btn btn-outline-success btn-sm" id="syncQuestionsBtn" onclick="syncQuestions()">
+            <i class="bi bi-cloud-download me-1"></i> Sincronizar ML
+        </button>
         <button class="btn btn-primary btn-sm" onclick="loadQuestions()">
             <i class="bi bi-arrow-clockwise"></i> Atualizar
         </button>
@@ -263,15 +266,20 @@ async function loadQuestions() {
                         </span>
                     </td>
                     <td class="text-end">
-                        ${q.status !== 'ANSWERED' ? `
-                            <button class="btn btn-sm btn-primary" onclick="openAnswerModal(${q.id}, '${escapeHtml(q.text)}')">
-                                <i class="bi bi-reply"></i> Responder
+                        <div class="d-flex justify-content-end gap-1 flex-wrap">
+                            <button class="btn btn-sm btn-outline-info" onclick="analyzeQuestion('${q.id}')" title="Analisar com IA">
+                                <i class="bi bi-cpu"></i>
                             </button>
-                        ` : `
-                            <button class="btn btn-sm btn-outline-secondary" onclick="viewAnswer(${q.id})">
-                                <i class="bi bi-eye"></i> Ver
-                            </button>
-                        `}
+                            ${q.status !== 'ANSWERED' ? `
+                                <button class="btn btn-sm btn-primary" onclick="openAnswerModal(${q.id}, '${escapeHtml(q.text)}')">
+                                    <i class="bi bi-reply"></i> Responder
+                                </button>
+                            ` : `
+                                <button class="btn btn-sm btn-outline-secondary" onclick="viewAnswer(${q.id})">
+                                    <i class="bi bi-eye"></i> Ver
+                                </button>
+                            `}
+                        </div>
                     </td>
                 </tr>
             `}).join('');
@@ -434,4 +442,57 @@ async function saveAutoAnswerSettings() {
 document.getElementById('autoConfidenceRange').addEventListener('change', saveAutoAnswerSettings);
 
 loadAutoAnswerSettings();
+
+async function syncQuestions() {
+    const btn = document.getElementById('syncQuestionsBtn');
+    if (!btn) return;
+
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Sincronizando...';
+
+    try {
+        const { data } = await ApiClient.json('/api/questions/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ limit: 50 })
+        });
+
+        if (data.success) {
+            alert(`Sincronização concluída: ${data.synced} pergunta(s) importada(s).`);
+            loadQuestions();
+            loadStats();
+        } else {
+            alert('Erro: ' + (data.error || 'Falha na sincronização'));
+        }
+    } catch (e) {
+        alert('Erro ao sincronizar perguntas do ML.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+async function analyzeQuestion(questionId) {
+    if (!questionId) return;
+
+    try {
+        const { data } = await ApiClient.json(`/api/questions/${questionId}/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+        });
+
+        if (data.success !== false) {
+            const sentiment = data.sentiment || data.emotion || '?';
+            const intent = data.intent || data.category || '?';
+            const urgency = data.urgency !== undefined ? data.urgency : '?';
+            alert(`Análise IA:\nSentimento: ${sentiment}\nIntenção: ${intent}\nUrgência: ${urgency}`);
+            loadQuestions();
+        } else {
+            alert('Erro na análise: ' + (data.message || data.error || 'Falha'));
+        }
+    } catch (e) {
+        alert('Erro ao analisar pergunta com IA.');
+    }
+}
 </script>
