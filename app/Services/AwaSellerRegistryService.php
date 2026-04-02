@@ -698,8 +698,10 @@ class AwaSellerRegistryService
                 (string) $filters['search']
             ) . '%';
 
-            $conditions[]     = '(r.nickname LIKE :search OR r.city LIKE :search OR CAST(r.seller_id AS CHAR) LIKE :search)';
-            $binds[':search'] = $escapedSearch;
+            $conditions[]          = '(r.nickname LIKE :search_nick OR r.city LIKE :search_city OR CAST(r.seller_id AS CHAR) LIKE :search_id)';
+            $binds[':search_nick'] = $escapedSearch;
+            $binds[':search_city'] = $escapedSearch;
+            $binds[':search_id']   = $escapedSearch;
         }
 
         return ['WHERE ' . implode(' AND ', $conditions), $binds];
