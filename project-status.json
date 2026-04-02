@@ -1543,7 +1543,20 @@
       "type": "core",
       "passes": true,
       "tests": 18
+    },
+    {
+      "id": "AWA-001",
+      "category": "brand",
+      "description": "AWA Sellers — Registry persistente de sellers detectados adicionado via varredura. Tabelas: awa_scan_runs, awa_seller_registry, awa_seller_items, awa_seller_identification. API: POST /api/brand/awa/sellers/scan, GET /api/brand/awa/sellers/tracked, GET /api/brand/awa/sellers/tracked/{id}, GET /api/brand/awa/sellers/tracked/{id}/items, PUT /api/brand/awa/sellers/tracked/{id}/identify.",
+      "files": [
+        "database/migrations/2026_04_02_151701_create_awa_seller_tracking_tables.sql",
+        "app/Services/AwaSellerRegistryService.php",
+        "app/Services/AwaSellerDiscoveryService.php",
+        "app/Controllers/AwaSellerController.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-04-02"
     }
   ],
-  "summary": "134/134"
+  "summary": "135/135"
 }
