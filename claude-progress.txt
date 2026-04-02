@@ -1,3 +1,24 @@
+## Sessão 2026-04-02 — Catalog Clone Export Monitoring Spec (Features 1-3)
+
+### Concluído
+- **Feature 1 — Export Reliability Pack**: migration `clone_export_logs` aplicada; `CloneDataExportService::finalizeExport()` já persiste no DB e normaliza contrato de resposta (`download_url`, `file`, `size_bytes`, `created_at`); `listExports()` usa log do DB com fallback filesystem; `getExportPath()` valida ownership via `isOwnedExport()`.
+- **Feature 2 — Export History UX**: `app/Views/dashboard/clone_operations.php` já tem os componentes completos — botões de export, `renderExportFeedback()` com `role="status"` / `aria-live="polite"`, modal `#exportHistoryModal` com tabela semântica, `showExportHistory()` consumindo `/api/clone/export/list`, download por linha com `download_url`.
+- **Feature 3 — Monitoring Compatibility Hardening**: `CatalogCloneController::getSystemHealth()` agora garante todos os 3 keys de `queue_breakdown` com cast explícito `(int)(?? 0)` em vez de fallback `[]`; `CloneMonitoringService::getSystemHealth()` já retorna `legacy_status`.
+- **Commits**: `4900c27` (AWA permissões/sidebar), `675f9c8` (export contract + monitoring hardening + test fixes)
+- **PHPUnit**: 3561 tests, 8408 assertions, 28 skipped — 100% green
+
+---
+## Sessão 2026-04-02 — AWA Sellers: permissões por perfil e acesso somente leitura
+
+### Concluído
+- `app/Controllers/AwaSellerController.php`: controle por perfil com leitura via permissão `audit` (admin/manager/viewer) e ações mutáveis via `manager` (admin/manager), além de respostas 401/403 consistentes para web/API e flags `canViewAwaSellers` / `canManageAwaSellers` para a view
+- `app/Views/dashboard/awa-sellers/index.php`: estado explícito de acesso negado, modo somente leitura para perfis sem gestão e bloqueio de scan/export/salvamento/verificação com feedback operacional
+- `app/Views/layouts/modern/sidebar.php`: atalho `AWA Sellers` visível apenas para admin/manager/viewer, com badge `RO` para acesso de auditoria somente leitura
+- Testes: `tests/Unit/Controllers/AwaSellerControllerTest.php` criado, `tests/Unit/Views/ModernSidebarViewTest.php` criado e `tests/Unit/Views/AwaSellersViewTest.php` expandido para cobrir os novos contratos de permissão
+- Validação: `./bin/init.sh` executado; Codacy sem issues nos arquivos alterados; `php -l` OK em todos os arquivos; PHPUnit focado `OK (8 tests, 86 assertions)`; suíte Unit `3560 tests, 4872 assertions, 1526 skipped`
+
+---
+
 ## Sessão 2026-04-02 — Fix CSP nonce + commit AWA Sellers Fases 1-5
 
 ### Concluído
