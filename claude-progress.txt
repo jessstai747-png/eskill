@@ -1,3 +1,50 @@
+## Sessão 2026-04-02 — AWA Sellers: auditoria de identificação/CNPJ
+
+### Concluído
+- `app/Services/AwaSellerIdentificationService.php`: histórico de auditoria para identificação AWA com snapshots `before/after`, diff por campo e normalização de eventos a partir de `audit_logs`
+- `app/Controllers/AwaSellerController.php`: novo endpoint `GET /api/brand/awa/sellers/{id}/identification/history` e ajuste do payload com `count` real dos eventos
+- `app/Routes/api/items.php`: rota de histórico de auditoria da identificação registrada
+- `app/Views/dashboard/awa-sellers/index.php`: drawer do seller agora exibe trilha operacional de alterações manuais/verificações de CNPJ e razão social
+- Testes: `tests/Unit/Services/AwaSellerIdentificationServiceTest.php` expandido para cobrir filtragem/diff do histórico e `tests/Unit/Views/AwaSellersViewTest.php` atualizado para o novo endpoint/UI
+- Qualidade: Codacy sem issues nos arquivos alterados; `php -l` OK em todos os arquivos; PHPUnit focado `OK (14 tests, 13 assertions, 11 skipped)`; suíte Unit `3558 tests, 4855 assertions, 1526 skipped`
+
+---
+
+## Sessão 2026-04-02 — AWA Sellers: alertas operacionais e dashboard
+
+### Concluído
+- `app/Services/AwaSellerAlertService.php`: queries alinhadas ao schema real (`awa_seller_registry`, `seller_registry_id`, `ml_account_id`) e novo fluxo snapshot-based para picos de volume
+- `app/Services/AwaSellerRegistryService.php`: adicionado `getSellerItemCountSnapshot()` para comparar sellers antes/depois do scan
+- `bin/awa-sellers-scan-worker.php`: picos de volume AWA agora usam snapshots do mesmo scan; checagem de não identificados mantida
+- `app/Controllers/AwaSellerController.php`: endpoint `/api/brand/awa/sellers/alerts` passou a responder em payload consistente com `data`, `count` e `unread_count`
+- `app/Views/dashboard/awa-sellers/index.php`: card de alertas AWA recentes com contagem total, não lidos e listagem operacional
+- Testes: `tests/Unit/Services/AwaSellerAlertServiceTest.php` criado e `tests/Unit/Views/AwaSellersViewTest.php` expandido
+- Qualidade: Codacy sem issues nos arquivos alterados; PHPUnit focado `OK (12 tests, 30 assertions)`; suíte Unit `3558 tests, 4849 assertions, 1526 skipped`
+
+---
+
+## Sessão 2026-04-02 — Auditoria e Correção Completa do Sistema de Migrations
+
+### Concluído
+- bin/migrate.php: removidos error codes toleráveis perigosos (1054/1064), adicionados duration_ms e error_message
+- bin/apply-migrations.php: deletado (obsoleto)
+- bin/make-migration.php: criado gerador com naming YYYY_MM_DD_HHmmss_nome.{sql|php}
+- FK crítico: accounts→ml_accounts em competitor_monitoring
+- ml_accounts: 4 definições duplicadas → 1 canônica + ALTER TABLEs
+- tech_sheet: DECIMAL(5,1)→5,2 corrigido, duplicatas consolidadas
+- seo_synonyms/strategies: duplicatas removidas, coluna source adicionada
+- 23 PHP migrations: bloco DOWN (DROP TABLE) adicionado para rollback manual
+- 21 PHP migrations: declare(strict_types=1) adicionado
+- 3 novas migrations: updated_at faltando, 26 FK indexes, DATETIME→TIMESTAMP (17 tabelas)
+- Docs: copilot-instructions.md e prisma-database.instructions.md atualizados
+- Commit: bacd1f6 + b868edc
+
+- 7 arquivos legacy renomeados com prefixo de data (git mv, histórico preservado)
+- 2026_04_02_rename_legacy_migration_records.sql: reconcilia nomes na tabela migrations
+- Todos os 115 arquivos agora seguem padrão YYYY_MM_DD ou NNN_ (legacy initial)
+
+---
+
 ## Sessão 2026-04-01 (6) — Fix E2E: CSRF exempt /api/render + 403 assertions + commit acumulado
 
 ### Objetivo

@@ -159,6 +159,97 @@ class AwaSellerIdentificationServiceTest extends TestCase
         $this->assertNotEmpty($calls);
     }
 
+    public function testGetAuditHistoryFiltersRegistryAndBuildsChanges(): void
+    {
+        $svc = $this->makeServiceWithAuditRows(1, [
+            [
+                'id' => 11,
+                'user_id' => 77,
+                'action' => 'awa_seller_identification_verified',
+                'data' => json_encode([
+                    'registry_id' => 999,
+                    'verified_by' => 'dashboard_awa_sellers',
+                    'before' => [
+                        'cnpj' => '12.345.678/0001-99',
+                        'razao_social' => 'Loja Exemplo Ltda',
+                        'source_type' => 'manual',
+                        'source_reference' => null,
+                        'confidence_score' => 75,
+                        'verification_status' => 'pending',
+                        'notes' => 'Primeiro cadastro',
+                    ],
+                    'after' => [
+                        'cnpj' => '12.345.678/0001-99',
+                        'razao_social' => 'Loja Exemplo Ltda',
+                        'source_type' => 'manual',
+                        'source_reference' => null,
+                        'confidence_score' => 75,
+                        'verification_status' => 'verified',
+                        'notes' => 'Primeiro cadastro | Verificado por: dashboard_awa_sellers',
+                    ],
+                ]),
+                'created_at' => '2026-04-02 11:00:00',
+            ],
+            [
+                'id' => 10,
+                'user_id' => 77,
+                'action' => 'awa_seller_identification_upsert',
+                'data' => json_encode([
+                    'registry_id' => 999,
+                    'actor' => 'dashboard_awa_sellers',
+                    'before' => null,
+                    'after' => [
+                        'cnpj' => '12.345.678/0001-99',
+                        'razao_social' => 'Loja Exemplo Ltda',
+                        'source_type' => 'manual',
+                        'source_reference' => null,
+                        'confidence_score' => 75,
+                        'verification_status' => 'pending',
+                        'notes' => 'Primeiro cadastro',
+                    ],
+                ]),
+                'created_at' => '2026-04-02 10:00:00',
+            ],
+            [
+                'id' => 12,
+                'user_id' => 88,
+                'action' => 'awa_seller_identification_upsert',
+                'data' => json_encode([
+                    'registry_id' => 123,
+                    'actor' => 'dashboard_awa_sellers',
+                ]),
+                'created_at' => '2026-04-02 12:00:00',
+            ],
+        ]);
+
+        $history = $svc->getAuditHistory(999, 10);
+
+        $this->assertCount(2, $history);
+        $this->assertSame('Verificação', $history[0]['label']);
+        $this->assertSame('Usuário #77', $history[0]['actor']);
+        $this->assertSame('Identificação marcada como verificada via dashboard_awa_sellers', $history[0]['summary']);
+        $this->assertSame('verification_status', $history[0]['changes'][0]['field']);
+        $this->assertSame('pending', $history[0]['changes'][0]['before']);
+        $this->assertSame('verified', $history[0]['changes'][0]['after']);
+        $this->assertSame('Atualização manual', $history[1]['label']);
+        $this->assertSame('12.345.678/0001-99', $history[1]['after']['cnpj']);
+    }
+
+    public function testGetAuditHistoryReturnsEmptyArrayWhenRowsDoNotMatchRegistry(): void
+    {
+        $svc = $this->makeServiceWithAuditRows(1, [
+            [
+                'id' => 1,
+                'user_id' => null,
+                'action' => 'awa_seller_identification_upsert',
+                'data' => json_encode(['registry_id' => 55]),
+                'created_at' => '2026-04-02 12:00:00',
+            ],
+        ]);
+
+        $this->assertSame([], $svc->getAuditHistory(999, 5));
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================
@@ -235,6 +326,35 @@ class AwaSellerIdentificationServiceTest extends TestCase
                 $method = new \ReflectionMethod(AwaSellerIdentificationService::class, 'validateData');
                 $method->setAccessible(true);
                 $method->invoke($this, $data);
+            }
+        };
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function makeServiceWithAuditRows(int $accountId, array $rows): AwaSellerIdentificationService
+    {
+        return new class($accountId, $rows) extends AwaSellerIdentificationService {
+            /** @var array<int, array<string, mixed>> */
+            private array $rows;
+
+            /**
+             * @param array<int, array<string, mixed>> $rows
+             */
+            public function __construct(int $accountId, array $rows)
+            {
+                parent::__construct($accountId);
+                $this->rows = $rows;
+            }
+
+            protected function assertSellerBelongsToAccount(int $registryId): void
+            {
+            }
+
+            protected function fetchAuditLogsForAccount(int $limit): array
+            {
+                return array_slice($this->rows, 0, $limit);
             }
         };
     }

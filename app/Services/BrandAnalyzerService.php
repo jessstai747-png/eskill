@@ -472,6 +472,8 @@ class BrandAnalyzerService
         $sellerData = [
             'id' => $sellerId,
             'nickname' => $response['nickname'] ?? 'Desconhecido',
+            'permalink' => $response['permalink'] ?? null,
+            'user_type' => $response['user_type'] ?? null,
             'registration_date' => $response['registration_date'] ?? null,
             'country_id' => $response['country_id'] ?? null,
             'address' => [

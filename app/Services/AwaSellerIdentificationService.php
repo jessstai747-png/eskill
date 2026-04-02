@@ -40,6 +40,14 @@ class AwaSellerIdentificationService
         'conflict',
     ];
 
+    /** Ações aceitas para o histórico operacional de auditoria. */
+    private const AUDIT_ACTIONS = [
+        'awa_seller_identification_upsert',
+        'awa_seller_identification_verified',
+        'awa_seller_identification_conflict',
+        'awa_seller_identification_not_available',
+    ];
+
     private PDO $db;
     private int $accountId;
     private AuditLogService $audit;
@@ -152,6 +160,34 @@ class AwaSellerIdentificationService
         return (int) $stmt->fetchColumn();
     }
 
+    /**
+     * Retorna o histórico de alterações manuais/operacionais da identificação.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAuditHistory(int $registryId, int $limit = 20): array
+    {
+        $this->assertSellerBelongsToAccount($registryId);
+
+        $limit = max(1, min(100, $limit));
+        $rows  = $this->fetchAuditLogsForAccount(min(500, max(50, $limit * 10)));
+
+        $history = [];
+        foreach ($rows as $row) {
+            $entry = $this->normalizeAuditRow($row, $registryId);
+            if ($entry === null) {
+                continue;
+            }
+
+            $history[] = $entry;
+            if (count($history) >= $limit) {
+                break;
+            }
+        }
+
+        return $history;
+    }
+
     // =========================================================================
     // MUTATIONS
     // =========================================================================
@@ -169,6 +205,8 @@ class AwaSellerIdentificationService
     {
         $this->assertSellerBelongsToAccount($registryId);
         $this->validateData($data);
+
+        $before = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
 
         $stmt = $this->db->prepare(
             'INSERT INTO awa_seller_identification
@@ -205,16 +243,22 @@ class AwaSellerIdentificationService
             'created_by'          => $this->nullableString($data['created_by'] ?? null),
         ]);
 
+        $after       = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
+        $auditUserId = $this->extractAuditUserId($data);
+
         $this->audit->log(
             'awa_seller_identification_upsert',
-            null,
+            $auditUserId,
             $this->accountId,
             [
                 'registry_id'         => $registryId,
+                'actor'               => $this->resolveAuditActor($auditUserId, $this->nullableString($data['audit_actor'] ?? null)),
                 'source_type'         => $data['source_type'] ?? 'manual',
                 'verification_status' => $data['verification_status'] ?? 'pending',
                 'has_cnpj'            => !empty($data['cnpj']),
                 'confidence_score'    => max(0, min(100, (int) ($data['confidence_score'] ?? 50))),
+                'before'              => $before,
+                'after'               => $after,
             ],
             'awa_seller_identification'
         );
@@ -224,9 +268,11 @@ class AwaSellerIdentificationService
      * Marca identificação como verificada.
      * Útil para fluxo de aprovação sem precisar enviar payload completo.
      */
-    public function verify(int $registryId, ?string $verifiedBy = null): void
+    public function verify(int $registryId, ?string $verifiedBy = null, ?int $userId = null): void
     {
         $this->assertSellerBelongsToAccount($registryId);
+
+        $before = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
 
         $stmt = $this->db->prepare(
             'UPDATE awa_seller_identification
@@ -242,11 +288,19 @@ class AwaSellerIdentificationService
         $note = 'Verificado por: ' . ($verifiedBy ?? 'sistema') . ' em ' . date('d/m/Y H:i');
         $stmt->execute(['reg_id' => $registryId, 'note' => $note]);
 
+        $after = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
+
         $this->audit->log(
             'awa_seller_identification_verified',
-            null,
+            $userId,
             $this->accountId,
-            ['registry_id' => $registryId, 'verified_by' => $verifiedBy ?? 'sistema'],
+            [
+                'registry_id' => $registryId,
+                'actor' => $this->resolveAuditActor($userId, $verifiedBy),
+                'verified_by' => $verifiedBy ?? 'sistema',
+                'before' => $before,
+                'after' => $after,
+            ],
             'awa_seller_identification'
         );
     }
@@ -257,6 +311,8 @@ class AwaSellerIdentificationService
     public function flagConflict(int $registryId, string $reason): void
     {
         $this->assertSellerBelongsToAccount($registryId);
+
+        $before = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
 
         $stmt = $this->db->prepare(
             'UPDATE awa_seller_identification
@@ -270,6 +326,22 @@ class AwaSellerIdentificationService
 
         $note = 'Conflito registrado: ' . $reason . ' — ' . date('d/m/Y H:i');
         $stmt->execute(['reg_id' => $registryId, 'note' => $note]);
+
+        $after = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
+
+        $this->audit->log(
+            'awa_seller_identification_conflict',
+            null,
+            $this->accountId,
+            [
+                'registry_id' => $registryId,
+                'actor' => 'sistema',
+                'reason' => $reason,
+                'before' => $before,
+                'after' => $after,
+            ],
+            'awa_seller_identification'
+        );
     }
 
     /**
@@ -278,6 +350,8 @@ class AwaSellerIdentificationService
     public function markNotAvailable(int $registryId, ?string $reason = null): void
     {
         $this->assertSellerBelongsToAccount($registryId);
+
+        $before = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
 
         $stmt = $this->db->prepare(
             'UPDATE awa_seller_identification
@@ -291,6 +365,22 @@ class AwaSellerIdentificationService
 
         $note = 'Marcado como não disponível: ' . ($reason ?? 's/d') . ' — ' . date('d/m/Y H:i');
         $stmt->execute(['reg_id' => $registryId, 'note' => $note]);
+
+        $after = $this->buildIdentificationSnapshot($this->getByRegistryId($registryId));
+
+        $this->audit->log(
+            'awa_seller_identification_not_available',
+            null,
+            $this->accountId,
+            [
+                'registry_id' => $registryId,
+                'actor' => 'sistema',
+                'reason' => $reason ?? 's/d',
+                'before' => $before,
+                'after' => $after,
+            ],
+            'awa_seller_identification'
+        );
     }
 
     // =========================================================================
@@ -386,6 +476,31 @@ class AwaSellerIdentificationService
         }
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function fetchAuditLogsForAccount(int $limit): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT id, user_id, action, resource, data, created_at
+                   FROM audit_logs
+                  WHERE ml_account_id = :account_id
+                    AND resource = :resource
+                  ORDER BY created_at DESC
+                  LIMIT :limit'
+            );
+            $stmt->bindValue(':account_id', $this->accountId, PDO::PARAM_INT);
+            $stmt->bindValue(':resource', 'awa_seller_identification');
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
     protected function nullableString(mixed $value): ?string
     {
         if ($value === null) {
@@ -394,5 +509,213 @@ class AwaSellerIdentificationService
 
         $str = trim((string) $value);
         return $str === '' ? null : $str;
+    }
+
+    /**
+     * @param  array<string, mixed>|null $record
+     * @return array<string, mixed>|null
+     */
+    private function buildIdentificationSnapshot(?array $record): ?array
+    {
+        if (!is_array($record)) {
+            return null;
+        }
+
+        return [
+            'cnpj' => $this->nullableString($record['cnpj'] ?? null),
+            'razao_social' => $this->nullableString($record['razao_social'] ?? null),
+            'source_type' => $this->nullableString($record['source_type'] ?? null),
+            'source_reference' => $this->nullableString($record['source_reference'] ?? null),
+            'confidence_score' => isset($record['confidence_score']) ? (int) $record['confidence_score'] : null,
+            'verification_status' => $this->nullableString($record['verification_status'] ?? null),
+            'notes' => $this->nullableString($record['notes'] ?? null),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>      $row
+     * @return array<string, mixed>|null
+     */
+    private function normalizeAuditRow(array $row, int $registryId): ?array
+    {
+        $action = (string) ($row['action'] ?? '');
+        if (!in_array($action, self::AUDIT_ACTIONS, true)) {
+            return null;
+        }
+
+        $payload = $this->decodeAuditData($row['data'] ?? null);
+        if ((int) ($payload['registry_id'] ?? 0) !== $registryId) {
+            return null;
+        }
+
+        $before = $this->buildIdentificationSnapshot(
+            is_array($payload['before'] ?? null) ? $payload['before'] : null
+        );
+        $after = $this->buildIdentificationSnapshot(
+            is_array($payload['after'] ?? null) ? $payload['after'] : null
+        );
+
+        return [
+            'id' => (int) ($row['id'] ?? 0),
+            'action' => $action,
+            'label' => $this->formatAuditActionLabel($action),
+            'actor' => $this->normalizeAuditActor(
+                isset($row['user_id']) ? (int) $row['user_id'] : null,
+                $payload
+            ),
+            'user_id' => isset($row['user_id']) ? (int) $row['user_id'] : null,
+            'created_at' => $this->nullableString($row['created_at'] ?? null),
+            'summary' => $this->buildAuditSummary($action, $payload, $before),
+            'before' => $before,
+            'after' => $after,
+            'changes' => $this->buildAuditChanges($before, $after),
+            'metadata' => $this->buildAuditMetadata($payload),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function decodeAuditData(array|string|null $data): array
+    {
+        if (is_array($data)) {
+            return $data;
+        }
+
+        if (!is_string($data) || $data === '') {
+            return [];
+        }
+
+        $decoded = json_decode($data, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function extractAuditUserId(array $data): ?int
+    {
+        $rawValue = $data['audit_user_id'] ?? $data['created_by'] ?? null;
+        if ($rawValue === null || $rawValue === '') {
+            return null;
+        }
+
+        $userId = (int) $rawValue;
+
+        return $userId > 0 ? $userId : null;
+    }
+
+    private function resolveAuditActor(?int $userId, ?string $actor): string
+    {
+        if ($userId !== null && $userId > 0) {
+            return 'Usuário #' . $userId;
+        }
+
+        return $actor !== null && $actor !== '' ? $actor : 'sistema';
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function normalizeAuditActor(?int $rowUserId, array $payload): string
+    {
+        $payloadUserId = isset($payload['audit_user_id']) ? (int) $payload['audit_user_id'] : null;
+        $userId = $payloadUserId !== null && $payloadUserId > 0 ? $payloadUserId : $rowUserId;
+
+        if ($userId !== null && $userId > 0) {
+            return 'Usuário #' . $userId;
+        }
+
+        $verifiedBy = $this->nullableString($payload['verified_by'] ?? null);
+        if ($verifiedBy !== null) {
+            return $verifiedBy;
+        }
+
+        $actor = $this->nullableString($payload['actor'] ?? null);
+
+        return $actor ?? 'sistema';
+    }
+
+    private function formatAuditActionLabel(string $action): string
+    {
+        return match ($action) {
+            'awa_seller_identification_verified' => 'Verificação',
+            'awa_seller_identification_conflict' => 'Conflito',
+            'awa_seller_identification_not_available' => 'Indisponível',
+            default => 'Atualização manual',
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>      $payload
+     * @param  array<string, mixed>|null $before
+     */
+    private function buildAuditSummary(string $action, array $payload, ?array $before): string
+    {
+        return match ($action) {
+            'awa_seller_identification_verified' => 'Identificação marcada como verificada' .
+                (($payload['verified_by'] ?? null) ? ' via ' . (string) $payload['verified_by'] : ''),
+            'awa_seller_identification_conflict' => 'Identificação marcada com conflito',
+            'awa_seller_identification_not_available' => 'Identificação marcada como não disponível',
+            default => $before === null
+                ? 'Identificação cadastrada manualmente'
+                : 'Identificação atualizada manualmente',
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>|null $before
+     * @param  array<string, mixed>|null $after
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildAuditChanges(?array $before, ?array $after): array
+    {
+        if ($before === null && $after === null) {
+            return [];
+        }
+
+        $fieldLabels = [
+            'cnpj' => 'CNPJ',
+            'razao_social' => 'Razão social',
+            'source_type' => 'Origem',
+            'source_reference' => 'Referência',
+            'confidence_score' => 'Confiança',
+            'verification_status' => 'Status',
+            'notes' => 'Observações',
+        ];
+
+        $changes = [];
+        foreach ($fieldLabels as $field => $label) {
+            $beforeValue = $before[$field] ?? null;
+            $afterValue  = $after[$field] ?? null;
+
+            if ($beforeValue === $afterValue) {
+                continue;
+            }
+
+            $changes[] = [
+                'field' => $field,
+                'label' => $label,
+                'before' => $beforeValue,
+                'after' => $afterValue,
+            ];
+        }
+
+        return $changes;
+    }
+
+    /**
+     * @param  array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function buildAuditMetadata(array $payload): array
+    {
+        $metadata = [];
+        foreach (['source_type', 'source_reference', 'verification_status', 'confidence_score', 'verified_by', 'reason'] as $key) {
+            if (array_key_exists($key, $payload)) {
+                $metadata[$key] = $payload[$key];
+            }
+        }
+
+        return $metadata;
     }
 }

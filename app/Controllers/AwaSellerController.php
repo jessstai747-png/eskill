@@ -233,6 +233,35 @@ class AwaSellerController extends BaseController
     }
 
     /**
+     * GET api/brand/awa/sellers/{id}/identification/history
+     * Retorna a trilha de auditoria da identificação jurídica do seller.
+     */
+    public function getIdentificationHistory(string $id): void
+    {
+        $this->withErrorHandling(function () use ($id): void {
+            $accountId = $this->requireActiveMlAccountId();
+            $sellerId  = (int) $id;
+
+            if ($sellerId <= 0) {
+                $this->jsonError('ID de seller inválido.', 422);
+                return;
+            }
+
+            $limit   = max(1, min(100, (int) ($this->request->get('limit') ?? 20)));
+            $service = new AwaSellerIdentificationService($accountId);
+            $history = $service->getAuditHistory($sellerId, $limit);
+
+            $this->jsonSuccess([
+                'data' => [
+                    'history' => $history,
+                    'count' => count($history),
+                    'limit' => $limit,
+                ],
+            ]);
+        }, 'AwaSellerController::getIdentificationHistory');
+    }
+
+    /**
      * PUT api/brand/awa/sellers/{id}/identification
      * Salva / atualiza a identificação jurídica do seller.
      */
@@ -258,7 +287,9 @@ class AwaSellerController extends BaseController
             $userId = $this->getUserId();
             if ($userId !== null) {
                 $payload['created_by'] = (string) $userId;
+                $payload['audit_user_id'] = $userId;
             }
+            $payload['audit_actor'] = 'dashboard_awa_sellers';
 
             $service = new AwaSellerIdentificationService($accountId);
             $service->upsert($sellerId, $payload);
@@ -287,9 +318,10 @@ class AwaSellerController extends BaseController
 
             $body       = $this->request->json();
             $verifiedBy = is_array($body) ? ($body['verified_by'] ?? null) : null;
+            $userId     = $this->getUserId();
 
             $service = new AwaSellerIdentificationService($accountId);
-            $service->verify($sellerId, is_string($verifiedBy) ? $verifiedBy : null);
+            $service->verify($sellerId, is_string($verifiedBy) ? $verifiedBy : null, $userId);
 
             $registry = new AwaSellerRegistryService($accountId);
             $seller   = $registry->getSellerById($sellerId);

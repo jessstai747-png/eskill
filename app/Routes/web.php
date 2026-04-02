@@ -454,6 +454,7 @@ $router->get('dashboard/tech-sheet', ViewController::class, 'techSheet');
 
 // Brand Analysis Dashboard
 $router->get('dashboard/brand-analysis', 'App\Controllers\BrandAnalyzerController', 'index');
+$router->get('dashboard/awa-sellers', 'App\Controllers\AwaSellerController', 'index');
 $router->get('brand-analysis', 'App\Controllers\BrandAnalyzerController', 'index');
 
 // SEO Killer Assets (Served via Controller to avoid 404s in protected structure)

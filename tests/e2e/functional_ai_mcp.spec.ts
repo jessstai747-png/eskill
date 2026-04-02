@@ -84,17 +84,17 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
         // Expectation: The system should either return a fallback title OR a specific error message structure
         // But NOT a 500 Internal Server Error to the client
         if (data.success === false) {
-             expect(data.error).toBeDefined();
+            expect(data.error).toBeDefined();
         } else {
-             // Fallback triggered
-             const optimizedTitle = data.optimized_title || data.optimized;
-             expect(optimizedTitle).toBeDefined();
-             console.log('✅ Graceful Fallback triggered on Provider Error');
+            // Fallback triggered
+            const optimizedTitle = data.optimized_title || data.optimized;
+            expect(optimizedTitle).toBeDefined();
+            console.log('✅ Graceful Fallback triggered on Provider Error');
 
-             // Check if enhanced fallback logic was used (Pattern Based)
-             if (data.strategy_applied && data.strategy_applied.includes('fallback')) {
-                 console.log('✅ Fallback strategy verified:', data.strategy_applied);
-             }
+            // Check if enhanced fallback logic was used (Pattern Based)
+            if (data.strategy_applied && data.strategy_applied.includes('fallback')) {
+                console.log('✅ Fallback strategy verified:', data.strategy_applied);
+            }
         }
     });
 
@@ -131,11 +131,11 @@ test.describe('MCP Functional Tests (AI Simulation)', () => {
             // If the API returns 200 even for empty input, it might be returning a "success: false" or handled error object
             // Or it generated a title based on other params (but we sent none except category)
             if (data.optimized_title || data.optimized) {
-                 console.log('Empty title was handled by generation logic');
+                console.log('Empty title was handled by generation logic');
             } else {
-                 // Check if it has an error field OR success is false
-                 const isFailure = (data.success === false) || (data.error !== undefined);
-                 expect(isFailure).toBe(true);
+                // Check if it has an error field OR success is false
+                const isFailure = (data.success === false) || (data.error !== undefined);
+                expect(isFailure).toBe(true);
             }
         }
     });

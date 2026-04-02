@@ -274,6 +274,7 @@ $router->get('api/brand/awa/sellers/{id}', AwaSellerController::class, 'getSelle
 $router->get('api/brand/awa/sellers/{id}/items', AwaSellerController::class, 'getSellerItems');
 $router->get('api/brand/awa/sellers/{id}/export/items/csv', AwaSellerController::class, 'exportItemsCsv');
 $router->get('api/brand/awa/sellers/{id}/identification', AwaSellerController::class, 'getIdentification');
+$router->get('api/brand/awa/sellers/{id}/identification/history', AwaSellerController::class, 'getIdentificationHistory');
 $router->put('api/brand/awa/sellers/{id}/identification', AwaSellerController::class, 'saveIdentification');
 $router->post('api/brand/awa/sellers/{id}/identification/verify', AwaSellerController::class, 'verifyIdentification');
 $router->get('api/brand/awa/summary', BrandAnalyzerController::class, 'getSummary');

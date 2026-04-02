@@ -146,51 +146,11 @@ class AwaSellerAlertService
      */
     public function checkVolumeSpikesSinceLastScan(float $threshold = 0.5): int
     {
-        // Fetch the two most recent completed scan IDs
-        $stmt = $this->db->prepare(
-            "SELECT id FROM awa_scan_runs
-              WHERE account_id = :aid AND status = 'completed'
-              ORDER BY id DESC LIMIT 2"
-        );
-        $stmt->execute(['aid' => $this->accountId]);
-        $scanIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        if (count($scanIds) < 2) {
-            return 0;
-        }
-
-        [$latestScanId, $previousScanId] = [(int) $scanIds[0], (int) $scanIds[1]];
-
-        // Build per-seller item counts for each scan
-        $stmt = $this->db->prepare(
-            "SELECT r.id AS registry_id, r.ml_seller_id AS seller_id, r.nickname,
-                    COUNT(CASE WHEN si.scan_run_id = :prev THEN 1 END) AS items_before,
-                    COUNT(CASE WHEN si.scan_run_id = :curr THEN 1 END) AS items_after
-               FROM awa_seller_registry r
-               JOIN awa_seller_items si ON si.registry_id = r.id
-              WHERE r.account_id = :aid
-                AND si.scan_run_id IN (:prev2, :curr2)
-              GROUP BY r.id, r.ml_seller_id, r.nickname
-             HAVING items_before > 0"
-        );
-        $stmt->execute([
-            'aid'   => $this->accountId,
-            'prev'  => $previousScanId,
-            'curr'  => $latestScanId,
-            'prev2' => $previousScanId,
-            'curr2' => $latestScanId,
-        ]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        $before = [];
-        $after  = [];
-        foreach ($rows as $row) {
-            $sid = (int) $row['seller_id'];
-            $before[$sid] = ['registry_id' => $row['registry_id'], 'nickname' => $row['nickname'], 'items_count' => (int) $row['items_before']];
-            $after[$sid]  = ['registry_id' => $row['registry_id'], 'nickname' => $row['nickname'], 'items_count' => (int) $row['items_after']];
-        }
-
-        return $this->createVolumeSpikeAlerts($before, $after, $threshold, $latestScanId);
+        // Mantido apenas por compatibilidade retroativa. O schema atual não
+        // persiste snapshots por scan em awa_seller_items, então a detecção de
+        // picos deve ser feita via createVolumeSpikeAlerts() com snapshots
+        // explícitos capturados antes/depois do scan pelo worker.
+        return 0;
     }
 
     /**

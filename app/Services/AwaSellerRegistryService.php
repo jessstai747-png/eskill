@@ -522,12 +522,12 @@ class AwaSellerRegistryService
         );
         $states->execute(['account_id' => $this->accountId]);
 
-                $cities = $this->db->prepare(
-                        'SELECT DISTINCT city FROM awa_seller_registry
-                            WHERE account_id = :account_id AND city IS NOT NULL
-                            ORDER BY city'
-                );
-                $cities->execute(['account_id' => $this->accountId]);
+        $cities = $this->db->prepare(
+            'SELECT DISTINCT city FROM awa_seller_registry
+              WHERE account_id = :account_id AND city IS NOT NULL
+              ORDER BY city'
+        );
+        $cities->execute(['account_id' => $this->accountId]);
 
         $reps = $this->db->prepare(
             'SELECT DISTINCT reputation_level FROM awa_seller_registry
@@ -768,6 +768,38 @@ class AwaSellerRegistryService
     // -----------------------------------------------------------------------
 
     /**
+     * Returns a lightweight snapshot of seller item counts keyed by seller_id.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getSellerItemCountSnapshot(): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id AS registry_id, seller_id, nickname, items_count
+               FROM awa_seller_registry
+              WHERE account_id = :aid
+                AND is_active = 1'
+        );
+        $stmt->execute(['aid' => $this->accountId]);
+
+        $snapshot = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $sellerId = (int) ($row['seller_id'] ?? 0);
+            if ($sellerId <= 0) {
+                continue;
+            }
+
+            $snapshot[$sellerId] = [
+                'registry_id' => (int) ($row['registry_id'] ?? 0),
+                'nickname' => (string) ($row['nickname'] ?? 'Desconhecido'),
+                'items_count' => max(0, (int) ($row['items_count'] ?? 0)),
+            ];
+        }
+
+        return $snapshot;
+    }
+
+    /**
      * Returns all ml_seller_ids currently registered for this account.
      *
      * @return int[]
@@ -775,9 +807,13 @@ class AwaSellerRegistryService
     public function getKnownSellerIds(): array
     {
         $stmt = $this->db->prepare(
-            "SELECT ml_seller_id FROM awa_sellers WHERE account_id = :aid AND ml_seller_id IS NOT NULL"
+            'SELECT seller_id
+               FROM awa_seller_registry
+              WHERE account_id = :aid
+                AND seller_id IS NOT NULL'
         );
         $stmt->execute(['aid' => $this->accountId]);
+
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
@@ -790,15 +826,21 @@ class AwaSellerRegistryService
     {
         $limit = max(1, min(100, $limit));
         $stmt  = $this->db->prepare(
-            "SELECT id, status, sellers_found, items_found, categories,
-                    created_at, completed_at, error_message
+            "SELECT id, status, sellers_found, items_found, scope_json,
+                    started_at, finished_at, error_message, created_at, updated_at
                FROM awa_scan_runs
               WHERE account_id = :aid
               ORDER BY id DESC
               LIMIT {$limit}"
         );
         $stmt->execute(['aid' => $this->accountId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return array_map(function (array $row): array {
+            $row['scope'] = $this->decodeJson($row['scope_json'] ?? null);
+            unset($row['scope_json']);
+
+            return $row;
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     }
 
     /**
@@ -810,14 +852,18 @@ class AwaSellerRegistryService
     {
         $days = max(1, min(90, $days));
         $stmt = $this->db->prepare(
-            "SELECT s.id, s.ml_seller_id, s.nickname, s.reputation_level,
-                    s.total_items, s.first_seen_at
-               FROM awa_sellers s
-              WHERE s.account_id = :aid
-                AND s.first_seen_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
-              ORDER BY s.first_seen_at DESC"
+                        sprintf(
+                                'SELECT r.id, r.seller_id, r.nickname, r.permalink, r.city, r.state,
+                                                r.reputation_level, r.items_count, r.first_seen_at
+                                     FROM awa_seller_registry r
+                                    WHERE r.account_id = :aid
+                                        AND r.first_seen_at >= DATE_SUB(NOW(), INTERVAL %d DAY)
+                                    ORDER BY r.first_seen_at DESC',
+                                $days
+                        )
         );
-        $stmt->execute(['aid' => $this->accountId, 'days' => $days]);
+                $stmt->execute(['aid' => $this->accountId]);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 

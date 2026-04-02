@@ -199,12 +199,13 @@ class SecurityMiddleware
         // Nonces são gerados em public/index.php e armazenados como constante CSP_NONCE,
         // acessível de qualquer escopo sem depender de $GLOBALS ou sessão.
         $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? ''));
-        // Hash permitido para o script inline da view clonar-anuncios (fallback seguro quando houver mismatch de nonce por cache intermediário).
-        $clonarAnunciosInlineHash = "'sha256-kWS/BLrkylv68l405dV5sM+kLo63StYzhpqsVXx2mHo='";
+        // Hashes permitidos para scripts inline como fallback seguro quando houver mismatch de nonce por cache intermediário.
+        // sha256-kWS: view clonar-anuncios; sha256-tKH: view awa-sellers (IIFE principal).
+        $inlineScriptHashes = "'sha256-kWS/BLrkylv68l405dV5sM+kLo63StYzhpqsVXx2mHo=' 'sha256-tKHjf1xUagEIR72xTejjjtwoRzQcpjGVQvGoyF7m1nU='";
 
         $csp = "default-src 'self'; " .
-            "script-src 'self' 'nonce-{$cspNonce}' {$clonarAnunciosInlineHash} 'strict-dynamic' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
-            "script-src-elem 'self' 'nonce-{$cspNonce}' {$clonarAnunciosInlineHash} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; " .
+            "script-src 'self' 'nonce-{$cspNonce}' {$inlineScriptHashes} 'strict-dynamic' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
+            "script-src-elem 'self' 'nonce-{$cspNonce}' {$inlineScriptHashes} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; " .
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
             "img-src 'self' data: https:; " .
             "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .

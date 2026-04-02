@@ -65,6 +65,7 @@ $menuGroups = [
             ['path' => '/dashboard/marketing/promotions', 'icon' => 'bi-percent', 'label' => 'Promoções'],
             ['path' => '/dashboard/competitors', 'icon' => 'bi-binoculars', 'label' => 'Concorrentes'],
             ['path' => '/dashboard/brand-analysis', 'icon' => 'bi-award', 'label' => 'Análise de Marca'],
+            ['path' => '/dashboard/awa-sellers', 'icon' => 'bi-shop-window', 'label' => 'AWA Sellers', 'badge' => 'NEW'],
         ]
     ],
     'LOGISTICS' => [
@@ -136,7 +137,7 @@ function isMenuActive(string $currentPath, string $itemPath): bool {
             <span class="badge bg-success ms-2" style="font-size: 0.6rem;">PRO</span>
         </a>
     </div>
-    
+
     <!-- Menu Scrollable -->
     <div class="overflow-auto flex-grow-1 p-2" style="max-height: calc(100vh - 180px);">
         <?php foreach ($menuGroups as $groupKey => $group): ?>
@@ -146,12 +147,12 @@ function isMenuActive(string $currentPath, string $itemPath): bool {
                     <span class="text-uppercase fw-bold letter-spacing-1"><?= $group['label'] ?></span>
                 </div>
                 <ul class="nav nav-pills flex-column">
-                    <?php foreach ($group['items'] as $item): 
+                    <?php foreach ($group['items'] as $item):
                         $isActive = isMenuActive($currentPath, $item['path']);
                     ?>
                         <li class="nav-item">
-                            <a href="<?= $item['path'] ?>" 
-                               class="nav-link py-2 px-3 d-flex align-items-center <?= $isActive ? 'active bg-primary' : 'text-white-50' ?>" 
+                            <a href="<?= $item['path'] ?>"
+                               class="nav-link py-2 px-3 d-flex align-items-center <?= $isActive ? 'active bg-primary' : 'text-white-50' ?>"
                                style="font-size: 0.85rem; border-radius: 8px; margin: 1px 8px;">
                                 <i class="<?= $item['icon'] ?> me-2" style="width: 18px;"></i>
                                 <span><?= $item['label'] ?></span>
@@ -165,7 +166,7 @@ function isMenuActive(string $currentPath, string $itemPath): bool {
             </div>
         <?php endforeach; ?>
     </div>
-    
+
     <!-- User Section -->
     <div class="border-top border-secondary p-3">
         <div class="dropdown">
