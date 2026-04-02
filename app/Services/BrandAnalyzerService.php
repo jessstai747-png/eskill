@@ -1253,6 +1253,167 @@ class BrandAnalyzerService
     }
 
     /**
+     * Verifica se o endpoint /sites/{site}/search está acessível desta IP.
+     * O ML bloqueia datacenter IPs para o endpoint de busca pública.
+     */
+    public function isSearchEndpointAccessible(): bool
+    {
+        $testResponse = $this->client->get("/sites/{$this->siteId}/search", [
+            'category' => 'MLB214858',
+            'q' => 'test',
+            'limit' => 1,
+        ], null, false);
+
+        return !isset($testResponse['error']) || $testResponse['status'] !== 403;
+    }
+
+    /**
+     * Descoberta AWA via catálogo de produtos — funciona mesmo quando o endpoint
+     * de busca pública (/sites/{site}/search) está bloqueado pelo PolicyAgent do ML.
+     *
+     * Estratégia:
+     *  1. Busca produtos AWA via /products/search (endpoint não bloqueado)
+     *  2. Obtém itens da conta logada via /users/{userId}/items/search
+     *  3. Filtra itens com BRAND=AWA (value_id 7297804)
+     *  4. Retorna estrutura compatível com analyzeAwaBrand() para uso no DiscoveryService
+     *
+     * @param array $options Opções: max_results, include_details
+     * @return array Resultado compatível com analyzeAwaBrand()
+     */
+    public function analyzeAwaBrandFromCatalog(array $options = []): array
+    {
+        $startTime = microtime(true);
+        $maxResults = (int) ($options['max_results'] ?? 500);
+
+        $result = [
+            'brand' => 'AWA',
+            'analysis_date' => date('Y-m-d H:i:s'),
+            'scan_mode' => 'catalog_fallback',
+            'categories_analyzed' => [['id' => 'catalog', 'name' => 'Catálogo AWA', 'total_found' => 0, 'with_brand' => 0, 'without_brand' => 0]],
+            'total_listings' => 0,
+            'listings_with_brand' => 0,
+            'listings_without_brand' => 0,
+            'listings_with_wrong_brand' => 0,
+            'brand_consistency_score' => 100,
+            'gaps_detected' => [],
+            'inconsistencies' => [],
+            'sellers' => [],
+            'price_analysis' => [],
+            'shipping_analysis' => [],
+            'condition_analysis' => [],
+            'items' => [],
+            'summary' => [],
+        ];
+
+        // Passo 1: produtos AWA no catálogo (confirma que a marca existe no ML)
+        $catalogProducts = $this->searchCatalogProducts('AWA', min(50, $maxResults));
+        $result['categories_analyzed'][0]['total_found'] = count($catalogProducts);
+
+        // Passo 2: itens da conta logada — endpoint autenticado, nunca bloqueado por IP
+        $userItems = $this->getUserAccountItems($maxResults);
+
+        foreach ($userItems as $item) {
+            // Verificar se o item tem atributo BRAND=AWA via endpoint de detalhes
+            $itemDetails = $this->getItemDetails($item['id'] ?? $item);
+            if (isset($itemDetails['error'])) {
+                continue;
+            }
+
+            $brandAnalysis = $this->analyzeBrandAttribute($itemDetails);
+
+            if (!$brandAnalysis['is_correct']) {
+                // Item da conta mas sem a marca AWA correta — ignorar
+                continue;
+            }
+
+            $result['listings_with_brand']++;
+            $result['total_listings']++;
+            $result['categories_analyzed'][0]['with_brand']++;
+
+            $sellerId = (int) ($itemDetails['seller_id'] ?? 0);
+            if ($sellerId > 0 && !isset($result['sellers'][$sellerId])) {
+                $result['sellers'][$sellerId] = $this->getSellerDetails($sellerId);
+                $result['sellers'][$sellerId]['items_count'] = 0;
+                $result['sellers'][$sellerId]['items'] = [];
+            }
+
+            if ($sellerId > 0) {
+                $result['sellers'][$sellerId]['items_count']++;
+                $result['sellers'][$sellerId]['items'][] = $item['id'] ?? $item;
+            }
+
+            if ($options['include_details'] ?? true) {
+                $result['items'][] = $this->extractItemData($itemDetails, $brandAnalysis);
+            }
+        }
+
+        $result['execution_time'] = round(microtime(true) - $startTime, 2) . 's';
+
+        return $result;
+    }
+
+    /**
+     * Busca produtos AWA no catálogo do ML (endpoint /products/search — não bloqueado por IP).
+     *
+     * @param string $query Termo de busca (padrão: 'AWA')
+     * @param int $limit Limite de resultados
+     * @return array Lista de catalog products
+     */
+    public function searchCatalogProducts(string $query = 'AWA', int $limit = 50): array
+    {
+        $response = $this->client->get('/products/search', [
+            'site_id' => $this->siteId,
+            'q' => $query,
+            'limit' => min(50, $limit),
+        ], null, false);
+
+        if (isset($response['error'])) {
+            return [];
+        }
+
+        return $response['results'] ?? [];
+    }
+
+    /**
+     * Obtém itens da conta autenticada via /users/{userId}/items/search.
+     * Este endpoint usa autenticação OAuth e não é bloqueado por IP de datacenter.
+     *
+     * @param int $limit Máximo de itens
+     * @return array Lista de item IDs
+     */
+    private function getUserAccountItems(int $limit = 200): array
+    {
+        $me = $this->client->getMe();
+        $userId = $me['id'] ?? null;
+
+        if (!$userId) {
+            return [];
+        }
+
+        $allItems = [];
+        $offset = 0;
+        $pageSize = 50;
+
+        do {
+            $response = $this->client->get("/users/{$userId}/items/search", [
+                'limit' => $pageSize,
+                'offset' => $offset,
+            ]);
+
+            if (isset($response['error'])) {
+                break;
+            }
+
+            $itemIds = $response['results'] ?? [];
+            $allItems = array_merge($allItems, $itemIds);
+            $offset += $pageSize;
+            $total = $response['paging']['total'] ?? 0;
+        } while ($offset < $total && count($allItems) < $limit);
+
+        return array_slice($allItems, 0, $limit);
+    }
+
+    /**
      * Análise rápida (menos detalhes, mais rápido)
      */
     public function quickAnalysis(array $options = []): array

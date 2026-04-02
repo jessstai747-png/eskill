@@ -32,7 +32,16 @@ class AwaSellerDiscoveryService
         $scanId = $this->registry->createScanRun($scope);
 
         try {
+            // Tenta a busca principal (requer endpoint /search acessível do IP do servidor).
+            // Se o endpoint estiver bloqueado (WAF/PolicyAgent do ML em IPs de datacenter),
+            // cai automaticamente para o modo catálogo que usa endpoints autenticados
+            // (/products/search e /users/{id}/items/search) — nunca bloqueados por IP.
             $analysis = $this->brandAnalyzer->analyzeAwaBrand($scope);
+
+            if (empty($analysis['items']) && !$this->brandAnalyzer->isSearchEndpointAccessible()) {
+                $analysis = $this->brandAnalyzer->analyzeAwaBrandFromCatalog($scope);
+            }
+
             $sellerPayloads = $this->buildSellerPayloads($analysis);
 
             $itemsFound = 0;
