@@ -452,6 +452,9 @@ class AlertService
             'new_product_in_category' => 'info',
             'ai_billing_error' => 'danger',
             'ai_provider_error' => 'danger',
+            'awa_new_seller' => 'warning',
+            'awa_volume_spike' => 'warning',
+            'awa_unidentified_seller' => 'info',
         ];
 
         return $severities[$type] ?? 'info';
@@ -484,6 +487,17 @@ class AlertService
 
             case 'ai_provider_error':
                 return "ERRO IA: Falha em todos os provedores. Último erro: {$data['last_error']}";
+
+            case 'awa_new_seller':
+                $count = (int) ($data['new_seller_count'] ?? 1);
+                return "{$count} novo(s) vendedor(es) AWA detectado(s) no scan #{$data['scan_id']}";
+
+            case 'awa_volume_spike':
+                return "Pico de volume AWA: vendedor {$data['nickname']} subiu de {$data['items_before']} para {$data['items_after']} anúncios";
+
+            case 'awa_unidentified_seller':
+                $count = (int) ($data['unidentified_count'] ?? 1);
+                return "{$count} vendedor(es) AWA sem identificação há mais de {$data['days']} dias";
 
             default:
                 return "Alerta: {$type}";

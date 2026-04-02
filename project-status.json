@@ -1596,6 +1596,11 @@
       ],
       "passes": true,
       "last_tested": "2026-04-02"
+    },
+    {
+      "id": "AWA-005",
+      "title": "AWA Sellers Fase 5 — Export Service, Audit Trail, Alert Hardening",
+      "passes": true
     }
   ],
   "summary": "139/139"

@@ -231,3 +231,10 @@
 # ============================================================================
 * * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/webhook-processor-worker.php --once >> storage/logs/webhook-processor.log 2>&1
 */15 * * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/webhook-processor-worker.php --once --replay-failed >> storage/logs/webhook-processor-replay.log 2>&1
+
+# ============================================================================
+# AWA SELLERS SCAN WORKER: Varredura periódica de sellers AWA, alertas automáticos
+# Frequência: 2x ao dia (9h + 21h) + verificação de não identificados diária às 4h
+# ============================================================================
+0 9,21 * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/awa-sellers-scan-worker.php >> storage/logs/awa-sellers-scan.log 2>&1
+0 4 * * * cd /home/eskill/htdocs/eskill.com.br && /usr/bin/php bin/awa-sellers-scan-worker.php --verbose >> storage/logs/awa-sellers-scan-daily.log 2>&1

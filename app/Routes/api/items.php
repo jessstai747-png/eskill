@@ -267,10 +267,12 @@ $router->get('api/brand/awa/sellers/filters/options', AwaSellerController::class
 $router->get('api/brand/awa/sellers/export/csv', AwaSellerController::class, 'exportCsv');
 $router->get('api/brand/awa/sellers/identification/summary', AwaSellerController::class, 'identificationSummary');
 $router->get('api/brand/awa/sellers/history', AwaSellerController::class, 'getHistory');
+$router->get('api/brand/awa/sellers/alerts', AwaSellerController::class, 'getAlerts');
 $router->get('api/brand/awa/sellers/scan/{scanId}', AwaSellerController::class, 'getScan');
 $router->get('api/brand/awa/sellers/metrics', AwaSellerController::class, 'getMetrics');
 $router->get('api/brand/awa/sellers/{id}', AwaSellerController::class, 'getSellerDetail');
 $router->get('api/brand/awa/sellers/{id}/items', AwaSellerController::class, 'getSellerItems');
+$router->get('api/brand/awa/sellers/{id}/export/items/csv', AwaSellerController::class, 'exportItemsCsv');
 $router->get('api/brand/awa/sellers/{id}/identification', AwaSellerController::class, 'getIdentification');
 $router->put('api/brand/awa/sellers/{id}/identification', AwaSellerController::class, 'saveIdentification');
 $router->post('api/brand/awa/sellers/{id}/identification/verify', AwaSellerController::class, 'verifyIdentification');

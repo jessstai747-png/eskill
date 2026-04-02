@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\AwaSellerAlertService;
 use App\Services\AwaSellerDiscoveryService;
+use App\Services\AwaSellerExportService;
+use App\Services\AwaSellerIdentificationService;
 use App\Services\AwaSellerRegistryService;
 
 class AwaSellerController extends BaseController
@@ -260,9 +263,10 @@ class AwaSellerController extends BaseController
             $service = new AwaSellerIdentificationService($accountId);
             $service->upsert($sellerId, $payload);
 
-            $record = $service->getByRegistryId($sellerId);
+            $registry = new AwaSellerRegistryService($accountId);
+            $seller   = $registry->getSellerById($sellerId);
 
-            $this->jsonSuccess(['data' => $record], 'Identificação salva com sucesso.');
+            $this->jsonSuccess(['data' => $seller], 'Identificação salva com sucesso.');
         }, 'AwaSellerController::saveIdentification');
     }
 
@@ -287,7 +291,10 @@ class AwaSellerController extends BaseController
             $service = new AwaSellerIdentificationService($accountId);
             $service->verify($sellerId, is_string($verifiedBy) ? $verifiedBy : null);
 
-            $this->jsonSuccess([], 'Identificação verificada com sucesso.');
+            $registry = new AwaSellerRegistryService($accountId);
+            $seller   = $registry->getSellerById($sellerId);
+
+            $this->jsonSuccess(['data' => $seller], 'Identificação verificada com sucesso.');
         }, 'AwaSellerController::verifyIdentification');
     }
 
@@ -316,45 +323,30 @@ class AwaSellerController extends BaseController
      */
     public function exportCsv(): void
     {
+        $accountId  = $this->requireActiveMlAccountId();
+        $filters    = $this->buildRegistryFilters();
+        $exportSvc  = new AwaSellerExportService($accountId);
+
+        $exportSvc->downloadSellersAsCsv($filters);
+    }
+
+    /**
+     * GET api/brand/awa/sellers/{id}/export/items/csv
+     * Exporta todos os anúncios de um seller específico como CSV.
+     */
+    public function exportItemsCsv(string $id): void
+    {
         $accountId = $this->requireActiveMlAccountId();
         $registry  = new AwaSellerRegistryService($accountId);
-        $filters   = $this->buildRegistryFilters();
+        $seller    = $registry->getSellerById((int) $id);
 
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="awa-sellers-' . date('Ymd') . '.csv"');
-
-        $out = fopen('php://output', 'w');
-        if ($out === false) {
-            $this->jsonError('Erro ao gerar CSV.', 500);
+        if ($seller === null) {
+            $this->jsonError('Seller não encontrado.', 404);
             return;
         }
 
-        fputcsv($out, [
-            'seller_id', 'nickname', 'permalink', 'city', 'state',
-            'reputation_level', 'power_seller_status', 'items_count',
-            'first_seen_at', 'last_seen_at',
-            'cnpj', 'razao_social', 'id_status',
-        ]);
-
-        foreach ($registry->iterateSellersForExport($filters) as $row) {
-            fputcsv($out, [
-                $row['seller_id'],
-                $row['nickname'],
-                $row['permalink'],
-                $row['city'],
-                $row['state'],
-                $row['reputation_level'],
-                $row['power_seller_status'],
-                $row['items_count'],
-                $row['first_seen_at'],
-                $row['last_seen_at'],
-                $row['cnpj'],
-                $row['razao_social'],
-                $row['id_status'],
-            ]);
-        }
-
-        fclose($out);
+        $exportSvc = new AwaSellerExportService($accountId, $registry);
+        $exportSvc->downloadSellerItemsAsCsv((int) $id);
     }
 
     /**
@@ -448,6 +440,45 @@ class AwaSellerController extends BaseController
     }
 
     /**
+     * GET api/brand/awa/sellers/alerts
+     * Retorna alertas AWA para a conta ativa.
+     */
+    public function getAlerts(): void
+    {
+        $this->withErrorHandling(function (): void {
+            $accountId  = $this->requireActiveMlAccountId();
+            $limit      = max(1, min(200, (int) ($this->request->get('limit') ?? 50)));
+            $unreadOnly = filter_var(
+                $this->request->get('unread_only'),
+                FILTER_VALIDATE_BOOLEAN,
+                FILTER_NULL_ON_FAILURE
+            ) ?? false;
+
+            $alertSvc = new AwaSellerAlertService($accountId);
+            $alerts   = $alertSvc->getAwaAlerts($limit, $unreadOnly);
+
+            $this->jsonSuccess([
+                'alerts' => $alerts,
+                'count' => count($alerts),
+                'unread_count' => count(array_filter(
+                    $alerts,
+                    static fn (array $alert): bool => empty($alert['read_at'])
+                )),
+                'unread_only' => $unreadOnly,
+                'data' => [
+                    'alerts' => $alerts,
+                    'count' => count($alerts),
+                    'unread_count' => count(array_filter(
+                        $alerts,
+                        static fn (array $alert): bool => empty($alert['read_at'])
+                    )),
+                    'unread_only' => $unreadOnly,
+                ],
+            ]);
+        }, 'AwaSellerController::getAlerts');
+    }
+
+    /**
      * GET api/brand/awa/sellers/history
      * Retorna vendedores novos detectados nos últimos N dias e histórico de scans.
      */
@@ -459,9 +490,11 @@ class AwaSellerController extends BaseController
             $registry  = new AwaSellerRegistryService($accountId);
 
             $this->jsonSuccess([
-                'new_sellers' => $registry->getNewSellersHistory($days),
-                'scan_runs'   => $registry->listScanRuns(20),
-                'days'        => $days,
+                'data' => [
+                    'new_sellers' => $registry->getNewSellersHistory($days),
+                    'scan_runs'   => $registry->listScanRuns(20),
+                    'days'        => $days,
+                ],
             ]);
         }, 'AwaSellerController::getHistory');
     }

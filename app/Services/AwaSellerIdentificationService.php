@@ -8,6 +8,7 @@ use App\Database;
 use PDO;
 use RuntimeException;
 
+
 /**
  * AwaSellerIdentificationService
  *
@@ -41,8 +42,9 @@ class AwaSellerIdentificationService
 
     private PDO $db;
     private int $accountId;
+    private AuditLogService $audit;
 
-    public function __construct(int $accountId)
+    public function __construct(int $accountId, ?AuditLogService $audit = null)
     {
         if ($accountId <= 0) {
             throw new RuntimeException('AwaSellerIdentificationService: account_id inválido.');
@@ -50,6 +52,7 @@ class AwaSellerIdentificationService
 
         $this->db        = Database::getInstance();
         $this->accountId = $accountId;
+        $this->audit     = $audit ?? new AuditLogService();
     }
 
     // =========================================================================
@@ -201,6 +204,20 @@ class AwaSellerIdentificationService
             'notes'               => $this->nullableString($data['notes'] ?? null),
             'created_by'          => $this->nullableString($data['created_by'] ?? null),
         ]);
+
+        $this->audit->log(
+            'awa_seller_identification_upsert',
+            null,
+            $this->accountId,
+            [
+                'registry_id'         => $registryId,
+                'source_type'         => $data['source_type'] ?? 'manual',
+                'verification_status' => $data['verification_status'] ?? 'pending',
+                'has_cnpj'            => !empty($data['cnpj']),
+                'confidence_score'    => max(0, min(100, (int) ($data['confidence_score'] ?? 50))),
+            ],
+            'awa_seller_identification'
+        );
     }
 
     /**
@@ -224,6 +241,14 @@ class AwaSellerIdentificationService
 
         $note = 'Verificado por: ' . ($verifiedBy ?? 'sistema') . ' em ' . date('d/m/Y H:i');
         $stmt->execute(['reg_id' => $registryId, 'note' => $note]);
+
+        $this->audit->log(
+            'awa_seller_identification_verified',
+            null,
+            $this->accountId,
+            ['registry_id' => $registryId, 'verified_by' => $verifiedBy ?? 'sistema'],
+            'awa_seller_identification'
+        );
     }
 
     /**

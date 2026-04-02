@@ -26,6 +26,7 @@ require_once __DIR__ . '/../autoload.php';
 
 use App\Database;
 use App\Services\AlertService;
+use App\Services\AwaSellerAlertService;
 use App\Services\AwaSellerDiscoveryService;
 use App\Services\AwaSellerRegistryService;
 
@@ -123,7 +124,8 @@ try {
             $discovery = new AwaSellerDiscoveryService($accountId, null, $registry);
 
             // Obtém snapshot dos seller_ids conhecidos antes do scan
-            $knownIds = $registry->getKnownSellerIds();
+            $knownIds        = $registry->getKnownSellerIds();
+            $beforeSnapshot  = $registry->getSellerItemCountSnapshot();
 
             // Executa o scan
             $result = $discovery->runScan([]);
@@ -138,8 +140,9 @@ try {
             );
 
             // Detectar vendedores novos e disparar alertas
-            $currentIds = $registry->getKnownSellerIds();
-            $newIds     = array_diff($currentIds, $knownIds);
+            $currentIds    = $registry->getKnownSellerIds();
+            $afterSnapshot = $registry->getSellerItemCountSnapshot();
+            $newIds        = array_diff($currentIds, $knownIds);
 
             if (!empty($newIds)) {
                 $globalNewSellers += count($newIds);
@@ -156,6 +159,23 @@ try {
                     'new_seller_ids'     => array_values($newIds),
                     'total_sellers'      => $sellersFound,
                 ]);
+            }
+
+            // Check volume spikes and unidentified sellers
+            $awaAlertSvc  = new AwaSellerAlertService($accountId);
+            $spikes       = $awaAlertSvc->createVolumeSpikeAlerts(
+                $beforeSnapshot,
+                $afterSnapshot,
+                0.5,
+                (int) ($result['scan_id'] ?? 0)
+            );
+            $unidentified = $awaAlertSvc->checkUnidentifiedSellers(7);
+
+            if ($spikes > 0) {
+                logWorker("  {$spikes} pico(s) de volume detectado(s)", $verbose, 'WARN');
+            }
+            if ($unidentified > 0) {
+                logWorker("  {$unidentified} vendedor(es) sem identificação há 7+ dias", $verbose, 'WARN');
             }
         } catch (\Throwable $e) {
             $globalErrors++;
