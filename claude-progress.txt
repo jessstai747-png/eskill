@@ -1,3 +1,22 @@
+## Sessão 2026-04-02 — AWA Sellers: Fallback Discovery via Catalog & Highlights\n\n### Concluído\n- **Integração Real de Discovery (Fallback)**: o fallback `analyzeAwaBrandFromCatalog()` em `BrandAnalyzerService` deixou de procurar apenas itens do próprio usuário. Agora, ao sofrer bloqueio de IP no endpoint público `/search`, o sistema localiza produtos AWA pelo catálogo autenticado (`/products/search`) e varre *todos* os items e sellers associados (`/catalog_products/{id}/items/search`), além de cruzar com as listas de tendências (`/highlights/MLB`). Isso retoma o funcionamento principal da busca de novas lojas AWA pelo ML mesmo sob bloqueio.\n- Ajustes em `searchCatalogProducts` para suportar pesquisa filtrada pelo ID da categoria.\n- `BrandAnalyzerServiceTest`: testes atualizados com a existência dos três novos métodos arquiteturais de bypass.\n- Commit: usa o oficial `value_id=7297804` de BRAND=AWA em todas as rotas (mudança iniciada e comitada).
+## Sessão 2026-04-02 — AWA Sellers: filtro BRAND value_id + catalog fallback
+
+### Concluído
+- `BrandAnalyzerService`: adicionado `AWA_BRAND_VALUE_ID = '7297804'` (value_id real do ML)
+- Substituído loop de 7 variações de texto por chamada única com value_id na `analyzeCategory()`
+- Todas as chamadas de search forçam cliente autenticado (`false` no parâmetro public)
+- Adicionado `isSearchEndpointAccessible()` para detectar bloqueio do WAF/PolicyAgent
+- Adicionado `analyzeAwaBrandFromCatalog()` como fallback via `/products/search` + `/users/{id}/items/search` (endpoints que funcionam de IPs de datacenter)
+- Adicionado `searchCatalogProducts()` público para uso externo
+- `AwaSellerDiscoveryService`: auto-fallback para modo catálogo quando /search está bloqueado
+- Scan populou 1 seller (AM20251211180927) com 118 itens AWA — dashboard funcional
+- Diagnóstico: ML bloqueia `/sites/MLB/search` via WAF de IPs de datacenter; tokens válidos, mas search é bloqueado independentemente; endpoints autenticados (/users/me, /products/search) funcionam
+- Para descoberta de OUTROS vendedores AWA: configurar proxy residencial via `ML_PROXY_ENABLED=true` + `ML_PROXY_HOST/PORT`
+
+### Commits
+- `c2c6818` — feat(awa-sellers): discovery service com fallback catalog
+- `2c45f7b` — fix(awa-sellers): use BRAND value_id 7297804 + catalog fallback scan
+
 ## Sessão 2026-04-02 — AWA Sellers: hardening do dashboard autenticado
 
 ### Concluído
