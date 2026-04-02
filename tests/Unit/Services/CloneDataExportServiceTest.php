@@ -169,17 +169,17 @@ class CloneDataExportServiceTest extends TestCase
         file_put_contents($filepath, 'id;title');
 
         $logsStatement = $this->createStatementMock();
-        $logsStatement->expects($this->once())
+        $logsStatement->expects($this->exactly(2))
             ->method('execute')
             ->with(['account_id' => 77])
             ->willReturn(true);
-        $logsStatement->expects($this->once())
+        $logsStatement->expects($this->exactly(2))
             ->method('fetchAll')
             ->with(PDO::FETCH_ASSOC)
             ->willReturn([]);
 
         $pdo = $this->createMock(PDO::class);
-        $pdo->expects($this->once())
+        $pdo->expects($this->exactly(2))
             ->method('prepare')
             ->willReturn($logsStatement);
         $service = $this->newService($pdo);

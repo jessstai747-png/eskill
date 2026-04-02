@@ -224,4 +224,14 @@ class CatalogCloneControllerTest extends TestCase
         $this->assertStringContainsString("\$acknowledged = \$this->request->get('acknowledged');", $source);
         $this->assertStringContainsString("\$onlyUnacknowledged = \$acknowledged !== 'all' && \$acknowledged !== 'true';", $source);
     }
+
+    public function testHealthResponseAlwaysHasAllQueueBreakdownKeys(): void
+    {
+        $file = $this->reflection->getFileName();
+        $source = file_get_contents($file);
+
+        $this->assertStringContainsString("'legacy_pending' => (int) (\$health['queue_breakdown']['legacy_pending'] ?? 0)", $source);
+        $this->assertStringContainsString("'batch_pending' => (int) (\$health['queue_breakdown']['batch_pending'] ?? 0)", $source);
+        $this->assertStringContainsString("'batch_processing' => (int) (\$health['queue_breakdown']['batch_processing'] ?? 0)", $source);
+    }
 }

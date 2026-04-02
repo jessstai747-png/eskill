@@ -1417,7 +1417,11 @@ class CatalogCloneController extends BaseController
                 'pending_jobs' => $health['pending_jobs'] ?? 0,
                 'unresolved_alerts' => $health['unresolved_alerts'] ?? 0,
                 'operations_1h' => $health['operations_1h'] ?? 0,
-                'queue_breakdown' => $health['queue_breakdown'] ?? [],
+                'queue_breakdown' => [
+                    'legacy_pending' => (int) ($health['queue_breakdown']['legacy_pending'] ?? 0),
+                    'batch_pending' => (int) ($health['queue_breakdown']['batch_pending'] ?? 0),
+                    'batch_processing' => (int) ($health['queue_breakdown']['batch_processing'] ?? 0),
+                ],
                 'health' => $health
             ]);
         } catch (\Exception $e) {
