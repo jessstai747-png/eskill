@@ -8,6 +8,27 @@ $pageSubtitleSafe = htmlspecialchars(
     ENT_QUOTES,
     'UTF-8'
 );
+$canViewAwaSellers = (bool) ($canViewAwaSellers ?? true);
+$canManageAwaSellers = $canViewAwaSellers && (bool) ($canManageAwaSellers ?? true);
+$permissionDeniedMessageSafe = htmlspecialchars(
+    (string) ($permissionDeniedMessage ?? 'Acesso negado. Permissão de auditoria necessária para acessar o módulo AWA Sellers.'),
+    ENT_QUOTES,
+    'UTF-8'
+);
+$manageActionAttr = $canManageAwaSellers
+    ? ''
+    : ' disabled aria-disabled="true" title="Disponível apenas para admin ou manager"';
+$readonlyInputAttr = $canManageAwaSellers ? '' : ' readonly aria-readonly="true"';
+$readonlySelectAttr = $canManageAwaSellers
+    ? ''
+    : ' disabled aria-disabled="true" title="Disponível apenas para admin ou manager"';
+$identificationHelpTextSafe = htmlspecialchars(
+    $canManageAwaSellers
+        ? 'Atualize os dados jurídicos desta loja com rastreabilidade.'
+        : 'Seu perfil possui acesso somente leitura à identificação jurídica desta loja.',
+    ENT_QUOTES,
+    'UTF-8'
+);
 
 $title = $pageTitleSafe;
 $subtitle = $pageSubtitleSafe;
@@ -15,21 +36,36 @@ $breadcrumbs = [
     ['label' => 'Marketing', 'url' => '/dashboard/brand-analysis'],
     ['label' => 'AWA Sellers', 'url' => ''],
 ];
-$actions = <<<HTML
+$actions = $canViewAwaSellers ? <<<HTML
 <button type="button" class="btn btn-outline-secondary" id="refreshAwaSellers">
     <i class="bi bi-arrow-clockwise me-1"></i> Atualizar
 </button>
-<button type="button" class="btn btn-outline-primary" id="exportAwaSellersCsv">
+<button type="button" class="btn btn-outline-primary" id="exportAwaSellersCsv"{$manageActionAttr}>
     <i class="bi bi-download me-1"></i> Exportar CSV
 </button>
-<button type="button" class="btn btn-primary" id="runAwaSellerScan">
+<button type="button" class="btn btn-primary" id="runAwaSellerScan"{$manageActionAttr}>
     <i class="bi bi-broadcast-pin me-1"></i> Executar Scan
 </button>
-HTML;
+HTML : '';
 
 include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 ?>
 
+<?php if (!$canViewAwaSellers): ?>
+<main class="container-fluid px-0 awa-sellers-page">
+    <section class="card border-0 shadow-sm">
+        <div class="card-body py-5">
+            <div class="alert alert-danger mb-4" role="alert">
+                <strong>Acesso restrito ao módulo AWA Sellers.</strong><br>
+                <?= $permissionDeniedMessageSafe ?>
+            </div>
+            <p class="text-muted mb-0">
+                Perfis com permissão de auditoria podem consultar esta base. Ações operacionais seguem restritas a administradores e gestores.
+            </p>
+        </div>
+    </section>
+</main>
+<?php else: ?>
 <main class="container-fluid px-0 awa-sellers-page">
     <section class="row g-3 mb-4" aria-label="Indicadores principais do módulo AWA Sellers">
         <div class="col-6 col-xl-3">
@@ -188,6 +224,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                         type="text"
                         class="form-control"
                         id="scanCategories"
+                            <?= $readonlyInputAttr ?>
                         placeholder="Ex.: MLB214858, MLB5750"
                         aria-describedby="scanCategoriesHelp"
                     >
@@ -374,15 +411,15 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                 <form id="awaSellerIdentificationForm" class="row g-3" novalidate>
                     <div class="col-md-6">
                         <label class="form-label small text-muted" for="identificationCnpj">CNPJ</label>
-                        <input type="text" class="form-control" id="identificationCnpj" name="cnpj" placeholder="00.000.000/0000-00">
+                        <input type="text" class="form-control" id="identificationCnpj" name="cnpj" placeholder="00.000.000/0000-00"<?= $readonlyInputAttr ?>>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small text-muted" for="identificationCompanyName">Razão social</label>
-                        <input type="text" class="form-control" id="identificationCompanyName" name="razao_social" placeholder="Nome jurídico da empresa">
+                        <input type="text" class="form-control" id="identificationCompanyName" name="razao_social" placeholder="Nome jurídico da empresa"<?= $readonlyInputAttr ?>>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small text-muted" for="identificationSourceType">Origem</label>
-                        <select class="form-select" id="identificationSourceType" name="source_type">
+                        <select class="form-select" id="identificationSourceType" name="source_type"<?= $readonlySelectAttr ?>>
                             <option value="manual">Manual</option>
                             <option value="authorized_ml_account">Conta autorizada</option>
                             <option value="internal_registry">Registro interno</option>
@@ -393,7 +430,7 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small text-muted" for="identificationStatus">Status</label>
-                        <select class="form-select" id="identificationStatus" name="verification_status">
+                        <select class="form-select" id="identificationStatus" name="verification_status"<?= $readonlySelectAttr ?>>
                             <option value="pending">pending</option>
                             <option value="verified">verified</option>
                             <option value="not_available">not_available</option>
@@ -402,23 +439,23 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small text-muted" for="identificationConfidence">Confiança</label>
-                        <input type="number" class="form-control" id="identificationConfidence" name="confidence_score" min="0" max="100" step="1" value="50">
+                        <input type="number" class="form-control" id="identificationConfidence" name="confidence_score" min="0" max="100" step="1" value="50"<?= $readonlyInputAttr ?>>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small text-muted" for="identificationSourceReference">Referência</label>
-                        <input type="text" class="form-control" id="identificationSourceReference" name="source_reference" placeholder="URL, protocolo ou observação curta">
+                        <input type="text" class="form-control" id="identificationSourceReference" name="source_reference" placeholder="URL, protocolo ou observação curta"<?= $readonlyInputAttr ?>>
                     </div>
                     <div class="col-12">
                         <label class="form-label small text-muted" for="identificationNotes">Observações</label>
-                        <textarea class="form-control" id="identificationNotes" name="notes" rows="3" placeholder="Notas internas sobre a origem ou validação do dado"></textarea>
+                        <textarea class="form-control" id="identificationNotes" name="notes" rows="3" placeholder="Notas internas sobre a origem ou validação do dado"<?= $readonlyInputAttr ?>></textarea>
                     </div>
                     <div class="col-12 d-flex justify-content-between align-items-center gap-3">
-                        <div class="small text-muted" id="identificationFeedback">Atualize os dados jurídicos desta loja com rastreabilidade.</div>
+                        <div class="small text-muted" id="identificationFeedback"><?= $identificationHelpTextSafe ?></div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-success" id="verifyAwaSellerIdentification">
+                            <button type="button" class="btn btn-outline-success" id="verifyAwaSellerIdentification"<?= $manageActionAttr ?>>
                                 <i class="bi bi-patch-check me-1"></i> Verificar
                             </button>
-                            <button type="submit" class="btn btn-primary" id="saveAwaSellerIdentification">
+                            <button type="submit" class="btn btn-primary" id="saveAwaSellerIdentification"<?= $manageActionAttr ?>>
                                 <i class="bi bi-save me-1"></i> Salvar identificação
                             </button>
                         </div>
@@ -479,6 +516,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 
 <script nonce="<?= htmlspecialchars((string) (defined('CSP_NONCE') ? CSP_NONCE : ($cspNonce ?? '')), ENT_QUOTES, 'UTF-8') ?>">
 (() => {
+    const permissions = {
+        canView: <?= $canViewAwaSellers ? 'true' : 'false' ?>,
+        canManage: <?= $canManageAwaSellers ? 'true' : 'false' ?>,
+    };
+
     const state = {
         page: 1,
         currentSellerId: null,
@@ -716,13 +758,26 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     }
 
     async function requestJson(url, options = {}) {
+        const method = (options.method || 'GET').toUpperCase();
+        const isWriteMethod = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+        const csrfToken = isWriteMethod
+            ? (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '')
+            : null;
+
+        // Destructure headers out of options so ...restOptions never overwrites the built headers.
+        const { headers: optHeaders, ...restOptions } = options;
+
+        const requestHeaders = {
+            Accept: 'application/json',
+            ...(restOptions.body != null ? { 'Content-Type': 'application/json' } : {}),
+            ...(csrfToken != null ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            ...(optHeaders || {}),
+        };
+
         const response = await fetch(url, {
-            headers: {
-                Accept: 'application/json',
-                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-                ...(options.headers || {}),
-            },
-            ...options,
+            credentials: 'include',
+            ...restOptions,
+            headers: requestHeaders,
         });
 
         const payload = await response.json().catch(() => null);
@@ -1001,6 +1056,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     }
 
     async function runScan() {
+        if (!permissions.canManage) {
+            setFeedback('warning', 'Seu perfil possui acesso somente leitura ao módulo AWA Sellers.');
+            return;
+        }
+
         clearFeedback();
         elements.scanButton.disabled = true;
         elements.scanButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Executando...';
@@ -1160,10 +1220,12 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         elements.identificationConfidence.value = String(seller.confidence_score || 50);
         elements.identificationSourceReference.value = seller.source_reference || '';
         elements.identificationNotes.value = seller.id_notes || seller.notes || '';
-        elements.identificationFeedback.textContent = seller.cnpj
-            ? `Última origem registrada: ${seller.source_type || 'manual'}`
-            : 'Sem identificação registrada para esta loja.';
-        elements.verifyIdentificationButton.disabled = identificationStatus === 'verified';
+        elements.identificationFeedback.textContent = permissions.canManage
+            ? (seller.cnpj
+                ? `Última origem registrada: ${seller.source_type || 'manual'}`
+                : 'Sem identificação registrada para esta loja.')
+            : 'Seu perfil possui acesso somente leitura à identificação jurídica desta loja.';
+        elements.verifyIdentificationButton.disabled = !permissions.canManage || identificationStatus === 'verified';
         renderIdentificationAudit(auditHistory);
 
         elements.detailItemsTableBody.innerHTML = Array.isArray(items) && items.length > 0
@@ -1192,6 +1254,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         event.preventDefault();
 
         if (!state.currentSellerId) {
+            return;
+        }
+
+        if (!permissions.canManage) {
+            elements.identificationFeedback.textContent = 'Seu perfil possui acesso somente leitura à identificação jurídica desta loja.';
             return;
         }
 
@@ -1228,6 +1295,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
 
     async function verifyIdentification() {
         if (!state.currentSellerId) {
+            return;
+        }
+
+        if (!permissions.canManage) {
+            elements.identificationFeedback.textContent = 'Seu perfil possui acesso somente leitura à identificação jurídica desta loja.';
             return;
         }
 
@@ -1300,6 +1372,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         refreshDashboard().catch((error) => setFeedback('danger', error.message));
     });
     elements.exportButton.addEventListener('click', () => {
+        if (!permissions.canManage) {
+            setFeedback('warning', 'Seu perfil possui acesso somente leitura ao módulo AWA Sellers.');
+            return;
+        }
+
         window.location.href = `${endpoints.exportCsv}?${buildQuery(getCurrentFilters())}`;
     });
     elements.scanButton.addEventListener('click', runScan);
@@ -1321,3 +1398,4 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     });
 })();
 </script>
+<?php endif; ?>
