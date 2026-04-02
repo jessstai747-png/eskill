@@ -1271,25 +1271,29 @@ class BrandAnalyzerService
      * Descoberta AWA via catálogo de produtos — funciona mesmo quando o endpoint
      * de busca pública (/sites/{site}/search) está bloqueado pelo PolicyAgent do ML.
      *
-     * Estratégia:
-     *  1. Busca produtos AWA via /products/search (endpoint não bloqueado)
-     *  2. Obtém itens da conta logada via /users/{userId}/items/search
-     *  3. Filtra itens com BRAND=AWA (value_id 7297804)
-     *  4. Retorna estrutura compatível com analyzeAwaBrand() para uso no DiscoveryService
+     * Estratégia melhorada em /products/search e /highlights para contornar bloqueios do ML.
+     *  1. Para cada categoria solicitada, busca produtos no Catálogo (AWA).
+     *  2. Extrai sellers via /catalog_products/{id}/sellers e items via /catalog_products/{id}/items/search.
+     *  3. Busca itens de destaques (/highlights/MLB?category=XXX).
+     *  4. Analisa esses itens individualmente para confirmar a marca (BRAND=AWA).
      *
-     * @param array $options Opções: max_results, include_details
+     * @param array $options Opções de scan (max_results, include_details, categories)
      * @return array Resultado compatível com analyzeAwaBrand()
      */
     public function analyzeAwaBrandFromCatalog(array $options = []): array
     {
         $startTime = microtime(true);
         $maxResults = (int) ($options['max_results'] ?? 500);
+        $categories = $options['categories'] ?? array_keys(self::MOTO_CATEGORIES);
+        if (empty($categories)) {
+            $categories = [$this->motoPartsCategoryUrl];
+        }
 
         $result = [
             'brand' => 'AWA',
             'analysis_date' => date('Y-m-d H:i:s'),
             'scan_mode' => 'catalog_fallback',
-            'categories_analyzed' => [['id' => 'catalog', 'name' => 'Catálogo AWA', 'total_found' => 0, 'with_brand' => 0, 'without_brand' => 0]],
+            'categories_analyzed' => [],
             'total_listings' => 0,
             'listings_with_brand' => 0,
             'listings_without_brand' => 0,
@@ -1305,30 +1309,77 @@ class BrandAnalyzerService
             'summary' => [],
         ];
 
-        // Passo 1: produtos AWA no catálogo (confirma que a marca existe no ML)
-        $catalogProducts = $this->searchCatalogProducts('AWA', min(50, $maxResults));
-        $result['categories_analyzed'][0]['total_found'] = count($catalogProducts);
+        $allItemsMap = [];
 
-        // Passo 2: itens da conta logada — endpoint autenticado, nunca bloqueado por IP
-        $userItems = $this->getUserAccountItems($maxResults);
+        foreach ($categories as $categoryId) {
+            $categoryName = self::MOTO_CATEGORIES[$categoryId] ?? $categoryId;
+            $catStats = ['id' => $categoryId, 'name' => $categoryName, 'total_found' => 0, 'with_brand' => 0, 'without_brand' => 0];
 
-        foreach ($userItems as $item) {
-            // Verificar se o item tem atributo BRAND=AWA via endpoint de detalhes
-            $itemDetails = $this->getItemDetails($item['id'] ?? $item);
+            // 1. Procurar produtos no catálogo (ignorar bloqueio de IP de search, catalog é open/authenticated auth=false bypass)
+            $catalogProducts = $this->searchCatalogProducts('AWA', 20, $categoryId);
+
+            foreach ($catalogProducts as $cp) {
+                // Obter itens (anúncios) associados a esse produto do catálogo
+                $itemsSearch = $this->client->get("/catalog_products/{$cp['id']}/items/search", ['limit' => 20], null, false);
+                if (isset($itemsSearch['results']) && is_array($itemsSearch['results'])) {
+                    foreach ($itemsSearch['results'] as $i) {
+                        $iid = is_string($i) ? $i : ($i['id'] ?? $i['item_id'] ?? null);
+                        if ($iid && !isset($allItemsMap[$iid])) {
+                            $allItemsMap[$iid] = $categoryId;
+                        }
+                    }
+                }
+            }
+
+            // 2. Tentar coletar items dos highlights / tendências dessa categoria (não bloqueado por policy)
+            $highlights = $this->client->get("/highlights/{$this->siteId}", ['category' => $categoryId, 'limit' => 50], null, false);
+            if (isset($highlights['content']) && is_array($highlights['content'])) {
+                foreach ($highlights['content'] as $hi) {
+                    $iid = $hi['id'] ?? null;
+                    if ($iid && !isset($allItemsMap[$iid])) {
+                        $allItemsMap[$iid] = $categoryId;
+                    }
+                }
+            }
+
+            $catStats['total_found'] = count($allItemsMap);
+            $result['categories_analyzed'][] = $catStats;
+            
+            // Limitador total para não sobrecarregar
+            if (count($allItemsMap) >= $maxResults) {
+                break;
+            }
+        }
+
+        // Detalhar itens encontrados
+        $itemIds = array_keys($allItemsMap);
+        $itemIds = array_slice($itemIds, 0, $maxResults);
+
+        foreach ($itemIds as $itemId) {
+            $itemDetails = $this->getItemDetails($itemId);
             if (isset($itemDetails['error'])) {
                 continue;
             }
 
             $brandAnalysis = $this->analyzeBrandAttribute($itemDetails);
+            $categoryId = $allItemsMap[$itemId] ?? 'catalog';
 
-            if (!$brandAnalysis['is_correct']) {
-                // Item da conta mas sem a marca AWA correta — ignorar
-                continue;
+            // Como puxamos highlights e catalog items misturados,
+            // validamos estritamente se o BRAND é AWA (ou equivalente aceito)
+            if (!$brandAnalysis['is_correct'] && strpos(strtoupper($brandAnalysis['value'] ?? ''), 'AWA') === false) {
+                continue; // Não é nosso seller/produto alvo
             }
 
             $result['listings_with_brand']++;
             $result['total_listings']++;
-            $result['categories_analyzed'][0]['with_brand']++;
+            
+            // Incrementa stats da cat específica
+            foreach ($result['categories_analyzed'] as &$cat) {
+                if ($cat['id'] === $categoryId || $cat['id'] === 'catalog') {
+                    $cat['with_brand']++;
+                }
+            }
+            unset($cat);
 
             $sellerId = (int) ($itemDetails['seller_id'] ?? 0);
             if ($sellerId > 0 && !isset($result['sellers'][$sellerId])) {
@@ -1339,7 +1390,7 @@ class BrandAnalyzerService
 
             if ($sellerId > 0) {
                 $result['sellers'][$sellerId]['items_count']++;
-                $result['sellers'][$sellerId]['items'][] = $item['id'] ?? $item;
+                $result['sellers'][$sellerId]['items'][] = $itemId;
             }
 
             if ($options['include_details'] ?? true) {
@@ -1359,12 +1410,13 @@ class BrandAnalyzerService
      * @param int $limit Limite de resultados
      * @return array Lista de catalog products
      */
-    public function searchCatalogProducts(string $query = 'AWA', int $limit = 50): array
+    public function searchCatalogProducts(string $query = 'AWA', int $limit = 50, ?string $categoryId = null): array
     {
         $response = $this->client->get('/products/search', [
             'site_id' => $this->siteId,
             'q' => $query,
             'limit' => min(50, $limit),
+            'category' => $categoryId,
         ], null, false);
 
         if (isset($response['error'])) {
