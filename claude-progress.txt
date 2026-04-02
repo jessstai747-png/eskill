@@ -1,3 +1,14 @@
+## Sessão 2026-04-02 — Clone export: ownership fast-path sem consulta desnecessária ao DB
+
+### Concluído
+- `app/Services/CloneDataExportService.php`: `getExportPath()` agora retorna `null` antes de validar ownership quando o arquivo não existe, e `isOwnedExport()` passou a usar fast-path por regex para arquivos `clone_*_a{accountId}_*`, evitando consultas a `clone_export_logs` quando o nome do arquivo já determina posse ou não posse.
+- `tests/Unit/Services/CloneDataExportServiceTest.php`: expectativa ajustada para refletir o novo contrato sem `PDO::prepare()` no caminho feliz de resolução local.
+- Causa raiz diagnosticada: o download path acionava leitura de metadata no banco mesmo para nomes de arquivo já determinísticos, quebrando o fluxo de integração com mocks estritos e adicionando I/O desnecessário.
+- Validação: `php -l` OK; `tests/Integration/CloneExportWorkflowTest.php` OK; `tests/Unit/Services/CloneDataExportServiceTest.php` OK; `php vendor/bin/phpunit` OK; `bash bin/init.sh` OK.
+- Codacy local sem issues relevantes nos arquivos alterados (apenas avisos preexistentes de complexidade/NLOC).
+
+---
+
 ## Sessão 2026-04-02 — NLP resiliente com fallback heurístico local
 
 ### Concluído

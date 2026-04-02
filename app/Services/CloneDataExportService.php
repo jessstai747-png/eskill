@@ -516,17 +516,17 @@ class CloneDataExportService
     public function getExportPath(string $filename): ?string
     {
         $filename = basename($filename);
+        $filepath = $this->exportPath . '/' . $filename;
+
+        if (!file_exists($filepath)) {
+            return null;
+        }
+
         if (!$this->isOwnedExport($filename)) {
             return null;
         }
 
-        $filepath = $this->exportPath . '/' . $filename;
-
-        if (file_exists($filepath)) {
-            return $filepath;
-        }
-
-        return null;
+        return $filepath;
     }
 
     /**
@@ -671,12 +671,17 @@ class CloneDataExportService
 
     private function isOwnedExport(string $filename): bool
     {
-        $metadata = $this->getExportLogMetadata();
-        if (isset($metadata[$filename])) {
+        if (preg_match('/^clone_[a-z_]+_a' . preg_quote((string) $this->accountId, '/') . '_/', $filename) === 1) {
             return true;
         }
 
-        return preg_match('/^clone_[a-z_]+_a' . preg_quote((string) $this->accountId, '/') . '_/', $filename) === 1;
+        if (preg_match('/^clone_[a-z_]+_a\d+_/', $filename) === 1) {
+            return false;
+        }
+
+        $metadata = $this->getExportLogMetadata();
+
+        return isset($metadata[$filename]);
     }
 
     private function listFallbackExports(): array
