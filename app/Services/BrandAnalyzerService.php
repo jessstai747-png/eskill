@@ -53,6 +53,12 @@ class BrandAnalyzerService
      */
     public const BRAND_ATTRIBUTE_ID = 'BRAND';
 
+    /**
+     * Value ID da marca AWA no Mercado Livre Brasil
+     * Obtido via /sites/MLB/search_url: BRAND attribute value_id = 7297804
+     */
+    public const AWA_BRAND_VALUE_ID = '7297804';
+
     public function __construct(?int $accountId = null)
     {
         $config = \App\Core\Config::getInstance()->all();
@@ -243,15 +249,15 @@ class BrandAnalyzerService
         $inconsistencies = [];
         $sellers = [];
 
-        // Buscar por todas as variações da marca
-        foreach (self::BRAND_VARIATIONS as $brandVariation) {
-            $items = $this->searchBrandItems($categoryId, $brandVariation, $maxResults);
+        // Buscar pela marca AWA usando o value_id oficial (7297804)
+        // O ML API ignora filtros de texto; é necessário o value_id numérico
+        $brandItems = $this->searchBrandItems($categoryId, self::AWA_BRAND_VALUE_ID, $maxResults);
 
-            foreach ($items as $item) {
-                // Evitar duplicatas
-                if (isset($allItems[$item['id']])) {
-                    continue;
-                }
+        foreach ($brandItems as $item) {
+            // Evitar duplicatas
+            if (isset($allItems[$item['id']])) {
+                continue;
+            }
 
                 // Obter detalhes completos do item
                 $itemDetails = $this->getItemDetails($item['id']);
@@ -301,7 +307,6 @@ class BrandAnalyzerService
 
                 // Armazenar item processado
                 $allItems[$item['id']] = $this->extractItemData($itemDetails, $brandAnalysis);
-            }
         }
 
         // Buscar também por título (pode encontrar itens AWA sem marca definida)
@@ -374,7 +379,8 @@ class BrandAnalyzerService
                 'offset' => $offset,
             ];
 
-            $response = $this->client->get("/sites/{$this->siteId}/search", $params, 300);
+            // false = força cliente autenticado (ML exige auth para /search)
+            $response = $this->client->get("/sites/{$this->siteId}/search", $params, 300, false);
 
             if (isset($response['error'])) {
                 break;
@@ -408,7 +414,8 @@ class BrandAnalyzerService
                 'offset' => $offset,
             ];
 
-            $response = $this->client->get("/sites/{$this->siteId}/search", $params, 300);
+            // false = força cliente autenticado (ML exige auth para /search)
+            $response = $this->client->get("/sites/{$this->siteId}/search", $params, 300, false);
 
             if (isset($response['error'])) {
                 break;
@@ -1257,8 +1264,8 @@ class BrandAnalyzerService
         $withBrand = 0;
         $withoutBrand = 0;
 
-        // Buscar apenas pela marca principal
-        $searchResults = $this->searchBrandItems($categoryId, 'AWA', $maxResults);
+        // Buscar apenas pela marca principal usando value_id oficial AWA
+        $searchResults = $this->searchBrandItems($categoryId, self::AWA_BRAND_VALUE_ID, $maxResults);
 
         foreach ($searchResults as $item) {
             $hasBrand = false;
@@ -1558,7 +1565,7 @@ class BrandAnalyzerService
      */
     public function getTopSellingProducts(string $categoryId = 'MLB214858', int $limit = 20): array
     {
-        $items = $this->searchBrandItems($categoryId, 'AWA', 200);
+        $items = $this->searchBrandItems($categoryId, self::AWA_BRAND_VALUE_ID, 200);
 
         // Ordenar por quantidade vendida
         usort($items, function ($a, $b) {
@@ -1587,7 +1594,7 @@ class BrandAnalyzerService
      */
     public function analyzeOpportunities(string $categoryId = 'MLB214858'): array
     {
-        $awaItems = $this->searchBrandItems($categoryId, 'AWA', 500);
+        $awaItems = $this->searchBrandItems($categoryId, self::AWA_BRAND_VALUE_ID, 500);
 
         // Coletar dados de preço e tipo de produto
         $awaPrices = [];
