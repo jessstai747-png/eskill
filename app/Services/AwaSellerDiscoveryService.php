@@ -318,4 +318,105 @@ class AwaSellerDiscoveryService
         $normalized = trim((string) $value);
         return $normalized === '' ? null : $normalized;
     }
+
+    // =========================================================================
+    // RASTREAMENTO MANUAL DE CONCORRENTES
+    // =========================================================================
+
+    /**
+     * Adiciona manualmente um seller ao registry pelo ML seller_id.
+     * Usa o endpoint /users/{id}/items/search para coletar os itens AWA do seller.
+     *
+     * @param  int                    $mlSellerId ML seller_id externo
+     * @return array<string, mixed>
+     * @throws RuntimeException se o seller não for encontrado no ML
+     */
+    public function trackSellerById(int $mlSellerId): array
+    {
+        if ($mlSellerId <= 0) {
+            throw new RuntimeException('ML seller_id inválido.');
+        }
+
+        // Verificar se já está rastreado
+        $existing = $this->registry->findByMlSellerId($mlSellerId);
+        if ($existing !== null) {
+            return [
+                'status'      => 'already_tracked',
+                'registry_id' => (int) $existing['id'],
+                'seller_id'   => $mlSellerId,
+                'nickname'    => $existing['nickname'] ?? null,
+                'items_count' => (int) ($existing['items_count'] ?? 0),
+            ];
+        }
+
+        // Buscar perfil do seller no ML
+        $profile = $this->brandAnalyzer->getSellerDetails($mlSellerId);
+
+        if (empty($profile['nickname']) || ($profile['nickname'] === 'Desconhecido' && empty($profile['id']))) {
+            throw new RuntimeException("Seller ML ID {$mlSellerId} não encontrado ou inacessível.");
+        }
+
+        // Buscar items do seller via ML users endpoint
+        $client      = new MercadoLivreClient($this->accountId);
+        $itemsResult = $client->get("/users/{$mlSellerId}/items/search", ['limit' => 200], null, false);
+        $itemIds     = $itemsResult['results'] ?? [];
+
+        $itemPayloads = [];
+        foreach (array_slice($itemIds, 0, 200) as $rawId) {
+            $itemId  = is_array($rawId) ? ($rawId['id'] ?? null) : (string) $rawId;
+            if (empty($itemId)) {
+                continue;
+            }
+
+            $itemDetails = $client->get("/items/{$itemId}", [], null, false);
+            if (isset($itemDetails['error'])) {
+                continue;
+            }
+
+            $brandAnalysis = $this->brandAnalyzer->analyzeBrandAttribute($itemDetails);
+            $title         = strtoupper((string) ($itemDetails['title'] ?? ''));
+
+            // Incluir somente itens com marca AWA ou AWA no título
+            if (!$brandAnalysis['is_correct'] && !$this->containsAwaKeyword($itemDetails['title'] ?? '')) {
+                continue;
+            }
+
+            $itemPayloads[] = $this->buildItemPayload(array_merge(
+                $itemDetails,
+                ['brand_analysis' => $brandAnalysis]
+            ));
+        }
+
+        // Criar scan de rastreamento manual
+        $scanId = $this->registry->createScanRun([
+            'categories'     => [],
+            'max_results'    => 200,
+            'include_details' => true,
+            'manual_track'   => true,
+        ]);
+
+        $sellerPayload = $this->buildSellerPayload($mlSellerId, $profile, array_map(
+            static fn (array $ip): array => array_merge($ip, [
+                'seller_id'      => $mlSellerId,
+                'brand_analysis' => ['has_brand' => $ip['has_brand_attribute'], 'is_correct' => $ip['brand_match_type'] === 'attribute_match'],
+            ]),
+            $itemPayloads
+        ));
+
+        $registryId = $this->registry->upsertSeller($scanId, $sellerPayload);
+
+        foreach ($itemPayloads as $itemPayload) {
+            $this->registry->upsertSellerItem($registryId, $itemPayload);
+        }
+
+        $this->registry->markScanCompleted($scanId, 1, count($itemPayloads));
+
+        return [
+            'status'      => 'tracked',
+            'registry_id' => $registryId,
+            'seller_id'   => $mlSellerId,
+            'nickname'    => $profile['nickname'] ?? null,
+            'items_found' => count($itemPayloads),
+        ];
+    }
 }

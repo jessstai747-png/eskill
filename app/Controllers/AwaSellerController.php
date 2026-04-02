@@ -640,4 +640,96 @@ class AwaSellerController extends BaseController
             ]);
         }, 'AwaSellerController::getHistory');
     }
+
+    // =========================================================================
+    // RASTREAMENTO MANUAL E AUTO-IDENTIFICAÇÃO
+    // =========================================================================
+
+    /**
+     * POST api/brand/awa/sellers/track
+     * Adiciona manualmente um seller ao registry pelo ML seller_id.
+     * Body: { seller_id: <int> }
+     */
+    public function trackSeller(): void
+    {
+        $this->ensureManagePermission();
+
+        $this->withErrorHandling(function (): void {
+            $accountId = $this->requireActiveMlAccountId();
+
+            $body      = $this->request->json();
+            $mlSellerId = (int) (is_array($body) ? ($body['seller_id'] ?? 0) : ($this->request->get('seller_id') ?? 0));
+
+            if ($mlSellerId <= 0) {
+                $this->jsonError('seller_id é obrigatório e deve ser um inteiro positivo.', 422);
+                return;
+            }
+
+            $discovery = new AwaSellerDiscoveryService($accountId);
+            $result    = $discovery->trackSellerById($mlSellerId);
+
+            $message = match ($result['status']) {
+                'already_tracked' => 'Seller já rastreado na base local.',
+                'tracked'         => 'Seller adicionado ao registry com sucesso.',
+                default           => 'Operação concluída.',
+            };
+
+            $this->jsonSuccess(['data' => $result], $message);
+        }, 'AwaSellerController::trackSeller');
+    }
+
+    /**
+     * POST api/brand/awa/sellers/{id}/identification/auto
+     * Tenta auto-identificação de CNPJ via perfil ML e BrasilAPI.
+     */
+    public function autoIdentify(string $id): void
+    {
+        $this->ensureManagePermission();
+
+        $this->withErrorHandling(function () use ($id): void {
+            $accountId  = $this->requireActiveMlAccountId();
+            $registryId = (int) $id;
+
+            if ($registryId <= 0) {
+                $this->jsonError('ID de seller inválido.', 422);
+                return;
+            }
+
+            $registry = new AwaSellerRegistryService($accountId);
+            if ($registry->getSellerById($registryId) === null) {
+                $this->jsonError('Seller não encontrado.', 404);
+                return;
+            }
+
+            $mlClient = new \App\Services\MercadoLivreClient($accountId);
+            $idSvc    = new AwaSellerIdentificationService($accountId);
+            $result   = $idSvc->autoIdentifyFromMLProfile($registryId, $mlClient);
+
+            $message = $result['found']
+                ? 'CNPJ identificado automaticamente.'
+                : 'CNPJ não disponível no perfil ML.';
+
+            $this->jsonSuccess(['data' => $result], $message);
+        }, 'AwaSellerController::autoIdentify');
+    }
+
+    /**
+     * POST api/brand/awa/sellers/identification/auto-batch
+     * Roda auto-identificação em lote para todos os sellers sem CNPJ.
+     */
+    public function autoIdentifyBatch(): void
+    {
+        $this->ensureManagePermission();
+
+        $this->withErrorHandling(function (): void {
+            $accountId = $this->requireActiveMlAccountId();
+            $limit     = max(1, min(200, (int) ($this->request->get('limit') ?? 50)));
+
+            $mlClient = new \App\Services\MercadoLivreClient($accountId);
+            $idSvc    = new AwaSellerIdentificationService($accountId);
+            $result   = $idSvc->autoIdentifyBatch($mlClient, $limit);
+
+            $this->jsonSuccess(['data' => $result], "Auto-identificação em lote concluída: {$result['found']} CNPJ(s) encontrado(s).");
+        }, 'AwaSellerController::autoIdentifyBatch');
+    }
 }

@@ -456,7 +456,7 @@ class BrandAnalyzerService
     /**
      * Obtém detalhes do vendedor
      */
-    private function getSellerDetails(int $sellerId): array
+    public function getSellerDetails(int $sellerId): array
     {
         // Cache de 30 minutos
         $cacheKey = "seller_details:{$sellerId}";
@@ -506,13 +506,14 @@ class BrandAnalyzerService
     /**
      * Analisa o atributo de marca de um item
      */
-    private function analyzeBrandAttribute(array $item): array
+    public function analyzeBrandAttribute(array $item): array
     {
         $result = [
             'has_brand' => false,
             'is_correct' => false,
             'current_value' => null,
             'normalized_value' => null,
+            'value' => null,
         ];
 
         $attributes = $item['attributes'] ?? [];
@@ -521,6 +522,7 @@ class BrandAnalyzerService
             if ($attr['id'] === self::BRAND_ATTRIBUTE_ID) {
                 $result['has_brand'] = true;
                 $result['current_value'] = $attr['value_name'] ?? null;
+                $result['value']         = $attr['value_name'] ?? null;
 
                 if ($result['current_value']) {
                     $normalizedValue = mb_strtoupper(trim($result['current_value']));
@@ -1286,7 +1288,7 @@ class BrandAnalyzerService
         $maxResults = (int) ($options['max_results'] ?? 500);
         $categories = $options['categories'] ?? array_keys(self::MOTO_CATEGORIES);
         if (empty($categories)) {
-            $categories = [$this->motoPartsCategoryUrl];
+            $categories = ['MLB214858']; // default: Acessórios para Motos
         }
 
         $result = [
@@ -1344,7 +1346,7 @@ class BrandAnalyzerService
 
             $catStats['total_found'] = count($allItemsMap);
             $result['categories_analyzed'][] = $catStats;
-            
+
             // Limitador total para não sobrecarregar
             if (count($allItemsMap) >= $maxResults) {
                 break;
@@ -1372,7 +1374,7 @@ class BrandAnalyzerService
 
             $result['listings_with_brand']++;
             $result['total_listings']++;
-            
+
             // Incrementa stats da cat específica
             foreach ($result['categories_analyzed'] as &$cat) {
                 if ($cat['id'] === $categoryId || $cat['id'] === 'catalog') {

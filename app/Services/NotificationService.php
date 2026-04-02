@@ -259,7 +259,7 @@ class NotificationService
         if ($id <= 0) return;
 
         $sql = "UPDATE notification_logs SET status = ?, error_message = ?";
-        // Tabela nova não tem attempts ou updated_at explicito no migration fornecido, 
+        // Tabela nova não tem attempts ou updated_at explicito no migration fornecido,
         // mas vamos assumir que só status e error importam agora para compatibilidade.
 
         $params = [$status, $error];
@@ -357,7 +357,7 @@ class NotificationService
             ");
 
             $dataJson = $data ? json_encode($data) : null;
-            $stmt->execute([$userId, $type, $title, $message, $dataJson, false]);
+            $stmt->execute([$userId, $type, $title, $message, $dataJson, (int) $sendEmail]);
 
             return (int)$this->db->lastInsertId();
         } catch (\Exception $e) {

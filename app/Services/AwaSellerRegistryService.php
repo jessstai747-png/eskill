@@ -404,6 +404,24 @@ class AwaSellerRegistryService
     }
 
     /**
+     * Retorna o registro de um seller pelo ML seller_id (externo).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByMlSellerId(int $mlSellerId): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT * FROM awa_seller_registry
+              WHERE account_id = :account_id AND seller_id = :seller_id
+              LIMIT 1'
+        );
+        $stmt->execute(['account_id' => $this->accountId, 'seller_id' => $mlSellerId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
+    }
+
+    /**
      * Lista sellers com filtros e paginação.
      *
      * Filtros suportados: search (nickname), state, reputation_level, id_status, is_active

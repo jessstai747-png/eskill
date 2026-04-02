@@ -421,6 +421,170 @@ class AwaSellerIdentificationService
     }
 
     // =========================================================================
+    // AUTO-IDENTIFICAÇÃO A PARTIR DO PERFIL ML / BRASILAPI
+    // =========================================================================
+
+    /**
+     * Tenta identificar automaticamente o CNPJ/Razão Social de um seller
+     * consultando o perfil público do ML (/users/{id}) e, se CNPJ encontrado,
+     * enriquece com a BrasilAPI.
+     *
+     * @return array<string, mixed>  {found: bool, cnpj?: string, razao_social?: string, source?: string}
+     */
+    public function autoIdentifyFromMLProfile(int $registryId, MercadoLivreClient $client): array
+    {
+        $this->assertSellerBelongsToAccount($registryId);
+
+        $stmt = $this->db->prepare(
+            'SELECT seller_id FROM awa_seller_registry WHERE id = :id LIMIT 1'
+        );
+        $stmt->execute(['id' => $registryId]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return ['found' => false, 'reason' => 'seller_not_found'];
+        }
+
+        $mlSellerId = (int) $row['seller_id'];
+        $profile    = $client->get("/users/{$mlSellerId}", [], null, true);
+
+        if (isset($profile['error'])) {
+            return ['found' => false, 'reason' => 'ml_api_error', 'error' => $profile['error']];
+        }
+
+        // Extrai CNPJ: identification.type=CNPJ ou company.identification
+        $cnpjRaw     = null;
+        $idType      = strtoupper((string) ($profile['identification']['type'] ?? ''));
+        $idNumber    = (string) ($profile['identification']['number'] ?? '');
+        $companyIdRaw = (string) ($profile['company']['identification'] ?? '');
+
+        if ($idType === 'CNPJ' && strlen(preg_replace('/\D/', '', $idNumber)) === 14) {
+            $cnpjRaw = $idNumber;
+        } elseif (strlen(preg_replace('/\D/', '', $companyIdRaw)) === 14) {
+            $cnpjRaw = $companyIdRaw;
+        }
+
+        $razaoSocial = trim((string) ($profile['company']['corporate_name'] ?? ''));
+        if ($razaoSocial === '') {
+            $razaoSocial = trim(($profile['first_name'] ?? '') . ' ' . ($profile['last_name'] ?? ''));
+        }
+        if ($razaoSocial === '') {
+            $razaoSocial = $profile['nickname'] ?? null;
+        }
+
+        if ($cnpjRaw === null) {
+            return [
+                'found'      => false,
+                'reason'     => 'no_cnpj_in_profile',
+                'id_type'    => $idType ?: null,
+                'is_company' => ($profile['company']['cust_type_id'] ?? '') === 'CO',
+            ];
+        }
+
+        $source = 'ml_profile';
+
+        // Enriquece via BrasilAPI
+        $cnpjDigits = preg_replace('/\D/', '', $cnpjRaw);
+        $brasilData = $this->fetchBrasilApiCnpj((string) $cnpjDigits);
+        if (!empty($brasilData['razao_social'])) {
+            $razaoSocial = $brasilData['razao_social'];
+            $source      = 'brasilapi_cnpj';
+        }
+
+        $this->upsert($registryId, [
+            'cnpj'                => $cnpjRaw,
+            'razao_social'        => $razaoSocial ?: null,
+            'source_type'         => 'authorized_ml_account',
+            'source_reference'    => "ML User ID {$mlSellerId}",
+            'confidence_score'    => 85,
+            'verification_status' => 'pending',
+            'notes'               => "Auto-identificado via perfil ML. Fonte: {$source}.",
+            'created_by'          => 'auto_ml_profile',
+            'audit_actor'         => 'system',
+        ]);
+
+        return [
+            'found'       => true,
+            'cnpj'        => $this->normalizeCnpj($cnpjRaw),
+            'razao_social' => $razaoSocial ?: null,
+            'source'      => $source,
+        ];
+    }
+
+    /**
+     * Roda auto-identificação em lote para todos os sellers sem CNPJ.
+     *
+     * @return array<string, int>  {processed, found, not_found, errors}
+     */
+    public function autoIdentifyBatch(MercadoLivreClient $client, int $limit = 50): array
+    {
+        $limit = max(1, min(200, $limit));
+
+        $stmt = $this->db->prepare(
+            'SELECT r.id
+               FROM awa_seller_registry r
+              WHERE r.account_id = :account_id
+                AND NOT EXISTS (
+                    SELECT 1 FROM awa_seller_identification i
+                     WHERE i.seller_registry_id = r.id AND i.cnpj IS NOT NULL
+                )
+              LIMIT :limit'
+        );
+        $stmt->bindValue(':account_id', $this->accountId, \PDO::PARAM_INT);
+        $stmt->bindValue(':limit',      $limit,           \PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $results = ['processed' => 0, 'found' => 0, 'not_found' => 0, 'errors' => 0];
+
+        foreach ($rows as $row) {
+            try {
+                $r = $this->autoIdentifyFromMLProfile((int) $row['id'], $client);
+                $results['processed']++;
+                if ($r['found'] ?? false) {
+                    $results['found']++;
+                } else {
+                    $results['not_found']++;
+                }
+            } catch (\Throwable $e) {
+                $results['errors']++;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Consulta a BrasilAPI para enriquecer CNPJ com razão social e atividade.
+     * Retorna array vazio em caso de falha (endpoint ou CNPJ inválido).
+     *
+     * @return array<string, mixed>
+     */
+    private function fetchBrasilApiCnpj(string $cnpj14): array
+    {
+        if (strlen($cnpj14) !== 14 || !ctype_digit($cnpj14)) {
+            return [];
+        }
+
+        $url = "https://brasilapi.com.br/api/cnpj/v1/{$cnpj14}";
+
+        try {
+            $ctx  = stream_context_create(['http' => ['timeout' => 5, 'ignore_errors' => true]]);
+            $json = @file_get_contents($url, false, $ctx);
+            if ($json === false || $json === '') {
+                return [];
+            }
+            $data = json_decode($json, true);
+            if (!is_array($data) || isset($data['message'])) {
+                return [];
+            }
+            return $data;
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    // =========================================================================
     // PROTECTED HELPERS — overrideáveis para testes
     // =========================================================================
 

@@ -596,7 +596,7 @@ class ItemService
                 }
 
                 // Buscar dados de health/description do JSON em ml_items
-                $stmt2 = $this->db->prepare("SELECT raw_data AS data FROM ml_items WHERE id = :ml_item_id AND account_id = :account_id LIMIT 1");
+                $stmt2 = $this->db->prepare("SELECT data FROM ml_items WHERE ml_item_id = :ml_item_id AND account_id = :account_id LIMIT 1");
                 $stmt2->execute([':ml_item_id' => $itemId, ':account_id' => $this->accountId]);
                 $localData = $stmt2->fetch(PDO::FETCH_ASSOC);
 
