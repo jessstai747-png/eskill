@@ -82,10 +82,13 @@ class MercadoLivreAuthServiceTest extends TestCase
     {
         $source = file_get_contents(dirname(__DIR__, 3) . '/app/Services/MercadoLivreAuthService.php');
 
-        // Deve comparar state recebido com state armazenado na sessão
+        // Deve validar state recebido contra o legado em sessão e contra o mapa contextual.
         $this->assertStringContainsString('ml_oauth_state', $source);
+        $this->assertStringContainsString('ml_oauth_states', $source);
         $this->assertTrue(
-            str_contains($source, '$stored !== $state') || str_contains($source, '$state !== $stored'),
+            str_contains($source, 'hash_equals($stored, $state)')
+            || str_contains($source, 'hash_equals($state, $stored)')
+            || str_contains($source, '!is_array($stateContext) && !$isLegacyMatch'),
             'Deve validar state OAuth contra sessão'
         );
     }

@@ -183,6 +183,35 @@ class MercadoLivreAuthService
         return $authUrl;
     }
 
+
+    private function isOAuthRedirectUriValid(string $redirectUri): bool
+    {
+        $candidate = trim($redirectUri);
+        if ($candidate === '') {
+            return false;
+        }
+
+        if (str_starts_with($candidate, '//')) {
+            $candidate = 'https:' . $candidate;
+        } elseif (!preg_match('#^https?://#i', $candidate)) {
+            $candidate = 'https://' . $candidate;
+        }
+
+        if (!filter_var($candidate, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        $scheme = strtolower((string)(parse_url($candidate, PHP_URL_SCHEME) ?? ''));
+        $host = strtolower((string)(parse_url($candidate, PHP_URL_HOST) ?? ''));
+        $path = (string)(parse_url($candidate, PHP_URL_PATH) ?? '');
+
+        if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+            return false;
+        }
+
+        return $path !== '' && $path !== '/';
+    }
+
     private function pruneOAuthSessionState(int $maxAgeSeconds = 1800, int $maxEntries = 20): void
     {
         if (!isset($_SESSION['ml_oauth_states']) || !is_array($_SESSION['ml_oauth_states'])) {
@@ -464,8 +493,13 @@ class MercadoLivreAuthService
 
         $ml = $this->config['mercadolivre'] ?? [];
         $clientId = trim((string)($ml['app_id'] ?? ''));
-        $redirect = $this->normalizeOAuthRedirectUri((string)($ml['redirect_uri'] ?? ''));
+        $rawRedirect = trim((string)($ml['redirect_uri'] ?? ''));
+        $redirect = $this->normalizeOAuthRedirectUri($rawRedirect);
         $authBase = $this->getMercadoLivreAuthUrl();
+
+        if ($rawRedirect === '' || !$this->isOAuthRedirectUriValid($rawRedirect)) {
+            throw new \RuntimeException('ML_REDIRECT_URI inválido para o fluxo OAuth');
+        }
 
         if (!filter_var($redirect, FILTER_VALIDATE_URL)) {
             throw new \RuntimeException('ML_REDIRECT_URI inválido para o fluxo OAuth');
