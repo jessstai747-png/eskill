@@ -9,11 +9,25 @@ use App\Services\AwaSellerDiscoveryService;
 use App\Services\AwaSellerExportService;
 use App\Services\AwaSellerIdentificationService;
 use App\Services\AwaSellerRegistryService;
+use App\Services\UserService;
 
 class AwaSellerController extends BaseController
 {
+    private const VIEW_PERMISSION = 'audit';
+    private const MANAGE_PERMISSION = 'manager';
+
+    private UserService $userService;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->userService = new UserService();
+    }
+
     public function scan(): void
     {
+        $this->ensureManagePermission();
+
         $this->withErrorHandling(function (): void {
             $accountId = $this->requireActiveMlAccountId();
             $discovery = new AwaSellerDiscoveryService($accountId);
@@ -28,6 +42,8 @@ class AwaSellerController extends BaseController
 
     public function getScan(string $scanId): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function () use ($scanId): void {
             $accountId = $this->requireActiveMlAccountId();
             $scanRunId = (int) $scanId;
@@ -52,6 +68,8 @@ class AwaSellerController extends BaseController
 
     public function getMetrics(): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function (): void {
             $accountId = $this->requireActiveMlAccountId();
             $registry = new AwaSellerRegistryService($accountId);
@@ -92,9 +110,21 @@ class AwaSellerController extends BaseController
      */
     public function index(): void
     {
+        $this->ensureAuthenticated(false);
+
+        $canViewAwaSellers = $this->hasViewPermission();
+        $canManageAwaSellers = $this->hasManagePermission();
+
+        if (!$canViewAwaSellers) {
+            http_response_code(403);
+        }
+
         $this->renderView('dashboard/awa-sellers/index', [
             'pageTitle' => 'AWA Sellers',
             'pageSubtitle' => 'Monitore lojas que anunciam AWA, consulte evidências e acompanhe a identificação da base local.',
+            'canViewAwaSellers' => $canViewAwaSellers,
+            'canManageAwaSellers' => $canManageAwaSellers,
+            'permissionDeniedMessage' => 'Acesso negado. Permissão de auditoria necessária para acessar o módulo AWA Sellers.',
         ]);
     }
 
@@ -104,6 +134,8 @@ class AwaSellerController extends BaseController
      */
     public function listSellers(): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function (): void {
             $accountId = $this->requireActiveMlAccountId();
             $registry  = new AwaSellerRegistryService($accountId);
@@ -135,6 +167,8 @@ class AwaSellerController extends BaseController
      */
     public function getSellerDetail(string $id): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function () use ($id): void {
             $accountId  = $this->requireActiveMlAccountId();
             $sellerId   = (int) $id;
@@ -162,6 +196,8 @@ class AwaSellerController extends BaseController
      */
     public function getSellerItems(string $id): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function () use ($id): void {
             $accountId  = $this->requireActiveMlAccountId();
             $sellerId   = (int) $id;
@@ -202,6 +238,8 @@ class AwaSellerController extends BaseController
      */
     public function getFiltersOptions(): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function (): void {
             $accountId = $this->requireActiveMlAccountId();
             $registry  = new AwaSellerRegistryService($accountId);
@@ -216,6 +254,8 @@ class AwaSellerController extends BaseController
      */
     public function getIdentification(string $id): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function () use ($id): void {
             $accountId = $this->requireActiveMlAccountId();
             $sellerId  = (int) $id;
@@ -238,6 +278,8 @@ class AwaSellerController extends BaseController
      */
     public function getIdentificationHistory(string $id): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function () use ($id): void {
             $accountId = $this->requireActiveMlAccountId();
             $sellerId  = (int) $id;
@@ -267,6 +309,8 @@ class AwaSellerController extends BaseController
      */
     public function saveIdentification(string $id): void
     {
+        $this->ensureManagePermission();
+
         $this->withErrorHandling(function () use ($id): void {
             $accountId = $this->requireActiveMlAccountId();
             $sellerId  = (int) $id;
@@ -307,6 +351,8 @@ class AwaSellerController extends BaseController
      */
     public function verifyIdentification(string $id): void
     {
+        $this->ensureManagePermission();
+
         $this->withErrorHandling(function () use ($id): void {
             $accountId = $this->requireActiveMlAccountId();
             $sellerId  = (int) $id;
@@ -336,6 +382,8 @@ class AwaSellerController extends BaseController
      */
     public function identificationSummary(): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function (): void {
             $accountId = $this->requireActiveMlAccountId();
             $service   = new AwaSellerIdentificationService($accountId);
@@ -355,6 +403,8 @@ class AwaSellerController extends BaseController
      */
     public function exportCsv(): void
     {
+        $this->ensureManagePermission();
+
         $accountId  = $this->requireActiveMlAccountId();
         $filters    = $this->buildRegistryFilters();
         $exportSvc  = new AwaSellerExportService($accountId);
@@ -368,6 +418,8 @@ class AwaSellerController extends BaseController
      */
     public function exportItemsCsv(string $id): void
     {
+        $this->ensureManagePermission();
+
         $accountId = $this->requireActiveMlAccountId();
         $registry  = new AwaSellerRegistryService($accountId);
         $seller    = $registry->getSellerById((int) $id);
@@ -461,6 +513,60 @@ class AwaSellerController extends BaseController
         return $normalized === '' ? null : $normalized;
     }
 
+    private function ensureAuthenticated(bool $jsonResponse = true): void
+    {
+        if ($this->userService->isAuthenticated()) {
+            return;
+        }
+
+        if ($jsonResponse) {
+            $this->jsonError('Autenticação necessária.', 401);
+        }
+
+        header('Location: /login');
+        exit;
+    }
+
+    private function hasViewPermission(): bool
+    {
+        return $this->userService->hasPermission(self::VIEW_PERMISSION);
+    }
+
+    private function hasManagePermission(): bool
+    {
+        return $this->userService->hasPermission(self::MANAGE_PERMISSION);
+    }
+
+    private function ensureViewPermission(): void
+    {
+        $this->ensureAuthenticated();
+
+        if ($this->hasViewPermission()) {
+            return;
+        }
+
+        $this->jsonError(
+            'Acesso negado. Permissão de auditoria necessária para acessar AWA Sellers.',
+            403,
+            ['required_role' => 'admin, manager ou viewer']
+        );
+    }
+
+    private function ensureManagePermission(): void
+    {
+        $this->ensureAuthenticated();
+
+        if ($this->hasManagePermission()) {
+            return;
+        }
+
+        $this->jsonError(
+            'Acesso negado. Permissão de gestão necessária para executar ações no módulo AWA Sellers.',
+            403,
+            ['required_role' => 'admin ou manager']
+        );
+    }
+
     private function requireActiveMlAccountId(): int
     {
         $accountId = $this->getActiveAccountId();
@@ -477,6 +583,8 @@ class AwaSellerController extends BaseController
      */
     public function getAlerts(): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function (): void {
             $accountId  = $this->requireActiveMlAccountId();
             $limit      = max(1, min(200, (int) ($this->request->get('limit') ?? 50)));
@@ -516,6 +624,8 @@ class AwaSellerController extends BaseController
      */
     public function getHistory(): void
     {
+        $this->ensureViewPermission();
+
         $this->withErrorHandling(function (): void {
             $accountId = $this->requireActiveMlAccountId();
             $days      = max(1, min(90, (int) ($this->request->get('days') ?? 7)));

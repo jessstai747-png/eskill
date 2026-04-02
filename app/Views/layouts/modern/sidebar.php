@@ -12,11 +12,13 @@ $currentUri = $_SERVER['REQUEST_URI'] ?? '/dashboard';
 $currentUri = parse_url($currentUri, PHP_URL_PATH);
 
 // User info
+$sessionUserRole = (string) ($_SESSION['user_role'] ?? '');
 $userName = $_SESSION['user_name'] ?? 'Usuário';
 $userRole = $_SESSION['user_role'] ?? 'Vendedor';
 $userAvatar = $_SESSION['user_avatar'] ?? null;
-$isAdmin = ($_SESSION['user_role'] ?? '') === 'admin' || ($_SESSION['is_admin'] ?? false);
-$isViewer = ($_SESSION['user_role'] ?? '') === 'viewer';
+$isAdmin = $sessionUserRole === 'admin' || ($_SESSION['is_admin'] ?? false);
+$isManager = $sessionUserRole === 'manager';
+$isViewer = $sessionUserRole === 'viewer';
 
 // Helper function to check active state (guarded to avoid redeclaration)
 if (!function_exists('isActive')) {
@@ -226,6 +228,16 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                 <i class="bi bi-lightbulb"></i>
                 <span>Oportunidades</span>
             </a>
+
+            <?php if ($isAdmin || $isManager || $isViewer): ?>
+                <a href="/dashboard/awa-sellers" class="nav-item <?= isActive('/awa-sellers') ? 'active' : '' ?>">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>AWA Sellers</span>
+                    <?php if (!$isAdmin && !$isManager): ?>
+                        <span class="nav-badge">RO</span>
+                    <?php endif; ?>
+                </a>
+            <?php endif; ?>
 
             <a href="/dashboard/seo-killer#ai-insights" class="nav-item <?= isActive('/ai-optimization') || isActive('/ai-insights') ? 'active' : '' ?>">
                 <i class="bi bi-robot"></i>
