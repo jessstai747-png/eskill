@@ -657,6 +657,9 @@ $router->post('api/seo/intelligence/hidden-attributes/{itemId}/apply', \App\Cont
 $router->get('api/ai-center/stats', \App\Controllers\AICenterController::class, 'getOverviewStats');
 $router->get('api/ai-center/status', \App\Controllers\AICenterController::class, 'getAutomationStatus');
 $router->post('api/ai/config/save', \App\Controllers\AICenterController::class, 'saveConfig');
+$router->post('api/ai-center/workflow', \App\Controllers\AICenterController::class, 'triggerWorkflow');
+$router->get('api/ai-center/insights', \App\Controllers\AICenterController::class, 'getPredictiveInsights');
+$router->get('api/ai-center/autonomous-stats', \App\Controllers\AICenterController::class, 'getAutonomousStats');
 
 // AI Optimization History API
 $router->get('api/ai/optimization/history', \App\Controllers\AIOptimizationController::class, 'getHistory');
