@@ -1556,7 +1556,47 @@
       ],
       "passes": true,
       "last_tested": "2026-04-02"
+    },
+    {
+      "id": "AWA-002",
+      "category": "brand",
+      "description": "AWA Sellers Fase 2 — Interface Bootstrap 5 completa com listagem, filtros, paginação, offcanvas de detalhes (perfil/itens/identificação). API REST: GET /api/brand/awa/sellers, GET /api/brand/awa/sellers/filters/options, GET /api/brand/awa/sellers/export/csv, GET /api/brand/awa/sellers/{id}, GET /api/brand/awa/sellers/{id}/items.",
+      "files": [
+        "app/Views/dashboard/awa-sellers/index.php",
+        "app/Controllers/AwaSellerController.php",
+        "app/Services/AwaSellerRegistryService.php",
+        "app/Routes/api/items.php",
+        "app/Routes/web.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-04-02"
+    },
+    {
+      "id": "AWA-003",
+      "category": "brand",
+      "description": "AWA Sellers Fase 3 — Identificação CNPJ/Razão Social com rastreabilidade de fonte e status. API: GET|PUT /api/brand/awa/sellers/{id}/identification, POST /api/brand/awa/sellers/{id}/identification/verify, GET /api/brand/awa/sellers/identification/summary. 12 testes unitários.",
+      "files": [
+        "app/Services/AwaSellerIdentificationService.php",
+        "app/Controllers/AwaSellerController.php",
+        "app/Routes/api/items.php",
+        "tests/Unit/Services/AwaSellerIdentificationServiceTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-04-02"
+    },
+    {
+      "id": "AWA-004",
+      "category": "brand",
+      "description": "AWA Sellers Fase 4 — Worker CLI periódico (bin/awa-sellers-scan-worker.php) com detecção de novos sellers, alertas via AlertService ('awa_new_seller'). API de histórico: GET /api/brand/awa/sellers/history. Métodos registryService: getKnownSellerIds(), listScanRuns(), getNewSellersHistory().",
+      "files": [
+        "bin/awa-sellers-scan-worker.php",
+        "app/Services/AwaSellerRegistryService.php",
+        "app/Controllers/AwaSellerController.php",
+        "app/Routes/api/items.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-04-02"
     }
   ],
-  "summary": "135/135"
+  "summary": "139/139"
 }
