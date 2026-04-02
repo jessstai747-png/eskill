@@ -159,4 +159,19 @@ class BrandAnalyzerServiceTest extends TestCase
         }
         $this->assertTrue($hasDottedVersion, 'Should include dotted brand variation');
     }
+
+    public function testIsSearchEndpointAccessibleMethodExists(): void
+    {
+        $this->assertTrue(method_exists(\App\Services\BrandAnalyzerService::class, 'isSearchEndpointAccessible'), 'isSearchEndpointAccessible missing');
+    }
+
+    public function testAnalyzeAwaBrandFromCatalogMethodExists(): void
+    {
+        $this->assertTrue(method_exists(\App\Services\BrandAnalyzerService::class, 'analyzeAwaBrandFromCatalog'), 'analyzeAwaBrandFromCatalog missing');
+    }
+
+    public function testSearchCatalogProductsMethodExists(): void
+    {
+        $this->assertTrue(method_exists(\App\Services\BrandAnalyzerService::class, 'searchCatalogProducts'), 'searchCatalogProducts missing');
+    }
 }
