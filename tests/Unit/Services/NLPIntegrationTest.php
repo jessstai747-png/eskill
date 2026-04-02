@@ -19,6 +19,10 @@ class NLPIntegrationTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
         $this->service = new NLPIntegrationService($logger);
+
+        if (!$this->service->healthCheck()) {
+            $this->markTestSkipped('NLP FastAPI service is not available at http://127.0.0.1:8000.');
+        }
     }
 
     public function testHealthCheckReturnsTrueWhenServerIsUp()

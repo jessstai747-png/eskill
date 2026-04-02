@@ -1,3 +1,12 @@
+## Sessão 2026-04-02 — Fix NLPIntegrationTest frágil sem FastAPI
+
+### Concluído
+- `tests/Unit/Services/NLPIntegrationTest.php`: `setUp()` agora verifica `healthCheck()` do microserviço NLP e usa `markTestSkipped(...)` quando o FastAPI local (`127.0.0.1:8000`) não está disponível.
+- Causa raiz diagnosticada: teste de integração dependia de serviço externo local sem bootstrap garantido no ambiente, falhando com `predictIntent()` retornando `null` por indisponibilidade de conexão.
+- Validação: `php -l tests/Unit/Services/NLPIntegrationTest.php` OK; teste focado `SSS`; suíte padrão `3564 tests, 4885 assertions, 1526 skipped` verde.
+
+---
+
 ## Sessão 2026-04-02 — AWA Sellers: Fallback Discovery via Catalog & Highlights\n\n### Concluído\n- **Integração Real de Discovery (Fallback)**: o fallback `analyzeAwaBrandFromCatalog()` em `BrandAnalyzerService` deixou de procurar apenas itens do próprio usuário. Agora, ao sofrer bloqueio de IP no endpoint público `/search`, o sistema localiza produtos AWA pelo catálogo autenticado (`/products/search`) e varre *todos* os items e sellers associados (`/catalog_products/{id}/items/search`), além de cruzar com as listas de tendências (`/highlights/MLB`). Isso retoma o funcionamento principal da busca de novas lojas AWA pelo ML mesmo sob bloqueio.\n- Ajustes em `searchCatalogProducts` para suportar pesquisa filtrada pelo ID da categoria.\n- `BrandAnalyzerServiceTest`: testes atualizados com a existência dos três novos métodos arquiteturais de bypass.\n- Commit: usa o oficial `value_id=7297804` de BRAND=AWA em todas as rotas (mudança iniciada e comitada).
 ## Sessão 2026-04-02 — AWA Sellers: filtro BRAND value_id + catalog fallback
 
