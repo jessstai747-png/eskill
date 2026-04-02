@@ -163,25 +163,35 @@ class AwaSellerAlertService
         $limit = max(1, min(200, $limit));
 
         $unreadClause = $unreadOnly ? "AND read_at IS NULL" : '';
-                $types = implode("', '", self::AWA_ALERT_TYPES);
+        $types = implode("', '", self::AWA_ALERT_TYPES);
 
-        $stmt = $this->db->prepare(
-                        "SELECT id, type, severity, message, data, read_at, created_at
-                             FROM alerts
-                            WHERE ml_account_id = :aid
-                                AND type IN ('{$types}')
-                {$unreadClause}
-                            ORDER BY created_at DESC, id DESC
-              LIMIT {$limit}"
-        );
-        $stmt->execute(['aid' => $this->accountId]);
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT id, type, severity, message, data, read_at, created_at
+                     FROM alerts
+                    WHERE ml_account_id = :aid
+                      AND type IN ('{$types}')
+                      {$unreadClause}
+                    ORDER BY created_at DESC, id DESC
+                    LIMIT {$limit}"
+            );
+            $stmt->execute(['aid' => $this->accountId]);
 
-        return array_map(
-            static function (array $row): array {
-                $row['data'] = json_decode((string) ($row['data'] ?? '{}'), true) ?: [];
-                return $row;
-            },
-            $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []
-        );
+            return array_map(
+                static function (array $row): array {
+                    $row['data'] = json_decode((string) ($row['data'] ?? '{}'), true) ?: [];
+                    return $row;
+                },
+                $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []
+            );
+        } catch (\Throwable $exception) {
+            log_warning('AwaSellerAlertService: falha ao consultar alertas AWA', [
+                'service' => 'AwaSellerAlertService',
+                'account_id' => $this->accountId,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return [];
+        }
     }
 }

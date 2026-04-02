@@ -92,7 +92,10 @@ class AwaSellersViewTest extends TestCase
         $this->assertStringContainsString('window.location.href = `${endpoints.exportCsv}?${buildQuery(getCurrentFilters())}`;', $this->source);
         $this->assertStringContainsString('requestJson(`${endpoints.sellers}/${state.currentSellerId}/identification`, {', $this->source);
         $this->assertStringContainsString('reloadIdentificationAudit(state.currentSellerId),', $this->source);
-        $this->assertStringContainsString('loadAlerts(),', $this->source);
+        $this->assertStringContainsString("{ key: 'alerts', label: 'alertas', promise: loadAlerts() },", $this->source);
+        $this->assertStringContainsString('const results = await Promise.allSettled(tasks.map((task) => task.promise));', $this->source);
+        $this->assertStringContainsString("setFeedback('warning', `Alguns blocos não puderam ser carregados: ", $this->source);
+        $this->assertStringContainsString("elements.resultsSummary.textContent = 'Não foi possível carregar a base local no momento.';", $this->source);
         $this->assertStringContainsString('refreshDashboard().catch((error) => {', $this->source);
 
         // requestJson deve injetar CSRF explicitamente sem depender do patch do csrf-helper.js

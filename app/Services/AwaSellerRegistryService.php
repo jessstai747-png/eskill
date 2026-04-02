@@ -21,6 +21,8 @@ class AwaSellerRegistryService
 
         $this->accountId = (int) $accountId;
         $this->db = $db ?? Database::getInstance();
+
+        AwaSellerSchemaService::ensureSchema($this->db);
     }
 
     public function createScanRun(array $scope): int
@@ -380,8 +382,9 @@ class AwaSellerRegistryService
     {
         $stmt = $this->db->prepare(
             'SELECT r.*,
-                    i.cnpj, i.razao_social, i.source_type, i.confidence_score,
-                    i.verification_status AS id_status, i.notes AS id_notes
+                    i.cnpj, i.razao_social, i.source_type, i.source_reference,
+                    i.confidence_score, i.verification_status AS id_status,
+                    i.verified_at, i.created_by, i.notes AS id_notes
                FROM awa_seller_registry r
           LEFT JOIN awa_seller_identification i ON i.seller_registry_id = r.id
               WHERE r.id = :id AND r.account_id = :account_id

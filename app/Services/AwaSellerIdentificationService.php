@@ -61,6 +61,8 @@ class AwaSellerIdentificationService
         $this->db        = Database::getInstance();
         $this->accountId = $accountId;
         $this->audit     = $audit ?? new AuditLogService();
+
+        AwaSellerSchemaService::ensureSchema($this->db);
     }
 
     // =========================================================================

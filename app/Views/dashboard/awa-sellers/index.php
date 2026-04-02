@@ -1335,14 +1335,44 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     }
 
     async function refreshDashboard() {
-        await Promise.all([
-            loadMetrics(),
-            loadIdentificationSummary(),
-            loadHistory(),
-            loadAlerts(),
-            loadFilterOptions(),
-            loadSellers(state.page),
-        ]);
+        clearFeedback();
+
+        const tasks = [
+            { key: 'metrics', label: 'métricas', promise: loadMetrics() },
+            { key: 'identificationSummary', label: 'identificação jurídica', promise: loadIdentificationSummary() },
+            { key: 'history', label: 'histórico', promise: loadHistory() },
+            { key: 'alerts', label: 'alertas', promise: loadAlerts() },
+            { key: 'filters', label: 'filtros', promise: loadFilterOptions() },
+            { key: 'sellers', label: 'base local', promise: loadSellers(state.page) },
+        ];
+
+        const results = await Promise.allSettled(tasks.map((task) => task.promise));
+        const failures = [];
+
+        results.forEach((result, index) => {
+            if (result.status !== 'rejected') {
+                return;
+            }
+
+            const message = result.reason instanceof Error && result.reason.message
+                ? result.reason.message
+                : 'falha inesperada';
+
+            failures.push(`${tasks[index].label}: ${message}`);
+        });
+
+        const sellersResult = results.find((_, index) => tasks[index].key === 'sellers');
+        if (sellersResult?.status === 'rejected') {
+            setLoadingState(false);
+            elements.tableEmpty.classList.remove('d-none');
+            elements.resultsSummary.textContent = 'Não foi possível carregar a base local no momento.';
+            elements.paginationSummary.textContent = 'Página 1';
+            elements.pagination.innerHTML = '';
+        }
+
+        if (failures.length > 0) {
+            setFeedback('warning', `Alguns blocos não puderam ser carregados: ${failures.join(' · ')}`);
+        }
     }
 
     document.addEventListener('click', (event) => {

@@ -215,4 +215,15 @@ class AwaSellerAlertServiceTest extends TestCase
         $svc    = new AwaSellerAlertService(1, $pdo, $this->makeFakeAlert($calls));
         $this->assertSame([], $svc->getAwaAlerts(10));
     }
+
+    public function testGetAwaAlertsReturnsEmptyArrayWhenQueryFails(): void
+    {
+        $pdo = $this->makePdo();
+        $pdo->method('prepare')->willThrowException(new \PDOException('Table alerts is unavailable'));
+
+        $calls = [];
+        $svc   = new AwaSellerAlertService(1, $pdo, $this->makeFakeAlert($calls));
+
+        $this->assertSame([], $svc->getAwaAlerts(10));
+    }
 }

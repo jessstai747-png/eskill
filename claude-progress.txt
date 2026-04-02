@@ -1,3 +1,15 @@
+## Sessão 2026-04-02 — AWA Sellers: hardening do dashboard autenticado
+
+### Concluído
+- `app/Services/AwaSellerSchemaService.php`: novo bootstrap idempotente do schema AWA em MySQL para evitar drift de tabelas no ambiente
+- `app/Services/AwaSellerRegistryService.php` e `app/Services/AwaSellerIdentificationService.php`: construtores agora garantem o schema AWA antes das leituras/escritas do módulo
+- `app/Services/AwaSellerAlertService.php`: leitura de alertas AWA passou a falhar de forma segura (log + `[]`) sem derrubar o dashboard inteiro
+- `app/Views/dashboard/awa-sellers/index.php`: `refreshDashboard()` migrou para `Promise.allSettled(...)`, com aviso operacional por bloco e fallback explícito quando a base local não carrega
+- Testes: `tests/Unit/Services/AwaSellerAlertServiceTest.php` expandido e `tests/Unit/Views/AwaSellersViewTest.php` atualizado para o novo fluxo resiliente
+- Validação: diagnósticos sem erros nos arquivos alterados; `php -l` OK; PHPUnit focado `OK (11 tests, 26 assertions)`; suíte Unit final `3561 tests, 4882 assertions, 1526 skipped`
+
+---
+
 ## Sessão 2026-04-02 — Catalog Clone Export Monitoring Spec (Features 1-3)
 
 ### Concluído
