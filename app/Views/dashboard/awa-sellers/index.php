@@ -43,6 +43,12 @@ $actions = $canViewAwaSellers ? <<<HTML
 <button type="button" class="btn btn-outline-primary" id="exportAwaSellersCsv"{$manageActionAttr}>
     <i class="bi bi-download me-1"></i> Exportar CSV
 </button>
+<button type="button" class="btn btn-outline-warning" id="autoIdentifyBatchBtn"{$manageActionAttr} data-bs-toggle="tooltip" title="Auto-identificar CNPJ em lote para sellers sem identificação">
+    <i class="bi bi-cpu me-1"></i> Auto-ID Lote
+</button>
+<button type="button" class="btn btn-outline-success" id="trackSellerBtn"{$manageActionAttr} data-bs-toggle="modal" data-bs-target="#trackSellerModal">
+    <i class="bi bi-person-plus me-1"></i> Rastrear Seller
+</button>
 <button type="button" class="btn btn-primary" id="runAwaSellerScan"{$manageActionAttr}>
     <i class="bi bi-broadcast-pin me-1"></i> Executar Scan
 </button>
@@ -66,6 +72,40 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
     </section>
 </main>
 <?php else: ?>
+
+<!-- Modal: Rastrear Seller por ML seller_id -->
+<?php if ($canManageAwaSellers): ?>
+<div class="modal fade" id="trackSellerModal" tabindex="-1" aria-labelledby="trackSellerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trackSellerModalLabel">
+                    <i class="bi bi-person-plus me-2"></i>Rastrear Seller
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Informe o ID numérico do seller no Mercado Livre para adicioná-lo ao registry de monitoramento AWA.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label" for="trackSellerIdInput">ML Seller ID <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="trackSellerIdInput" placeholder="Ex: 123456789" min="1" required>
+                    <div class="form-text">Encontrado no URL do perfil: mercadolivre.com.br/perfil/[nickname] — ID numérico em resposta de API.</div>
+                </div>
+                <div id="trackSellerFeedback" class="d-none alert alert-sm py-2" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmTrackSellerBtn">
+                    <i class="bi bi-person-check me-1"></i> Rastrear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <main class="container-fluid px-0 awa-sellers-page">
     <section class="row g-3 mb-4" aria-label="Indicadores principais do módulo AWA Sellers">
         <div class="col-6 col-xl-3">
@@ -452,6 +492,9 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
                     <div class="col-12 d-flex justify-content-between align-items-center gap-3">
                         <div class="small text-muted" id="identificationFeedback"><?= $identificationHelpTextSafe ?></div>
                         <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-info" id="autoIdentifySellerBtn"<?= $manageActionAttr ?> data-bs-toggle="tooltip" title="Buscar CNPJ automaticamente via perfil ML e BrasilAPI">
+                                <i class="bi bi-cpu me-1"></i> Auto-Identificar
+                            </button>
                             <button type="button" class="btn btn-outline-success" id="verifyAwaSellerIdentification"<?= $manageActionAttr ?>>
                                 <i class="bi bi-patch-check me-1"></i> Verificar
                             </button>
@@ -536,6 +579,8 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         identificationSummary: '/api/brand/awa/sellers/identification/summary',
         history: '/api/brand/awa/sellers/history',
         alerts: '/api/brand/awa/sellers/alerts',
+        track: '/api/brand/awa/sellers/track',
+        autoIdentifyBatch: '/api/brand/awa/sellers/identification/auto-batch',
     };
 
     const elements = {
@@ -608,6 +653,11 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         identificationNotes: document.getElementById('identificationNotes'),
         identificationFeedback: document.getElementById('identificationFeedback'),
         verifyIdentificationButton: document.getElementById('verifyAwaSellerIdentification'),
+        autoIdentifySellerBtn: document.getElementById('autoIdentifySellerBtn'),
+        autoIdentifyBatchBtn: document.getElementById('autoIdentifyBatchBtn'),
+        trackSellerIdInput: document.getElementById('trackSellerIdInput'),
+        trackSellerFeedback: document.getElementById('trackSellerFeedback'),
+        confirmTrackSellerBtn: document.getElementById('confirmTrackSellerBtn'),
         detailOffcanvas: document.getElementById('awaSellerDetailOffcanvas'),
     };
 
@@ -1326,6 +1376,138 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
         }
     }
 
+    async function autoIdentifySeller() {
+        if (!permissions.canManage) {
+            elements.identificationFeedback.textContent = 'Sem permissão para auto-identificar.';
+            return;
+        }
+
+        if (!state.currentSellerId) {
+            return;
+        }
+
+        const btn = elements.autoIdentifySellerBtn;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Buscando...';
+        }
+        elements.identificationFeedback.textContent = 'Buscando CNPJ via perfil ML e BrasilAPI...';
+
+        try {
+            const response = await requestJson(`${endpoints.sellers}/${state.currentSellerId}/identification/auto`, {
+                method: 'POST',
+            });
+
+            const data = response.data || response;
+            const found = Boolean(data.found);
+            elements.identificationFeedback.textContent = found
+                ? `CNPJ identificado automaticamente: ${data.cnpj || '—'}`
+                : 'CNPJ não disponível no perfil ML para este seller.';
+
+            if (found) {
+                const [seller, itemsState, auditHistory] = await Promise.all([
+                    reloadSellerDetail(state.currentSellerId),
+                    reloadSellerItems(state.currentSellerId),
+                    reloadIdentificationAudit(state.currentSellerId),
+                ]);
+                renderSellerDetail(seller, itemsState.items, itemsState.pagination, auditHistory);
+                await Promise.all([loadMetrics(), loadSellers(state.page), loadIdentificationSummary()]);
+            }
+        } catch (error) {
+            elements.identificationFeedback.textContent = `Erro ao auto-identificar: ${error.message}`;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cpu me-1"></i> Auto-Identificar';
+            }
+        }
+    }
+
+    async function autoIdentifyBatch() {
+        if (!permissions.canManage) {
+            setFeedback('warning', 'Sem permissão para auto-identificar em lote.');
+            return;
+        }
+
+        const btn = elements.autoIdentifyBatchBtn;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Processando...';
+        }
+        setFeedback('info', 'Executando auto-identificação em lote. Isso pode demorar alguns segundos...');
+
+        try {
+            const response = await requestJson(endpoints.autoIdentifyBatch, { method: 'POST' });
+            const data = response.data || response;
+            const found = Number(data.found || 0);
+            const processed = Number(data.processed || 0);
+            setFeedback('success', `Auto-ID Lote concluído: ${found} CNPJ(s) identificado(s) em ${processed} seller(s) processado(s).`);
+            await Promise.all([loadMetrics(), loadSellers(state.page), loadIdentificationSummary()]);
+        } catch (error) {
+            setFeedback('danger', `Erro na auto-identificação em lote: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cpu me-1"></i> Auto-ID Lote';
+            }
+        }
+    }
+
+    async function trackSeller() {
+        if (!permissions.canManage) {
+            return;
+        }
+
+        const input = elements.trackSellerIdInput;
+        const feedbackEl = elements.trackSellerFeedback;
+        const confirmBtn = elements.confirmTrackSellerBtn;
+
+        if (!input || !feedbackEl || !confirmBtn) {
+            return;
+        }
+
+        const sellerId = parseInt(input.value, 10);
+        if (!sellerId || sellerId <= 0) {
+            feedbackEl.textContent = 'Informe um ML Seller ID numérico válido.';
+            feedbackEl.className = 'alert alert-warning py-2';
+            feedbackEl.classList.remove('d-none');
+            return;
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Rastreando...';
+        feedbackEl.classList.add('d-none');
+
+        try {
+            const response = await requestJson(endpoints.track, {
+                method: 'POST',
+                body: JSON.stringify({ seller_id: sellerId }),
+            });
+
+            const data = response.data || response;
+            const status = data.status || 'tracked';
+            const isNew = status === 'tracked';
+
+            feedbackEl.textContent = isNew
+                ? `Seller ID ${sellerId} adicionado ao registry com sucesso.`
+                : `Seller ID ${sellerId} já está rastreado na base local.`;
+            feedbackEl.className = `alert py-2 ${isNew ? 'alert-success' : 'alert-info'}`;
+            feedbackEl.classList.remove('d-none');
+
+            if (isNew) {
+                await Promise.all([loadMetrics(), loadSellers(state.page), loadIdentificationSummary()]);
+                setFeedback('success', `Seller ML ID ${sellerId} adicionado ao registry AWA.`);
+            }
+        } catch (error) {
+            feedbackEl.textContent = `Erro: ${error.message}`;
+            feedbackEl.className = 'alert alert-danger py-2';
+            feedbackEl.classList.remove('d-none');
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-person-check me-1"></i> Rastrear';
+        }
+    }
+
     function clearFilters() {
         elements.filtersForm.reset();
         state.page = 1;
@@ -1416,6 +1598,38 @@ include __DIR__ . '/../../layouts/modern/partials/page-header.php';
             elements.identificationFeedback.textContent = error.message;
         });
     });
+
+    if (elements.autoIdentifySellerBtn) {
+        elements.autoIdentifySellerBtn.addEventListener('click', () => {
+            autoIdentifySeller().catch((error) => {
+                if (elements.identificationFeedback) {
+                    elements.identificationFeedback.textContent = error.message;
+                }
+            });
+        });
+    }
+
+    if (elements.autoIdentifyBatchBtn) {
+        elements.autoIdentifyBatchBtn.addEventListener('click', () => {
+            autoIdentifyBatch().catch((error) => setFeedback('danger', error.message));
+        });
+    }
+
+    if (elements.confirmTrackSellerBtn) {
+        elements.confirmTrackSellerBtn.addEventListener('click', () => {
+            trackSeller().catch((error) => setFeedback('danger', error.message));
+        });
+    }
+
+    if (elements.trackSellerIdInput) {
+        elements.trackSellerIdInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                trackSeller().catch((error) => setFeedback('danger', error.message));
+            }
+        });
+    }
+
     elements.perPage.addEventListener('change', () => {
         state.page = 1;
         loadSellers(1).catch((error) => setFeedback('danger', error.message));
