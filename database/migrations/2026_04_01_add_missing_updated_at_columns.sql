@@ -32,9 +32,8 @@ ALTER TABLE market_intelligence
 ALTER TABLE model_performance
     ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER validation_accuracy;
 
--- performance_metrics: padronizar last_updated → manter e adicionar created_at
-ALTER TABLE performance_metrics
-    ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER market_share;
+-- performance_metrics: já tem created_at e não tem market_share — ignorado
+-- ADD COLUMN created_at omitido (coluna já existe)
 
 -- competitor_alerts: adicionar updated_at (tabela que muda is_read/read_at)
 ALTER TABLE competitor_alerts

@@ -45,7 +45,7 @@ CALL CreateIndexIfNotExists('users', 'idx_created_at_users', 'created_at');
 
 -- ml_accounts table indexes
 CALL CreateIndexIfNotExists('ml_accounts', 'idx_user_id_accounts', 'user_id');
-CALL CreateIndexIfNotExists('ml_accounts', 'idx_active_accounts', 'active');
+CALL CreateIndexIfNotExists('ml_accounts', 'idx_status_accounts', 'status');
 
 -- Cleanup procedure
 DROP PROCEDURE IF EXISTS CreateIndexIfNotExists;

@@ -67,15 +67,7 @@ SET @sql = IF(@idx=0,
     'SELECT 1');
 PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 
--- ---------------------------------------------------------------------------
--- 2024_06_01_create_pricing_phase3_tables: push_notification_queue.campaign_id
--- ---------------------------------------------------------------------------
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
-    WHERE TABLE_SCHEMA=@db AND TABLE_NAME='push_notification_queue' AND INDEX_NAME='idx_campaign_id');
-SET @sql = IF(@idx=0,
-    'CREATE INDEX idx_campaign_id ON push_notification_queue(campaign_id)',
-    'SELECT 1');
-PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+-- push_notification_queue.campaign_id: coluna não existe nesta tabela — índice omitido
 
 -- ---------------------------------------------------------------------------
 -- tech_sheet_item_summary.account_id  (fk_tech_sheet_summary_account)

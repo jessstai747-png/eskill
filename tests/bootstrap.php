@@ -130,6 +130,14 @@ $_ENV['PHPUNIT_REQUESTED_SUITE'] = $requestedSuite !== null ? $requestedSuite : 
 putenv('PHPUNIT_REQUESTED_SUITE=' . $_ENV['PHPUNIT_REQUESTED_SUITE']);
 
 $resolvedDbName = trim((string)($_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? getenv('DB_DATABASE') ?? getenv('DB_NAME') ?? ''));
+
+// Unit suite is completely DB-free: skip ALL DB safety enforcement before even checking the name.
+if ($isUnitSuite) {
+    // Keep Unit suite DB-free. Any DB usage should be mocked inside unit tests.
+    error_log('[phpunit-bootstrap] Unit testsuite detected; skipping DB connectivity enforcement.');
+    return;
+}
+
 if ($resolvedDbName !== '' && !isPhpUnitSafeDatabaseName($resolvedDbName) && !shouldAllowNonTestPhpUnitDatabase()) {
     markPhpUnitDatabaseUnavailable(
         sprintf(
@@ -137,12 +145,6 @@ if ($resolvedDbName !== '' && !isPhpUnitSafeDatabaseName($resolvedDbName) && !sh
             $resolvedDbName
         )
     );
-    return;
-}
-
-if ($isUnitSuite) {
-    // Keep Unit suite DB-free. Any DB usage should be mocked inside unit tests.
-    error_log('[phpunit-bootstrap] Unit testsuite detected; skipping DB connectivity enforcement.');
     return;
 }
 
