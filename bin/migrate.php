@@ -192,7 +192,7 @@ if ($action === 'status') {
             $row = $applied[$name];
             echo str_pad($name, 60)
                 . "\033[32m" . str_pad('Applied', 12) . "\033[0m"
-                . str_pad($row['batch'], 8)
+                . str_pad((string) $row['batch'], 8)
                 . $row['applied_at'] . "\n";
         } else {
             echo str_pad($name, 60)
