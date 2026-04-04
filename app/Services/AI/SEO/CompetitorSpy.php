@@ -84,7 +84,7 @@ class CompetitorSpy
             $titleLengths = [];
             $attributeCounts = [];
             $imageCounts = [];
-            $shippingTypes = [];
+            $shippingTypes = ['free' => 0, 'paid' => 0];
 
             foreach ($items as $item) {
                 // Basic info
@@ -151,8 +151,8 @@ class CompetitorSpy
             // Title patterns
             $result['title_patterns'] = [
                 'avg_length' => count($titleLengths) ? round(array_sum($titleLengths) / count($titleLengths)) : 0,
-                'min_length' => min($titleLengths) ?: 0,
-                'max_length' => max($titleLengths) ?: 0,
+                'min_length' => !empty($titleLengths) ? min($titleLengths) : 0,
+                'max_length' => !empty($titleLengths) ? max($titleLengths) : 0,
                 'optimal_length' => '50-60 caracteres',
             ];
 

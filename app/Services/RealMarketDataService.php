@@ -481,8 +481,8 @@ class RealMarketDataService
                 'title' => $item['title'] ?? '',
                 'price' => $item['price'] ?? 0,
                 'original_price' => $item['original_price'] ?? null,
-                'discount_percent' => $item['original_price']
-                    ? round((1 - $item['price'] / $item['original_price']) * 100)
+                'discount_percent' => ($item['original_price'] ?? null)
+                    ? round((1 - ($item['price'] ?? 0) / $item['original_price']) * 100)
                     : 0,
                 'sold_quantity' => $item['sold_quantity'] ?? 0,
                 'condition' => $item['condition'] ?? 'new',

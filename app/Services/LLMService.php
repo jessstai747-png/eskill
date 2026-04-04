@@ -103,6 +103,13 @@ class LLMService
             }
 
             $lastError = $response;
+
+            // Exponential backoff before next provider failover
+            $attempt = (int) array_search($providerName, array_values($providers), true);
+            $isRateLimit = $this->isRateLimitError($response);
+            $baseDelayMs = $isRateLimit ? 2000 : 500;
+            $delayUs = min($baseDelayMs * (1 << $attempt), 10000) * 1000;
+            usleep($delayUs);
         }
 
         $errorMsg = $lastError['message'] ?? 'Falha ao gerar resposta no LLM';
@@ -134,12 +141,12 @@ class LLMService
         try {
             $db = \App\Database::getInstance();
             $stmt = $db->prepare("
-                INSERT INTO llm_usage_logs 
+                INSERT INTO llm_usage_logs
                 (provider, model, input_tokens, output_tokens, total_tokens, duration_ms, context_type, user_id, created_at)
-                VALUES 
+                VALUES
                 (:provider, :model, :input, :output, :total, :duration, :context, :user, NOW())
             ");
-            
+
             $stmt->execute([
                 'provider' => $provider,
                 'model' => $model,
@@ -152,7 +159,7 @@ class LLMService
             ]);
 
             $this->logger->info('LLM_USAGE_RECORDED', "Usage persisted for {$model}");
-            
+
         } catch (Exception $e) {
             // Fallback log if DB fails
             $this->logger->error('LLM_USAGE_DB_ERROR', $e->getMessage());
@@ -226,6 +233,15 @@ class LLMService
         ], fn($value) => $value !== null && $value !== '');
     }
 
+    private function isRateLimitError(array $response): bool
+    {
+        $msg = strtolower($response['message'] ?? '');
+        return str_contains($msg, '429')
+            || str_contains($msg, 'rate')
+            || str_contains($msg, 'throttl')
+            || str_contains($msg, 'too many');
+    }
+
     private function isFallbackEnabled(): bool
     {
         $value = $_ENV['AI_FALLBACK_ENABLED'] ?? true;
@@ -252,18 +268,18 @@ class LLMService
 
         try {
             $result = $this->generate($userPrompt, $systemPrompt, 'basic');
-            
+
             // Extrair JSON da resposta (caso venha com texto extra)
             $content = $result['content'];
             $start = strpos($content, '{');
             $end = strrpos($content, '}');
-            
+
             if ($start !== false && $end !== false) {
                 $jsonStr = substr($content, $start, $end - $start + 1);
                 $data = json_decode($jsonStr, true);
                 if ($data) return $data;
             }
-            
+
             return [
                 'sentiment' => null,
                 'intent' => null,
@@ -271,7 +287,7 @@ class LLMService
                 'reasoning' => 'Falha ao analisar JSON da IA',
                 'error' => $result['error'] ?? 'Resposta inválida da IA'
             ];
-            
+
         } catch (\Exception $e) {
             log_error('Falha na análise de sentimento via LLM', [
                 'error' => $e->getMessage(),

@@ -126,6 +126,9 @@
             <!-- Batch 4: Fixed near-passing tests -->
             <file>tests/Unit/Services/AIPredictiveAnalyticsServiceTest.php</file>
             <file>tests/Unit/Services/EanServiceTest.php</file>
+            <file>tests/Unit/Services/RealMarketDataServiceTest.php</file>
+            <file>tests/Unit/Services/AIRecommendationEngineServiceTest.php</file>
+            <file>tests/Unit/Services/AI/SEO/CompetitorSpyTest.php</file>
             <file>tests/Unit/Services/FinancialServiceTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/CompetitorIntelligenceServiceTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/MercadoLivreAIIntegrationHealthTest.php</file>
