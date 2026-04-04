@@ -125,6 +125,7 @@
             <file>tests/Unit/Services/SEO/TokenManagerTest.php</file>
             <!-- Batch 4: Fixed near-passing tests -->
             <file>tests/Unit/Services/AIPredictiveAnalyticsServiceTest.php</file>
+            <file>tests/Unit/Services/EanServiceTest.php</file>
             <file>tests/Unit/Services/FinancialServiceTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/CompetitorIntelligenceServiceTest.php</file>
             <file>tests/Unit/Services/MercadoLivre/MercadoLivreAIIntegrationHealthTest.php</file>
@@ -154,6 +155,7 @@
             <file>tests/Unit/Services/Financial/ClaimDisputeServiceTest.php</file>
             <file>tests/Unit/Services/Financial/PaymentRefundServiceTest.php</file>
             <file>tests/Unit/Services/Financial/ShippingCostServiceTest.php</file>
+            <file>tests/Unit/Services/Financial/FeeCommissionServiceTest.php</file>
             <file>tests/Unit/Services/Quality/HealthCheckServiceTest.php</file>
             <file>tests/Unit/Services/Quality/QualityScoreServiceTest.php</file>
             <!-- Batch 6: AI Core + AdvancedCache tests -->

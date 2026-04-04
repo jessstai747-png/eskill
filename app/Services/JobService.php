@@ -351,6 +351,55 @@ class JobService
                         ]);
                     }
                 }
+
+                // DLQ best-effort para catalog_clone_batch e catalog_clone_item
+                if (in_array($type, ['catalog_clone_batch', 'catalog_clone_item'], true)) {
+                    try {
+                        $batchJobId = (string)($payload['batch_job_id'] ?? '');
+                        if ($batchJobId !== '') {
+                            $this->db->prepare(
+                                "UPDATE catalog_clone_jobs
+                                 SET status = 'failed', completed_at = NOW(),
+                                     error_message = :err
+                                 WHERE job_id = :job_id AND status NOT IN ('completed','failed','cancelled')"
+                            )->execute([
+                                'err' => substr($e->getMessage(), 0, 1000),
+                                'job_id' => $batchJobId,
+                            ]);
+                        }
+                    } catch (\Throwable $inner) {
+                        log_warning('JobService: falha ao marcar catalog_clone como failed no DLQ', [
+                            'service' => 'JobService',
+                            'job_id' => $jobId,
+                            'type' => $type,
+                            'error' => $inner->getMessage(),
+                        ]);
+                    }
+                }
+
+                // DLQ best-effort para bulk_optimize_exec
+                if ($type === 'bulk_optimize_exec') {
+                    try {
+                        $seoJobId = isset($payload['seo_job_id']) ? (int)$payload['seo_job_id'] : 0;
+                        if ($seoJobId > 0) {
+                            $this->db->prepare(
+                                "UPDATE seo_bulk_jobs
+                                 SET status = 'failed', completed_at = NOW(),
+                                     results = JSON_SET(COALESCE(results, '{}'), '$.dlq_error', :err)
+                                 WHERE id = :id AND status NOT IN ('completed','failed')"
+                            )->execute([
+                                'err' => substr($e->getMessage(), 0, 1000),
+                                'id' => $seoJobId,
+                            ]);
+                        }
+                    } catch (\Throwable $inner) {
+                        log_warning('JobService: falha ao marcar bulk_optimize_exec como failed no DLQ', [
+                            'service' => 'JobService',
+                            'job_id' => $jobId,
+                            'error' => $inner->getMessage(),
+                        ]);
+                    }
+                }
             } else {
                 // Reagendar para tentar novamente
                 $retryDelaySeconds = $this->calculateRetryDelaySeconds($attempts);

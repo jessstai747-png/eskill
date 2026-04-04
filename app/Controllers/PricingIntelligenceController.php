@@ -90,6 +90,11 @@ class PricingIntelligenceController extends BaseController
             return;
         }
 
+        if (filter_var($data['preco_venda'], FILTER_VALIDATE_FLOAT) === false || (float)$data['preco_venda'] <= 0) {
+            $this->error('preco_venda deve ser um número positivo', 400);
+            return;
+        }
+
         $result = $this->marginService->calcularMargem(
             (float)$data['preco_venda'],
             $data
@@ -113,7 +118,16 @@ class PricingIntelligenceController extends BaseController
         $this->jsonResponse();
         $data = $this->getJsonInput();
 
-        $margemAlvo = (float)($data['margem_alvo'] ?? 10);
+        $rawMargem = $data['margem_alvo'] ?? 10;
+        if (filter_var($rawMargem, FILTER_VALIDATE_FLOAT) === false
+            || (float)$rawMargem < 0
+            || (float)$rawMargem > 100
+        ) {
+            $this->error('margem_alvo deve ser um número entre 0 e 100', 400);
+            return;
+        }
+
+        $margemAlvo = (float)$rawMargem;
         $result = $this->marginService->calcularPrecoMinimo($data, $margemAlvo);
 
         echo json_encode($result);
@@ -137,6 +151,19 @@ class PricingIntelligenceController extends BaseController
 
         if (!isset($data['preco_original']) || !isset($data['desconto_percent'])) {
             $this->error('preco_original e desconto_percent são obrigatórios', 400);
+            return;
+        }
+
+        if (filter_var($data['preco_original'], FILTER_VALIDATE_FLOAT) === false || (float)$data['preco_original'] <= 0) {
+            $this->error('preco_original deve ser um número positivo', 400);
+            return;
+        }
+
+        if (filter_var($data['desconto_percent'], FILTER_VALIDATE_FLOAT) === false
+            || (float)$data['desconto_percent'] < 0
+            || (float)$data['desconto_percent'] > 100
+        ) {
+            $this->error('desconto_percent deve ser um número entre 0 e 100', 400);
             return;
         }
 
