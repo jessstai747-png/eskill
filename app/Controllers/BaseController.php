@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Container;
+use App\Core\EventBus;
 use App\Core\Request;
+use App\Core\Validator;
 
 abstract class BaseController
 {
@@ -162,7 +164,7 @@ abstract class BaseController
     /**
      * Executa a lógica do controller dentro de try/catch padronizado
      * com logging automático de erros e respostas consistentes.
-     * 
+     *
      * Uso:
      *   $this->withErrorHandling(function() {
      *       $data = $this->service->getData();
@@ -198,6 +200,42 @@ abstract class BaseController
             'file' => $e->getFile(),
             'line' => $e->getLine(),
         ]);
+    }
+
+    /**
+     * Despacha um evento para o EventBus (quando disponível no container).
+     *
+     * @param string $event
+     * @param array<string, mixed> $payload
+     */
+    protected function event(string $event, array $payload = []): void
+    {
+        if ($this->container && $this->container->has(EventBus::class)) {
+            $this->container->get(EventBus::class)->dispatch($event, $payload);
+        }
+    }
+
+    /**
+     * Valida os inputs da requisição contra as regras fornecidas.
+     * Retorna 422 com errors JSON caso a validação falhe.
+     * Em caso de sucesso, retorna o array de campos validados (subset das rules).
+     *
+     * Exemplo:
+     *   $data = $this->validateFields([
+     *       'email' => 'required|email',
+     *       'age'   => 'required|integer|min:18',
+     *   ]);
+     *
+     * @param array<string, string|array<string>> $rules
+     * @return array<string, mixed>
+     */
+    protected function validateFields(array $rules): array
+    {
+        $v = Validator::make($this->request->all(), $rules);
+        if ($v->fails()) {
+            $this->json(['success' => false, 'error' => 'Dados inválidos', 'errors' => $v->errors()], 422);
+        }
+        return $v->validated();
     }
 
     /**

@@ -37,6 +37,7 @@ function activeAccountId(): ?int
 return static function (Container $c): void {
 
     // ─── Core infrastructure ────────────────────────────────────────────────
+    $c->singleton(\App\Core\EventBus::class, fn() => new \App\Core\EventBus());
     $c->singleton(\App\Services\LogService::class, fn() => new \App\Services\LogService());
     $c->singleton(\App\Services\CacheService::class, fn() => new \App\Services\CacheService());
     $c->singleton(\App\Services\CacheManagerService::class, fn() => new \App\Services\CacheManagerService());

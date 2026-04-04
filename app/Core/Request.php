@@ -232,6 +232,17 @@ class Request
     // ── Validation ───────────────────────────────────────────────────
 
     /**
+     * Retorna todos os inputs (GET + POST + JSON body) como array único.
+     * Prioridade: GET sobrescreve POST, POST sobrescreve JSON.
+     * Não sanitiza — use os accessors tipados para leitura final.
+     */
+    public function all(): array
+    {
+        $json = $this->json() ?? [];
+        return array_merge($json, $this->post, $this->query);
+    }
+
+    /**
      * Valida que os campos obrigatórios estão presentes no JSON/POST.
      *
      * @return array Campos ausentes (vazio se todos presentes)
