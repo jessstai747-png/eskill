@@ -409,6 +409,10 @@ class ProductProfitabilityService
             }
         }
 
+        $revenueA = array_sum(array_column($classA, 'total_revenue'));
+        $revenueB = array_sum(array_column($classB, 'total_revenue'));
+        $revenueC = array_sum(array_column($classC, 'total_revenue'));
+
         return [
             'period' => ['start' => $startDate, 'end' => $endDate],
             'total_revenue' => $totalRevenue,
@@ -417,19 +421,19 @@ class ProductProfitabilityService
                 'class_a' => [
                     'count' => count($classA),
                     'percentage' => round((count($classA) / count($products)) * 100, 2),
-                    'revenue_share' => 80,
+                    'revenue_share' => $totalRevenue > 0 ? round(($revenueA / $totalRevenue) * 100, 2) : 0,
                     'description' => 'Produtos vitais - alta receita, prioridade máxima',
                 ],
                 'class_b' => [
                     'count' => count($classB),
                     'percentage' => round((count($classB) / count($products)) * 100, 2),
-                    'revenue_share' => 15,
+                    'revenue_share' => $totalRevenue > 0 ? round(($revenueB / $totalRevenue) * 100, 2) : 0,
                     'description' => 'Produtos importantes - receita moderada',
                 ],
                 'class_c' => [
                     'count' => count($classC),
                     'percentage' => round((count($classC) / count($products)) * 100, 2),
-                    'revenue_share' => 5,
+                    'revenue_share' => $totalRevenue > 0 ? round(($revenueC / $totalRevenue) * 100, 2) : 0,
                     'description' => 'Produtos de baixa relevância - avaliar descontinuação',
                 ],
             ],

@@ -216,6 +216,12 @@ class AIPredictiveAnalyticsService
             // Alertas de preço
             $priceAlerts = $this->generatePriceAlerts($priceModels, $competitorPricing);
 
+            $hasFallback = ($recommendedStrategy['is_fallback'] ?? false)
+                || ($impactSimulation['is_fallback'] ?? false)
+                || ($competitorPricing['is_fallback'] ?? false)
+                || ($seasonalFactors['is_fallback'] ?? false)
+                || !empty(array_filter($priceModels, fn(array $m): bool => ($m['is_fallback'] ?? false)));
+
             return [
                 'current_price' => $productData['price'] ?? 0,
                 'recommended_price' => $recommendedStrategy['price'],
@@ -227,7 +233,8 @@ class AIPredictiveAnalyticsService
                 'competitor_analysis' => $competitorPricing,
                 'seasonal_factors' => $seasonalFactors,
                 'price_alerts' => $priceAlerts,
-                'next_review_date' => date('Y-m-d', strtotime('+7 days'))
+                'next_review_date' => date('Y-m-d', strtotime('+7 days')),
+                'has_fallback_data' => $hasFallback,
             ];
         } catch (Exception $e) {
             return ['error' => $e->getMessage()];
@@ -1366,10 +1373,12 @@ class AIPredictiveAnalyticsService
 
         // Fallback to basic analysis
         return [
-            'avg_price' => 150,
-            'price_range' => [120, 180],
-            'market_positioning' => 'competitive',
-            'key_insights' => ['Limited data available']
+            'avg_price' => $product['price'] ?? 0,
+            'price_range' => [],
+            'market_positioning' => 'unknown',
+            'key_insights' => [],
+            'is_fallback' => true,
+            'fallback_reason' => 'LLM indisponível',
         ];
     }
 
@@ -1403,7 +1412,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['seasonal_multiplier' => 1.1, 'peak_months' => [12, 5], 'seasonal_trends' => [], 'recommendations' => []];
+        return ['seasonal_multiplier' => 1.0, 'peak_months' => [], 'seasonal_trends' => [], 'recommendations' => [], 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function calculateProfitMaximizingPrice($product, $elasticity): array
@@ -1438,7 +1447,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['price' => 180, 'profit' => 45, 'profit_margin' => 25, 'risk_level' => 'medium', 'confidence' => 0.7];
+        return ['price' => $product['price'] ?? 0, 'profit' => null, 'profit_margin' => null, 'risk_level' => 'unknown', 'confidence' => 0.0, 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function calculateRevenueMaximizingPrice($product, $elasticity): array
@@ -1473,7 +1482,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['price' => 160, 'revenue' => 320, 'demand_change' => 0, 'market_share_impact' => 'neutral', 'confidence' => 0.7];
+        return ['price' => $product['price'] ?? 0, 'revenue' => null, 'demand_change' => null, 'market_share_impact' => 'unknown', 'confidence' => 0.0, 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function calculatePenetrationPrice($product, $competitor): array
@@ -1508,7 +1517,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['price' => 140, 'market_share' => '20%', 'time_horizon' => 6, 'investment_required' => 0, 'risk_factors' => []];
+        return ['price' => $product['price'] ?? 0, 'market_share' => null, 'time_horizon' => null, 'investment_required' => null, 'risk_factors' => [], 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function calculatePremiumPrice($product, $competitor): array
@@ -1543,7 +1552,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['price' => 200, 'positioning' => 'premium', 'value_propositions' => [], 'target_audience' => 'quality-conscious', 'brand_impact' => 'positive'];
+        return ['price' => $product['price'] ?? 0, 'positioning' => 'unknown', 'value_propositions' => [], 'target_audience' => 'unknown', 'brand_impact' => 'unknown', 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function calculateDynamicPrice($product, $context): array
@@ -1578,7 +1587,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['price' => 170, 'adjustment_frequency' => 'daily', 'key_triggers' => [], 'price_range' => [150, 190], 'expected_lift' => 5];
+        return ['price' => $product['price'] ?? 0, 'adjustment_frequency' => 'unknown', 'key_triggers' => [], 'price_range' => [], 'expected_lift' => null, 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function selectOptimalPricingStrategy($models, $product, $context): array
@@ -1614,7 +1623,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['price' => 170, 'strategy' => 'dynamic_pricing', 'confidence' => 0.85, 'rationale' => 'Optimal balance of profit and market share', 'implementation_timeline' => '2-4 weeks', 'risks' => []];
+        return ['price' => $product['price'] ?? 0, 'strategy' => 'unknown', 'confidence' => 0.0, 'rationale' => null, 'implementation_timeline' => null, 'risks' => [], 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function simulatePriceImpact($strategy, $product, $elasticity): array
@@ -1650,7 +1659,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['sales_change' => '+15%', 'profit_change' => '+25%', 'market_share_change' => '+5%', 'competitive_response' => 'moderate', 'confidence' => 0.7];
+        return ['sales_change' => null, 'profit_change' => null, 'market_share_change' => null, 'competitive_response' => 'unknown', 'confidence' => 0.0, 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     private function generatePriceAlerts($models, $competitor): array
@@ -1685,7 +1694,7 @@ class AIPredictiveAnalyticsService
             ]);
         }
 
-        return ['alert' => 'Competitor price drop detected', 'severity' => 'medium', 'urgency' => 'days', 'recommended_action' => 'Monitor market', 'impact_potential' => 'moderate'];
+        return ['alert' => null, 'severity' => 'unknown', 'urgency' => null, 'recommended_action' => null, 'impact_potential' => null, 'is_fallback' => true, 'fallback_reason' => 'LLM indisponível'];
     }
 
     // Outros métodos auxiliares

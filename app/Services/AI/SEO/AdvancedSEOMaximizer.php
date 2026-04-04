@@ -100,7 +100,7 @@ class AdvancedSEOMaximizer
 
             // Salvar análises no banco
             $this->saveOptimizationAnalysis($itemId, $results);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $results['error'] = $e->getMessage();
         }
 
@@ -375,7 +375,7 @@ class AdvancedSEOMaximizer
             $client = new \App\Services\MercadoLivreClient($this->accountId);
             $item = $client->get("/items/{$itemId}");
             return $item ?? [];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Fallback para dados locais
             $stmt = $this->db->prepare("SELECT * FROM items WHERE id = ? AND account_id = ?");
             $stmt->execute([$itemId, $this->accountId]);
@@ -617,7 +617,7 @@ class AdvancedSEOMaximizer
             if (!empty($rows)) {
                 return $rows;
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Fallback para extração do título
         }
 
@@ -744,7 +744,7 @@ class AdvancedSEOMaximizer
             ");
             $stmt->execute([$categoryId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -906,19 +906,23 @@ class AdvancedSEOMaximizer
             if ($ratio <= 1.20) return 50;
             if ($ratio <= 1.40) return 30;
             return 15;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return 50;
         }
     }
 
     private function getRequiredAttributes(string $categoryId): array
     {
-        $stmt = $this->db->prepare("
-            SELECT * FROM category_attributes
-            WHERE category_id = ? AND required = 1
-        ");
-        $stmt->execute([$categoryId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM category_attributes
+                WHERE category_id = ? AND required = 1
+            ");
+            $stmt->execute([$categoryId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     private function extractPrimaryKeywords(string $title): array
@@ -943,7 +947,7 @@ class AdvancedSEOMaximizer
             ");
             $stmt->execute([$categoryId]);
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [];
         }
     }
@@ -989,7 +993,7 @@ class AdvancedSEOMaximizer
                 $stmt->execute([$categoryId]);
                 $dbLongTails = $stmt->fetchAll(PDO::FETCH_COLUMN);
                 $longTails = array_unique(array_merge($longTails, $dbLongTails));
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Usa apenas os gerados
             }
         }
@@ -1040,7 +1044,7 @@ class AdvancedSEOMaximizer
             ");
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return [];
         }
     }

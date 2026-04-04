@@ -1,3 +1,56 @@
+## Sessão 2026-04-04 — Investigação funcional real + bugs corrigidos
+
+### Bugs corrigidos (produção)
+
+**1. AIPredictiveAnalyticsService — 7 métodos retornavam dados fabricados silenciosamente**
+- `simulatePriceImpact()`: fallback retornava `+15%`, `+25%`, `+5%` hardcoded
+- `selectOptimalPricingStrategy()`: fallback com `price => 170`, `confidence => 0.85` fabricados
+- `calculateProfitMaximizingPrice()`: fallback `price => 180`
+- `calculateRevenueMaximizingPrice()`: fallback `price => 160`
+- `calculatePenetrationPrice()`: fallback `price => 140`
+- `calculatePremiumPrice()`: fallback `price => 200`
+- `calculateDynamicPrice()`: fallback `price => 170`
+- **Fix**: todos os fallbacks agora retornam `is_fallback=true, fallback_reason='LLM indisponível'` e valores `null/0` (sem inventar dados). `predictOptimalPricing()` agora propaga `has_fallback_data=true` quando qualquer sub-método entrar em fallback.
+
+**2. AdvancedSEOMaximizer.getRequiredAttributes() — sem try/catch**
+- Único método do arquivo sem tratamento de erro — lançava `\Error` TypeError se DB offline
+- **Fix**: adicionado `catch (\Throwable $e) { return []; }`
+- Todos os outros 8 catches do arquivo alterados de `\Exception` para `\Throwable` (consistência)
+
+### Testes criados
+- `tests/Unit/Services/AI/SEO/AdvancedSEOMaximizerTest.php`
+- **69 testes / 144 assertions** — 100% passing
+- Cobre todos os 16 métodos reportados em FIX-001 (existência + comportamento correto)
+- Testa lógica pura: `extractKeywords`, `scoreTitle`, `scoreDescription`, `scoreImages`, `fillTemplate`, `generateLongTailKeywords`, `identifyCompetitorStrengths/Weaknesses`, `identifyOpportunities/Threats`, `generateStrategicRecommendations`, `getConvertingKeywords`
+- Testa fallback seguro quando DB indisponível: `scorePrice`, `findDirectCompetitors`, `getSecondaryKeywords`, `getLSIKeywords`, `calculateSEOScore`
+
+### Resultado da investigação funcional
+- 95%+ dos módulos com código REAL (ML API, OAuth, Clone, Financial, Workers, SEO)
+- 2 bugs P0 corrigidos acima
+- `ProductProfitabilityService.getAbcAnalysis()` usa Pareto 80/15/5 constante — documentado, aceitável como convencção teórica
+- `CentralizedLogService.getCountryFromIp()` sempre retorna 'unknown' — P2, sem impacto funcional
+
+---
+## Sessão 2026-04-04 — Auditoria profunda (continuação + consolidação)
+
+### Itens auditados
+- **Sintaxe PHP**: zero erros em todo `app/` e `bin/`
+- **strict_types**: 571 arquivos de lógica (Controllers/Services/Models/etc) = 100% cobertos. 56 Views sem strict_types (aceitável — são templates HTML)
+- **Segurança OWASP**:
+  - Nenhum secret hardcoded (sk-*, ghp_*, etc.)
+  - Nenhum `eval()` em código de aplicação
+  - `exec()` em `AccountXRayController`: $accountId já castado para `(int)`, $workerPath de dirname(__DIR__) — seguro
+  - `exec()` em `OpenSpecController`: usa `escapeshellarg()` — seguro
+  - `ORDER BY` em `CustomerController`: usa `getEnum()` (allowlist) + `getSortDir()` (ASC/DESC only) — seguro
+  - Todos os `db->exec()` com DDL estático: sem user input interpolado
+- **Testes**: 3564 testes | 8382 assertions | **0 falhas** | 36 skips (Redis indisponível: 7, Claude API: 22, outros infra: 7)
+- **Migrations**: último status mostrou DB offline no ambiente sandbox
+- **Codacy CLI**: indisponível (WSL bloqueado no ambiente)
+
+### project-status.json
+- Campo `_meta.last_audit` adicionado com resumo completo da auditoria 2026-04-04
+
+---
 ## Sessão 2026-04-03 — Auditoria profunda + correções críticas
 
 ### Auditoria realizada
