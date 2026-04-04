@@ -205,6 +205,10 @@ $container->singleton(App\Database::class, function () {
     return App\Database::getInstance();
 });
 
+// Registrar todos os serviços da aplicação (singletons e factories)
+$registerServices = require CONFIG_PATH . '/container.php';
+$registerServices($container);
+
 // Middleware de segurança
 $security = new App\Middleware\SecurityMiddleware();
 if (!$security->handle()) {

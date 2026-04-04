@@ -33,18 +33,18 @@ class Container
 
     /**
      * Register a singleton service.
+     * The instance is created once per Container and cached in $this->instances.
      *
      * @param string $key
      * @param callable|object $resolver
      */
     public function singleton(string $key, $resolver): void
     {
-        $this->bind($key, function ($container) use ($resolver) {
-            static $instance;
-            if ($instance === null) {
-                $instance = $resolver($container);
+        $this->bind($key, function ($container) use ($key, $resolver) {
+            if (!isset($this->instances[$key])) {
+                $this->instances[$key] = $resolver($container);
             }
-            return $instance;
+            return $this->instances[$key];
         });
     }
 
@@ -63,19 +63,12 @@ class Container
 
         if (isset($this->services[$key])) {
             $resolver = $this->services[$key];
-            
+
             if (is_callable($resolver)) {
-                $instance = $resolver($this);
-            } else {
-                $instance = $resolver;
+                return $resolver($this);
             }
 
-            // Save instance if singleton (simplification for this custom container)
-            // Ideally we'd have a way to know if a binding is shared or not.
-            // For now, we assumption mostly singletons or factories.
-            // But let's keep it simple: if resolved from services, we don't cache unless it was a singleton binding logic wrapper.
-            // actually, let's trust the resolver.
-            return $instance;
+            return $resolver;
         }
 
         return $this->resolve($key);
