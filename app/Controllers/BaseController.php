@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Core\Container;
 use App\Core\EventBus;
+use App\Core\Paginator;
 use App\Core\Request;
 use App\Core\Validator;
 
@@ -200,6 +201,23 @@ abstract class BaseController
             'file' => $e->getFile(),
             'line' => $e->getLine(),
         ]);
+    }
+
+    /**
+     * Cria um Paginator a partir dos parâmetros da requisição atual.
+     *
+     * Uso:
+     *   $p = $this->paginate(total: $total);
+     *   $rows = $model->list($p->limit(), $p->offset());
+     *   $this->jsonSuccess(['items' => $rows, 'pagination' => $p->meta()]);
+     *
+     * @param int $total          Total de registros (pode ser 0 e definido depois via setTotal)
+     * @param int $defaultPerPage Valor padrão para per_page (default: 20)
+     * @param int $maxPerPage     Limite máximo de per_page (default: 100)
+     */
+    protected function paginate(int $total = 0, int $defaultPerPage = 20, int $maxPerPage = 100): Paginator
+    {
+        return Paginator::fromRequest($this->request, $total, $defaultPerPage, $maxPerPage);
     }
 
     /**
