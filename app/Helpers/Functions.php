@@ -137,6 +137,25 @@ if (!function_exists('storage_path')) {
     }
 }
 
+// ─── db() ────────────────────────────────────────────────────────────────────
+
+if (!function_exists('db')) {
+    /**
+     * Retorna um QueryBuilder configurado para a tabela informada.
+     *
+     * Atalho para: (new \App\Core\QueryBuilder(\App\Database::getInstance()))->table($table)
+     *
+     * Uso:
+     *   $rows  = db('notifications')->where('user_id', $id)->get();
+     *   $count = db('items')->where('active', 1)->count();
+     *   $id    = db('users')->insert(['name' => 'Alice', 'age' => 30]);
+     */
+    function db(string $table): \App\Core\QueryBuilder
+    {
+        return (new \App\Core\QueryBuilder(\App\Database::getInstance()))->table($table);
+    }
+}
+
 // ─── collect() ───────────────────────────────────────────────────────────────
 
 if (!function_exists('collect')) {
