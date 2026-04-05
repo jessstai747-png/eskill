@@ -265,4 +265,96 @@ class RouterTest extends TestCase
         $this->assertEquals('show', $data['action']);
         $this->assertEquals('special', $data['id']);
     }
+
+    // =============================
+    // TESTES DE GROUP / PREFIX
+    // =============================
+
+    public function testGroupAddsPrefix(): void
+    {
+        $this->router->group(['prefix' => 'api/v2'], function (Router $r): void {
+            $r->get('items', MockController::class, 'index');
+        });
+
+        ob_start();
+        $this->router->dispatch('GET', '/api/v2/items');
+        $output = ob_get_clean();
+
+        $data = json_decode($output, true);
+        $this->assertEquals('index', $data['action']);
+    }
+
+    public function testGroupRouteDoesNotMatchWithoutPrefix(): void
+    {
+        $this->router->group(['prefix' => 'api/v2'], function (Router $r): void {
+            $r->get('orders', MockController::class, 'index');
+        });
+
+        ob_start();
+        $this->router->dispatch('GET', '/orders');
+        ob_get_clean();
+
+        // No controller action should have been called
+        $this->assertEmpty(MockController::$callLog);
+    }
+
+    public function testNestedGroupsCombinePrefixes(): void
+    {
+        $this->router->group(['prefix' => 'api'], function (Router $r): void {
+            $r->group(['prefix' => 'v3'], function (Router $r): void {
+                $r->get('users', MockController::class, 'index');
+            });
+        });
+
+        ob_start();
+        $this->router->dispatch('GET', '/api/v3/users');
+        $output = ob_get_clean();
+
+        $data = json_decode($output, true);
+        $this->assertEquals('index', $data['action']);
+    }
+
+    public function testGroupPrefixDoesNotLeakToSiblingRoutes(): void
+    {
+        $this->router->group(['prefix' => 'v1'], function (Router $r): void {
+            $r->get('x', MockController::class, 'index');
+        });
+        // Route outside the group
+        $this->router->get('x', MockController::class, 'index');
+
+        ob_start();
+        $this->router->dispatch('GET', '/x');
+        $output = ob_get_clean();
+
+        $data = json_decode($output, true);
+        $this->assertEquals('index', $data['action']);
+    }
+
+    public function testGroupWithNoPrefix(): void
+    {
+        $this->router->group([], function (Router $r): void {
+            $r->get('ping', MockController::class, 'index');
+        });
+
+        ob_start();
+        $this->router->dispatch('GET', '/ping');
+        $output = ob_get_clean();
+
+        $data = json_decode($output, true);
+        $this->assertEquals('index', $data['action']);
+    }
+
+    public function testGroupWithDynamicSegment(): void
+    {
+        $this->router->group(['prefix' => 'accounts/{id}'], function (Router $r): void {
+            $r->get('items', MockController::class, 'show');
+        });
+
+        ob_start();
+        $this->router->dispatch('GET', '/accounts/42/items');
+        $output = ob_get_clean();
+
+        $data = json_decode($output, true);
+        $this->assertEquals('show', $data['action']);
+    }
 }

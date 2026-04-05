@@ -11,6 +11,36 @@ class ExceptionHandler
     public static function register(): void
     {
         set_exception_handler([self::class, 'handle']);
+
+        // Convert E_USER_ERROR / E_RECOVERABLE_ERROR to exceptions so they pass
+        // through the same handler (exceptions are logged + monitored; raw PHP
+        // errors are not). E_DEPRECATED and E_NOTICE are ignored here to avoid
+        // breaking third-party vendor code.
+        set_error_handler(static function (int $errno, string $errstr, string $errfile, int $errline): bool {
+            if ($errno & (E_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR)) {
+                throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
+            }
+            // Return false to let PHP process warnings/notices normally
+            return false;
+        });
+
+        // Catch fatal errors (memory exhaustion, parse errors in eval, etc.)
+        register_shutdown_function(static function (): void {
+            $error = error_get_last();
+            if ($error === null) {
+                return;
+            }
+            $fatals = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
+            if ($error['type'] & $fatals) {
+                self::handle(new \ErrorException(
+                    $error['message'],
+                    0,
+                    $error['type'],
+                    $error['file'],
+                    $error['line']
+                ));
+            }
+        });
     }
 
     public static function handle(\Throwable $e): void

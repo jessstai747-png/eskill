@@ -33,7 +33,8 @@
     },
     "files": [
       "app/Helpers/LogHelper.php",
-      "app/Helpers/CacheHelper.php"
+      "app/Helpers/CacheHelper.php",
+      "app/Helpers/Functions.php"
     ]
   },
   "autoload-dev": {

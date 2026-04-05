@@ -7,6 +7,9 @@ class Router
 {
     private array $routes = [];
 
+    /** @var string[] Active prefix stack for nested groups */
+    private array $prefixStack = [];
+
     /**
      * Adiciona uma rota GET
      */
@@ -40,10 +43,47 @@ class Router
     }
 
     /**
+     * Agrupa rotas com um prefixo comum em comum.
+     *
+     * Uso:
+     *   $router->group(['prefix' => 'api/v2'], function(Router $r) {
+     *       $r->get('items', ItemController::class, 'index');    // → /api/v2/items
+     *       $r->post('items', ItemController::class, 'store');   // → /api/v2/items
+     *   });
+     *
+     * Grupos podem ser aninhados:
+     *   $router->group(['prefix' => 'api'], function(Router $r) {
+     *       $r->group(['prefix' => 'v2'], function(Router $r) {
+     *           $r->get('users', UserController::class);         // → /api/v2/users
+     *       });
+     *   });
+     *
+     * @param array{prefix?: string} $attributes
+     * @param callable(Router): void $callback
+     */
+    public function group(array $attributes, callable $callback): void
+    {
+        $prefix = trim($attributes['prefix'] ?? '', '/');
+        $this->prefixStack[] = $prefix;
+
+        try {
+            $callback($this);
+        } finally {
+            array_pop($this->prefixStack);
+        }
+    }
+
+    /**
      * Adiciona rota genérica
      */
     private function addRoute(string $method, string $path, string $controller, string $action): void
     {
+        // Prepend active group prefix(es)
+        if (!empty($this->prefixStack)) {
+            $groupPrefix = implode('/', array_filter($this->prefixStack));
+            $path = $groupPrefix . '/' . ltrim($path, '/');
+        }
+
         // Normalizar path da rota para garantir consistência
         $path = '/' . ltrim($path, '/');
 
@@ -109,7 +149,7 @@ class Router
                     $reflector = new \ReflectionClass($controllerClass);
                     $constructor = $reflector->getConstructor();
                     $needsAccountId = false;
-                    
+
                     if ($constructor) {
                         $constructorParams = $constructor->getParameters();
                         if (!empty($constructorParams)) {
@@ -120,7 +160,7 @@ class Router
                             }
                         }
                     }
-                    
+
                     if ($needsAccountId && isset($matches['accountId'])) {
                         // Instanciar com accountId diretamente
                         $controller = new $controllerClass((int)$matches['accountId']);
