@@ -136,3 +136,23 @@ if (!function_exists('storage_path')) {
         return $base . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $segments);
     }
 }
+
+// ─── collect() ───────────────────────────────────────────────────────────────
+
+if (!function_exists('collect')) {
+    /**
+     * Cria uma Collection a partir de um array.
+     * Atalho para new \App\Core\Collection($items).
+     *
+     * Uso:
+     *   $names = collect($users)->pluck('name')->sort()->values()->all();
+     *   $total = collect($items)->sum('price');
+     *
+     * @param array<int|string, mixed> $items
+     * @return \App\Core\Collection<mixed>
+     */
+    function collect(array $items = []): \App\Core\Collection
+    {
+        return \App\Core\Collection::make($items);
+    }
+}
