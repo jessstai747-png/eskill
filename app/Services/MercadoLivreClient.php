@@ -267,7 +267,67 @@ class MercadoLivreClient
      * - ML_PROXY_HOST, ML_PROXY_PORT
      * - ML_PROXY_USER, ML_PROXY_PASS (opcionais)
      */
-    private function buildProxyOption(): ?string
+    /**
+     * Cloudflare Worker proxy interception.
+     *
+     * Quando ML_CF_PROXY_ENABLED=true, substitui a URL destino pela URL do Worker
+     * e adiciona os headers X-Proxy-Secret e X-ML-Path para que o Worker possa
+     * repassar a requisição para api.mercadolibre.com com IP limpo.
+     *
+     * O Worker espera:
+     *   POST/GET <CF_WORKER_URL>
+     *   X-Proxy-Secret: <secret>   → security shared secret
+     *   X-ML-Path: /endpoint?qs    → path+query enviado ao ML
+     *   Authorization: Bearer ..   → token OAuth repassado (opcional)
+     *
+     * @param  string              $url     URL original (api.mercadolibre.com/...)
+     * @param  array<string,mixed> $options Opções Guzzle
+     * @return array{0:string, 1:array<string,mixed>}
+     */
+    private function applyCfProxy(string $url, array $options): array
+    {
+        $enabled = filter_var(
+            $_ENV['ML_CF_PROXY_ENABLED'] ?? getenv('ML_CF_PROXY_ENABLED') ?? 'false',
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (!$enabled) {
+            return [$url, $options];
+        }
+
+        $proxyUrl    = rtrim((string) ($_ENV['ML_CF_PROXY_URL']    ?? getenv('ML_CF_PROXY_URL')    ?? ''), '/');
+        $proxySecret = (string) ($_ENV['ML_CF_PROXY_SECRET'] ?? getenv('ML_CF_PROXY_SECRET') ?? '');
+
+        if ($proxyUrl === '' || $proxySecret === '') {
+            log_warning('ML CF Proxy ativo mas ML_CF_PROXY_URL ou ML_CF_PROXY_SECRET não configurados', []);
+            return [$url, $options];
+        }
+
+        // Extract path+query from the original ML URL to send as X-ML-Path
+        $parsed  = parse_url($url);
+        $mlPath  = ($parsed['path'] ?? '/');
+        if (!empty($parsed['query'])) {
+            $mlPath .= '?' . $parsed['query'];
+        }
+        // Also carry query params from Guzzle $options['query'] if present
+        if (!empty($options['query']) && str_contains($mlPath, '?') === false) {
+            $mlPath .= '?' . http_build_query($options['query']);
+        } elseif (!empty($options['query'])) {
+            $mlPath .= '&' . http_build_query($options['query']);
+        }
+
+        $options['query'] = []; // already embedded in mlPath
+
+        // Inject CF proxy headers into Guzzle options
+        $options['headers'] = array_merge($options['headers'] ?? [], [
+            'X-Proxy-Secret' => $proxySecret,
+            'X-ML-Path'      => $mlPath,
+        ]);
+
+        return [$proxyUrl, $options];
+    }
+
+        private function buildProxyOption(): ?string
     {
         $enabledRaw = $_ENV['ML_PROXY_ENABLED'] ?? getenv('ML_PROXY_ENABLED') ?? null;
         $enabled = filter_var($enabledRaw, FILTER_VALIDATE_BOOLEAN);
@@ -973,6 +1033,9 @@ class MercadoLivreClient
         }
 
         $url = $this->baseUrl . $endpoint;
+
+        // Cloudflare Worker proxy: reroute via proxy when ML_CF_PROXY_ENABLED=true
+        [$url, $options] = $this->applyCfProxy($url, $options);
 
         try {
             // Para endpoints públicos, algumas políticas podem bloquear respostas sem Authorization.
