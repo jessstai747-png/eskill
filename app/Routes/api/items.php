@@ -300,6 +300,14 @@ $router->get('api/brand/awa/report', BrandAnalyzerController::class, 'getFullRep
 $router->get('api/brand/awa/export/fix-list', BrandAnalyzerController::class, 'exportFixList');
 $router->get('api/brand/awa/metrics', BrandAnalyzerController::class, 'getMetrics');
 
+// BRAND SEARCH — Módulo 20 BRAND-003
+use App\Controllers\BrandSearchController;
+$router->post('api/brand-search/start',                BrandSearchController::class, 'start');
+$router->get('api/brand-search/{id}/progress',         BrandSearchController::class, 'progress');
+$router->get('api/brand-search/{id}/sellers',          BrandSearchController::class, 'sellers');
+$router->get('api/brand-search/{id}/items/{sellerId}', BrandSearchController::class, 'items');
+$router->get('api/brand-search/{id}/export',           BrandSearchController::class, 'export');
+
 // PUSH
 $router->get('api/push/vapid-key', PushController::class, 'vapidKey');
 $router->post('api/push/subscribe', PushController::class, 'subscribe');

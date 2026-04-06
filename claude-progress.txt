@@ -1,3 +1,140 @@
+=== 2026-04-06 — BRAND-003 Phase 1 Backend Complete ===
+- Rewrote BrandSearchService.php (347 lines): constants ML_API_BASE, PAGE_LIMIT=50, MAX_OFFSET=950, RATE_LIMIT_WAIT=350, USERS_BATCH=20; public API: initSearch/executeSearch/getSearchProgress/getSearchSellers; all old sync methods removed
+- Rewrote BrandSearchController.php (237 lines): canonical methods start()/progress()/sellers()/items()/export(); HTTP 202 on start, Cache-Control on progress, CSV fputcsv on export
+- Fixed app/Routes/api/items.php: removed 13 conflicting/broken registrations, replaced with 5 clean BRAND-003 routes
+- All 3993 tests pass (0 failures, 26 skipped)
+
+## Sessão 2026-04-05 (continuação) — Brand Search Worker + Crontab
+
+### Implementado nesta sessão (continuação)
+
+**7. bin/brand-search-worker.php**
+- Worker CLI para buscas agendadas via cron
+- Flags: `--brand-id`, `--brand-name`, `--account`, `--max`, `--categories`, `--dry-run`, `--verbose`, `--help`
+- Itera contas ativas do banco (`ml_accounts WHERE status='active'`)
+- Chama `BrandSearchService::searchByBrandId()` ou `searchByBrandName()` por conta
+- Log por data em `storage/logs/brand-search-YYYY-MM-DD.log`
+- Exit code 1 se houver erros em qualquer conta
+- Lint OK, Codacy (Opengrep + Trivy) zero issues
+
+**8. crontab.brand-search.example**
+- Exemplos de cron para execução diária/bidiária do brand-search worker
+- Inclui variantes: por brand-id, por brand-name, por conta específica, por categorias
+
+---
+
+## Sessão 2026-04-05 — Módulo Brand Search (busca genérica por marca no ML)
+
+### Implementado nesta sessão
+
+**1. BrandSearchService (app/Services/MercadoLivre/BrandSearchService.php)**
+- `searchByBrandId()` — busca por filtro nativo BRAND do ML (brand_value_id)
+- `searchByBrandName()` — busca textual por nome de marca
+- Paginação automática com rate limiting (250ms entre páginas, respeita offset ≤ 950)
+- Extração completa: título, preço, permalink, categoria, item_id, qty, condição, seller nickname
+- Coleta de dados de vendedores: reputação, power seller status, total de transações, URL do perfil
+- Deduplicação por `id` do ML antes de persistir
+- Exportação CSV e JSON com todos campos
+- Persistência histórico de runs: tabelas `brand_search_runs`, `brand_search_items`, `brand_search_sellers`
+- Tabelas criadas automaticamente (`ensureTablesExist`) no bootstrap do service
+
+**2. BrandSearchController (app/Controllers/BrandSearchController.php)**
+- `POST /api/brand-search/search` — inicia busca (brand_value_id OU brand_name)
+- `GET  /api/brand-search/history` — histórico de runs paginado
+- `GET  /api/brand-search/{runId}/items` — itens do run com paginação
+- `GET  /api/brand-search/{runId}/sellers` — vendedores únicos do run
+- `GET  /api/brand-search/{runId}/run` — metadados do run
+- `GET  /api/brand-search/{runId}/export/csv` — download CSV
+- `GET  /api/brand-search/{runId}/export/json` — download JSON
+
+**3. Rotas (app/Routes/api/items.php)**
+- 7 novas rotas registradas no bloco items.php
+
+**4. BrandSearchServiceTest (tests/Unit/Services/BrandSearchServiceTest.php)**
+- 34 testes / 124 assertions (todos passando)
+- Constantes, propriedades e métodos via Reflection
+- Testes unitários reais de `normalizeCondition`, `deduplicateItems`, `extractItem` (sem DB)
+- Mock de `exportCsv` / `exportJson` verificando CSV header e JSON structure
+
+**5. MODULES.md**
+- Adicionado BRAND-003 na seção 20 — Marca e Posicionamento
+
+### Métricas
+- Testes: +34 / Assertions: +124 / Failures: 0
+
+---
+
+## Sessão 2026-04-05 — Otimização geral do projeto (commit 30545ed)
+
+### Implementado nesta sessão
+
+**1. LLMService — exponential backoff entre providers**
+- Adicionado delay de 500ms (erros genéricos) ou 2000ms (rate-limit 429/throttle) entre failovers
+- Detecta rate-limit via isRateLimitError() checando '429', 'rate', 'throttl', 'too many' na mensagem
+- Backoff exponencial: delay × 2^attempt, limitado a 10 segundos
+
+**2. RealMarketDataServiceTest.php criado (30 tests / 96 assertions)**
+- Cobre 13 métodos públicos: analyzeMarket, getCategoryDetails, analyzePricing, getTrends,
+  discoverRelatedDomains, analyzeCompetitors, getAvailableFilters, findSimilarProducts,
+  suggestPrice, autocomplete, getMarketStats, getCategoryRequirements
+- Testou path de cache hit/miss, fallback API→local DB, deduplicação de sellers
+- Descoberto e corrigido bug: $item['original_price'] sem ?? null em analyzeCompetitors
+
+**3. AIRecommendationEngineServiceTest.php criado (15 tests / 35 assertions)**
+- Cobre getPersonalizedRecommendations (cache hit, force_refresh, DB exception),
+  recommendProductsToClone (no account, exception path),
+  recommendMarketOpportunities (empty, structure, limit),
+  recommendPricingStrategies (no products, increase_price, limit)
+
+**4. CompetitorSpyTest.php criado (22 tests / 60 assertions)**
+- Cobre spyProduct (no client, empty results, keywords, price, shipping, filtering mySeller),
+  analyzePriceCompetitiveness (best_price, competitive, expensive, free shipping penalty),
+  compareWithCompetitors (no client, not found, full comparison),
+  analyzeTopSellers (no client, aggregation, sort by sold)
+- Descobertos e corrigidos 2 bugs em CompetitorSpy:
+  - $shippingTypes não inicializado → E_WARNING → PHPUnit exception dentro de try/catch
+  - min/max em $titleLengths[] vazio quando items=[] → ValueError não capturável
+
+### Métricas finais
+- Testes: 3768 (+67) / Assertions: 8890 (+191) / Failures: 0 / Skips: 34
+
+---
+
+## Sessão 2026-04-04 — Melhorias P0/P1/P2 implementadas (commit 2bc1913)
+
+### Implementado nesta sessão
+
+**1. MOBILE_TOKEN_SECRET adicionado .env.testing**
+- Desbloqueia 2 testes de segurança JWT em MobileAuthControllerTest que sempre eram skipped
+
+**2. FeeCommissionServiceTest.php criado (28 tests / 94 assertions)**
+- Cobre todos os 15 métodos públicos: getBillingInfo, getBillingDetails, getMercadoPagoBillingDetails,
+  getBillingByOrder, getFlexShippingBillingDetails, getBuyerBillingInfo, getPerceptionsSummary,
+  getPerceptionsDetails, getPaymentReport, getPaymentChargesDetail, getFeesBreakdown (PDO mock),
+  getBillingPeriodSummary (aggregation logic)
+
+**3. EanServiceTest.php criado (40 tests / 76 assertions)**
+- 10 testes de validateEan: checksum EAN-13 puro, casos edge (all zeros, gerado programaticamente)
+- checkLowStock: normal / critical / empty
+- processPaymentWebhook: no_payment_id, not_found, non-approved, already_paid via status field
+- storeOperationalAlert: deduplicação temporal, normalização de severidade inválida
+- getOperationalAlerts: filtro por type, severity, limite
+- evaluateOperationalEscalation: nível 0/1/3 e severidade correspondente
+- evaluateOperationalCircuitBreaker: closed→open na threshold, force_close, auto-close por expiração
+- getReconciliationDrift: dados ausentes, cálculo de delta (4-10=-6)
+- getOperationalTimeseriesTrend: empty, projection (round(12.5)=13)
+
+**4. JobService DLQ extendido**
+- Antes: apenas `assistant_action` era marcado como `failed` no DB ao atingir max_attempts
+- Agora: `catalog_clone_batch`/`catalog_clone_item` → UPDATE catalog_clone_jobs SET status='failed'
+- Agora: `bulk_optimize_exec` → UPDATE seo_bulk_jobs SET status='failed', results.dlq_error
+
+**5. PricingIntelligenceController — validação de inputs financeiros**
+- `preco_venda` ≤ 0 ou não-numérico → HTTP 400
+- `desconto_percent` fora de [0,100] → HTTP 400
+- `margem_alvo` fora de [0,100] ou NaN → HTTP 400
+
+---
 ## Sessão 2026-04-04 — Investigação funcional real + bugs corrigidos
 
 ### Bugs corrigidos (produção)

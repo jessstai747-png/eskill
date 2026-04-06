@@ -9,18 +9,17 @@
     "instructions": "Agents: atualize SOMENTE o campo 'passes' e 'last_tested'. NUNCA remova ou edite descrições/steps.",
     "last_audit": {
       "date": "2026-04-04",
-      "conducted_by": "GitHub Copilot (Claude Sonnet 4.6)",
-      "php_syntax_errors": 0,
-      "strict_types_missing_logic_files": 0,
-      "strict_types_missing_views": 56,
-      "security_issues": "NONE - no hardcoded secrets, no SQL injection, escapeshellarg used in exec(), ORDER BY uses allowlist enum",
-      "test_results": "3633 tests (3564 original + 69 novos AdvancedSEOMaximizer), 0 falhas, 36 skips (infra)",
-      "bugs_fixed": [
-        "AIPredictiveAnalyticsService: 7 métodos retornavam dados hardcoded fabricados (preços 170/180/160/140/200, % +15/+25) — agora retornam is_fallback=true com valores null/0. has_fallback_data propagado no predictOptimalPricing()",
-        "AdvancedSEOMaximizer.getRequiredAttributes(): sem try/catch, lançava Error se DB offline — corrigido com catch(\\Throwable)"
+      "tests_added": [
+        "FeeCommissionServiceTest.php (28 tests)",
+        "EanServiceTest.php (40 tests)"
       ],
-      "tests_added": "tests/Unit/Services/AI/SEO/AdvancedSEOMaximizerTest.php — 69 testes cobrindo todos os 16 métodos do FIX-001",
-      "codacy_cli": "Not available in current environment (WSL blocked)"
+      "bugs_fixed": [
+        "JobService DLQ extendido para catalog_clone e bulk_optimize_exec",
+        "PricingIntelligenceController validação de inputs financeiros"
+      ],
+      "env_fixed": [
+        "MOBILE_TOKEN_SECRET adicionado ao .env.testing"
+      ]
     }
   },
   "features": [
@@ -815,6 +814,22 @@
       ],
       "passes": true,
       "last_tested": "2026-03-29"
+    },
+    {
+      "id": "BRAND-003",
+      "category": "brand",
+      "description": "Brand Search — busca genérica de anúncios por marca no ML; async API (start/progress/sellers/items/export); rate limiting PAGE_LIMIT=50, MAX_OFFSET=950, RATE_LIMIT_WAIT=350ms, USERS_BATCH=20; DB persistence; export CSV; dashboard Bootstrap 5; worker CLI; 17 unit tests",
+      "files": [
+        "app/Controllers/BrandSearchController.php",
+        "app/Services/MercadoLivre/BrandSearchService.php",
+        "app/Models/BrandSearchModel.php",
+        "app/Views/brand_search/index.php",
+        "bin/brand-search-worker.php",
+        "app/Routes/api/items.php",
+        "tests/Unit/BrandSearchModelTest.php"
+      ],
+      "passes": true,
+      "last_tested": "2026-04-06"
     },
     {
       "id": "MULTI-001",
