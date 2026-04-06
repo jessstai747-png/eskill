@@ -88,7 +88,9 @@ function processSearch(int $searchId): void
 {
     logMsg('Iniciando execução', 'info', ['search_id' => $searchId]);
     try {
-        $service = new BrandSearchService(null);
+        $search    = (new BrandSearchModel())->getSearch($searchId);
+        $accountId = isset($search['account_id']) ? (int) $search['account_id'] : null;
+        $service   = new BrandSearchService($accountId);
         $service->executeSearch($searchId);
         logMsg('Execução concluída com sucesso', 'info', ['search_id' => $searchId]);
     } catch (\Throwable $e) {
