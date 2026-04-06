@@ -65,6 +65,7 @@ $menuGroups = [
             ['path' => '/dashboard/marketing/promotions', 'icon' => 'bi-percent', 'label' => 'Promoções'],
             ['path' => '/dashboard/competitors', 'icon' => 'bi-binoculars', 'label' => 'Concorrentes'],
             ['path' => '/dashboard/brand-analysis', 'icon' => 'bi-award', 'label' => 'Análise de Marca'],
+            ['path' => '/brand-search', 'icon' => 'bi-search-heart', 'label' => 'Pesquisa de vendedores'],
             ['path' => '/dashboard/awa-sellers', 'icon' => 'bi-shop-window', 'label' => 'AWA Sellers', 'badge' => 'NEW'],
         ]
     ],

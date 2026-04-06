@@ -1,3 +1,12 @@
+=== 2026-04-06 — BRAND-003 Phases 3+4 Complete (100%) ===
+- Phase 3: view app/Views/brand_analysis/brand_search.php (183 lines, spec-compliant, 0 PHP logic inline)
+- Phase 3: JS public/js/brand-search.js (375 lines, vanilla, prefix bsXxx, polling, pagination, filters, toast)
+- Phase 3: sidebar.php — added /brand-search item to MARKETING group
+- Phase 4: Rewrote tests/Unit/Services/BrandSearchServiceTest.php (38 tests, 82 assertions) to match BRAND-003 constants/methods
+- Phase 4: tests/Unit/BrandSearchModelTest.php (17 tests) unchanged — already passing
+- Phase 4: tests/e2e/brand-search.spec.ts — already had mocked tests
+- Full suite: 3993 tests, 0 failures
+
 === 2026-04-06 — BRAND-003 Phase 1 Backend Complete ===
 - Rewrote BrandSearchService.php (347 lines): constants ML_API_BASE, PAGE_LIMIT=50, MAX_OFFSET=950, RATE_LIMIT_WAIT=350, USERS_BATCH=20; public API: initSearch/executeSearch/getSearchProgress/getSearchSellers; all old sync methods removed
 - Rewrote BrandSearchController.php (237 lines): canonical methods start()/progress()/sellers()/items()/export(); HTTP 202 on start, Cache-Control on progress, CSV fputcsv on export

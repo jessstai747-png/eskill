@@ -818,15 +818,20 @@
     {
       "id": "BRAND-003",
       "category": "brand",
-      "description": "Brand Search — busca genérica de anúncios por marca no ML; async API (start/progress/sellers/items/export); rate limiting PAGE_LIMIT=50, MAX_OFFSET=950, RATE_LIMIT_WAIT=350ms, USERS_BATCH=20; DB persistence; export CSV; dashboard Bootstrap 5; worker CLI; 17 unit tests",
+      "description": "Brand Search — busca de anúncios por marca; async API (start/progress/sellers/items/export); worker --search-id/queue/--daemon; view Bootstrap 5; JS vanilla; sidebar item; 38 service tests + 17 model tests; 3993 tests 0 failures",
       "files": [
         "app/Controllers/BrandSearchController.php",
         "app/Services/MercadoLivre/BrandSearchService.php",
         "app/Models/BrandSearchModel.php",
-        "app/Views/brand_search/index.php",
+        "app/Views/brand_analysis/brand_search.php",
+        "public/js/brand-search.js",
         "bin/brand-search-worker.php",
+        "config/supervisor/brand-search-worker.conf",
         "app/Routes/api/items.php",
-        "tests/Unit/BrandSearchModelTest.php"
+        "app/Views/layouts/sidebar.php",
+        "tests/Unit/Services/BrandSearchServiceTest.php",
+        "tests/Unit/BrandSearchModelTest.php",
+        "tests/e2e/brand-search.spec.ts"
       ],
       "passes": true,
       "last_tested": "2026-04-06"
