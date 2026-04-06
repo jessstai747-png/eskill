@@ -144,6 +144,7 @@
             <file>tests/Unit/Services/RealTimeNotificationServiceTest.php</file>
             <file>tests/Unit/Services/ErrorMonitoringServiceTest.php</file>
             <file>tests/Unit/Services/BrandAnalyzerServiceTest.php</file>
+            <file>tests/Unit/Services/BrandSearchServiceTest.php</file>
             <file>tests/Unit/Services/TrendsServiceTest.php</file>
             <file>tests/Unit/Services/ShopeeServiceTest.php</file>
             <file>tests/Unit/Services/AdsServiceTest.php</file>
