@@ -123,7 +123,8 @@ for ($i = 0; $i < count($argv); $i++) {
 }
 
 $suiteNormalized = $requestedSuite !== null ? strtolower(trim($requestedSuite)) : null;
-$isUnitSuite = $suiteNormalized === 'unit';
+// phpunit.xml sets defaultTestSuite="Unit", so no explicit --testsuite means Unit is selected.
+$isUnitSuite = $suiteNormalized === 'unit' || $suiteNormalized === null;
 $isIntegrationSuite = $suiteNormalized === 'integration';
 
 $_ENV['PHPUNIT_REQUESTED_SUITE'] = $requestedSuite !== null ? $requestedSuite : 'All';

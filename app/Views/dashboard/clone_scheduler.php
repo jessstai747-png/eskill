@@ -739,8 +739,3 @@ document.addEventListener('click', e => {
     if (fn) { e.preventDefault(); fn(t.dataset.param || t.dataset.id); }
 });
 </script>
-
-<?php
-$content = ob_get_clean();
-include __DIR__ . '/../layouts/dashboard.php';
-?>

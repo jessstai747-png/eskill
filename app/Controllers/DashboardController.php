@@ -380,27 +380,41 @@ class DashboardController extends BaseController
         }
 
         $input = $this->request->json();
+        if (!is_array($input)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Dados inválidos: esperado objeto JSON']);
+            return;
+        }
+
+        $product = $input['product'] ?? null;
+        if (!is_array($product)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Payload inválido: campo product é obrigatório']);
+            return;
+        }
+
+        $title = trim((string)($product['title'] ?? ''));
+        if ($title === '') {
+            http_response_code(422);
+            echo json_encode(['error' => 'Payload inválido: product.title é obrigatório']);
+            return;
+        }
+
+        if (!isset($input['options']) || !is_array($input['options'])) {
+            $input['options'] = [];
+        }
+        if (isset($input['gap_keywords']) && is_array($input['gap_keywords'])) {
+            $input['options']['gap_keywords'] = array_values(array_filter(
+                array_map(static fn($keyword) => trim((string)$keyword), $input['gap_keywords']),
+                static fn(string $keyword): bool => $keyword !== ''
+            ));
+        } else {
+            $input['options']['gap_keywords'] = [];
+        }
 
         try {
             // Dispatch Job
             $jobService = new \App\Services\JobService();
-
-            // Extract Gap Keywords for Context
-            $gapKeywords = $input['gap_keywords'] ?? [];
-            if (!isset($input['options']) || !is_array($input['options'])) {
-                $input['options'] = [];
-            }
-            $input['options']['gap_keywords'] = $gapKeywords;
-
-            // Simplify payload for job
-            $currentUser = $this->userService->getCurrentUser();
-            $promptData = [
-                'prompt' => "Generate description for " . ($input['product']['title'] ?? 'Product'),
-                'system' => "Neuro-marketing Expert",
-                'complexity' => 'advanced',
-                'context' => $input,
-                'user_id' => $currentUser['id'] ?? null
-            ];
 
             // NOTE: Ideally we should use AIContentGeneratorService to build the prompt string here
             // OR move the entire logic to the job. For now, let's keep it simple:
@@ -420,7 +434,7 @@ class DashboardController extends BaseController
             // I need to update frontend NEXT.
 
             // Implementation:
-            $prompt = "Gere uma descrição para: " . ($input['product']['title'] ?? 'Item');
+            $prompt = "Gere uma descrição para: " . mb_substr($title, 0, 120);
 
             $jobId = $jobService->dispatch('ai_generation', [
                 'prompt' => $prompt, // This is a simplification. Real implementation needs the complex prompt builder.
@@ -564,16 +578,38 @@ class DashboardController extends BaseController
         }
 
         $input = $this->request->json();
-        if (!$input) {
+        if (!is_array($input)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Dados inválidos']);
+            echo json_encode(['error' => 'Dados inválidos: esperado objeto JSON']);
             return;
         }
 
-        $userId = $this->userService->getCurrentUser()['id'];
-        $success = $this->userService->saveDashboardPreferences($userId, $input);
+        $validationError = null;
+        $normalized = $this->sanitizeDashboardPreferences($input, $validationError);
+        if ($normalized === null) {
+            http_response_code(422);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Preferências inválidas',
+                'details' => $validationError ?? 'Formato não suportado',
+            ]);
+            return;
+        }
 
-        echo json_encode(['success' => $success]);
+        $currentUser = $this->userService->getCurrentUser();
+        $userId = (int)($currentUser['id'] ?? 0);
+        if ($userId <= 0) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Não autorizado']);
+            return;
+        }
+
+        $success = $this->userService->saveDashboardPreferences($userId, $normalized);
+
+        echo json_encode([
+            'success' => $success,
+            'preferences' => $normalized,
+        ]);
     }
 
     /**
@@ -596,11 +632,96 @@ class DashboardController extends BaseController
     }
 
     /**
+     * Sanitiza preferências do dashboard com limites de estrutura/tamanho.
+     * Mantém schema flexível, mas bloqueia payloads arbitrários complexos.
+     *
+     * @param array<string,mixed> $input
+     * @param string|null $error
+     * @return array<string,mixed>|null
+     */
+    private function sanitizeDashboardPreferences(array $input, ?string &$error = null): ?array
+    {
+        if (count($input) > 40) {
+            $error = 'Quantidade de campos excede o limite permitido';
+            return null;
+        }
+
+        $normalized = [];
+        foreach ($input as $key => $value) {
+            if (!is_string($key) || !preg_match('/^[a-zA-Z0-9_.-]{1,64}$/', $key)) {
+                $error = 'Campo de preferência inválido';
+                return null;
+            }
+
+            $sanitizedValue = $this->sanitizePreferenceValue($value, 0, $error);
+            if ($error !== null) {
+                return null;
+            }
+            $normalized[$key] = $sanitizedValue;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param mixed $value
+     * @param int $depth
+     * @param string|null $error
+     * @return mixed
+     */
+    private function sanitizePreferenceValue($value, int $depth, ?string &$error = null)
+    {
+        if ($depth > 2) {
+            $error = 'Estrutura muito profunda em preferências';
+            return null;
+        }
+
+        if (is_null($value) || is_bool($value) || is_int($value) || is_float($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            return mb_substr($value, 0, 255);
+        }
+
+        if (!is_array($value)) {
+            $error = 'Tipo de valor não suportado em preferências';
+            return null;
+        }
+
+        if (count($value) > 50) {
+            $error = 'Coleção de preferências excede o limite permitido';
+            return null;
+        }
+
+        $isList = array_keys($value) === range(0, count($value) - 1);
+        $result = [];
+        foreach ($value as $itemKey => $itemValue) {
+            if (!$isList) {
+                if (!is_string($itemKey) || !preg_match('/^[a-zA-Z0-9_.-]{1,64}$/', $itemKey)) {
+                    $error = 'Chave aninhada inválida em preferências';
+                    return null;
+                }
+            }
+
+            $sanitizedChild = $this->sanitizePreferenceValue($itemValue, $depth + 1, $error);
+            if ($error !== null) {
+                return null;
+            }
+            $result[$itemKey] = $sanitizedChild;
+        }
+
+        return $result;
+    }
+
+    /**
      * Troca a conta ML ativa do usuário
      * POST /api/dashboard/switch-account
      */
     public function switchAccount(): void
     {
+        header('Content-Type: application/json');
+
         if (!$this->userService->isAuthenticated()) {
             http_response_code(401);
             echo json_encode(['success' => false, 'error' => 'Não autorizado']);
@@ -608,22 +729,27 @@ class DashboardController extends BaseController
         }
 
         $input = $this->request->json();
-        $accountId = $input['account_id'] ?? null;
+        if (!is_array($input)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Dados inválidos: esperado objeto JSON']);
+            return;
+        }
 
-        if (!$accountId) {
+        $accountId = isset($input['account_id']) ? (int)$input['account_id'] : 0;
+
+        if ($accountId <= 0) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'account_id é obrigatório']);
             return;
         }
 
         // Verifica se a conta pertence ao usuário antes de trocar
-        $this->userService->setActiveAccountId((int)$accountId);
+        $this->userService->setActiveAccountId($accountId);
 
         // Verificar se a troca foi bem-sucedida
         $newActiveId = $this->userService->getActiveAccountId();
-        $success = ($newActiveId == $accountId);
+        $success = ($newActiveId === $accountId);
 
-        header('Content-Type: application/json');
         echo json_encode([
             'success' => $success,
             'active_account_id' => $newActiveId,

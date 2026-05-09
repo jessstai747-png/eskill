@@ -1,376 +1,386 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App\Services;
 
-use Psr\Log\LoggerInterface;
+use DateTimeInterface;
+use Psr\Log\AbstractLogger;
 use Psr\Log\LogLevel;
+use Stringable;
 
 /**
- * Logger Service - Implementação PSR-3 compatível
- * 
- * Features:
- * - Níveis de log PSR-3 (emergency, alert, critical, error, warning, notice, info, debug)
- * - Contexto estruturado
- * - Rotação automática de arquivos
- * - Formatação JSON para processamento por ELK/Grafana
- * - Suporte a múltiplos canais (file, stderr, syslog)
+ * Lightweight PSR-3 logger used by the legacy facade and unit tests.
+ *
+ * It writes one daily file per channel and mirrors error-level events to a
+ * shared error file. The implementation stays intentionally small so it can
+ * operate even when the richer structured logger is unavailable.
  */
-class LoggerService implements LoggerInterface
+class LoggerService extends AbstractLogger
 {
-    private string $channel;
-    private string $logPath;
-    private string $minLevel;
-    private bool $jsonFormat;
-    private int $maxFileSize;
-    private int $maxFiles;
-
     /**
-     * Níveis de log em ordem de severidade
+     * Severity order used to filter entries below the configured minimum level.
+     *
+     * @var array<string,int>
      */
-    private const LEVELS = [
-        LogLevel::EMERGENCY => 0,
-        LogLevel::ALERT     => 1,
-        LogLevel::CRITICAL  => 2,
-        LogLevel::ERROR     => 3,
-        LogLevel::WARNING   => 4,
-        LogLevel::NOTICE    => 5,
-        LogLevel::INFO      => 6,
-        LogLevel::DEBUG     => 7,
+    private const LEVEL_PRIORITY = [
+        LogLevel::DEBUG => 100,
+        LogLevel::INFO => 200,
+        LogLevel::NOTICE => 250,
+        LogLevel::WARNING => 300,
+        LogLevel::ERROR => 400,
+        LogLevel::CRITICAL => 500,
+        LogLevel::ALERT => 550,
+        LogLevel::EMERGENCY => 600,
     ];
 
+    private string $channel;
+    private string $logDirectory;
+    private string $minLevel;
+    private bool $jsonFormat;
+
+    /**
+     * Builds a logger instance for a given channel.
+     *
+     * @param string      $channel    Logical channel name, such as `app` or `api`.
+     * @param string|null $logPath    Directory path or `.log` file path used as base.
+     * @param string      $minLevel   Minimum PSR-3 level accepted by this logger.
+     * @param bool        $jsonFormat When true, each line is written as JSON.
+     */
     public function __construct(
         string $channel = 'app',
         ?string $logPath = null,
         string $minLevel = LogLevel::DEBUG,
         bool $jsonFormat = false
     ) {
-        $this->channel = $channel;
-        $this->logPath = $logPath ?? __DIR__ . '/../../storage/logs';
-        $this->minLevel = $minLevel;
+        $this->channel = $this->sanitizeChannel($channel);
+        $this->logDirectory = $this->resolveLogDirectory($logPath);
+        $this->minLevel = $this->normalizeLevel($minLevel);
         $this->jsonFormat = $jsonFormat;
-        $this->maxFileSize = 10 * 1024 * 1024; // 10MB
-        $this->maxFiles = 7;
 
-        // Garantir diretório existe
-        if (!is_dir($this->logPath)) {
-            mkdir($this->logPath, 0755, true);
-        }
+        $this->ensureDirectoryExists($this->logDirectory);
     }
 
     /**
-     * System is unusable.
-     */
-    public function emergency(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::EMERGENCY, $message, $context);
-    }
-
-    /**
-     * Action must be taken immediately.
-     */
-    public function alert(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::ALERT, $message, $context);
-    }
-
-    /**
-     * Critical conditions.
-     */
-    public function critical(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::CRITICAL, $message, $context);
-    }
-
-    /**
-     * Runtime errors that do not require immediate action.
-     */
-    public function error(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::ERROR, $message, $context);
-    }
-
-    /**
-     * Exceptional occurrences that are not errors.
-     */
-    public function warning(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::WARNING, $message, $context);
-    }
-
-    /**
-     * Normal but significant events.
-     */
-    public function notice(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::NOTICE, $message, $context);
-    }
-
-    /**
-     * Interesting events.
-     */
-    public function info(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::INFO, $message, $context);
-    }
-
-    /**
-     * Detailed debug information.
-     */
-    public function debug(string|\Stringable $message, array $context = []): void
-    {
-        $this->log(LogLevel::DEBUG, $message, $context);
-    }
-
-    /**
-     * Logs with an arbitrary level.
-     */
-    public function log($level, string|\Stringable $message, array $context = []): void
-    {
-        // Verificar nível mínimo
-        if (!$this->shouldLog($level)) {
-            return;
-        }
-
-        // Interpolar contexto na mensagem
-        $message = $this->interpolate((string) $message, $context);
-
-        // Adicionar informações extras ao contexto
-        $context = $this->enrichContext($context);
-
-        // Formatar e escrever
-        $formatted = $this->format($level, $message, $context);
-        $this->write($formatted, $level);
-    }
-
-    /**
-     * Verifica se deve logar baseado no nível mínimo
-     */
-    private function shouldLog(string $level): bool
-    {
-        return self::LEVELS[$level] <= self::LEVELS[$this->minLevel];
-    }
-
-    /**
-     * Interpola variáveis {key} na mensagem com valores do contexto
-     */
-    private function interpolate(string $message, array $context): string
-    {
-        $replace = [];
-
-        foreach ($context as $key => $val) {
-            if (is_string($val) || is_numeric($val) || (is_object($val) && method_exists($val, '__toString'))) {
-                $replace['{' . $key . '}'] = (string) $val;
-            } elseif ($val instanceof \DateTimeInterface) {
-                $replace['{' . $key . '}'] = $val->format('Y-m-d H:i:s');
-            } elseif (is_bool($val)) {
-                $replace['{' . $key . '}'] = $val ? 'true' : 'false';
-            }
-        }
-
-        return strtr($message, $replace);
-    }
-
-    /**
-     * Enriquece contexto com informações úteis
-     */
-    private function enrichContext(array $context): array
-    {
-        // Adicionar exception se presente
-        if (isset($context['exception']) && $context['exception'] instanceof \Throwable) {
-            $e = $context['exception'];
-            $context['exception'] = [
-                'class' => get_class($e),
-                'message' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $this->formatTrace($e->getTraceAsString()),
-            ];
-        }
-
-        // Adicionar request info se disponível
-        if (!isset($context['request']) && PHP_SAPI !== 'cli') {
-            $context['request'] = [
-                'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
-                'uri' => $_SERVER['REQUEST_URI'] ?? '',
-                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-                'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200),
-            ];
-        }
-
-        // User ID se disponível
-        if (!isset($context['user_id']) && isset($_SESSION['user_id'])) {
-            $context['user_id'] = $_SESSION['user_id'];
-        }
-
-        return $context;
-    }
-
-    /**
-     * Formata stack trace para ser mais legível
-     */
-    private function formatTrace(string $trace): array
-    {
-        $lines = explode("\n", $trace);
-        return array_slice($lines, 0, 10); // Limitar a 10 frames
-    }
-
-    /**
-     * Formata a entrada de log
-     */
-    private function format(string $level, string $message, array $context): string
-    {
-        $timestamp = date('Y-m-d H:i:s.u');
-
-        if ($this->jsonFormat) {
-            $entry = [
-                '@timestamp' => $timestamp,
-                'level' => strtoupper($level),
-                'channel' => $this->channel,
-                'message' => $message,
-                'context' => $context,
-            ];
-
-            return json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
-        }
-
-        // Formato legível
-        $levelUpper = strtoupper($level);
-        $contextStr = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
-
-        return "[{$timestamp}] {$this->channel}.{$levelUpper}: {$message}{$contextStr}" . PHP_EOL;
-    }
-
-    /**
-     * Escreve no arquivo de log
-     */
-    private function write(string $formatted, string $level): void
-    {
-        $filename = $this->getLogFilename($level);
-        $filepath = $this->logPath . '/' . $filename;
-
-        // Garantir que o diretório existe
-        if (!is_dir($this->logPath)) {
-            @mkdir($this->logPath, 0775, true);
-        }
-
-        // Rotacionar se necessário
-        $this->rotateIfNeeded($filepath);
-
-        // Escrever (silenciar erros de permissão)
-        @file_put_contents($filepath, $formatted, FILE_APPEND | LOCK_EX);
-
-        // Se erro crítico, também escrever em stderr
-        if (in_array($level, [LogLevel::EMERGENCY, LogLevel::ALERT, LogLevel::CRITICAL])) {
-            fwrite(STDERR, $formatted);
-        }
-    }
-
-    /**
-     * Gera nome do arquivo de log
-     */
-    private function getLogFilename(string $level): string
-    {
-        $date = date('Y-m-d');
-
-        // Logs críticos em arquivo separado
-        if (in_array($level, [LogLevel::EMERGENCY, LogLevel::ALERT, LogLevel::CRITICAL, LogLevel::ERROR])) {
-            return "error-{$date}.log";
-        }
-
-        return "{$this->channel}-{$date}.log";
-    }
-
-    /**
-     * Rotaciona arquivo se muito grande
-     */
-    private function rotateIfNeeded(string $filepath): void
-    {
-        if (!file_exists($filepath)) {
-            return;
-        }
-
-        if (filesize($filepath) < $this->maxFileSize) {
-            return;
-        }
-
-        // Rotacionar: arquivo.log -> arquivo.log.1, arquivo.log.1 -> arquivo.log.2, etc
-        for ($i = $this->maxFiles - 1; $i >= 1; $i--) {
-            $old = "{$filepath}.{$i}";
-            $new = "{$filepath}." . ($i + 1);
-
-            if (file_exists($old)) {
-                if ($i === $this->maxFiles - 1) {
-                    unlink($old); // Remover mais antigo
-                } else {
-                    rename($old, $new);
-                }
-            }
-        }
-
-        rename($filepath, "{$filepath}.1");
-    }
-
-    /**
-     * Cria logger para canal específico
+     * Creates a logger for the provided channel using the configured log path.
      */
     public static function channel(string $channel): self
     {
-        $config = \App\Core\Config::getInstance()->all();
-        $minLevel = $config['log']['level'] ?? LogLevel::DEBUG;
-        $jsonFormat = ($config['env'] ?? 'development') === 'production';
+        $configuredPath = getenv('LOG_PATH');
+        $logPath = is_string($configuredPath) && $configuredPath !== ''
+            ? $configuredPath
+            : null;
+        $minLevel = (string) (getenv('LOG_LEVEL') ?: LogLevel::DEBUG);
 
-        return new self($channel, null, $minLevel, $jsonFormat);
+        return new self($channel, $logPath, $minLevel, false);
     }
 
     /**
-     * Helper para logar API requests
+     * Writes a PSR-3 log entry when it matches the minimum configured level.
+     *
+     * @param string|Stringable $level
+     * @param string|Stringable $message
+     * @param array<string,mixed> $context
      */
-    public function logApiRequest(string $method, string $endpoint, array $params = [], ?array $response = null, ?float $duration = null): void
+    public function log($level, $message, array $context = []): void
     {
-        $this->info('API Request: {method} {endpoint}', [
-            'method' => $method,
+        $normalizedLevel = $this->normalizeLevel((string) $level);
+        if (!$this->shouldLog($normalizedLevel)) {
+            return;
+        }
+
+        $timestamp = date('Y-m-d H:i:s');
+        $renderedMessage = $this->interpolate((string) $message, $context);
+        $normalizedContext = $this->normalizeContext($context);
+        $line = $this->formatLine($timestamp, $normalizedLevel, $renderedMessage, $normalizedContext);
+
+        $this->appendLine($this->channelFilePath(), $line);
+
+        if ($this->shouldMirrorToErrorFile($normalizedLevel)) {
+            $this->appendLine($this->errorFilePath(), $line);
+        }
+    }
+
+    /**
+     * Records a summarized API call with optional response metadata.
+     *
+     * @param array<string,mixed>      $params
+     * @param array<string,mixed>|null $response
+     */
+    public function logApiRequest(
+        string $method,
+        string $endpoint,
+        array $params = [],
+        ?array $response = null,
+        ?float $duration = null
+    ): void {
+        $context = [
+            'method' => strtoupper($method),
             'endpoint' => $endpoint,
             'params' => $params,
-            'response_status' => $response['status'] ?? null,
-            'duration_ms' => $duration ? round($duration * 1000, 2) : null,
-        ]);
+            'response' => $response,
+            'duration_ms' => $duration !== null ? round($duration * 1000, 2) : null,
+        ];
+
+        $this->info('API Request', $context);
     }
 
     /**
-     * Helper para logar erros de API
-     */
-    public function logApiError(string $method, string $endpoint, \Throwable $e, array $params = []): void
-    {
-        $this->error('API Error: {method} {endpoint} - {error}', [
-            'method' => $method,
-            'endpoint' => $endpoint,
-            'error' => $e->getMessage(),
-            'params' => $params,
-            'exception' => $e,
-        ]);
-    }
-
-    /**
-     * Helper para logar ações de usuário
+     * Records a relevant user action in the current channel.
+     *
+     * @param array<string,mixed> $details
      */
     public function logUserAction(string $action, array $details = []): void
     {
-        $this->info('User Action: {action}', array_merge([
+        $this->info('User Action', [
             'action' => $action,
-        ], $details));
+            'details' => $details,
+        ]);
     }
 
     /**
-     * Helper para logar métricas de performance
+     * Records a measured operation with execution time metadata.
+     *
+     * @param array<string,mixed> $metadata
      */
     public function logPerformance(string $operation, float $duration, array $metadata = []): void
     {
-        $this->debug('Performance: {operation} completed in {duration}ms', array_merge([
+        $this->info('Performance', [
             'operation' => $operation,
-            'duration' => round($duration * 1000, 2),
-        ], $metadata));
+            'duration_ms' => round($duration * 1000, 2),
+            'metadata' => $metadata,
+        ]);
+    }
+
+    /**
+     * Returns the current channel name.
+     */
+    public function getChannel(): string
+    {
+        return $this->channel;
+    }
+
+    /**
+     * Returns the directory where the logger stores files.
+     */
+    public function getLogDirectory(): string
+    {
+        return $this->logDirectory;
+    }
+
+    /**
+     * Resolves the file path for the current channel and day.
+     */
+    private function channelFilePath(): string
+    {
+        return $this->logDirectory . DIRECTORY_SEPARATOR . $this->channel . '-' . date('Y-m-d') . '.log';
+    }
+
+    /**
+     * Resolves the shared error file path for the current day.
+     */
+    private function errorFilePath(): string
+    {
+        return $this->logDirectory . DIRECTORY_SEPARATOR . 'error-' . date('Y-m-d') . '.log';
+    }
+
+    /**
+     * Converts a log path or file path into a directory path.
+     */
+    private function resolveLogDirectory(?string $logPath): string
+    {
+        $fallback = dirname(__DIR__, 2) . '/storage/logs';
+        if ($logPath === null || trim($logPath) === '') {
+            return $fallback;
+        }
+
+        $trimmed = rtrim(trim($logPath), DIRECTORY_SEPARATOR);
+        if (str_ends_with(strtolower($trimmed), '.log')) {
+            return dirname($trimmed);
+        }
+
+        return $trimmed;
+    }
+
+    /**
+     * Creates the log directory when it does not exist yet.
+     */
+    private function ensureDirectoryExists(string $directory): void
+    {
+        if (is_dir($directory)) {
+            return;
+        }
+
+        if (!@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new \RuntimeException('Nao foi possivel criar o diretorio de logs: ' . $directory);
+        }
+    }
+
+    /**
+     * Keeps channel names filesystem-safe and readable.
+     */
+    private function sanitizeChannel(string $channel): string
+    {
+        $sanitized = preg_replace('/[^a-zA-Z0-9_-]+/', '-', trim($channel));
+        return $sanitized !== '' ? strtolower($sanitized) : 'app';
+    }
+
+    /**
+     * Normalizes a level to a known PSR-3 constant.
+     */
+    private function normalizeLevel(string $level): string
+    {
+        $normalized = strtolower(trim($level));
+        return isset(self::LEVEL_PRIORITY[$normalized]) ? $normalized : LogLevel::DEBUG;
+    }
+
+    /**
+     * Decides whether the current entry meets the minimum configured level.
+     */
+    private function shouldLog(string $level): bool
+    {
+        return self::LEVEL_PRIORITY[$level] >= self::LEVEL_PRIORITY[$this->minLevel];
+    }
+
+    /**
+     * Mirrors severe entries to the shared error file.
+     */
+    private function shouldMirrorToErrorFile(string $level): bool
+    {
+        return self::LEVEL_PRIORITY[$level] >= self::LEVEL_PRIORITY[LogLevel::ERROR];
+    }
+
+    /**
+     * Replaces `{placeholder}` tokens using normalized context values.
+     *
+     * @param array<string,mixed> $context
+     */
+    private function interpolate(string $message, array $context): string
+    {
+        $replacements = [];
+        foreach ($context as $key => $value) {
+            if (!is_scalar($value) && !$value instanceof Stringable && !$value instanceof DateTimeInterface) {
+                continue;
+            }
+            $replacements['{' . $key . '}'] = $this->stringifyValue($value);
+        }
+
+        return strtr($message, $replacements);
+    }
+
+    /**
+     * Converts context values into log-safe scalars and arrays.
+     *
+     * @param array<string,mixed> $context
+     * @return array<string,mixed>
+     */
+    private function normalizeContext(array $context): array
+    {
+        $normalized = [];
+        foreach ($context as $key => $value) {
+            if ($value instanceof \Throwable) {
+                $normalized[$key] = [
+                    'class' => get_class($value),
+                    'message' => $value->getMessage(),
+                    'code' => $value->getCode(),
+                    'file' => $value->getFile(),
+                    'line' => $value->getLine(),
+                ];
+                continue;
+            }
+
+            if ($value instanceof DateTimeInterface) {
+                $normalized[$key] = $value->format('Y-m-d H:i:s');
+                continue;
+            }
+
+            if ($value instanceof Stringable) {
+                $normalized[$key] = (string) $value;
+                continue;
+            }
+
+            if (is_array($value)) {
+                $normalized[$key] = $this->normalizeContext($value);
+                continue;
+            }
+
+            if (is_bool($value)) {
+                $normalized[$key] = $value ? 'true' : 'false';
+                continue;
+            }
+
+            $normalized[$key] = $value;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Produces the final line stored in the log file.
+     *
+     * @param array<string,mixed> $context
+     */
+    private function formatLine(string $timestamp, string $level, string $message, array $context): string
+    {
+        if ($this->jsonFormat) {
+            return json_encode([
+                'timestamp' => $timestamp,
+                'channel' => $this->channel,
+                'level' => strtoupper($level),
+                'message' => $message,
+                'context' => $context,
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
+        }
+
+        $line = sprintf(
+            '[%s] %s.%s: %s',
+            $timestamp,
+            $this->channel,
+            strtoupper($level),
+            $message
+        );
+
+        if ($context !== []) {
+            $line .= ' ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+
+        return $line . PHP_EOL;
+    }
+
+    /**
+     * Appends a line to a file and keeps permissions constrained.
+     */
+    private function appendLine(string $filePath, string $line): void
+    {
+        if (@file_put_contents($filePath, $line, FILE_APPEND | LOCK_EX) === false) {
+            throw new \RuntimeException('Nao foi possivel escrever no arquivo de log: ' . $filePath);
+        }
+
+        @chmod($filePath, 0640);
+    }
+
+    /**
+     * Converts a scalar-like value to a readable string representation.
+     *
+     * @param mixed $value
+     */
+    private function stringifyValue($value): string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+
+        if ($value instanceof Stringable) {
+            return (string) $value;
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_scalar($value) || $value === null) {
+            return (string) $value;
+        }
+
+        return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '[unserializable]';
     }
 }

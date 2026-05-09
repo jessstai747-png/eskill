@@ -108,7 +108,7 @@ class ProductProfitabilityService
                     COUNT(*) as orders
                 FROM ml_orders
                 WHERE {$whereSql}
-                GROUP BY category_id
+                GROUP BY JSON_UNQUOTE(JSON_EXTRACT(order_data, '$.order_items[0].item.category_id'))
                 HAVING category_id IS NOT NULL
                 ORDER BY revenue DESC
                 LIMIT 20";

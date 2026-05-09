@@ -103,7 +103,7 @@ class AuthController extends BaseController
             $_SESSION['user_id'] = $result['user']['id'];
             $_SESSION['user_name'] = $result['user']['name'];
             $_SESSION['user_email'] = $result['user']['email'];
-            $_SESSION['user_role'] = $result['user']['role'] ?? 'admin';
+            $_SESSION['user_role'] = $this->normalizeUserRole($result['user']['role'] ?? null);
 
             // Log de segurança
             Log::security('User login successful', [
@@ -254,6 +254,13 @@ class AuthController extends BaseController
      */
     public function logout(): void
     {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            // Harden logout against CSRF by only allowing POST side-effects.
+            $_SESSION['warning'] = 'Use o botão de logout para encerrar a sessão com segurança.';
+            header('Location: /login');
+            exit;
+        }
+
         $userId = $_SESSION['user_id'] ?? null;
 
         // Registrar atividade antes de fazer logout
@@ -712,7 +719,7 @@ class AuthController extends BaseController
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_email'] = $user['email'];
-            $_SESSION['user_role'] = $user['role'] ?? 'admin';
+            $_SESSION['user_role'] = $this->normalizeUserRole($user['role'] ?? null);
 
             unset($_SESSION['2fa_user_id']);
 
@@ -1094,21 +1101,36 @@ class AuthController extends BaseController
         $input = $this->request->json();
         $email = $input['email'] ?? '';
         $password = $input['password'] ?? '';
-        $deviceName = $input['device_name'] ?? 'Mobile Device';
+        $deviceName = trim((string)($input['device_name'] ?? 'Mobile Device'));
 
         $result = $this->userService->login($email, $password);
 
+        if (($result['require_2fa'] ?? false) === true) {
+            $this->json([
+                'success' => false,
+                'error' => 'Autenticação de dois fatores necessária',
+                'code' => '2FA_REQUIRED',
+            ], 403);
+            return;
+        }
+
         if ($result['success']) {
             $user = $result['user'];
+            $safeDeviceName = $deviceName !== '' ? $deviceName : 'Mobile Device';
+            $tokenTtlDays = (int)($_ENV['MOBILE_API_TOKEN_TTL_DAYS'] ?? 30);
+            if ($tokenTtlDays < 1) {
+                $tokenTtlDays = 1;
+            } elseif ($tokenTtlDays > 90) {
+                $tokenTtlDays = 90;
+            }
 
-            // Check 2FA? For now, standard login.
-            // Generate API Token
+            // Mobile token with restricted scope and short expiration window.
             $tokenService = new \App\Services\ApiTokenService();
             $tokenData = $tokenService->createToken(
                 $user['id'],
-                "Mobile App - " . substr($deviceName, 0, 50),
-                ['*'], // Full scope for now
-                365 // 1 year expiration
+                "Mobile App - " . substr($safeDeviceName, 0, 50),
+                ['mobile'],
+                $tokenTtlDays
             );
 
             // Log activity
@@ -1131,7 +1153,7 @@ class AuthController extends BaseController
                     'id' => $user['id'],
                     'name' => $user['name'],
                     'email' => $user['email'],
-                    'role' => $user['role']
+                    'role' => $this->normalizeUserRole($user['role'] ?? null)
                 ]
             ]);
         } else {
@@ -1364,5 +1386,13 @@ class AuthController extends BaseController
             sprintf("[%s] %s %s %s\n", date('c'), strtoupper($level), $message, $encoded),
             FILE_APPEND
         );
+    }
+
+    private function normalizeUserRole(?string $role): string
+    {
+        $normalizedRole = strtolower(trim((string)$role));
+        $allowedRoles = ['admin', 'manager', 'user', 'viewer'];
+
+        return in_array($normalizedRole, $allowedRoles, true) ? $normalizedRole : 'user';
     }
 }

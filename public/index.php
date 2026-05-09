@@ -184,7 +184,7 @@ if (
     empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) ||
     (time() - $_SESSION['csrf_token_time']) > 3600
 ) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['csrf_token'] = bin2hex(\random_bytes(32));
     $_SESSION['csrf_token_time'] = time();
 }
 
@@ -192,7 +192,7 @@ if (
 // Use standard base64 (RFC 4648) for broad CSP parser compatibility across browsers.
 // A PHP constant is used so the nonce is accessible from any scope (class methods,
 // included files, etc.) without $GLOBALS or session lookups.
-$cspNonce = base64_encode(random_bytes(16));
+$cspNonce = base64_encode(\random_bytes(16));
 define('CSP_NONCE', $cspNonce);
 $_SESSION['csp_nonce'] = $cspNonce;
 $GLOBALS['cspNonce'] = $cspNonce;
@@ -254,8 +254,29 @@ $hasSessionAuth = !empty($_SESSION['account_id']) || !empty($_SESSION['user_id']
 // CORS for external API integrations (OpenClaw, etc.)
 $isOpenClawApi = strpos($path, '/api/openclaw/') === 0 || $path === '/api/openclaw';
 if ($isOpenClawApi) {
-    $allowedOrigin = $_ENV['OPENCLAW_CORS_ORIGIN'] ?? '*';
-    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+    $requestOrigin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+    $configuredOrigins = trim((string)($_ENV['OPENCLAW_CORS_ORIGIN'] ?? ''));
+    $allowedOrigins = array_values(array_filter(array_map('trim', explode(',', $configuredOrigins))));
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $sameOrigin = $host !== '' ? ($scheme . '://' . $host) : '';
+    $isAllowedOrigin = $requestOrigin !== ''
+        && ($requestOrigin === $sameOrigin || in_array($requestOrigin, $allowedOrigins, true));
+
+    if ($requestOrigin !== '' && !$isAllowedOrigin) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'error' => 'Forbidden',
+            'message' => 'Origin not allowed for this resource.'
+        ]);
+        exit;
+    }
+
+    if ($isAllowedOrigin) {
+        header('Access-Control-Allow-Origin: ' . $requestOrigin);
+        header('Vary: Origin');
+    }
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Authorization, Content-Type, Idempotency-Key, X-ML-Account-Id');
     header('Access-Control-Max-Age: 86400');
@@ -362,11 +383,13 @@ if ($isApi) {
 
             if ($authHeader && preg_match('/Bearer\s+(.+)/i', $authHeader, $matches)) {
                 require_once APP_PATH . '/Middleware/ApiAuthMiddleware.php';
+                $requiredScopes = (new \App\Security\ApiRouteScopeResolver())
+                    ->resolveRequiredScopes($_SERVER['REQUEST_METHOD'], $path);
                 $apiAuth = new App\Middleware\ApiAuthMiddleware();
                 // Validate token before dispatching protected API route.
                 $apiAuth->handle(function () use (&$hasTokenAuth): void {
                     $hasTokenAuth = true;
-                });
+                }, $requiredScopes);
             }
 
             if (!$hasTokenAuth) {

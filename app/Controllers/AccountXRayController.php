@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Request;
 use App\Services\AccountXRayService;
 use App\Services\AccountRecoveryApplierService;
 use App\Services\UserService;
-use App\Services\MercadoLivreClient;
 use App\Database;
 use PDO;
 
@@ -26,12 +24,10 @@ use PDO;
 class AccountXRayController
 {
     private UserService $userService;
-    private Request $request;
 
     public function __construct()
     {
         $this->userService = new UserService();
-        $this->request     = new Request();
     }
 
     // ─────────────────────────────────────────────────────────
@@ -138,12 +134,7 @@ class AccountXRayController
                 return;
             }
 
-            $options = [
-                'max_items'         => min((int) ($input['max_items'] ?? 200), 500),
-                'include_paused'    => (bool) ($input['include_paused'] ?? true),
-                'deep_seo'          => (bool) ($input['deep_seo'] ?? false),
-                'include_financial' => (bool) ($input['include_financial'] ?? true),
-            ];
+            $options = $this->sanitizeQueueOptions($input);
 
             $service = new AccountXRayService($accountId);
             $result  = $service->run($options);
@@ -276,22 +267,26 @@ class AccountXRayController
                 return;
             }
 
-            $sort  = in_array($_GET['sort'] ?? '', ['seo_score', 'score_overall', 'classification', 'visits_30d'], true)
-                ? ($_GET['sort'] ?? 'seo_score') : 'seo_score';
-            $order = ($_GET['order'] ?? 'asc') === 'desc' ? 'DESC' : 'ASC';
-            $cls   = $_GET['classification'] ?? null;
+            $allowedSorts = [
+                'seo_score' => 'seo_score',
+                'score_overall' => 'score_overall',
+                'classification' => 'classification',
+                'visits_30d' => 'visits_30d',
+            ];
+            $sortKey = (string) ($_GET['sort'] ?? 'seo_score');
+            $sortColumn = $allowedSorts[$sortKey] ?? 'seo_score';
+            $order = strtolower((string) ($_GET['order'] ?? 'asc')) === 'desc' ? 'DESC' : 'ASC';
+            $classification = trim((string) ($_GET['classification'] ?? ''));
 
-            $where = 'report_id = :rid';
+            $sql = "SELECT * FROM xray_item_scores WHERE report_id = :rid";
             $params = ['rid' => $reportId];
-
-            if ($cls !== null) {
-                $where .= ' AND classification = :cls';
-                $params['cls'] = $cls;
+            if ($classification !== '') {
+                $sql .= " AND classification = :cls";
+                $params['cls'] = mb_substr($classification, 0, 32);
             }
+            $sql .= " ORDER BY {$sortColumn} {$order} LIMIT 200";
 
-            $stmt2 = $db->prepare(
-                "SELECT * FROM xray_item_scores WHERE {$where} ORDER BY {$sort} {$order} LIMIT 200"
-            );
+            $stmt2 = $db->prepare($sql);
             $stmt2->execute($params);
             $items = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
@@ -420,7 +415,7 @@ class AccountXRayController
 
         $body       = $this->jsonInput();
         $dryRun     = (bool) ($body['dry_run'] ?? true);
-        $onlyActions= array_filter((array) ($body['only_actions'] ?? []), 'is_string');
+        $onlyActions = array_filter((array) ($body['only_actions'] ?? []), 'is_string');
 
         try {
             $applier = new AccountRecoveryApplierService();
@@ -496,25 +491,31 @@ class AccountXRayController
                 return;
             }
 
+            $rawOptions = $body['options'] ?? [];
+            if (!is_array($rawOptions)) {
+                $rawOptions = [];
+            }
+            $safeOptions = $this->sanitizeQueueOptions($rawOptions);
+            $safeOptionsJson = json_encode($safeOptions, JSON_UNESCAPED_UNICODE);
+            if ($safeOptionsJson === false) {
+                $safeOptionsJson = '{}';
+            }
+
             $ins = $db->prepare(
                 "INSERT INTO xray_job_queue (account_id, status, options_json) VALUES (:aid, 'queued', :opts)"
             );
             $ins->execute([
                 'aid'  => $accountId,
-                'opts' => json_encode($body['options'] ?? (object)[]),
+                'opts' => $safeOptionsJson,
             ]);
             $jobId = (int) $db->lastInsertId();
-
-            // Lançar worker em background
-            $workerPath = dirname(__DIR__, 2) . '/bin/xray-worker.php';
-            $logPath    = dirname(__DIR__, 2) . '/storage/logs/xray-worker.log';
-            $cmd = "php {$workerPath} {$accountId} >> {$logPath} 2>&1 &";
-            exec($cmd);
 
             echo json_encode([
                 'success' => true,
                 'job_id'  => $jobId,
-                'message' => 'Análise enfileirada e worker iniciado em background',
+                'message' => 'Análise enfileirada com sucesso',
+                'worker_required' => true,
+                'next_step' => 'Execute: php bin/xray-worker.php --queue',
                 'queued'  => true,
             ], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
@@ -592,10 +593,31 @@ class AccountXRayController
 
     private function error500(string $message): void
     {
+        try {
+            log_error('Account X-Ray internal error', [
+                'controller' => __CLASS__,
+                'error' => $message,
+                'path' => $_SERVER['REQUEST_URI'] ?? null,
+                'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+            ]);
+        } catch (\Throwable) {
+            // Never break response flow on logging failures.
+        }
+
         http_response_code(500);
         echo json_encode([
             'success' => false,
             'error'   => 'Erro interno',
         ], JSON_UNESCAPED_UNICODE);
+    }
+
+    private function sanitizeQueueOptions(array $options): array
+    {
+        return [
+            'max_items' => max(1, min((int)($options['max_items'] ?? 200), 500)),
+            'include_paused' => (bool)($options['include_paused'] ?? true),
+            'deep_seo' => (bool)($options['deep_seo'] ?? false),
+            'include_financial' => (bool)($options['include_financial'] ?? true),
+        ];
     }
 }

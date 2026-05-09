@@ -351,6 +351,33 @@ class BrandSearchServiceTest extends TestCase
         $this->assertTrue(true, 'siteId param may not exist if hardcoded to MLB');
     }
 
+    public function testInitSearchRejectsInvalidAccountId(): void
+    {
+        $svc = $this->makeServiceWithoutDb();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('accountId inválido.');
+        $svc->initSearch(0, '7297804', 'AWA', 'MLB');
+    }
+
+    public function testInitSearchRejectsEmptyBrandId(): void
+    {
+        $svc = $this->makeServiceWithoutDb();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('brandId inválido.');
+        $svc->initSearch(1, '', 'AWA', 'MLB');
+    }
+
+    public function testInitSearchRejectsInvalidSiteId(): void
+    {
+        $svc = $this->makeServiceWithoutDb();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('siteId inválido.');
+        $svc->initSearch(1, '7297804', 'AWA', 'mercadolivre-br');
+    }
+
     // =========================================================================
     // Private helpers exist
     // =========================================================================

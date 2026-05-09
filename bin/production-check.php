@@ -135,7 +135,7 @@ try {
             2.0
         );
         $password = $_ENV['REDIS_PASSWORD'] ?? '';
-        if (!empty($password)) {
+        if (!empty($password) && $password !== 'null') {
             $redis->auth($password);
         }
         $pong = $redis->ping();

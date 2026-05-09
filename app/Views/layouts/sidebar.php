@@ -122,7 +122,8 @@ $menuGroups = [
 ];
 
 // Função helper para verificar se o item está ativo
-function isMenuActive(string $currentPath, string $itemPath): bool {
+function isMenuActive(string $currentPath, string $itemPath): bool
+{
     if ($itemPath === '/dashboard') {
         return $currentPath === '/dashboard' || $currentPath === '/dashboard/';
     }
@@ -153,8 +154,8 @@ function isMenuActive(string $currentPath, string $itemPath): bool {
                     ?>
                         <li class="nav-item">
                             <a href="<?= $item['path'] ?>"
-                               class="nav-link py-2 px-3 d-flex align-items-center <?= $isActive ? 'active bg-primary' : 'text-white-50' ?>"
-                               style="font-size: 0.85rem; border-radius: 8px; margin: 1px 8px;">
+                                class="nav-link py-2 px-3 d-flex align-items-center <?= $isActive ? 'active bg-primary' : 'text-white-50' ?>"
+                                style="font-size: 0.85rem; border-radius: 8px; margin: 1px 8px;">
                                 <i class="<?= $item['icon'] ?> me-2" style="width: 18px;"></i>
                                 <span><?= $item['label'] ?></span>
                                 <?php if (isset($item['badge'])): ?>
@@ -185,24 +186,37 @@ function isMenuActive(string $currentPath, string $itemPath): bool {
                 <li><a class="dropdown-item py-2" href="/dashboard/accounts"><i class="bi bi-person-badge me-2"></i>Contas ML</a></li>
                 <li><a class="dropdown-item py-2" href="/dashboard/activities"><i class="bi bi-clock-history me-2"></i>Atividades</a></li>
                 <li><a class="dropdown-item py-2" href="/dashboard/api-tokens"><i class="bi bi-key me-2"></i>API Tokens</a></li>
-                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
                 <li><a class="dropdown-item py-2" href="/dashboard/settings"><i class="bi bi-gear me-2"></i>Configurações</a></li>
                 <li><a class="dropdown-item py-2" href="/dashboard/help"><i class="bi bi-question-circle me-2"></i>Ajuda</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item py-2 text-danger" href="/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li>
+                    <form method="POST" action="/auth/logout" class="m-0">
+                        <input type="hidden" name="_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                        <button type="submit" class="dropdown-item py-2 text-danger">
+                            <i class="bi bi-box-arrow-right me-2"></i>Sair
+                        </button>
+                    </form>
+                </li>
             </ul>
         </div>
     </div>
 </nav>
 
 <style>
-#sidebar .nav-link:hover:not(.active) {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-#sidebar .nav-link.active {
-    font-weight: 500;
-}
-#sidebar .letter-spacing-1 {
-    letter-spacing: 0.5px;
-}
+    #sidebar .nav-link:hover:not(.active) {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    #sidebar .nav-link.active {
+        font-weight: 500;
+    }
+
+    #sidebar .letter-spacing-1 {
+        letter-spacing: 0.5px;
+    }
 </style>

@@ -102,10 +102,15 @@ function check_migrations()
 
         $missing = [];
         foreach ($tables as $table) {
-            $stmt = $db->prepare("SHOW TABLES LIKE :table");
+            $stmt = $db->prepare(
+                "SELECT COUNT(*) AS cnt
+                 FROM information_schema.tables
+                 WHERE table_schema = DATABASE()
+                   AND table_name = :table"
+            );
             $stmt->execute(['table' => $table]);
-            $result = $stmt->fetch();
-            if ($result) {
+            $result = (int)($stmt->fetch()['cnt'] ?? 0);
+            if ($result > 0) {
                 echo "  ✓ $table\n";
             } else {
                 echo "  ✗ $table - MISSING\n";

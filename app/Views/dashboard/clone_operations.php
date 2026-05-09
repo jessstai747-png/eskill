@@ -1060,8 +1060,3 @@ $pageTitle = 'Clone Operations | Dashboard';
         return icons[type] || 'gear';
     }
 </script>
-
-<?php
-$content = ob_get_clean();
-include __DIR__ . '/../layouts/dashboard.php';
-?>

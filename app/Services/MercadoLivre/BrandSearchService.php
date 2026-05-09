@@ -46,6 +46,31 @@ class BrandSearchService
         string $siteId = 'MLB',
         ?string $categoryId = null
     ): int {
+        $brandId = trim($brandId);
+        $brandName = trim($brandName);
+        $siteId = strtoupper(trim($siteId));
+        $categoryId = $categoryId !== null ? trim($categoryId) : null;
+
+        if ($accountId <= 0) {
+            throw new \InvalidArgumentException('accountId inválido.');
+        }
+
+        if ($brandId === '' || strlen($brandId) > 64) {
+            throw new \InvalidArgumentException('brandId inválido.');
+        }
+
+        if ($brandName === '' || strlen($brandName) > 255) {
+            throw new \InvalidArgumentException('brandName inválido.');
+        }
+
+        if (!preg_match('/^[A-Z0-9_-]{2,10}$/', $siteId)) {
+            throw new \InvalidArgumentException('siteId inválido.');
+        }
+
+        if ($categoryId !== null && ($categoryId === '' || strlen($categoryId) > 64)) {
+            throw new \InvalidArgumentException('categoryId inválido.');
+        }
+
         return (new BrandSearchModel())->createSearch([
             'account_id'  => $accountId,
             'brand_id'    => $brandId,

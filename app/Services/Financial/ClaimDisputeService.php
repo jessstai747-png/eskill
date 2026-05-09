@@ -505,9 +505,8 @@ class ClaimDisputeService
         $client = $this->getMercadoPagoClient();
 
         $params = [];
-        if (!empty($filters['status'])) {
-            $params['status'] = $filters['status'];
-        }
+        // MP API requires at least one filter; default to 'opened' status
+        $params['status'] = !empty($filters['status']) ? $filters['status'] : 'opened';
         if (!empty($filters['resource_id'])) {
             $params['resource_id'] = $filters['resource_id']; // payment_id ou order_id
         }

@@ -239,6 +239,11 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
                 </a>
             <?php endif; ?>
 
+            <a href="/brand-search" class="nav-item <?= isActive('/brand-search') ? 'active' : '' ?>">
+                <i class="bi bi-search"></i>
+                <span>Pesq. Vendedores</span>
+                <span class="badge bg-success ms-auto" style="font-size:0.6rem;">NOVO</span>
+            </a>
             <a href="/dashboard/seo-killer#ai-insights" class="nav-item <?= isActive('/ai-optimization') || isActive('/ai-insights') ? 'active' : '' ?>">
                 <i class="bi bi-robot"></i>
                 <span>AI Insights</span>
@@ -403,10 +408,13 @@ $unansweredQuestions = $_SESSION['unanswered_questions'] ?? 0;
             <span>Ajuda</span>
         </a>
 
-        <a href="/auth/logout" class="nav-item logout">
-            <i class="bi bi-box-arrow-right"></i>
-            <span>Sair</span>
-        </a>
+        <form method="POST" action="/auth/logout" class="m-0">
+            <input type="hidden" name="_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <button type="submit" class="nav-item logout border-0 bg-transparent w-100 text-start">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Sair</span>
+            </button>
+        </form>
     </div>
 </aside>
 

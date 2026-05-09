@@ -868,7 +868,14 @@ $activePage = $activePage ?? '';
                             <hr class="dropdown-divider">
                         </li>
                         <li><a class="dropdown-item" href="/dashboard/help"><i class="bi bi-question-circle me-2"></i>Ajuda</a></li>
-                        <li><a class="dropdown-item text-danger" href="/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                        <li>
+                            <form method="POST" action="/auth/logout" class="m-0">
+                                <input type="hidden" name="_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Sair
+                                </button>
+                            </form>
+                        </li>
                     </ul>
                 </div>
             </div>

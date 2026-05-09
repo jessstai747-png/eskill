@@ -262,7 +262,7 @@ class UserService
                 'id' => $user['id'],
                 'name' => $user['name'],
                 'email' => $user['email'],
-                'role' => $user['role'] ?? 'admin' // Fallback for existing users
+                'role' => $this->normalizeRole($user['role'] ?? null)
             ]
         ];
     }
@@ -879,7 +879,7 @@ class UserService
     {
         $user = $userId ? $this->getUserById($userId) : $this->getCurrentUser();
 
-        return $user['role'] ?? 'user';
+        return $this->normalizeRole($user['role'] ?? null);
     }
 
     /**
@@ -905,5 +905,13 @@ class UserService
             header('HTTP/1.1 403 Forbidden');
             throw new \Exception("Acesso negado. Permissão '{$permission}' necessária.");
         }
+    }
+
+    private function normalizeRole(?string $role): string
+    {
+        $normalizedRole = strtolower(trim((string)$role));
+        $allowedRoles = ['admin', 'manager', 'user', 'viewer'];
+
+        return in_array($normalizedRole, $allowedRoles, true) ? $normalizedRole : 'user';
     }
 }

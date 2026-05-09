@@ -10,6 +10,7 @@ use App\Controllers\AuthController;
 $router->get('login', AuthController::class, 'login');
 $router->post('login', AuthController::class, 'doLogin');
 $router->get('logout', AuthController::class, 'logout');
+$router->post('logout', AuthController::class, 'logout');
 $router->get('register', AuthController::class, 'register');
 $router->post('register', AuthController::class, 'doRegister');
 
@@ -19,6 +20,7 @@ $router->post('auth/login', AuthController::class, 'doLogin');
 $router->get('auth/register', AuthController::class, 'register');
 $router->post('auth/register', AuthController::class, 'doRegister');
 $router->get('auth/logout', AuthController::class, 'logout');
+$router->post('auth/logout', AuthController::class, 'logout');
 $router->get('auth/forgot-password', AuthController::class, 'forgotPassword');
 $router->post('auth/forgot-password', AuthController::class, 'doForgotPassword');
 $router->get('auth/reset-password', AuthController::class, 'resetPassword');

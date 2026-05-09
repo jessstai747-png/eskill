@@ -1,10 +1,9 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Services\NotificationService;
-use App\Helpers\SessionHelper;
 use App\Database;
 
 /**
@@ -12,15 +11,12 @@ use App\Database;
  */
 class NotificationController extends BaseController
 {
-    private NotificationService $notificationService;
     private \PDO $db;
 
     public function __construct()
     {
         parent::__construct();
         $this->db = Database::getInstance();
-        $accountId = SessionHelper::getActiveAccountId();
-        $this->notificationService = new NotificationService($accountId);
     }
 
     /**
@@ -120,8 +116,8 @@ class NotificationController extends BaseController
 
         try {
             $stmt = $this->db->prepare("
-                UPDATE notifications 
-                SET read_at = NOW() 
+                UPDATE notifications
+                SET read_at = NOW()
                 WHERE id = :id AND user_id = :user_id AND read_at IS NULL
             ");
             $stmt->execute(['id' => $id, 'user_id' => $userId]);
@@ -145,8 +141,8 @@ class NotificationController extends BaseController
 
         try {
             $stmt = $this->db->prepare("
-                UPDATE notifications 
-                SET read_at = NOW() 
+                UPDATE notifications
+                SET read_at = NOW()
                 WHERE user_id = :user_id AND read_at IS NULL
             ");
             $stmt->execute(['user_id' => $userId]);
@@ -199,9 +195,9 @@ class NotificationController extends BaseController
 
         try {
             $stmt = $this->db->prepare("
-                DELETE FROM notifications 
-                WHERE user_id = :user_id 
-                AND read_at IS NOT NULL 
+                DELETE FROM notifications
+                WHERE user_id = :user_id
+                AND read_at IS NOT NULL
                 AND created_at < DATE_SUB(NOW(), INTERVAL :days DAY)
             ");
             $stmt->execute(['user_id' => $userId, 'days' => $days]);
@@ -248,21 +244,39 @@ class NotificationController extends BaseController
         $userId = $this->getUserId();
 
         $input = $this->request->json();
+        if (!is_array($input)) {
+            $this->json([
+                'success' => false,
+                'error' => 'Payload inválido: esperado objeto JSON',
+            ], 400);
+            return;
+        }
+
+        [$isValid, $normalizedPreferences, $validationErrors] = $this->validateAndNormalizePreferences($input);
+        if (!$isValid) {
+            $this->json([
+                'success' => false,
+                'error' => 'Preferências inválidas',
+                'details' => $validationErrors,
+            ], 422);
+            return;
+        }
 
         try {
             $stmt = $this->db->prepare("
-                UPDATE users 
-                SET notification_preferences = :prefs 
+                UPDATE users
+                SET notification_preferences = :prefs
                 WHERE id = :id
             ");
             $stmt->execute([
                 'id' => $userId,
-                'prefs' => json_encode($input),
+                'prefs' => json_encode($normalizedPreferences, JSON_THROW_ON_ERROR),
             ]);
 
             $this->json([
                 'success' => true,
                 'message' => 'Preferências atualizadas',
+                'preferences' => $normalizedPreferences,
             ]);
         } catch (\Exception $e) {
             $this->json(['error' => $e->getMessage()], 500);
@@ -292,6 +306,51 @@ class NotificationController extends BaseController
                 'alerts' => true,
             ],
         ];
+    }
+
+    /**
+     * Valida payload de preferências e normaliza para o schema permitido.
+     *
+     * @param array<string,mixed> $input
+     * @return array{0:bool,1:array<string,mixed>,2:array<int,string>}
+     */
+    private function validateAndNormalizePreferences(array $input): array
+    {
+        $defaults = $this->getDefaultPreferences();
+        $allowedSchema = [
+            'email' => ['orders', 'questions', 'alerts', 'marketing'],
+            'push' => ['orders', 'questions', 'alerts'],
+            'telegram' => ['orders', 'questions', 'alerts'],
+        ];
+        $errors = [];
+
+        foreach ($input as $channel => $settings) {
+            if (!array_key_exists($channel, $allowedSchema)) {
+                $errors[] = "Canal não suportado: {$channel}";
+                continue;
+            }
+
+            if (!is_array($settings)) {
+                $errors[] = "Configuração inválida para canal {$channel}";
+                continue;
+            }
+
+            foreach ($settings as $eventKey => $eventValue) {
+                if (!in_array($eventKey, $allowedSchema[$channel], true)) {
+                    $errors[] = "Evento não suportado em {$channel}: {$eventKey}";
+                    continue;
+                }
+
+                if (!is_bool($eventValue) && !in_array($eventValue, [0, 1, '0', '1'], true)) {
+                    $errors[] = "Valor inválido para {$channel}.{$eventKey} (esperado booleano)";
+                    continue;
+                }
+
+                $defaults[$channel][$eventKey] = (bool) $eventValue;
+            }
+        }
+
+        return [count($errors) === 0, $defaults, $errors];
     }
 
     /**

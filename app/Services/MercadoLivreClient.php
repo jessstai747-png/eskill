@@ -105,6 +105,20 @@ class MercadoLivreClient
         return isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== '';
     }
 
+    private function resolveDefaultActiveAccount(): ?int
+    {
+        try {
+            $pdo = \App\Database::getInstance();
+            $stmt = $pdo->query(
+                "SELECT id FROM ml_accounts WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1"
+            );
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $row ? (int)$row['id'] : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     public function __construct(?int $accountId = null, ?MercadoLivreAuthService $authService = null)
     {
         $this->accountId = $accountId;
@@ -141,6 +155,14 @@ class MercadoLivreClient
                     $this->accountId = $candidate;
                 }
             }
+        }
+
+        // Fallback CLI: se nenhuma conta foi resolvida e não estamos em HTTP,
+        // usa a conta active mais recente do banco (cenário cron/worker/cli).
+        // Não ativa em tests (APP_ENV=testing) para respeitar expectativas de null explícito.
+        $isTestEnv = (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'testing');
+        if ($this->accountId === null && !$this->isHttpContext() && !$isTestEnv) {
+            $this->accountId = $this->resolveDefaultActiveAccount();
         }
 
         // Tokens

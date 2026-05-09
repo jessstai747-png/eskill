@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Helpers\ResponseHelper;
+use App\Middleware\ApiAuthMiddleware;
 use App\Middleware\SecurityMiddleware;
 use App\Services\SecureTokenService;
 
@@ -34,6 +35,7 @@ class SecurityController extends BaseController
      */
     public function dashboard(): void
     {
+        $this->enforceSecurityAccess('security:read');
         $stats = $this->security->getSecurityStats(24);
 
         // Últimos eventos
@@ -61,9 +63,11 @@ class SecurityController extends BaseController
      */
     public function listEvents(): void
     {
-        $hours = $this->request->getInt('hours', 24);
-        $severity = $this->request->get('severity');
-        $eventType = $this->request->get('type');
+        $this->enforceSecurityAccess('security:read');
+
+        $hours = max(0, min(720, $this->request->getInt('hours', 24)));
+        $severity = $this->normalizeSeverity($this->request->get('severity'));
+        $eventType = $this->normalizeEventType($this->request->get('type'));
         $page = max(1, $this->request->getInt('page', 1));
         $limit = $this->request->getIntClamped('limit', 50, 10, 100);
         $limitSql = max(1, min((int) $limit, 100));
@@ -128,7 +132,9 @@ class SecurityController extends BaseController
      */
     public function stats(): void
     {
-        $hours = $this->request->getInt('hours', 24);
+        $this->enforceSecurityAccess('security:read');
+
+        $hours = max(1, min(720, $this->request->getInt('hours', 24)));
 
         $stats = $this->security->getSecurityStats($hours);
 
@@ -186,6 +192,7 @@ class SecurityController extends BaseController
      */
     public function listBlockedIps(): void
     {
+        $this->enforceSecurityAccess('security:read');
         $includeExpired = $this->request->getBool('include_expired', false);
 
         $where = $includeExpired ? '1=1' : '(blocked_until IS NULL OR blocked_until > NOW())';
@@ -209,14 +216,20 @@ class SecurityController extends BaseController
      */
     public function blockIp(): void
     {
-        $data = json_decode(file_get_contents('php://input'), true);
+        $this->enforceSecurityAccess('security:manage');
+        $data = $this->readJsonInput();
 
         $ip = $data['ip'] ?? null;
-        $reason = $data['reason'] ?? 'Manual block';
-        $duration = (int)($data['duration'] ?? 0); // 0 = permanente
+        $reason = trim((string) ($data['reason'] ?? 'Manual block'));
+        $duration = max(0, min(525600, (int) ($data['duration'] ?? 0))); // 0 = permanente
 
         if (!$ip || !filter_var($ip, FILTER_VALIDATE_IP)) {
             ResponseHelper::error('IP inválido', 400);
+            return;
+        }
+
+        if ($reason === '') {
+            ResponseHelper::error('Motivo do bloqueio é obrigatório', 422);
             return;
         }
 
@@ -243,11 +256,12 @@ class SecurityController extends BaseController
      */
     public function unblockIp(): void
     {
-        $data = json_decode(file_get_contents('php://input'), true);
+        $this->enforceSecurityAccess('security:manage');
+        $data = $this->readJsonInput();
         $ip = $data['ip'] ?? null;
 
-        if (!$ip) {
-            ResponseHelper::error('IP não informado', 400);
+        if (!$ip || !filter_var((string) $ip, FILTER_VALIDATE_IP)) {
+            ResponseHelper::error('IP não informado ou inválido', 400);
             return;
         }
 
@@ -272,6 +286,7 @@ class SecurityController extends BaseController
      */
     public function migrateTokens(): void
     {
+        $this->enforceSecurityAccess('security:manage');
         try {
             $tokenService = new SecureTokenService();
             $result = $tokenService->migrateUnencryptedTokens();
@@ -296,6 +311,7 @@ class SecurityController extends BaseController
      */
     public function tokensStatus(): void
     {
+        $this->enforceSecurityAccess('security:read');
         try {
             $stmt = $this->db->query("
                 SELECT 
@@ -329,7 +345,8 @@ class SecurityController extends BaseController
      */
     public function cleanupLogs(): void
     {
-        $days = $this->request->postInt('days', 30);
+        $this->enforceSecurityAccess('security:manage');
+        $days = max(1, min(3650, $this->request->postInt('days', 30)));
 
         try {
             $stmt = $this->db->prepare("
@@ -364,8 +381,14 @@ class SecurityController extends BaseController
      */
     public function exportReport(): void
     {
-        $format = $this->request->get('format', 'json');
-        $hours = $this->request->getInt('hours', 24);
+        $this->enforceSecurityAccess('security:read');
+        $format = strtolower((string) $this->request->get('format', 'json'));
+        $hours = max(1, min(720, $this->request->getInt('hours', 24)));
+
+        if (!in_array($format, ['json', 'csv'], true)) {
+            ResponseHelper::error('Formato inválido', 422);
+            return;
+        }
 
         // Coletar dados
         $stmt = $this->db->prepare("
@@ -444,5 +467,103 @@ class SecurityController extends BaseController
         }
 
         fclose($output);
+    }
+
+    /**
+     * Validates whether the current actor can access security endpoints.
+     */
+    private function canAccessSecurityScope(string $requiredScope): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $apiUser = ApiAuthMiddleware::getApiUser();
+        if (!is_array($apiUser)) {
+            return false;
+        }
+
+        $scopes = $apiUser['scopes'] ?? [];
+        if (!is_array($scopes)) {
+            return false;
+        }
+
+        return in_array('*', $scopes, true)
+            || in_array('admin', $scopes, true)
+            || in_array($requiredScope, $scopes, true);
+    }
+
+    /**
+     * Stops execution when the current actor lacks the required security scope.
+     */
+    private function enforceSecurityAccess(string $requiredScope): void
+    {
+        if ($this->canAccessSecurityScope($requiredScope)) {
+            return;
+        }
+
+        $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        if (strncmp($path, '/api/', 5) === 0) {
+            ResponseHelper::error('Acesso negado', 403);
+            exit;
+        }
+
+        http_response_code(403);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Acesso negado';
+        exit;
+    }
+
+    /**
+     * Reads the request body as JSON and returns a normalized array payload.
+     *
+     * @return array<string,mixed>
+     */
+    private function readJsonInput(): array
+    {
+        $raw = file_get_contents('php://input');
+        if ($raw === false || trim($raw) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * Normalizes the optional severity filter and rejects unsupported values.
+     */
+    private function normalizeSeverity(mixed $severity): ?string
+    {
+        if ($severity === null || $severity === '') {
+            return null;
+        }
+
+        $normalized = strtolower(trim((string) $severity));
+        $allowed = ['info', 'warning', 'error', 'critical'];
+        if (!in_array($normalized, $allowed, true)) {
+            ResponseHelper::error('severity inválida', 422);
+            exit;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Sanitizes the event type filter to a bounded ASCII string.
+     */
+    private function normalizeEventType(mixed $eventType): ?string
+    {
+        if ($eventType === null || $eventType === '') {
+            return null;
+        }
+
+        $normalized = trim((string) $eventType);
+        if ($normalized === '' || strlen($normalized) > 100) {
+            ResponseHelper::error('type inválido', 422);
+            exit;
+        }
+
+        return $normalized;
     }
 }

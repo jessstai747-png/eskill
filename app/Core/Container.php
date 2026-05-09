@@ -139,7 +139,7 @@ class Container
 
     /**
      * Check if a service is bound.
-     * 
+     *
      * @param string $key
      * @return bool
      */

@@ -99,3 +99,9 @@ host={}
 public/.tmp/
 root-body.html
 .org.chromium.*
+
+# Playwright
+node_modules/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

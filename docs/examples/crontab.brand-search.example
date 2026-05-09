@@ -1,0 +1,30 @@
+# ==============================================================================
+# Brand Search Worker — Crontab Example
+# ==============================================================================
+#
+# Registra buscas agendadas de anúncios por marca no Mercado Livre e persiste
+# os resultados no banco de dados para consulta no dashboard /dashboard/brand-search
+#
+# Para ativar, copie as linhas desejadas para o crontab do usuário:
+#   crontab -e
+#
+# Variáveis de ambiente recomendadas (ajuste o caminho):
+#   PROJECT_DIR=/home/eskill/htdocs/eskill.com.br
+#   LOG_DIR=$PROJECT_DIR/storage/logs
+#
+# ==============================================================================
+
+# Buscar marca AWA (ID 7297804) todo dia às 04:00 para todas as contas ativas
+0 4 * * * php /home/eskill/htdocs/eskill.com.br/bin/brand-search-worker.php --brand-id=7297804 >> /home/eskill/htdocs/eskill.com.br/storage/logs/brand-search.log 2>&1
+
+# Buscar marca AWA apenas para a conta #1 às 03:00 com máximo de 1000 anúncios
+0 3 * * * php /home/eskill/htdocs/eskill.com.br/bin/brand-search-worker.php --brand-id=7297804 --account=1 --max=1000 >> /home/eskill/htdocs/eskill.com.br/storage/logs/brand-search.log 2>&1
+
+# Buscar por nome de marca (texto livre) duas vezes por dia (06:00 e 18:00)
+0 6,18 * * * php /home/eskill/htdocs/eskill.com.br/bin/brand-search-worker.php --brand-name=AWA --max=500 >> /home/eskill/htdocs/eskill.com.br/storage/logs/brand-search.log 2>&1
+
+# Buscar AWA apenas em categorias de motos/peças às 02:00
+0 2 * * * php /home/eskill/htdocs/eskill.com.br/bin/brand-search-worker.php --brand-id=7297804 --categories=MLB214858,MLB5750,MLB1051 >> /home/eskill/htdocs/eskill.com.br/storage/logs/brand-search.log 2>&1
+
+# Buscar com saída verbosa (útil para debug via cron manual)
+# php /home/eskill/htdocs/eskill.com.br/bin/brand-search-worker.php --brand-id=7297804 --verbose

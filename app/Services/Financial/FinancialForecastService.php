@@ -137,7 +137,7 @@ class FinancialForecastService
     /**
      * Determina a nota baseada no score
      */
-    private function getHealthGrade(int $score): string
+    private function getHealthGrade(int|float $score): string
     {
         return match (true) {
             $score >= 90 => 'A+',

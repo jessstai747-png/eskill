@@ -4,39 +4,41 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$root = dirname(__DIR__);
-$logsDir = $root . '/storage/logs';
+$root      = dirname(__DIR__);
+$logsDir   = $root . '/storage/logs';
+$backupDir = $root . '/storage/backups';
 
 $checks = [
-    ['name' => 'scheduler', 'file' => $logsDir . '/cron_scheduler.log', 'max_age' => 15 * 60, 'severity' => 'critical'],
-    ['name' => 'queue', 'file' => $logsDir . '/queue.log', 'max_age' => 5 * 60, 'severity' => 'critical'],
-    ['name' => 'orders', 'file' => $logsDir . '/cron_orders.log', 'max_age' => 30 * 60, 'severity' => 'warning'],
-    ['name' => 'items', 'file' => $logsDir . '/cron_items.log', 'max_age' => 7 * 3600, 'severity' => 'warning'],
-    ['name' => 'questions', 'file' => $logsDir . '/cron_questions.log', 'max_age' => 2 * 3600, 'severity' => 'warning'],
-    ['name' => 'clone_worker', 'file' => $logsDir . '/cron-catalog-clone.log', 'max_age' => 5 * 60, 'severity' => 'critical'],
-    ['name' => 'clone_post_actions', 'file' => $logsDir . '/cron-post-actions.log', 'max_age' => 10 * 60, 'severity' => 'warning'],
-    ['name' => 'clone_health', 'file' => $logsDir . '/cron-health.log', 'max_age' => 10 * 60, 'severity' => 'warning'],
-    ['name' => 'token_refresh', 'file' => $logsDir . '/token_refresh.log', 'max_age' => 2 * 3600, 'severity' => 'warning'],
+    ['name' => 'scheduler',          'file' => $logsDir . '/cron_scheduler.log',      'max_age' => 15 * 60,  'severity' => 'critical'],
+    ['name' => 'queue',              'file' => $logsDir . '/queue.log',                'max_age' => 5 * 60,   'severity' => 'critical'],
+    ['name' => 'orders',             'file' => $logsDir . '/cron_orders.log',          'max_age' => 30 * 60,  'severity' => 'warning'],
+    ['name' => 'items',              'file' => $logsDir . '/cron_items.log',           'max_age' => 7 * 3600, 'severity' => 'warning'],
+    ['name' => 'questions',          'file' => $logsDir . '/cron_questions.log',       'max_age' => 2 * 3600, 'severity' => 'warning'],
+    ['name' => 'clone_worker',       'file' => $logsDir . '/cron-catalog-clone.log',   'max_age' => 5 * 60,   'severity' => 'critical'],
+    ['name' => 'clone_post_actions', 'file' => $logsDir . '/cron-post-actions.log',    'max_age' => 10 * 60,  'severity' => 'warning'],
+    ['name' => 'clone_health',       'file' => $logsDir . '/cron-health.log',          'max_age' => 10 * 60,  'severity' => 'warning'],
+    ['name' => 'token_refresh',      'file' => $logsDir . '/token_refresh.log',        'max_age' => 2 * 3600, 'severity' => 'warning'],
 ];
 
-$now = time();
-$results = [];
+$now             = time();
+$results         = [];
 $criticalFailures = 0;
-$warningFailures = 0;
+$warningFailures  = 0;
 
+// ─── Log staleness checks ─────────────────────────────────────────────────────
 foreach ($checks as $check) {
-    $file = $check['file'];
+    $file   = $check['file'];
     $exists = file_exists($file);
 
     if (!$exists) {
         $status = $check['severity'] === 'critical' ? 'critical' : 'warning';
         $results[] = [
-            'name' => $check['name'],
-            'status' => $status,
-            'reason' => 'missing_file',
-            'file' => $file,
-            'last_modified' => null,
-            'age_seconds' => null,
+            'name'            => $check['name'],
+            'status'          => $status,
+            'reason'          => 'missing_file',
+            'file'            => $file,
+            'last_modified'   => null,
+            'age_seconds'     => null,
             'max_age_seconds' => $check['max_age'],
         ];
         if ($status === 'critical') {
@@ -48,17 +50,17 @@ foreach ($checks as $check) {
     }
 
     $mtime = filemtime($file);
-    $age = $now - $mtime;
+    $age   = $now - $mtime;
 
     if ($age > $check['max_age']) {
         $status = $check['severity'] === 'critical' ? 'critical' : 'warning';
         $results[] = [
-            'name' => $check['name'],
-            'status' => $status,
-            'reason' => 'stale_log',
-            'file' => $file,
-            'last_modified' => date('c', $mtime),
-            'age_seconds' => $age,
+            'name'            => $check['name'],
+            'status'          => $status,
+            'reason'          => 'stale_log',
+            'file'            => $file,
+            'last_modified'   => date('c', $mtime),
+            'age_seconds'     => $age,
             'max_age_seconds' => $check['max_age'],
         ];
         if ($status === 'critical') {
@@ -68,38 +70,90 @@ foreach ($checks as $check) {
         }
     } else {
         $results[] = [
-            'name' => $check['name'],
-            'status' => 'ok',
-            'reason' => 'healthy',
-            'file' => $file,
-            'last_modified' => date('c', $mtime),
-            'age_seconds' => $age,
+            'name'            => $check['name'],
+            'status'          => 'ok',
+            'reason'          => 'healthy',
+            'file'            => $file,
+            'last_modified'   => date('c', $mtime),
+            'age_seconds'     => $age,
             'max_age_seconds' => $check['max_age'],
         ];
     }
 }
 
-$overall = 'healthy';
+// ─── Disk space check ─────────────────────────────────────────────────────────
+// Checks the partition where the app lives. Warns at 75%, critical at 90%.
+$diskTotal = @disk_total_space($root);
+$diskFree  = @disk_free_space($root);
+if ($diskTotal && $diskFree) {
+    $diskUsedPct = (int) round(($diskTotal - $diskFree) / $diskTotal * 100);
+    if ($diskUsedPct >= 90) {
+        $diskStatus = 'critical';
+        $criticalFailures++;
+    } elseif ($diskUsedPct >= 75) {
+        $diskStatus = 'warning';
+        $warningFailures++;
+    } else {
+        $diskStatus = 'ok';
+    }
+    $results[] = [
+        'name'     => 'disk_space',
+        'status'   => $diskStatus,
+        'reason'   => $diskStatus === 'ok' ? 'healthy' : "disk {$diskUsedPct}% used",
+        'used_pct' => $diskUsedPct,
+        'free_gb'  => round($diskFree / 1073741824, 2),
+        'total_gb' => round($diskTotal / 1073741824, 2),
+    ];
+}
+
+// Warn if there are large uncompressed .sql backup files (gzip may have failed)
+$largeSqlGb = 0.0;
+if (is_dir($backupDir)) {
+    foreach (new DirectoryIterator($backupDir) as $f) {
+        if ($f->isFile() && $f->getExtension() === 'sql' && $f->getSize() > 536870912) { // > 512 MB
+            $largeSqlGb += $f->getSize() / 1073741824;
+        }
+    }
+}
+if ($largeSqlGb > 0) {
+    $warningFailures++;
+    $results[] = [
+        'name'   => 'backup_uncompressed_sql',
+        'status' => 'warning',
+        'reason' => sprintf('Uncompressed .sql backups detected: %.1f GB — gzip may have failed', $largeSqlGb),
+    ];
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+$overall  = 'healthy';
 $exitCode = 0;
 if ($criticalFailures > 0) {
-    $overall = 'critical';
+    $overall  = 'critical';
     $exitCode = 2;
 } elseif ($warningFailures > 0) {
-    $overall = 'warning';
+    $overall  = 'warning';
     $exitCode = 1;
 }
 
 $report = [
-    'timestamp' => date('c'),
-    'overall' => $overall,
+    'timestamp'        => date('c'),
+    'overall'          => $overall,
     'critical_failures' => $criticalFailures,
-    'warning_failures' => $warningFailures,
-    'total_checks' => count($checks),
-    'results' => $results,
+    'warning_failures'  => $warningFailures,
+    'total_checks'     => count($results),
+    'results'          => $results,
 ];
 
 $auditFile = $logsDir . '/cron_health_audit.log';
-$line = sprintf("[%s] overall=%s critical=%d warning=%d checks=%d\n", date('Y-m-d H:i:s'), $overall, $criticalFailures, $warningFailures, count($checks));
+$line = sprintf(
+    "[%s] overall=%s critical=%d warning=%d checks=%d%s\n",
+    date('Y-m-d H:i:s'),
+    $overall,
+    $criticalFailures,
+    $warningFailures,
+    count($results),
+    isset($diskUsedPct) ? " disk={$diskUsedPct}%" : ''
+);
 @file_put_contents($auditFile, $line, FILE_APPEND);
 
 if ($overall !== 'healthy') {
@@ -112,7 +166,7 @@ if ($overall !== 'healthy') {
             $cronAlerts = new \App\Services\CronAlertService();
             foreach ($results as $r) {
                 $status = (string) ($r['status'] ?? 'ok');
-                $name = (string) ($r['name'] ?? '');
+                $name   = (string) ($r['name'] ?? '');
                 if ($name !== '' && $status !== 'ok') {
                     $cronAlerts->recordFailure($name, 'health_check: ' . ($r['reason'] ?? $status));
                 } elseif ($name !== '' && $status === 'ok') {

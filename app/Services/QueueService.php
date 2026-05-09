@@ -33,8 +33,9 @@ class QueueService
 
         try {
             $this->redis->connect($host, $port);
-            if (!empty($_ENV['REDIS_PASSWORD'])) {
-                $this->redis->auth($_ENV['REDIS_PASSWORD']);
+            $redisPass = $_ENV['REDIS_PASSWORD'] ?? '';
+            if (!empty($redisPass) && $redisPass !== 'null') {
+                $this->redis->auth($redisPass);
             }
             if (!$this->redis->select($this->database)) {
                 throw new Exception('Falha ao selecionar Redis DB ' . $this->database);

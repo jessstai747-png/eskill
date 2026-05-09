@@ -130,12 +130,17 @@ if [ "$TOKEN_VALIDATION_STATUS" -eq 2 ]; then
 fi
 
 # Executar mcp-remote com o token
-if ! command -v npx >/dev/null 2>&1; then
-    echo "[MCP-ML] ERRO: npx não encontrado no ambiente." >&2
-    echo "[MCP-ML] Instale Node.js/npm ou execute o MCP em um ambiente que tenha npx disponível." >&2
+# Preferir binário global instalado; fallback para npx se necessário
+if command -v mcp-remote >/dev/null 2>&1; then
+    exec mcp-remote \
+        "https://mcp.mercadolibre.com/mcp" \
+        --header "Authorization:${TOKEN}"
+elif command -v npx >/dev/null 2>&1; then
+    exec npx -y mcp-remote@0.1.38 \
+        "https://mcp.mercadolibre.com/mcp" \
+        --header "Authorization:${TOKEN}"
+else
+    echo "[MCP-ML] ERRO: mcp-remote e npx não encontrados no ambiente." >&2
+    echo "[MCP-ML] Instale via: npm install -g mcp-remote@0.1.38" >&2
     exit 1
 fi
-
-exec npx -y mcp-remote@0.1.38 \
-    "https://mcp.mercadolibre.com/mcp" \
-    --header "Authorization:${TOKEN}"

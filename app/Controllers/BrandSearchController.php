@@ -61,7 +61,7 @@ class BrandSearchController extends BaseController
     {
         $brandId    = trim((string) $this->request->input('brand_id', ''));
         $brandName  = trim((string) $this->request->input('brand_name', ''));
-        $siteId     = trim((string) $this->request->input('site_id', 'MLB'));
+        $siteId     = strtoupper(trim((string) $this->request->input('site_id', 'MLB')));
         $raw        = $this->request->input('category_id');
         $categoryId = ($raw !== null && $raw !== '') ? (string) $raw : null;
 
@@ -75,14 +75,50 @@ class BrandSearchController extends BaseController
             return;
         }
 
-        $accountId = $this->getActiveAccountId() ?? 0;
-        $searchId  = $this->service->initSearch(
-            $accountId,
-            $brandId,
-            $brandName,
-            $siteId !== '' ? $siteId : 'MLB',
-            $categoryId
-        );
+        if (!preg_match('/^[A-Z0-9_-]{2,10}$/', $siteId)) {
+            $this->jsonError('site_id inválido.', 422);
+            return;
+        }
+
+        if (strlen($brandId) > 64) {
+            $this->jsonError('brand_id excede o tamanho máximo permitido.', 422);
+            return;
+        }
+
+        if (strlen($brandName) > 255) {
+            $this->jsonError('brand_name excede o tamanho máximo permitido.', 422);
+            return;
+        }
+
+        if ($categoryId !== null) {
+            $categoryId = trim($categoryId);
+            if ($categoryId === '' || strlen($categoryId) > 64) {
+                $this->jsonError('category_id inválido.', 422);
+                return;
+            }
+        }
+
+        $accountId = $this->getActiveAccountId();
+        if ($accountId === null || $accountId <= 0) {
+            $this->jsonError('Conta Mercado Livre ativa é obrigatória.', 422);
+            return;
+        }
+
+        try {
+            $searchId = $this->service->initSearch(
+                $accountId,
+                $brandId,
+                $brandName,
+                $siteId !== '' ? $siteId : 'MLB',
+                $categoryId
+            );
+        } catch (\InvalidArgumentException $e) {
+            $this->jsonError($e->getMessage(), 422);
+            return;
+        } catch (\Throwable $e) {
+            $this->jsonError('Não foi possível iniciar a busca.', 500);
+            return;
+        }
 
         http_response_code(202);
         $this->jsonSuccess(['search_id' => $searchId, 'status' => 'pending']);

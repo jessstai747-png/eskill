@@ -225,7 +225,7 @@ class SubscriptionService
         }
 
         $queryString = http_build_query($params);
-        return $client->get("https://api.mercadopago.com/preapproval/export?{$queryString}");
+        return $client->get("https://api.mercadopago.com/preapproval/search?{$queryString}");
     }
 
     // =========================================================================
@@ -369,6 +369,11 @@ class SubscriptionService
      */
     public function searchSubscriptionInvoices(array $filters = []): array
     {
+        // preapproval_id is required by MP API /authorized_payments/search
+        if (empty($filters['preapproval_id'])) {
+            return ['results' => [], 'paging' => ['total' => 0, 'offset' => 0, 'limit' => 50]];
+        }
+
         $client = $this->getMercadoPagoClient();
 
         $params = [];

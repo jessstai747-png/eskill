@@ -7,6 +7,11 @@
 --
 -- DUPLICAÇÕES ENCONTRADAS:
 --
+-- 0. seo_killer_settings (CONFLITO DE ÍNDICE — resolvido em 2026-04-30):
+--    - 001_create_seo_killer_settings.sql (índice 001 conflitava com users)
+--    → Renomeado para 032_create_seo_killer_settings.sql
+--    → Original movido para .tmp/ como backup
+--
 -- 1. users:
 --    - 000_install_all.sql (all-in-one install script)
 --    - 001_create_users_table.sql (migration individual)

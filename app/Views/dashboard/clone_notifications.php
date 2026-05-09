@@ -559,10 +559,3 @@ document.addEventListener('DOMContentLoaded', () => CloneNotifications.init());
 <style>
 .text-indigo { color: #5865F2 !important; }
 </style>
-
-<?php
-$content = ob_get_clean();
-
-// Include main layout
-include __DIR__ . '/../layouts/dashboard.php';
-?>
