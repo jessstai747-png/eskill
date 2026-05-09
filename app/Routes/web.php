@@ -417,6 +417,13 @@ $router->get('dashboard/marketing/promotions', 'App\Controllers\PromotionControl
 $router->get('api/marketing/promotions', 'App\Controllers\PromotionController', 'listPromotions');
 $router->get('api/marketing/promotions/items', 'App\Controllers\PromotionController', 'detail');
 $router->post('api/marketing/promotions/join', 'App\Controllers\PromotionController', 'join');
+$router->get('api/marketing/promotions/performance', 'App\Controllers\PromotionController', 'performanceAnalysis');
+$router->get('api/marketing/promotions/suggested-items', 'App\Controllers\PromotionController', 'suggestedItems');
+$router->get('api/marketing/promotions/simulate', 'App\Controllers\PromotionController', 'simulateDiscount');
+$router->get('api/marketing/coupons', 'App\Controllers\PromotionController', 'listCoupons');
+$router->post('api/marketing/coupons', 'App\Controllers\PromotionController', 'createCoupon');
+$router->post('api/marketing/coupons/{id}/status', 'App\Controllers\PromotionController', 'updateCouponStatus');
+$router->get('api/marketing/coupons/{id}/performance', 'App\Controllers\PromotionController', 'couponPerformance');
 
 // Customer CRM
 $router->get('dashboard/customers', 'App\Controllers\CustomerController', 'index');
@@ -437,9 +444,9 @@ $router->post('dashboard/financials/conciliation/upload', 'App\Controllers\Settl
 $router->get('dashboard/financials/conciliation/reconcile', 'App\Controllers\SettlementController', 'reconcile');
 
 // Competitor Intelligence (Phase 16)
-$router->get('dashboard/competitors', 'App\Controllers\CompetitorAnalysisController', 'index');
-$router->post('dashboard/competitors/add', 'App\Controllers\CompetitorAnalysisController', 'add');
-$router->get('dashboard/competitors/details/{id}', 'App\Controllers\CompetitorAnalysisController', 'details');
+$router->get('dashboard/competitors', 'App\Controllers\CompetitorController', 'index');
+$router->post('dashboard/competitors/add', 'App\Controllers\CompetitorController', 'add');
+$router->get('dashboard/competitors/details/{id}', 'App\Controllers\CompetitorController', 'index');
 
 // SEO & Gap Advanced Routes
 $router->get('api/seo/gap-analysis', DashboardController::class, 'gapAnalysis');
@@ -456,6 +463,10 @@ $router->get('dashboard/tech-sheet', ViewController::class, 'techSheet');
 $router->get('dashboard/brand-analysis', 'App\Controllers\BrandAnalyzerController', 'index');
 $router->get('dashboard/awa-sellers', 'App\Controllers\AwaSellerController', 'index');
 $router->get('brand-analysis', 'App\Controllers\BrandAnalyzerController', 'index');
+
+// Brand Search Dashboard (busca genérica por marca)
+$router->get('dashboard/brand-search', 'App\Controllers\BrandSearchController', 'index');
+$router->get('brand-search', 'App\Controllers\BrandSearchController', 'index');
 
 // SEO Killer Assets (Served via Controller to avoid 404s in protected structure)
 $router->get('assets/css/seo-killer.css', 'App\Controllers\AssetController', 'seoKillerCss');

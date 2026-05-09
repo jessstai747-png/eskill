@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Clone A/B Testing Dashboard
  * Interface para gerenciamento de testes A/B de clonagem
  */
-$this->layout('layouts/dashboard', ['title' => 'Testes A/B - Clonador']);
 ?>
 
 <div class="container-fluid py-4">

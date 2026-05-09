@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Clone ROI Analysis Dashboard
  * Interface para análise de ROI das clonagens
  */
-$this->layout('layouts/dashboard', ['title' => 'Análise de ROI - Clonador']);
 ?>
 
 <div class="container-fluid py-4">

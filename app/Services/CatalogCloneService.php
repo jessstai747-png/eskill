@@ -1327,12 +1327,18 @@ class CatalogCloneService
     {
         $sql = "
             SELECT
-                id, source_account_name, target_account_name,
-                scheduled_datetime, frequency, status,
-                created_at
-            FROM clone_schedules
-            WHERE status = 'active'
-            ORDER BY scheduled_datetime ASC
+                cs.id,
+                ma.nickname AS source_account_name,
+                cs.source_value,
+                cs.source_type,
+                cs.frequency,
+                cs.status,
+                cs.next_run_at,
+                cs.created_at
+            FROM clone_schedules cs
+            LEFT JOIN ml_accounts ma ON ma.id = cs.account_id
+            WHERE cs.status IN ('active', 'paused')
+            ORDER BY cs.next_run_at ASC
         ";
 
         $stmt = $this->db->prepare($sql);
@@ -1344,16 +1350,16 @@ class CatalogCloneService
         return array_map(function (array $schedule): array {
             return [
                 'id' => $schedule['id'],
-                'source_account' => $schedule['source_account_name'],
-                'target_account' => $schedule['target_account_name'],
-                'scheduled_datetime' => date('d/m/Y H:i', strtotime($schedule['scheduled_datetime'])),
+                'source_account' => $schedule['source_account_name'] ?? ('Conta ' . $schedule['source_value']),
+                'target_account' => $schedule['source_account_name'] ?? '',
+                'scheduled_datetime' => !empty($schedule['next_run_at']) ? date('d/m/Y H:i', strtotime($schedule['next_run_at'])) : '-',
                 'frequency' => ucfirst($schedule['frequency']),
                 'status' => $schedule['status']
             ];
         }, $schedules);
     }
 
-    public function cancelSchedule(int $scheduleId): bool
+        public function cancelSchedule(int $scheduleId): bool
     {
         $sql = "UPDATE clone_schedules SET status = 'canceled' WHERE id = :id AND status = 'active'";
         $stmt = $this->db->prepare($sql);
