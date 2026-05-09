@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Router;
+use App\Helpers\ViewHelper;
 
 class OpenSpecController
 {
@@ -75,7 +76,7 @@ class OpenSpecController
             'recentChanges' => $recentChanges,
         ];
         
-        view('dashboard/openspec/index', $data);
+        ViewHelper::render('dashboard/openspec/index', $data);
     }
     
     /**
@@ -204,7 +205,7 @@ class OpenSpecController
             }
         }
         
-        view('dashboard/openspec/change_detail', ['change' => $change]);
+        ViewHelper::render('dashboard/openspec/change_detail', ['change' => $change]);
     }
     
     /**
@@ -252,6 +253,6 @@ class OpenSpecController
      */
     public function createProposal(): void
     {
-        view('dashboard/openspec/create_proposal');
+        ViewHelper::render('dashboard/openspec/create_proposal');
     }
 }

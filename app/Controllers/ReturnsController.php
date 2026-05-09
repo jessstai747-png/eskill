@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Services\ClaimsService;
 use App\Services\MercadoLivreClient;
+use App\Services\UserService;
 
 /**
  * Controller de Devoluções (RMA)
@@ -15,10 +16,12 @@ use App\Services\MercadoLivreClient;
 class ReturnsController extends BaseController
 {
     private ClaimsService $claimsService;
+    private UserService $userService;
 
-    public function __construct()
+    public function __construct(UserService $userService)
     {
         parent::__construct();
+        $this->userService = $userService;
         $accountId = $_SESSION['active_ml_account_id'] ?? null;
         $this->claimsService = new ClaimsService($accountId);
     }

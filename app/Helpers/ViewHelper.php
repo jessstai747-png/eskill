@@ -66,7 +66,7 @@ class ViewHelper
 // ============================================================================
 // Função global view() — usada por controllers como OpenSpecController
 // ============================================================================
-if (!function_exists('view')) {
+if (!function_exists('App\\Helpers\\view')) {
     /**
      * Renderiza uma view com layout padrão
      *

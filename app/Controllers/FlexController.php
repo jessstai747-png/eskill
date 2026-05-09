@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\MercadoLivreClient;
+use App\Services\UserService;
 use App\Database;
 
 /**
@@ -15,6 +16,14 @@ use App\Database;
  */
 class FlexController extends BaseController
 {
+    private UserService $userService;
+
+    public function __construct(UserService $userService)
+    {
+        parent::__construct();
+        $this->userService = $userService;
+    }
+
     /**
      * GET /dashboard/logistics/flex
      * Renderiza o painel de gerenciamento Flex.
