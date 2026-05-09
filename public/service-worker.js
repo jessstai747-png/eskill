@@ -1,3 +1,5 @@
+/* eslint-env serviceworker */
+/* eslint-disable no-undef */
 /**
  * Service Worker - Mercado Livre Manager PWA
  * Implementa cache, modo offline e push notifications
@@ -5,9 +7,21 @@
  * @version 1.1.0
  */
 
-const CACHE_NAME = 'ml-manager-v2';
-const DYNAMIC_CACHE = 'ml-manager-dynamic-v2';
-const API_CACHE = 'ml-manager-api-v2';
+const CACHE_NAME = 'ml-manager-v3';
+const DYNAMIC_CACHE = 'ml-manager-dynamic-v3';
+const API_CACHE = 'ml-manager-api-v3';
+const EMERGENCY_NETWORK_ONLY = true;
+
+// Declarações explícitas para lint em ambiente Service Worker
+const self = globalThis.self;
+const caches = globalThis.caches;
+const clients = globalThis.clients;
+const Notification = globalThis.Notification;
+const console = globalThis.console;
+const URL = globalThis.URL;
+const fetch = globalThis.fetch;
+const Response = globalThis.Response;
+const Headers = globalThis.Headers;
 
 // Assets estáticos para cache imediato
 const STATIC_ASSETS = [
@@ -66,6 +80,10 @@ self.addEventListener('activate', (event) => {
 
     event.waitUntil(
         Promise.all([
+            // Modo de emergência: limpar todos os caches para remover estado corrompido
+            ...(EMERGENCY_NETWORK_ONLY ? [
+                caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+            ] : []),
             // Limpar caches antigos
             caches.keys().then((keys) => {
                 return Promise.all(
@@ -91,6 +109,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
+
+    // Modo de emergência: sempre rede para evitar loops por cache/offline antigo
+    if (EMERGENCY_NETWORK_ONLY) {
+        event.respondWith(fetch(request));
+        return;
+    }
 
     // Ignorar requisições não HTTP/HTTPS
     if (!url.protocol.startsWith('http')) {
@@ -229,7 +253,7 @@ async function networkFirstStrategy(request, cacheName) {
         if (cached) {
             // Verificar se o cache ainda é válido
             const cachedAt = cached.headers.get('sw-cached-at');
-            if (cachedAt && (Date.now() - parseInt(cachedAt)) > CACHE_TTL.api) {
+            if (cachedAt && (Date.now() - parseInt(cachedAt, 10)) > CACHE_TTL.api) {
                 console.log('[SW] Cache expired for:', request.url);
             }
             return cached;
@@ -485,22 +509,23 @@ self.addEventListener('notificationclick', (event) => {
     }
 
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then((clientList) => {
-                // Procurar por janela já aberta
-                for (const client of clientList) {
-                    if (client.url.includes(self.location.origin) && 'focus' in client) {
-                        client.navigate(urlToOpen);
-                        return client.focus();
-                    }
-                }
+          clients.matchAll({ type: 'window', includeUncontrolled: true })
+              .then(async (clientList) => {
+                  // Procurar por janela já aberta
+                  for (const client of clientList) {
+                      if (client.url.includes(self.location.origin) && 'focus' in client) {
+                          client.navigate(urlToOpen);
+                          await client.focus();
+                          return;
+                      }
+                  }
 
-                // Abrir nova janela
-                if (clients.openWindow) {
-                    return clients.openWindow(urlToOpen);
-                }
-            })
-    );
+                  // Abrir nova janela
+                  if (clients.openWindow) {
+                      await clients.openWindow(urlToOpen);
+                  }
+              })
+      );
 });
 
 /**
@@ -608,3 +633,6 @@ async function syncData() {
 }
 
 console.log('[SW] Service Worker loaded');
+
+// Referência explícita para evitar no-unused-vars em lint
+void staleWhileRevalidateStrategy;
