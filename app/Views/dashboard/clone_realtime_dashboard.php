@@ -12,7 +12,6 @@ $pageTitle = 'Dashboard em Tempo Real';
 $extraCss = [];
 $extraJs = [];
 
-ob_start();
 ?>
 
 <div class="container-fluid py-4">
@@ -685,7 +684,3 @@ window.addEventListener('beforeunload', function() {
 });
 </script>
 
-<?php
-$content = ob_get_clean();
-
-include __DIR__ . '/../layouts/dashboard.php';

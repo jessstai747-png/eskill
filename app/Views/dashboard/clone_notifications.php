@@ -11,7 +11,6 @@ $pageTitle = 'Notificações de Clonagem';
 $pageDescription = 'Configure webhooks Slack e Discord para receber alertas';
 
 // Include layout
-ob_start();
 ?>
 
 <div class="container-fluid py-4">

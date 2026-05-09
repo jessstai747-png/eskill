@@ -12,7 +12,6 @@ $pageTitle = 'Compliance e Auditoria';
 $extraCss = [];
 $extraJs = [];
 
-ob_start();
 ?>
 
 <div class="container-fluid py-4">
@@ -757,7 +756,3 @@ document.addEventListener('click', e => {
 });
 </script>
 
-<?php
-$content = ob_get_clean();
-
-include __DIR__ . '/../layouts/dashboard.php';

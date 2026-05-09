@@ -13,7 +13,6 @@ declare(strict_types=1);
  */
 
 $pageTitle = 'Clone Operations | Dashboard';
-ob_start();
 ?>
 
 <style>

@@ -12,7 +12,6 @@ $pageTitle = 'Automação de Clonagem';
 $extraCss = [];
 $extraJs = [];
 
-ob_start();
 ?>
 
 <div class="container-fluid py-4">
@@ -667,7 +666,3 @@ function showToast(message, type = 'info') {
 }
 </script>
 
-<?php
-$content = ob_get_clean();
-
-include __DIR__ . '/../layouts/dashboard.php';

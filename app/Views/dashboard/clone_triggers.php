@@ -9,7 +9,6 @@ declare(strict_types=1);
  */
 
 $pageTitle = 'Triggers de Eventos';
-ob_start();
 ?>
 
 <style>

@@ -12,7 +12,6 @@ $pageTitle = 'Analytics de Clonagem';
 $extraCss = [];
 $extraJs = [];
 
-ob_start();
 ?>
 
 <div class="container-fluid py-4">
@@ -760,7 +759,3 @@ function escapeHtml(text) {
 }
 </script>
 
-<?php
-$content = ob_get_clean();
-
-include __DIR__ . '/../layouts/dashboard.php';
