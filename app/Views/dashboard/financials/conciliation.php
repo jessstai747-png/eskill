@@ -106,9 +106,9 @@ ob_start();
                     <td><?= htmlspecialchars($s['description'] ?? '') ?></td>
                     <td class="small font-monospace"><?= htmlspecialchars($s['external_reference'] ?? '-') ?></td>
                     <td><span class="badge bg-secondary-subtle text-secondary"><?= $s['type'] ?></span></td>
-                    <td>R$ <?= number_format($s['gross_amount'], 2, ',', '.') ?></td>
-                    <td class="fw-bold <?= $s['net_amount'] < 0 ? 'text-danger' : 'text-success' ?>">
-                        R$ <?= number_format($s['net_amount'], 2, ',', '.') ?>
+                    <td>R$ <?= number_format((float)($s['gross_amount'] ?? 0), 2, ',', '.') ?></td>
+                    <td class="fw-bold <?= (float)($s['net_amount'] ?? 0) < 0 ? 'text-danger' : 'text-success' ?>">
+                        R$ <?= number_format((float)($s['net_amount'] ?? 0), 2, ',', '.') ?>
                     </td>
                     <td>
                         <?php if($s['status'] === 'CONCILIATED'): ?>

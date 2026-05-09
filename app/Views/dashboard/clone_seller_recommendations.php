@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Clone Seller Recommendations Dashboard
  * Interface para recomendações de vendedores via ML
  */
-$this->layout('layouts/dashboard', ['title' => 'Recomendações de Vendedores - Clonador']);
 ?>
 
 <div class="container-fluid py-4">
