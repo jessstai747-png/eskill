@@ -91,12 +91,14 @@ export default defineConfig({
         command: `php -S 127.0.0.1:${PORT} router.php`,
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
-        timeout: 30_000,
+        // PHP_CLI_SERVER_WORKERS (SO_REUSEPORT com múltiplos processos) foi
+        // testado e causou "Timed out waiting from config.webServer" no
+        // runner do GitHub Actions (funcionava localmente); mantendo o
+        // servidor embutido em processo único, que já é suficiente para a
+        // carga dos testes E2E e é o comportamento padrão/mais previsível.
+        timeout: 60_000,
         env: {
           APP_ENV: process.env.APP_ENV || 'testing',
-          // Habilita múltiplos workers no servidor embutido do PHP (PHP >= 7.4)
-          // para suportar testes em paralelo sem serializar as requisições.
-          PHP_CLI_SERVER_WORKERS: process.env.PHP_CLI_SERVER_WORKERS || '4',
         },
       },
 });
