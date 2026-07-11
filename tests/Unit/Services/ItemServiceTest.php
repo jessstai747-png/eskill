@@ -36,8 +36,8 @@ class ItemServiceTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->testItemId && $this->db) {
-            $this->db->prepare("DELETE FROM ml_items WHERE id = :id")
-                ->execute(['id' => $this->testItemId]);
+            $this->db->prepare("DELETE FROM items WHERE ml_item_id = :ml_item_id")
+                ->execute(['ml_item_id' => $this->testItemId]);
         }
         parent::tearDown();
     }
@@ -52,23 +52,28 @@ class ItemServiceTest extends TestCase
     private function seedTestItem(): void
     {
         $this->requireDb();
+        // `ml_items` é uma VIEW somente-leitura sobre `items` (ver
+        // database/migrations/2026_07_11_fix_ml_items_view_missing_columns.sql);
+        // o seed precisa inserir na tabela real. `items.id` é AUTO_INCREMENT
+        // (não a string MLB-...), então usamos `ml_item_id` para o identificador
+        // do anúncio — a própria view expõe `ml_item_id` para leitura.
         $this->testItemId = 'MLB-TEST-' . bin2hex(random_bytes(4));
 
         // Desabilitar FK checks para seeding de teste
         $this->db->exec("SET FOREIGN_KEY_CHECKS=0");
 
         $stmt = $this->db->prepare("
-            INSERT INTO ml_items (
-                id, account_id, title, category_id, price, currency_id,
-                available_quantity, sold_quantity, status, permalink, raw_data, created_at, updated_at
+            INSERT INTO items (
+                ml_item_id, account_id, title, category_id, price, currency_id,
+                available_quantity, sold_quantity, status, permalink, data, created_at, updated_at
             )
             VALUES (
-                :id, :acct, :title, :cat, :price, :currency,
-                :qty, :sold_qty, :status, :link, :raw_data, NOW(), NOW()
+                :ml_item_id, :acct, :title, :cat, :price, :currency,
+                :qty, :sold_qty, :status, :link, :data, NOW(), NOW()
             )
         ");
         $stmt->execute([
-            'id' => $this->testItemId,
+            'ml_item_id' => $this->testItemId,
             'acct' => 999,
             'title' => 'Item teste unitário',
             'cat' => 'MLB1234',
@@ -78,7 +83,7 @@ class ItemServiceTest extends TestCase
             'sold_qty' => 0,
             'status' => 'active',
             'link' => 'https://produto.mercadolivre.com.br/test',
-            'raw_data' => json_encode(['source' => 'phpunit']),
+            'data' => json_encode(['source' => 'phpunit']),
         ]);
 
         $this->db->exec("SET FOREIGN_KEY_CHECKS=1");
