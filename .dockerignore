@@ -40,11 +40,13 @@ examples/
 .DS_Store
 Thumbs.db
 
-# Logs and cache (são criados em runtime)
-storage/logs/*
-storage/cache/*
-!storage/logs/.gitkeep
-!storage/cache/.gitkeep
+# Dados de runtime/produção: NUNCA devem entrar no contexto de build nem na
+# imagem. O Dockerfile já recria os diretórios necessários (storage/logs,
+# storage/cache, storage/sessions) via `mkdir -p`. Sem esta exclusão, todo o
+# conteúdo de storage/ (incluindo storage/backups/, que no servidor real chega
+# a ~9GB, e scripts de debug/scratch acumulados na raiz de storage/) era
+# enviado ao daemon Docker em cada build.
+storage/
 
 # Misc
 *.md

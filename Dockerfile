@@ -13,12 +13,18 @@ FROM composer:2 AS composer-deps
 WORKDIR /app
 
 COPY composer.json composer.lock* ./
+# composer.json exige ext-redis (*), que a imagem base `composer:2` não tem.
+# --ignore-platform-req é seguro aqui: este estágio só resolve/baixa pacotes
+# (--no-scripts --no-autoloader), nunca executa código da aplicação que
+# realmente precise da extensão carregada. A extensão é instalada de fato no
+# estágio de runtime abaixo.
 RUN composer install \
     --no-dev \
     --no-scripts \
     --no-autoloader \
     --prefer-dist \
     --optimize-autoloader \
+    --ignore-platform-req=ext-redis \
     && rm -rf /root/.composer/cache
 
 COPY . .
@@ -35,6 +41,9 @@ LABEL maintainer="eskill" \
       version="1.0"
 
 # Instalar extensões PHP necessárias
+# Nota: "json" foi removido da lista de docker-php-ext-install — desde o PHP
+# 8.0 ela é compilada estaticamente no core (não gera modules/*.so), e tentar
+# instalá-la como módulo falha com "Error 1: cp: cannot stat 'modules/*'".
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libcurl4-openssl-dev \
         libzip-dev \
@@ -51,15 +60,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pdo \
         pdo_mysql \
         curl \
-        json \
         mbstring \
         zip \
         gd \
         opcache \
         gmp \
         bcmath \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && apt-get purge -y --auto-remove \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && rm -rf /tmp/pear
 
 # Configurar Apache
 RUN a2enmod rewrite headers expires deflate
