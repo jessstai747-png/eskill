@@ -12,7 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PHP_VERSION: '8.2'
+  # composer.lock foi resolvido com doctrine/instantiator 2.1.0, que exige PHP ^8.4
+  # (mesma versão usada no ambiente de desenvolvimento). Manter em sincronia com
+  # o lock file para evitar "lock file does not contain a compatible set of packages".
+  PHP_VERSION: '8.4'
   NODE_VERSION: '20'
   APP_ENV: testing
   DB_HOST: 127.0.0.1
