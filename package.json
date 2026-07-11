@@ -5,7 +5,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "smoke:prod:ui": "node scripts/playwright_prod_smoke.js"
+    "smoke:prod": "RUN_PROD_VALIDATION=1 PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test production-validation --project=chromium",
+    "smoke:prod:ui": "RUN_PROD_VALIDATION=1 PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test production-validation --project=chromium --ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

@@ -1,27 +1,228 @@
 name: Playwright Tests
+
 on:
-  push:
-    branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: playwright-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.2'
+  NODE_VERSION: '20'
+  APP_ENV: testing
+  DB_HOST: 127.0.0.1
+  DB_PORT: 3306
+  DB_DATABASE: meli
+  DB_USERNAME: root
+  DB_PASSWORD: root
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: 6379
+
 jobs:
-  test:
-    timeout-minutes: 60
+  pr-quick:
+    name: PR Quick (Chromium)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: meli
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo, pdo_mysql, curl, json, mbstring, zip, gd, redis
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run database migrations
+        run: php bin/migrate.php --testing
+
+      - name: Run PR quick tests
+        run: npx playwright test --project=chromium
+        env:
+          CI: true
+
+      - name: Upload Playwright artifacts (PR)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-pr-chromium
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
+
+  full-cross-browser:
+    name: Full (${{ matrix.project }})
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: meli
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo, pdo_mysql, curl, json, mbstring, zip, gd, redis
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.project }}
+
+      - name: Run database migrations
+        run: php bin/migrate.php --testing
+
+      - name: Run full suite
+        run: npx playwright test --project=${{ matrix.project }}
+        env:
+          CI: true
+
+      - name: Upload Playwright artifacts (Full)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-full-${{ matrix.project }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
+
+  # Validação contra produção real (https://eskill.com.br). Não roda automaticamente:
+  # só via "Run workflow" manual, com PROD_EMAIL/PROD_PASSWORD configurados como secrets.
+  production-validation:
+    name: Production Validation (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run production validation
+        run: npx playwright test production-validation --project=chromium
+        env:
+          CI: true
+          RUN_PROD_VALIDATION: '1'
+          PLAYWRIGHT_SKIP_WEBSERVER: '1'
+          PROD_EMAIL: ${{ secrets.PROD_EMAIL }}
+          PROD_PASSWORD: ${{ secrets.PROD_PASSWORD }}
+
+      - name: Upload Playwright artifacts (Production)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-production-validation
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
