@@ -210,6 +210,8 @@ jobs:
           curl -v -m 5 http://127.0.0.1:8080/login || true
           echo "--- php server log ---"
           cat /tmp/php-debug.log || true
+          echo "--- storage/logs (tail) ---"
+          find storage/logs -type f -name '*.log' -newer composer.json -exec sh -c 'echo "== {} =="; tail -n 100 "{}"' \; || true
           pkill -f "php -S 127.0.0.1:8080" || true
           sleep 1
 
