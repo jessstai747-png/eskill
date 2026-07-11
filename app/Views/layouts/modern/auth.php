@@ -1,5 +1,8 @@
 <?php
+declare(strict_types=1);
+
 $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?? ($_SESSION['csp_nonce'] ?? ''));
+$dashboardCssVersion = @filemtime(__DIR__ . '/../../../../public/css/dashboard-modern.css') ?: time();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" data-theme="light">
@@ -158,7 +161,7 @@ $cspNonce = defined('CSP_NONCE') ? CSP_NONCE : (($GLOBALS['cspNonce'] ?: null) ?
             }
         </style>
     <?php endif; ?>
-    <link href="/css/dashboard-modern.css" rel="stylesheet">
+    <link href="/css/dashboard-modern.css?v=<?= $dashboardCssVersion ?>" rel="stylesheet">
 
     <style>
         body {
