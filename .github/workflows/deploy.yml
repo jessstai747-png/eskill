@@ -90,15 +90,17 @@ jobs:
         chmod 600 deploy_key
         # scripts/migrate_*.php não existem mais neste projeto; a ferramenta
         # atual de migrations é bin/migrate.php (ver database/migrations/).
-        # ATENÇÃO: "php8.2-fpm" abaixo não foi validado contra o servidor real
-        # (a documentação em docs/DEPLOY_GUIDE.md referencia php8.0-fpm, e este
-        # workflow usava php8.2-fpm — nenhum dos dois bate com o PHP ^8.4 que
-        # composer.lock exige). Confirme a versão real do PHP-FPM em produção
-        # antes de habilitar este workflow de verdade.
+        # php8.4-fpm/caminho /var/www/html assumem que DEPLOY_HOST aponta para
+        # um host remoto genérico. Se DEPLOY_HOST for este mesmo servidor (o
+        # pool real de produção roda em /etc/php/8.4/fpm/pool.d/eskill.com.br.conf,
+        # serviço php8.4-fpm, docroot em /home/eskill/htdocs/eskill.com.br), este
+        # workflow provavelmente é redundante: a aplicação já é editada
+        # diretamente neste servidor, sem passar por rsync via Actions.
+        # Revalidar topologia real de deploy antes de configurar os secrets.
         ssh -i deploy_key -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
           cd /var/www/html
           php bin/migrate.php
-          sudo systemctl reload php8.2-fpm
+          sudo systemctl reload php8.4-fpm
           sudo systemctl reload nginx
         EOF
         rm deploy_key
