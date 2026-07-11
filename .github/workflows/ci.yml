@@ -161,7 +161,10 @@ jobs:
           tools: composer:v2
 
       - name: Composer Audit
-        run: composer audit --no-interaction
+        # --locked audita composer.lock diretamente, sem precisar de `composer
+        # install` antes (bug anterior: rodava audit sem vendor/ instalado,
+        # falhando sempre com "No installed packages found").
+        run: composer audit --no-interaction --locked
 
   # ==============================================================================
   # Job 4: Build Docker Image
