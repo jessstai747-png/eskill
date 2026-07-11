@@ -200,6 +200,19 @@ jobs:
       - name: Apply migrations newer than the schema snapshot
         run: php bin/migrate.php --testing
 
+      - name: DEBUG - manual webServer probe
+        run: |
+          (php -S 127.0.0.1:8080 router.php > /tmp/php-debug.log 2>&1 &)
+          sleep 3
+          echo "--- curl -v / ---"
+          curl -v -m 5 http://127.0.0.1:8080/ || true
+          echo "--- curl -v /login ---"
+          curl -v -m 5 http://127.0.0.1:8080/login || true
+          echo "--- php server log ---"
+          cat /tmp/php-debug.log || true
+          pkill -f "php -S 127.0.0.1:8080" || true
+          sleep 1
+
       - name: Run full suite
         run: npx playwright test --project=${{ matrix.project }}
         env:
