@@ -47,6 +47,13 @@ jobs:
         cp .env.example .env
 
     - name: Configure test env
+      # LOG_LEVEL=warning (padrão do .env.example, correto para produção)
+      # filtra as mensagens info/debug que LogSystemIntegrationTest verifica
+      # diretamente — sobrescrito para debug apenas em teste. ML_APP_ID/
+      # ML_CLIENT_ID/ML_CLIENT_SECRET/ML_REDIRECT_URI usam valores placeholder
+      # em .env.example (ex.: "your_mercadolibre_app_id"), rejeitados por
+      # MercadoLivreAuthService::isPlaceholderValue() — sobrescritos com
+      # valores fake porém válidos para os testes de validação de config OAuth.
       run: |
         {
           echo "APP_ENV=testing"
@@ -64,8 +71,14 @@ jobs:
           echo "DB_PASS=root"
           echo "REDIS_HOST=127.0.0.1"
           echo "REDIS_PORT=6379"
+          echo "LOG_LEVEL=debug"
+          echo "ML_APP_ID=1234567890123456"
+          echo "ML_CLIENT_ID=1234567890123456"
+          echo "ML_CLIENT_SECRET=ci-test-ml-client-secret-fake"
+          echo "ML_REDIRECT_URI=http://127.0.0.1:8080/auth/callback"
         } >> .env
         cp .env .env.testing
+        mkdir -p storage/test-logs storage/logs storage/cache storage/sessions
     
     - name: Install Dependencies
       run: composer install --prefer-dist --no-progress
