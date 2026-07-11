@@ -1,5 +1,13 @@
 name: Playwright Tests
 
+# Nota sobre o banco de dados no CI: em vez de rodar `php bin/migrate.php` do
+# zero (as ~122 migrations em database/migrations/ foram feitas para evolução
+# incremental de um banco existente e não são 100% replayable numa base
+# vazia — descoberto ao validar este pipeline), o schema é bootstrapado a
+# partir de um snapshot (database/ci/schema.sql + migrations_seed.sql) e só
+# então aplicamos migrations mais novas que o snapshot. Ver comentário no
+# topo de database/ci/schema.sql para detalhes e como regenerar.
+
 on:
   pull_request:
     branches: [main, master]
@@ -23,6 +31,14 @@ env:
   DB_DATABASE: meli
   DB_USERNAME: root
   DB_PASSWORD: root
+  # Algumas migrations .php chamam Dotenv->load() por conta própria (carregando o
+  # .env de produção) e app/Database.php + config/database.php resolvem
+  # DB_USER/DB_NAME (aliases legados) ANTES de getenv(DB_USERNAME/DB_DATABASE).
+  # Definir os aliases aqui evita que credenciais reais do .env vazem para dentro
+  # do processo de teste via $_ENV.
+  DB_USER: root
+  DB_NAME: meli
+  DB_PASS: root
   REDIS_HOST: 127.0.0.1
   REDIS_PORT: 6379
 
@@ -88,7 +104,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run database migrations
+      - name: Bootstrap database schema
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot meli < database/ci/schema.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot meli < database/ci/migrations_seed.sql
+
+      - name: Apply migrations newer than the schema snapshot
         run: php bin/migrate.php --testing
 
       - name: Run PR quick tests
@@ -171,7 +192,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.project }}
 
-      - name: Run database migrations
+      - name: Bootstrap database schema
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot meli < database/ci/schema.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot meli < database/ci/migrations_seed.sql
+
+      - name: Apply migrations newer than the schema snapshot
         run: php bin/migrate.php --testing
 
       - name: Run full suite

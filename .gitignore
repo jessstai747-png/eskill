@@ -41,6 +41,11 @@ storage/backups/
 # EXCEÇÃO: migrations SQL devem ser versionadas (senão clone limpo não instala schema)
 !database/migrations/**/*.sql
 
+# EXCEÇÃO: snapshot de schema + seed de migrations usados para bootstrap do
+# banco de teste no CI (ver .github/workflows/playwright.yml). Contém apenas
+# estrutura/metadados, nunca dados de negócio.
+!database/ci/**/*.sql
+
 # Temporários
 /tmp/
 /temp/

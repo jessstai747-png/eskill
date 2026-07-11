@@ -1,5 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
 
+const email = process.env.E2E_TEST_USER_EMAIL;
+const password = process.env.E2E_TEST_USER_PASSWORD;
+
 // Helper to mock the brand search API endpoints
 async function mockBrandSearchApi(page: Page, searchId = 1) {
     await page.route('**/api/brand-search/start', async route => {
@@ -50,7 +53,17 @@ async function mockBrandSearchApi(page: Page, searchId = 1) {
 }
 
 test.describe('Brand Search — Módulo 20 BRAND-003', () => {
+    // /brand-search exige sessão autenticada; sem credenciais E2E, apenas pulamos
+    // (mesmo padrão usado em dashboard-audit.spec.ts e clonar-anuncios-search.spec.ts).
     test.beforeEach(async ({ page }) => {
+        test.skip(!email || !password, 'Credenciais E2E não configuradas');
+
+        await page.goto('/login');
+        await page.fill('input[name="email"], input[type="email"]', email!);
+        await page.fill('input[name="password"], input[type="password"]', password!);
+        await page.click('button[type="submit"], input[type="submit"]');
+        await page.waitForURL(/dashboard|login/, { timeout: 15000 });
+
         await page.goto('/brand-search');
         await page.waitForLoadState('domcontentloaded');
     });
