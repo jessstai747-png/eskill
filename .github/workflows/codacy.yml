@@ -13,13 +13,29 @@ jobs:
   codacy-security-scan:
     name: Codacy Security Scan
     runs-on: ubuntu-latest
-    # Requer o secret CODACY_PROJECT_TOKEN configurado no repositório
-    # (Settings > Secrets and variables > Actions). Sem ele, o upload do SARIF falha.
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check Codacy token
+        # Requer o secret CODACY_PROJECT_TOKEN configurado no repositório
+        # (Settings > Secrets and variables > Actions > New repository secret,
+        # valor obtido em Codacy > Repository Settings > Integrations). Sem
+        # ele, a action falha com "At least one authentication method is
+        # required to upload results." — este step evita X vermelho
+        # permanente enquanto o token não é cadastrado, sem desabilitar o
+        # workflow (roda automaticamente assim que o secret existir).
+        id: codacy_check
+        run: |
+          if [ -n "${{ secrets.CODACY_PROJECT_TOKEN }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CODACY_PROJECT_TOKEN não configurado — pulando scan do Codacy."
+          fi
+
       - name: Run Codacy Analysis CLI
+        if: steps.codacy_check.outputs.configured == 'true'
         uses: codacy/codacy-analysis-cli-action@v4
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}

@@ -61,9 +61,31 @@ jobs:
     - name: Install Dependencies (production, no-dev)
       if: success()
       run: composer install --no-dev --optimize-autoloader
-    
-    - name: Deploy to Production
+
+    - name: Check deploy secrets
+      # A aplicação é editada diretamente no servidor de produção (docroot
+      # /home/eskill/htdocs/eskill.com.br, php8.4-fpm) — não há um host remoto
+      # de deploy separado configurado, então DEPLOY_KEY/DEPLOY_HOST/DEPLOY_USER
+      # nunca foram cadastrados como secrets (confirmado: rsync falhava com
+      # "unexplained error (code 255)" por tentar conectar a um host vazio).
+      # Este step evita que o workflow fique vermelho por um passo que é
+      # opcional/só relevante se um servidor remoto de deploy existir no futuro.
+      id: deploy_check
       if: success()
+      env:
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      run: |
+        if [ -n "$DEPLOY_KEY" ] && [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ]; then
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::DEPLOY_KEY/DEPLOY_HOST/DEPLOY_USER não configurados — pulando deploy remoto (rsync/SSH). A aplicação já é editada diretamente no servidor de produção."
+        fi
+
+    - name: Deploy to Production
+      if: success() && steps.deploy_check.outputs.configured == 'true'
       env:
         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -80,7 +102,7 @@ jobs:
         rm deploy_key
     
     - name: Run Post-Deploy Commands
-      if: success()
+      if: success() && steps.deploy_check.outputs.configured == 'true'
       env:
         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -90,13 +112,6 @@ jobs:
         chmod 600 deploy_key
         # scripts/migrate_*.php não existem mais neste projeto; a ferramenta
         # atual de migrations é bin/migrate.php (ver database/migrations/).
-        # php8.4-fpm/caminho /var/www/html assumem que DEPLOY_HOST aponta para
-        # um host remoto genérico. Se DEPLOY_HOST for este mesmo servidor (o
-        # pool real de produção roda em /etc/php/8.4/fpm/pool.d/eskill.com.br.conf,
-        # serviço php8.4-fpm, docroot em /home/eskill/htdocs/eskill.com.br), este
-        # workflow provavelmente é redundante: a aplicação já é editada
-        # diretamente neste servidor, sem passar por rsync via Actions.
-        # Revalidar topologia real de deploy antes de configurar os secrets.
         ssh -i deploy_key -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
           cd /var/www/html
           php bin/migrate.php
