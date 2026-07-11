@@ -1,18 +1,23 @@
 name: Codacy Security Scan
 
+# Nota: a branch real deste repositório é `master` (não `main`/`develop`), por
+# isso este workflow nunca disparava.
+
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
 
 jobs:
   codacy-security-scan:
     name: Codacy Security Scan
     runs-on: ubuntu-latest
+    # Requer o secret CODACY_PROJECT_TOKEN configurado no repositório
+    # (Settings > Secrets and variables > Actions). Sem ele, o upload do SARIF falha.
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run Codacy Analysis CLI
         uses: codacy/codacy-analysis-cli-action@v4

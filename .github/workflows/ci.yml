@@ -1,13 +1,18 @@
 name: CI/CD Pipeline
 
+# Nota: a branch real deste repositório é `master` (não `main`/`develop`), por
+# isso este workflow nunca disparava. Corrigido para cobrir as branches reais.
+
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 env:
-  PHP_VERSION: '8.2'
+  # composer.lock foi resolvido com doctrine/instantiator 2.1.0, que exige PHP ^8.4.
+  # Manter em sincronia com o lock file (ver .github/workflows/playwright.yml).
+  PHP_VERSION: '8.4'
   NODE_VERSION: '20'
 
 jobs:
@@ -54,7 +59,7 @@ jobs:
         run: npx eslint public/js/**/*.js --max-warnings=0 || true
 
       - name: Stylelint
-        run: npx stylelint public/css/**/*.css || true
+        run: npx stylelint "public/css/**/*.css" || true
 
   # ==============================================================================
   # Job 2: Unit Tests
@@ -165,7 +170,7 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     needs: [test-unit, security]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
       - uses: actions/checkout@v4

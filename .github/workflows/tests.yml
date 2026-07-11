@@ -1,10 +1,13 @@
 name: Tests
 
+# Nota: a branch real deste repositório é `master` (não `main`/`develop`), por
+# isso este workflow nunca disparava. Corrigido para cobrir as branches reais.
+
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
 
 jobs:
   test:
@@ -27,39 +30,58 @@ jobs:
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        # composer.lock exige PHP ^8.4 (doctrine/instantiator 2.1.0).
+        php-version: '8.4'
         extensions: mbstring, xml, ctype, json, mysql, redis
         coverage: none
     
     - name: Copy .env
-      run: cp .env.example .env
+      # tests/bootstrap.php prioriza .env.testing sobre .env; geramos ambos com
+      # o mesmo conteúdo para cobrir qualquer ponto do código que leia um ou outro.
+      run: |
+        cp .env.example .env
 
     - name: Configure test env
       run: |
         {
           echo "APP_ENV=testing"
-          echo "APP_DEBUG=false"
+          echo "APP_DEBUG=true"
+          echo "APP_KEY=ci-test-key-$(openssl rand -hex 16)"
+          echo "MOBILE_TOKEN_SECRET=ci-test-mobile-secret-$(openssl rand -hex 16)"
           echo "DB_CONNECTION=mysql"
           echo "DB_HOST=127.0.0.1"
           echo "DB_PORT=3306"
           echo "DB_DATABASE=meli_test"
           echo "DB_USERNAME=root"
+          echo "DB_NAME=meli_test"
+          echo "DB_USER=root"
           echo "DB_PASSWORD=root"
+          echo "DB_PASS=root"
+          echo "REDIS_HOST=127.0.0.1"
+          echo "REDIS_PORT=6379"
         } >> .env
+        cp .env .env.testing
     
     - name: Install Dependencies
       run: composer install --prefer-dist --no-progress
     
-    - name: Run Migrations
+    - name: Bootstrap database schema
+      # As ~122 migrations em database/migrations/ foram feitas para evolução
+      # incremental de um banco existente, não para replay do zero (scripts
+      # legados migrate_notifications.php/migrate_monitoring.php/
+      # migrate_competitor_tracking.php referenciados aqui antes não existem
+      # mais). Usamos o mesmo snapshot de schema do CI do Playwright.
       run: |
-        php scripts/migrate_notifications.php
-        php scripts/migrate_monitoring.php
-        php scripts/migrate_competitor_tracking.php
+        mysql -h 127.0.0.1 -P 3306 -u root -proot meli_test < database/ci/schema.sql
+        mysql -h 127.0.0.1 -P 3306 -u root -proot meli_test < database/ci/migrations_seed.sql
+
+    - name: Apply migrations newer than the schema snapshot
+      run: php bin/migrate.php --testing
     
     - name: Run Tests
       run: ./vendor/bin/phpunit --testsuite Unit

@@ -1,8 +1,11 @@
 name: Deploy
 
+# Nota: a branch real deste repositório é `master` (não `main`), por isso este
+# workflow nunca disparava.
+
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   deploy:
@@ -19,15 +22,20 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        # composer.lock exige PHP ^8.4 (doctrine/instantiator 2.1.0).
+        php-version: '8.4'
     
-    - name: Install Dependencies
-      run: composer install --no-dev --optimize-autoloader
+    - name: Install Dependencies (with dev, for tests)
+      # phpunit é dependência dev-only: precisa estar presente para o passo de
+      # testes abaixo. A reinstalação --no-dev roda só depois, antes do deploy
+      # (bug corrigido: a versão anterior instalava --no-dev e então tentava
+      # rodar ./vendor/bin/phpunit, que não existe sem dev deps).
+      run: composer install --optimize-autoloader
     
     - name: Run Tests
       run: |
@@ -35,14 +43,24 @@ jobs:
         {
           echo "APP_ENV=testing"
           echo "APP_DEBUG=false"
+          echo "APP_KEY=ci-test-key-$(openssl rand -hex 16)"
+          echo "MOBILE_TOKEN_SECRET=ci-test-mobile-secret-$(openssl rand -hex 16)"
           echo "DB_CONNECTION=mysql"
           echo "DB_HOST=127.0.0.1"
           echo "DB_PORT=3306"
           echo "DB_DATABASE=meli_test"
           echo "DB_USERNAME=root"
+          echo "DB_NAME=meli_test"
+          echo "DB_USER=root"
           echo "DB_PASSWORD=root"
+          echo "DB_PASS=root"
         } >> .env
+        cp .env .env.testing
         ./vendor/bin/phpunit --testsuite Unit
+
+    - name: Install Dependencies (production, no-dev)
+      if: success()
+      run: composer install --no-dev --optimize-autoloader
     
     - name: Deploy to Production
       if: success()
@@ -70,9 +88,16 @@ jobs:
       run: |
         echo "$DEPLOY_KEY" > deploy_key
         chmod 600 deploy_key
+        # scripts/migrate_*.php não existem mais neste projeto; a ferramenta
+        # atual de migrations é bin/migrate.php (ver database/migrations/).
+        # ATENÇÃO: "php8.2-fpm" abaixo não foi validado contra o servidor real
+        # (a documentação em docs/DEPLOY_GUIDE.md referencia php8.0-fpm, e este
+        # workflow usava php8.2-fpm — nenhum dos dois bate com o PHP ^8.4 que
+        # composer.lock exige). Confirme a versão real do PHP-FPM em produção
+        # antes de habilitar este workflow de verdade.
         ssh -i deploy_key -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
           cd /var/www/html
-          php scripts/migrate_*.php
+          php bin/migrate.php
           sudo systemctl reload php8.2-fpm
           sudo systemctl reload nginx
         EOF

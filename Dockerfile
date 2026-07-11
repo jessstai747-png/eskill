@@ -1,6 +1,10 @@
 # ==============================================================================
 # Multi-stage Dockerfile para produção
-# Mercado Livre Manager - PHP 8.2 + Apache
+# Mercado Livre Manager - PHP 8.4 + Apache
+#
+# Nota: composer.lock foi resolvido com doctrine/instantiator 2.1.0, que exige
+# PHP ^8.4. A imagem de runtime precisa estar na mesma versão, senão a
+# aplicação falha ao carregar (mesma causa raiz corrigida no CI do Playwright).
 # ==============================================================================
 
 # Stage 1: Dependencies
@@ -23,7 +27,7 @@ RUN composer dump-autoload --optimize --no-dev
 # ==============================================================================
 # Stage 2: Production image
 # ==============================================================================
-FROM php:8.2-apache AS production
+FROM php:8.4-apache AS production
 
 # Metadados
 LABEL maintainer="eskill" \
