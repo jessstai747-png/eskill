@@ -6,6 +6,7 @@ namespace App\Services\SEO;
 
 use App\Database;
 use App\Services\MercadoLivreClient;
+use App\Services\CompetitorAnalysisService;
 use Exception;
 
 /**
