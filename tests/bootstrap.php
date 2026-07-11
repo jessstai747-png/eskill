@@ -45,6 +45,24 @@ if (!isset($_ENV['REDIS_DB']) || trim((string)$_ENV['REDIS_DB']) === '') {
 }
 putenv('REDIS_DB=' . (string)$_ENV['REDIS_DB']);
 
+// AIProviderManager/*Provider consideram um provider "disponível" apenas se a
+// respectiva API key estiver não-vazia (ver App\Services\AI\Providers\*::isAvailable()).
+// Os testes unitários de AIProviderManagerTest nunca chamam chat()/complete() —
+// só exercitam seleção/fallback/estatísticas — então uma key falsa é suficiente
+// para os providers se inicializarem sem qualquer chamada de rede real. Não
+// sobrescreve se já houver uma key real configurada (ex.: dev local com .env).
+$fakeAiKeyDefaults = [
+    'OPENAI_API_KEY'    => 'sk-test-phpunit-fake-key-not-real',
+    'ANTHROPIC_API_KEY' => 'sk-ant-test-phpunit-fake-key-not-real',
+    'GEMINI_API_KEY'    => 'test-phpunit-fake-key-not-real',
+];
+foreach ($fakeAiKeyDefaults as $envKey => $fakeValue) {
+    if (!isset($_ENV[$envKey]) || trim((string)$_ENV[$envKey]) === '') {
+        $_ENV[$envKey] = $fakeValue;
+        putenv($envKey . '=' . $fakeValue);
+    }
+}
+
 // Make sessions safe in CLI tests even when there is output before session_start().
 // PHPUnit may emit output (logs) during the run, and some services depend on $_SESSION.
 // Disabling cookies and cache limiter prevents "headers already sent" warnings.
