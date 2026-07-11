@@ -104,6 +104,30 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Create .env for CI
+        # public/index.php procura .env.test quando APP_ENV=testing; bin/migrate.php
+        # procura .env.testing (--testing). Geramos os dois com o mesmo conteúdo para
+        # que tanto o servidor web quanto o runner de migrations carreguem a mesma
+        # config via Dotenv (necessário p/ APP_KEY e outras chaves que só são lidas
+        # de $_ENV, sem fallback para getenv()).
+        run: |
+          cp .env.example .env.test
+          sed -i \
+            -e "s/^APP_ENV=.*/APP_ENV=testing/" \
+            -e "s/^APP_DEBUG=.*/APP_DEBUG=true/" \
+            -e "s/^APP_KEY=.*/APP_KEY=ci-test-key-$(openssl rand -hex 20)/" \
+            -e "s/^MOBILE_TOKEN_SECRET=.*/MOBILE_TOKEN_SECRET=ci-test-mobile-secret-$(openssl rand -hex 20)/" \
+            -e "s/^DB_HOST=.*/DB_HOST=127.0.0.1/" \
+            -e "s/^DB_PORT=.*/DB_PORT=3306/" \
+            -e "s/^DB_NAME=.*/DB_NAME=meli/" \
+            -e "s/^DB_USER=.*/DB_USER=root/" \
+            -e "s/^DB_PASS=.*/DB_PASS=root/" \
+            -e "s/^REDIS_HOST=.*/REDIS_HOST=127.0.0.1/" \
+            -e "s/^REDIS_PORT=.*/REDIS_PORT=6379/" \
+            -e "s/^ML_ALLOW_NETWORK=.*/ML_ALLOW_NETWORK=false/" \
+            .env.test
+          cp .env.test .env.testing
+
       - name: Bootstrap database schema
         run: |
           mysql -h 127.0.0.1 -P 3306 -u root -proot meli < database/ci/schema.sql
@@ -192,6 +216,30 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.project }}
 
+      - name: Create .env for CI
+        # public/index.php procura .env.test quando APP_ENV=testing; bin/migrate.php
+        # procura .env.testing (--testing). Geramos os dois com o mesmo conteúdo para
+        # que tanto o servidor web quanto o runner de migrations carreguem a mesma
+        # config via Dotenv (necessário p/ APP_KEY e outras chaves que só são lidas
+        # de $_ENV, sem fallback para getenv()).
+        run: |
+          cp .env.example .env.test
+          sed -i \
+            -e "s/^APP_ENV=.*/APP_ENV=testing/" \
+            -e "s/^APP_DEBUG=.*/APP_DEBUG=true/" \
+            -e "s/^APP_KEY=.*/APP_KEY=ci-test-key-$(openssl rand -hex 20)/" \
+            -e "s/^MOBILE_TOKEN_SECRET=.*/MOBILE_TOKEN_SECRET=ci-test-mobile-secret-$(openssl rand -hex 20)/" \
+            -e "s/^DB_HOST=.*/DB_HOST=127.0.0.1/" \
+            -e "s/^DB_PORT=.*/DB_PORT=3306/" \
+            -e "s/^DB_NAME=.*/DB_NAME=meli/" \
+            -e "s/^DB_USER=.*/DB_USER=root/" \
+            -e "s/^DB_PASS=.*/DB_PASS=root/" \
+            -e "s/^REDIS_HOST=.*/REDIS_HOST=127.0.0.1/" \
+            -e "s/^REDIS_PORT=.*/REDIS_PORT=6379/" \
+            -e "s/^ML_ALLOW_NETWORK=.*/ML_ALLOW_NETWORK=false/" \
+            .env.test
+          cp .env.test .env.testing
+
       - name: Bootstrap database schema
         run: |
           mysql -h 127.0.0.1 -P 3306 -u root -proot meli < database/ci/schema.sql
@@ -199,21 +247,6 @@ jobs:
 
       - name: Apply migrations newer than the schema snapshot
         run: php bin/migrate.php --testing
-
-      - name: DEBUG - manual webServer probe
-        run: |
-          (php -S 127.0.0.1:8080 router.php > /tmp/php-debug.log 2>&1 &)
-          sleep 3
-          echo "--- curl -v / ---"
-          curl -v -m 5 http://127.0.0.1:8080/ || true
-          echo "--- curl -v /login ---"
-          curl -v -m 5 http://127.0.0.1:8080/login || true
-          echo "--- php server log ---"
-          cat /tmp/php-debug.log || true
-          echo "--- storage/logs (tail) ---"
-          find storage/logs -type f -name '*.log' -newer composer.json -exec sh -c 'echo "== {} =="; tail -n 100 "{}"' \; || true
-          pkill -f "php -S 127.0.0.1:8080" || true
-          sleep 1
 
       - name: Run full suite
         run: npx playwright test --project=${{ matrix.project }}

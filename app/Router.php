@@ -189,12 +189,23 @@ class Router
                         http_response_code(500);
                     }
                     // Sempre registrar internamente a falha para diagnóstico de 500 em produção.
+                    // Inclui a cadeia de exceções (getPrevious) pois falhas de resolução de
+                    // dependências no Container só expõem a causa raiz na exceção encadeada
+                    // (ex.: "Cannot resolve dependency 'x'" é o wrapper; o erro real está no
+                    // construtor da dependência).
+                    $causeChain = [];
+                    for ($cause = $e->getPrevious(); $cause !== null; $cause = $cause->getPrevious()) {
+                        $causeChain[] = $cause->getMessage() . ' at ' . $cause->getFile() . ':' . $cause->getLine();
+                    }
                     log_error('Router: controller instantiation failed', [
                         'controller' => $controllerClass,
                         'action' => $action,
                         'path' => $path,
                         'method' => $method,
                         'error' => $e->getMessage(),
+                        'error_location' => $e->getFile() . ':' . $e->getLine(),
+                        'caused_by' => $causeChain,
+                        'trace' => $e->getTraceAsString(),
                     ]);
                     // Security: não expor mensagens internas em produção (M2)
                     $isProduction = ($_ENV['APP_ENV'] ?? 'production') === 'production';
