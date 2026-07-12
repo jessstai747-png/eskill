@@ -67,7 +67,7 @@ class RefreshTokenService
     /**
      * Create a new refresh token and return the raw token (selector:validator)
      */
-    public function createToken(int $userId, ?string $deviceInfo = null, int $days = null): string
+    public function createToken(int $userId, ?string $deviceInfo = null, ?int $days = null): string
     {
         $days = $days ?? $this->defaultDays;
         $selector = bin2hex(random_bytes(9));

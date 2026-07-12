@@ -297,7 +297,7 @@ class MarketAnalytics
      * @param string $categoryId
      * @return array Sentimento do mercado
      */
-    public function analyzemarketSentiment(string $categoryId = null): array
+    public function analyzemarketSentiment(?string $categoryId = null): array
     {
         $whereClause = $categoryId ? "AND cw.category_id = :category_id" : "";
         $params = ['account_id' => $this->accountId];

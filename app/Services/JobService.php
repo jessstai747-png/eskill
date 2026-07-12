@@ -515,7 +515,7 @@ class JobService
     /**
      * Executa o job baseado no tipo
      */
-    private function executeJob(string $type, array $payload, int $jobId = null): mixed
+    private function executeJob(string $type, array $payload, ?int $jobId = null): mixed
     {
         switch ($type) {
             case 'sync_orders':
