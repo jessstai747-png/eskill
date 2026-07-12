@@ -128,14 +128,11 @@ class HealthController extends BaseController
             }
         }
 
-        if ($this->canSendHeaders()) {
-            http_response_code($allReady ? 200 : 503);
-        }
         $this->json([
             'status' => $allReady ? 'ready' : 'not_ready',
             'timestamp' => date('c'),
             'checks' => $checks,
-        ]);
+        ], $allReady ? 200 : 503);
     }
 
     /**
@@ -172,13 +169,12 @@ class HealthController extends BaseController
         }
 
         $status = 'healthy';
+        $httpStatus = 200;
         if ($hasError) {
             // In testing/sandbox environments we often run without DB; keep HTTP 200
             // so E2E can assert endpoint existence without flakiness.
             $status = $isTesting ? 'degraded' : 'unhealthy';
-            if (!$isTesting && $this->canSendHeaders()) {
-                http_response_code(503);
-            }
+            $httpStatus = $isTesting ? 200 : 503;
         } elseif ($hasWarning) {
             $status = 'degraded';
         }
@@ -188,7 +184,7 @@ class HealthController extends BaseController
             'checks' => $checks,
             'version' => '1.0.0',
             'environment' => $_ENV['APP_ENV'] ?? 'production',
-        ]);
+        ], $httpStatus);
     }
 
     /**
@@ -364,11 +360,6 @@ class HealthController extends BaseController
         return round($bytes, 2) . ' ' . $units[$i];
     }
 
-    private function canSendHeaders(): bool
-    {
-        return PHP_SAPI !== 'cli' && !headers_sent();
-    }
-
     /**
      * Check integrations health — verifies dependencies used by real service implementations.
      * Checks: Tesseract OCR, GD library, OpenAI API key, ML API, DB tables.
@@ -527,11 +518,10 @@ class HealthController extends BaseController
         }
 
         $status = 'healthy';
+        $httpStatus = 200;
         if ($hasError) {
             $status = 'unhealthy';
-            if ($this->canSendHeaders()) {
-                http_response_code(503);
-            }
+            $httpStatus = 503;
         } elseif ($hasWarning) {
             $status = 'degraded';
         }
@@ -539,6 +529,6 @@ class HealthController extends BaseController
             'status' => $status,
             'timestamp' => date('c'),
             'checks' => $checks,
-        ]);
+        ], $httpStatus);
     }
 }

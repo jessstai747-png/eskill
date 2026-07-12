@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  stderr="true": o printer padrão do PHPUnit escreve o banner/progresso (dots)
+  via `print` direto em STDOUT. Qualquer teste que chame http_response_code()/
+  header() reais (ex.: HealthControllerTest, que testa BaseController::json())
+  falhava com "headers already sent (output started at .../Printer.php:104)"
+  mesmo sendo o primeiro teste do processo, porque o próprio banner do PHPUnit
+  já havia "enviado" output antes do teste rodar. Redirecionando o output do
+  PHPUnit para STDERR (equivalente à flag CLI "stderr"), STDOUT fica livre
+  para as respostas reais dos controllers.
+-->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          colors="true"
          defaultTestSuite="Unit"
-         stopOnFailure="false">
+         stopOnFailure="false"
+         stderr="true">
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>

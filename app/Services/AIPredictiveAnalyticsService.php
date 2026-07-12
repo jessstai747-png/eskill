@@ -41,7 +41,8 @@ class AIPredictiveAnalyticsService
     {
         $context = $this->getMarketContext($product);
         $factors = $this->identifyInfluenceFactors($product, $context);
-        return ['context' => $context, 'factors' => $factors];
+        $competitors = $this->analyzeCompetitorPricing($product, $context);
+        return ['context' => $context, 'factors' => $factors, 'competitor_pricing' => $competitors];
     }
 
     // =========================================================================
@@ -618,6 +619,100 @@ class AIPredictiveAnalyticsService
             ['factor' => 'quality', 'coefficient' => $this->getFactorCoefficient('quality_score')],
             ['factor' => 'brand',   'coefficient' => $this->getFactorCoefficient('brand_strength')],
         ];
+    }
+
+    /**
+     * Analisa o preço praticado por concorrentes na mesma categoria, usando o
+     * histórico real de preços em item_metrics_history (join por category_id
+     * via items.ml_item_id = item_metrics_history.item_id, últimos 30 dias).
+     *
+     * Quando não há dados suficientes na categoria (categoria nova, sem
+     * histórico, ou DB indisponível), cai no fallback de usar o próprio preço
+     * do produto como única referência — garante que o pipeline de pricing
+     * (predictOptimalPricing) sempre recebe uma estrutura válida em vez de
+     * lançar exceção.
+     *
+     * @param array<string, mixed> $product Espera 'category_id' e opcionalmente 'price'.
+     * @param array<string, mixed> $context Opcionalmente 'market_type', usado apenas como metadado no retorno.
+     * @return array{avg_price: float, price_range: array{min: float, max: float}, sample_size: int, source: string}
+     */
+    private function analyzeCompetitorPricing(array $product, array $context = []): array
+    {
+        $categoryId = trim((string) ($product['category_id'] ?? ''));
+        $ownPrice   = (float) ($product['price'] ?? 0.0);
+        $marketType = (string) ($context['market_type'] ?? 'standard');
+
+        $prices = $this->fetchCategoryCompetitorPrices($categoryId);
+
+        if (empty($prices)) {
+            $reference = $ownPrice > 0.0 ? $ownPrice : 0.0;
+
+            return [
+                'avg_price'       => round($reference, 2),
+                'price_range'     => ['min' => round($reference, 2), 'max' => round($reference, 2)],
+                'sample_size'     => 0,
+                'source'          => 'fallback_own_price',
+                'market_type'     => $marketType,
+                'market_position' => 'unknown',
+            ];
+        }
+
+        sort($prices);
+        $count = count($prices);
+        $avg   = array_sum($prices) / $count;
+        $min   = $prices[0];
+        $max   = $prices[$count - 1];
+
+        $position = 'aligned';
+        if ($ownPrice > 0.0 && $avg > 0.0) {
+            if ($ownPrice > $avg * 1.10) {
+                $position = 'above_market';
+            } elseif ($ownPrice < $avg * 0.90) {
+                $position = 'below_market';
+            }
+        }
+
+        return [
+            'avg_price'       => round($avg, 2),
+            'price_range'     => ['min' => round($min, 2), 'max' => round($max, 2)],
+            'sample_size'     => $count,
+            'source'          => 'item_metrics_history',
+            'market_type'     => $marketType,
+            'market_position' => $position,
+        ];
+    }
+
+    /**
+     * Busca preços recentes (últimos 30 dias) de itens da mesma categoria em
+     * item_metrics_history, agregados por item (AVG por item para suavizar
+     * variações diárias antes de comparar entre concorrentes diferentes).
+     *
+     * @return float[]
+     */
+    private function fetchCategoryCompetitorPrices(string $categoryId): array
+    {
+        if ($categoryId === '') {
+            return [];
+        }
+
+        try {
+            $db   = \App\Database::getInstance();
+            $stmt = $db->prepare("
+                SELECT AVG(h.price) AS avg_item_price
+                FROM item_metrics_history h
+                INNER JOIN items i ON i.ml_item_id = h.item_id
+                WHERE i.category_id = :category_id
+                  AND h.price > 0
+                  AND h.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                GROUP BY h.item_id
+            ");
+            $stmt->execute(['category_id' => $categoryId]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            return array_map('floatval', $rows ?: []);
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     private function evaluateModelPerformance(array $predictions): array

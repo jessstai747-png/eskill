@@ -37,10 +37,29 @@ abstract class BaseController
      */
     protected function json(array $data, int $status = 200): void
     {
-        http_response_code($status);
-        header('Content-Type: application/json');
+        if ($this->canSendHeaders()) {
+            http_response_code($status);
+            header('Content-Type: application/json');
+        }
         echo json_encode($data);
-        exit;
+        // Fora de CLI (php-fpm/apache/servidor embutido) sempre finaliza a
+        // resposta aqui, como antes. Em CLI (scripts, workers, e os testes
+        // PHPUnit que chamam métodos de controller diretamente) exit; mataria
+        // o processo do runner antes de coletar o resultado do teste — não há
+        // uma requisição HTTP real para finalizar de qualquer forma.
+        if (PHP_SAPI !== 'cli') {
+            exit;
+        }
+    }
+
+    /**
+     * Verifica se ainda é seguro enviar headers HTTP: fora de CLI e antes de
+     * qualquer output ter sido enviado. Mesmo padrão já usado em Router e em
+     * outros controllers (ex.: HealthController, SEOToolsController).
+     */
+    protected function canSendHeaders(): bool
+    {
+        return PHP_SAPI !== 'cli' && !headers_sent();
     }
 
     /**
