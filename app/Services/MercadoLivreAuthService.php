@@ -938,7 +938,9 @@ class MercadoLivreAuthService
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_POST => true,
                     CURLOPT_POSTFIELDS => http_build_query($post),
-                    CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+                    // fix H-B: 'accept: application/json' é obrigatório pela doc oficial do ML
+                    // (sem ele, a API pode retornar HTML em cenários de erro em vez de JSON)
+                    CURLOPT_HTTPHEADER => ['accept: application/json', 'Content-Type: application/x-www-form-urlencoded'],
                     CURLOPT_TIMEOUT => 30,
                     CURLOPT_USERAGENT => 'SEO-Optimizer/1.0',
                 ];
@@ -1050,7 +1052,32 @@ class MercadoLivreAuthService
             }
 
             $accessToken = $data['access_token'];
-            $newRefresh = $data['refresh_token'] ?? $refreshToken;
+
+            // fix H-A: a doc do ML garante que TODA resposta 200 de refresh inclui um novo
+            // refresh_token de uso único. Se ele vier ausente (resposta truncada por rede),
+            // NÃO fazer fallback para o token antigo — ele já foi consumido e a próxima tentativa
+            // falharia com invalid_grant irrecuperável. Tratar como erro e forçar reautenticação.
+            if (!isset($data['refresh_token']) || trim((string)$data['refresh_token']) === '') {
+                $logger = new StructuredLogService();
+                $logger->error('Resposta de refresh do ML não contém novo refresh_token', [
+                    'account_id' => $accountId,
+                    'response_keys' => array_keys($data),
+                ]);
+                // Marcar como disconnected: sem um refresh_token válido, precisamos de novo OAuth
+                $executionTime = (int)((microtime(true) - $startTime) * 1000);
+                $this->markAccountDisconnected(
+                    $accountId,
+                    'missing_new_refresh_token: resposta 200 sem refresh_token',
+                    200,
+                    ['response_keys' => array_keys($data)],
+                    $expiresAtBefore,
+                    $executionTime
+                );
+                return false;
+            }
+
+            $newRefresh = (string)$data['refresh_token'];
+
             $expiresIn = (int)($data['expires_in'] ?? 21600);
             $expiresAt = date('Y-m-d H:i:s', time() + $expiresIn);
 
@@ -1212,13 +1239,30 @@ class MercadoLivreAuthService
             return true;
         }
 
-        // Se refreshToken() já marcou a conta como disconnected, não sobrescrever para expired.
+        // fix H-C: se refreshToken() retornou false por lock contention (outro worker estava
+        // refreshing), o token pode agora já ter sido renovado com sucesso pelo outro processo.
+        // Re-verificar antes de marcar como expired — evita que o segundo worker desfaça o
+        // trabalho do primeiro.
         try {
-            $stmt = $this->pdo()->prepare('SELECT status FROM ml_accounts WHERE id = :id LIMIT 1');
+            $stmt = $this->pdo()->prepare('SELECT status, token_expires_at FROM ml_accounts WHERE id = :id LIMIT 1');
             $stmt->execute(['id' => $accountId]);
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-            if (is_array($row) && ($row['status'] ?? null) === 'disconnected') {
-                return false;
+
+            if (is_array($row)) {
+                if (($row['status'] ?? null) === 'disconnected') {
+                    // refreshToken() já marcou como disconnected — não sobrescrever
+                    return false;
+                }
+
+                // O outro worker pode ter renovado o token com sucesso: re-checar expiração
+                $freshExpiry = $row['token_expires_at'] ?? null;
+                if ($freshExpiry) {
+                    $freshSecondsLeft = strtotime($freshExpiry) - time();
+                    if ($freshSecondsLeft > ($bufferMinutes * 60) && ($row['status'] ?? '') === 'active') {
+                        // Token já está válido (renovado por outro worker) — não marcar como expired
+                        return true;
+                    }
+                }
             }
         } catch (\Throwable $e) {
             // best-effort
