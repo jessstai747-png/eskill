@@ -317,12 +317,17 @@ function loadAccounts() {
 }
 
 function loadOrders() {
-    const params = new URLSearchParams({ limit: 200 });
+    const params = new URLSearchParams({
+        limit: 200,
+        allow_local_cache: 'true'
+    });
+
     ['account_id:filter-account', 'status:filter-status', 'date_from:filter-date-from', 'date_to:filter-date-to'].forEach(p => {
         const [key, id] = p.split(':');
         const val = document.getElementById(id)?.value;
         if (val) params.append(key, val);
     });
+
     const search = document.getElementById('filter-search')?.value || '';
     
     const tbody = document.getElementById('orders-tbody');
@@ -482,7 +487,7 @@ function viewOrder(orderId) {
     document.getElementById('modal-order-body').innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
     new bootstrap.Modal(document.getElementById('orderModal')).show();
     
-    requestJson(`/api/orders/${orderId}`).then(order => {
+    requestJson(`/api/orders/${orderId}?allow_local_cache=true`).then(order => {
         const buyer = order.buyer || {}, shipping = order.shipping || {}, items = order.order_items || [];
         document.getElementById('modal-order-body').innerHTML = `
             <div class="row mb-3">
