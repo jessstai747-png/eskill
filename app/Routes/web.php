@@ -444,9 +444,13 @@ $router->post('dashboard/financials/conciliation/upload', 'App\Controllers\Settl
 $router->get('dashboard/financials/conciliation/reconcile', 'App\Controllers\SettlementController', 'reconcile');
 
 // Competitor Intelligence (Phase 16)
-$router->get('dashboard/competitors', 'App\Controllers\CompetitorController', 'index');
+// Dashboard route renders the HTML screen; API routes return JSON for the screen.
+$router->get('dashboard/competitors', 'App\Controllers\DashboardController', 'competitors');
+$router->get('api/competitors', 'App\Controllers\CompetitorController', 'index');
+$router->post('api/competitors', 'App\Controllers\CompetitorController', 'add');
+$router->delete('api/competitors/{sellerId}', 'App\Controllers\CompetitorController', 'remove');
 $router->post('dashboard/competitors/add', 'App\Controllers\CompetitorController', 'add');
-$router->get('dashboard/competitors/details/{id}', 'App\Controllers\CompetitorController', 'index');
+$router->get('dashboard/competitors/details/{id}', 'App\Controllers\DashboardController', 'competitors');
 
 // SEO & Gap Advanced Routes
 $router->get('api/seo/gap-analysis', DashboardController::class, 'gapAnalysis');
