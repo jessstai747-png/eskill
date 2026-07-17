@@ -1,6 +1,6 @@
 # ADR-001 — owner_user_id como limite transitorio de autorizacao (SEC-001)
 
-**Status:** Proposto (aguardando aprovacao humana)
+**Status:** Aceito (aprovado em 16/07/2026 - owner_user_id como limite transitorio de autorizacao durante o SEC-001; NAO representa implementacao real de multiempresa)
 **Data:** 16/07/2026
 **Relacionado a:** `docs/security/SEC-001-ISOLAMENTO-CONTAS-MERCADO-LIVRE.md`, `docs/01_CONSTITUICAO_DA_PLATAFORMA.md`
 **Autor:** Investigacao automatizada (Fase -1, SEC-001)
@@ -70,6 +70,6 @@ SEC-001.
 ## Controle de mudancas
 
 - **Motivo:** ausencia de modelo de organizacoes no schema atual, mas exigencia do SEC-001.
-- **Responsavel:** a definir por aprovacao humana.
+- **Responsavel:** aprovado por decisao humana (Fase -1 / Fase 0, SEC-001) em 16/07/2026.
 - **Versao anterior:** N/A (primeiro ADR do repositorio).
-- **Nova versao:** 1.0 - proposto, pendente de aprovacao.
+- **Nova versao:** 1.0 - Aceito em 16/07/2026.
